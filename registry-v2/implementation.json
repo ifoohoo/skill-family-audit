@@ -1,0 +1,46 @@
+{
+  "documentKind": "v2-implementation",
+  "schemaVersion": 2,
+  "familyImplementationId": "io.github.mzdbxqh.skill-family-audit",
+  "version": "0.1.7-candidate",
+  "pluginId": "skill-family-audit",
+  "projectAuthority": "project.skill-family-audit",
+  "implements": {
+    "apiId": "io.github.mzdbxqh.skill-family-audit-family",
+    "apiMajor": 1,
+    "apiRevisionDigest": "sha256:ae7b9dc2e805bbd79fb6df2d5528ed06d23fb277ce2a269e4c04c940c0955f3f"
+  },
+  "services": {
+    "io.github.mzdbxqh.skill-family-audit.behavior-audit": {
+      "serviceImplementationId": "io.github.mzdbxqh.skill-family-audit.behavior-audit",
+      "skill": "skills/skill-family-audit-behavior"
+    },
+    "io.github.mzdbxqh.skill-family-audit.conformance-audit": {
+      "serviceImplementationId": "io.github.mzdbxqh.skill-family-audit.conformance-audit",
+      "skill": "skills/skill-family-audit-conformance"
+    },
+    "io.github.mzdbxqh.skill-family-audit.runtime-audit": {
+      "serviceImplementationId": "io.github.mzdbxqh.skill-family-audit.runtime-audit",
+      "skill": "skills/skill-family-audit-runtime"
+    },
+    "io.github.mzdbxqh.skill-family-audit.release-audit": {
+      "serviceImplementationId": "io.github.mzdbxqh.skill-family-audit.release-audit",
+      "skill": "skills/skill-family-audit-release"
+    }
+  },
+  "bundle": {
+    "roots": [
+      "skills"
+    ],
+    "treeDigest": "sha256:c91d1cba02f811d709cfa3c866ac2fbcf17089b5b6932724b0049294c553cde0"
+  },
+  "lifecycle": {
+    "ownership": "project-local",
+    "maturity": "incubating",
+    "channel": "incubator"
+  },
+  "conformance": {
+    "deterministicAttestation": "sha256:e50203c514c2113e294f72f6cda61290fde44bb9de2e77522b6d9406321fd43a",
+    "behaviorQualification": null
+  }
+}

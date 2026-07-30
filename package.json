@@ -1,0 +1,9 @@
+{
+  "name": "skill-family-audit",
+  "version": "0.1.7-candidate",
+  "private": false,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Skill family specification, audit methods, and platform projections"
+}
+

@@ -1,0 +1,1 @@
+{"embedded_runtime":[],"host_interpreter":[{"identityKey":"python@any","name":"python","platform":"any","source":"host-contract:python","versionConstraint":">=3.11"}],"published_package":[],"schemaVersion":"1.0.0"}

@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1.0.0-candidate",
+  "description": "conformance-audit 适用规则清单（第一档）",
+  "checkerMethodId": "skill-family-audit:conformance-audit",
+  "note": "规则候选只能通过外部导入清单引用，不得硬编码临时身份",
+  "ruleCategories": [
+    {
+      "categoryId": "structure",
+      "description": "目录和文件结构规则",
+      "rules": [
+        {
+          "ruleId": "structure:skills-exist",
+          "description": "目标项目中必须存在 SKILL.md 文件",
+          "applicability": "skill",
+          "checkType": "static",
+          "failureImpact": "critical",
+          "remediation": "创建至少一个包含 YAML frontmatter 的 SKILL.md 文件",
+          "revisionDigest": "161fe6afb1d2e2c44fa1270d57ef21f37b3f1717c7d07593ca9ad0300de1e71c"
+        },
+        {
+          "ruleId": "structure:skill-frontmatter-exists",
+          "description": "每个 SKILL.md 必须有 YAML frontmatter",
+          "applicability": "skill",
+          "checkType": "static",
+          "failureImpact": "critical",
+          "remediation": "为 SKILL.md 添加以 --- 分隔的 YAML frontmatter 块",
+          "revisionDigest": "ebf0248e5c21c1d9545e7bf503b6ff1abe5e55d9e96b2a3dd1dc3524cf6497df"
+        },
+        {
+          "ruleId": "structure:skill-frontmatter-valid",
+          "description": "frontmatter 必须格式正确可解析",
+          "applicability": "skill",
+          "checkType": "static",
+          "failureImpact": "critical",
+          "remediation": "确保 frontmatter 是有效的 YAML 映射，无重复键",
+          "revisionDigest": "fb8a9c7b06ecc1370ce39c2501fc6282ebdea8b813f640615120d37622bfccb0"
+        },
+        {
+          "ruleId": "structure:skill-name-present",
+          "description": "frontmatter 必须包含 name 字段",
+          "applicability": "skill",
+          "checkType": "static",
+          "failureImpact": "critical",
+          "remediation": "在 frontmatter 中添加 name 字段",
+          "revisionDigest": "d4022bfa5bb54c3d3fc5c4c0a86f733a1e579eff6cdc890cedac5b1f9ec7d4fe"
+        },
+        {
+          "ruleId": "structure:skill-description-present",
+          "description": "frontmatter 必须包含 description 字段",
+          "applicability": "skill",
+          "checkType": "static",
+          "failureImpact": "high",
+          "remediation": "在 frontmatter 中添加 description 字段",
+          "revisionDigest": "c4174dbfba75b7bb61e84bf42577c2fccfb74b7dfbc78019123bb7c881cd38a1"
+        },
+        {
+          "ruleId": "structure:entry-count",
+          "description": "必须存在至少一个入口技能",
+          "applicability": "skill",
+          "checkType": "static",
+          "failureImpact": "high",
+          "remediation": "确保目标树中至少有一个可发现的 SKILL.md 入口",
+          "revisionDigest": "0c5b0bd7b8e5319a9b99976dabf05f0519e34acc5d78ab200eaf6817ce2aae5a"
+        }
+      ]
+    },
+    {
+      "categoryId": "naming",
+      "description": "命名规范规则",
+      "rules": [
+        {
+          "ruleId": "naming:family-name-format",
+          "description": "family 名称必须符合 ^[a-z][a-z0-9-]+$ 格式",
+          "applicability": "skill",
+          "checkType": "static",
+          "failureImpact": "high",
+          "remediation": "使用小写字母开头、只含小写字母数字和连字符的 family 名称",
+          "revisionDigest": "4d784cb021f0cc3d9c1e7e54b1f8f2b286150410e4bf50f40f8cf5b5cbf83246"
+        }
+      ]
+    },
+    {
+      "categoryId": "visibility",
+      "description": "可见性规则",
+      "rules": [
+        {
+          "ruleId": "visibility:internal-not-user-invocable",
+          "description": "内部技能不得标记为 user-invocable",
+          "applicability": "skill",
+          "checkType": "static",
+          "failureImpact": "critical",
+          "remediation": "移除内部技能的 user-invocable: true 标记或将技能移至非内部目录",
+          "revisionDigest": "45364799ba0008bb77e6000f43216ae68095ecdd9b480e5f10e5f7e4ea439aaa"
+        }
+      ]
+    }
+  ],
+  "totalRules": 8,
+  "tier": "first-tier"
+}

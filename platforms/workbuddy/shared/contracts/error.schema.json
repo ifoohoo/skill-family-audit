@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/error.schema.json",
+  "title": "结构化错误",
+  "description": "稳定错误码、类别、阶段、说明、受影响资源和整改方式",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "error_code",
+    "category",
+    "stage_id",
+    "message",
+    "affected_resources",
+    "evidence",
+    "side_effect_status",
+    "retry_possible",
+    "remediation"
+  ],
+  "properties": {
+    "error_code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]+\\.[A-Z][A-Z0-9_]+$",
+      "description": "稳定命名空间.错误码"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "INPUT_INVALID",
+        "INPUT_MISSING",
+        "AUTHORIZATION_INSUFFICIENT",
+        "CONTRACT_INCOMPATIBLE",
+        "DEPENDENCY_UNAVAILABLE",
+        "BUDGET_EXCEEDED",
+        "EXECUTION_EXCEPTION",
+        "OUTPUT_INVALID",
+        "SIDE_EFFECT_UNKNOWN",
+        "INTERNAL_PROTOCOL"
+      ],
+      "description": "错误分类"
+    },
+    "stage_id": {
+      "type": "string",
+      "description": "发生阶段标识"
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "description": "中文说明"
+    },
+    "affected_resources": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "受影响资源标识集合"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {"$ref": "evidence-ref.schema.json"},
+      "description": "脱敏证据引用"
+    },
+    "side_effect_status": {
+      "type": "string",
+      "enum": ["NONE", "ROLLED_BACK", "COMMITTED", "UNKNOWN"],
+      "description": "副作用状态；UNKNOWN 时禁止自动重试"
+    },
+    "retry_possible": {
+      "type": "boolean",
+      "description": "是否可重试"
+    },
+    "remediation": {
+      "type": "string",
+      "description": "整改方式"
+    }
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "blocked": true,
+  "blockingReasons": [
+    "已验证 --plugin-dir 会话级发现、help/setup 调用和会话结束后的功能卸载；未验证持久安装、升级、回滚和物理清理"
+  ],
+  "claimsStableSupport": false,
+  "deliveryMode": "claude_plugin",
+  "familyId": "skill-family-audit",
+  "fileCount": 38,
+  "files": [
+    ".claude-plugin/plugin.json",
+    "shared/contracts/behavior-fixture-manifest.schema.json",
+    "shared/contracts/budget.schema.json",
+    "shared/contracts/control-channel.schema.json",
+    "shared/contracts/error.schema.json",
+    "shared/contracts/evidence-ref.schema.json",
+    "shared/contracts/isolation-profile.schema.json",
+    "shared/contracts/observer-event.schema.json",
+    "shared/contracts/resource.schema.json",
+    "shared/contracts/result.schema.json",
+    "shared/contracts/side-effect.schema.json",
+    "shared/contracts/task.schema.json",
+    "shared/contracts/usage.schema.json",
+    "skills/behavior-audit/SKILL.md",
+    "skills/behavior-audit/scripts/behavior_audit.py",
+    "skills/behavior-audit/scripts/behavior_contracts.py",
+    "skills/behavior-audit/scripts/behavior_domain.py",
+    "skills/behavior-audit/scripts/behavior_evidence.py",
+    "skills/behavior-audit/scripts/behavior_execution.py",
+    "skills/behavior-audit/scripts/behavior_fixture.py",
+    "skills/behavior-audit/scripts/behavior_public.py",
+    "skills/behavior-audit/scripts/behavior_publish.py",
+    "skills/conformance-audit/SKILL.md",
+    "skills/conformance-audit/refs/applicable-rules.json",
+    "skills/conformance-audit/scripts/conformance_check.py",
+    "skills/help/SKILL.md",
+    "skills/quickstart/SKILL.md",
+    "skills/release-audit/SKILL.md",
+    "skills/release-audit/scripts/release_audit.py",
+    "skills/release-audit/scripts/release_public.py",
+    "skills/release-audit/scripts/release_publish.py",
+    "skills/release-audit/scripts/release_receipts.py",
+    "skills/runtime-audit/SKILL.md",
+    "skills/runtime-audit/refs/runtime-evidence-profile.json",
+    "skills/runtime-audit/scripts/runtime_audit.py",
+    "skills/runtime-audit/scripts/runtime_contracts.py",
+    "skills/runtime-audit/scripts/runtime_evidence.py",
+    "skills/setup/SKILL.md"
+  ],
+  "lifecycleStatus": "verified_session_scoped",
+  "logicalMappings": [
+    {
+      "logicalName": "skill-family-audit:behavior-audit",
+      "path": "skills/behavior-audit/SKILL.md",
+      "physicalName": "behavior-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:conformance-audit",
+      "path": "skills/conformance-audit/SKILL.md",
+      "physicalName": "conformance-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:help",
+      "path": "skills/help/SKILL.md",
+      "physicalName": "help",
+      "type": "human_entry",
+      "userInvocable": true
+    },
+    {
+      "logicalName": "skill-family-audit:quickstart",
+      "path": "skills/quickstart/SKILL.md",
+      "physicalName": "quickstart",
+      "type": "human_entry",
+      "userInvocable": true
+    },
+    {
+      "logicalName": "skill-family-audit:release-audit",
+      "path": "skills/release-audit/SKILL.md",
+      "physicalName": "release-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:runtime-audit",
+      "path": "skills/runtime-audit/SKILL.md",
+      "physicalName": "runtime-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:setup",
+      "path": "skills/setup/SKILL.md",
+      "physicalName": "setup",
+      "type": "human_entry",
+      "userInvocable": true
+    }
+  ],
+  "manifestRequired": true,
+  "platformId": "claude-code",
+  "platformManifest": ".claude-plugin/plugin.json",
+  "platformName": "Claude Code",
+  "projectionDigest": "b73d3dffd07254daf861ecf670d19f3d2af3b3f47825a07548a96f85ab0f51ef",
+  "projectionId": "skill-family-audit:claude-code:0.1.7-candidate",
+  "schemaVersion": "1.0.0-candidate",
+  "sharedRuntime": {
+    "contractsRoot": "shared/contracts",
+    "explicitRoot": ".",
+    "resources": [
+      "shared/contracts/behavior-fixture-manifest.schema.json",
+      "shared/contracts/budget.schema.json",
+      "shared/contracts/control-channel.schema.json",
+      "shared/contracts/error.schema.json",
+      "shared/contracts/evidence-ref.schema.json",
+      "shared/contracts/isolation-profile.schema.json",
+      "shared/contracts/observer-event.schema.json",
+      "shared/contracts/resource.schema.json",
+      "shared/contracts/result.schema.json",
+      "shared/contracts/side-effect.schema.json",
+      "shared/contracts/task.schema.json",
+      "shared/contracts/usage.schema.json"
+    ],
+    "rootMarker": "platform-manifest.json"
+  },
+  "skillsRoot": "skills",
+  "sourceDigest": "639256a31bc0e995b7d2ae78f2c07f807eb10db44625e7ff7def97ccc2271943",
+  "specIndexStatus": "not-approved",
+  "specLifecycle": "candidate",
+  "status": "blocked_candidate",
+  "unverifiedCapabilities": [
+    "persistent_install",
+    "upgrade",
+    "rollback",
+    "physical_cleanup"
+  ],
+  "verifiedCapabilities": [
+    "deterministic_projection",
+    "manifest_structure",
+    "frontmatter_first",
+    "skill_resource_closure",
+    "session_scoped_discover",
+    "session_scoped_invoke",
+    "session_scoped_functional_uninstall"
+  ],
+  "version": "0.1.7-candidate"
+}

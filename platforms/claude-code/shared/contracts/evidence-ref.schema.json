@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/evidence-ref.schema.json",
+  "title": "证据引用",
+  "description": "可复核证据资源引用，绑定候选、任务、环境、规则、实现、执行身份、序号、摘要、来源和可信度",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_id",
+    "kind",
+    "path",
+    "source",
+    "candidate_id",
+    "task_id",
+    "environment_digest",
+    "rule_ref",
+    "implementation_digest",
+    "executor_id",
+    "sequence_number",
+    "content_digest",
+    "credibility"
+  ],
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "稳定证据标识"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "candidate_fact",
+        "task_input",
+        "environment_fact",
+        "rule_reference",
+        "implementation_reference",
+        "execution_record",
+        "output_artifact",
+        "observer_event"
+      ],
+      "description": "证据种类"
+    },
+    "path": {
+      "type": "string",
+      "description": "证据资源路径"
+    },
+    "source": {
+      "type": "string",
+      "description": "证据来源标识"
+    },
+    "candidate_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "environment_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "rule_ref": {"type": "string", "minLength": 1},
+    "implementation_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "executor_id": {"type": "string", "minLength": 1},
+    "content_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "证据内容摘要"
+    },
+    "sequence_number": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "观察器事件序号"
+    },
+    "credibility": {
+      "type": "string",
+      "enum": ["verified", "self_reported", "unverified"],
+      "description": "可信度"
+    }
+  }
+}

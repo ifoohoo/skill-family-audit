@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0-candidate",
+  "platformId": "kimi-code",
+  "clientVersion": "0.27.0",
+  "deliveryMode": "explicit_skills_dir",
+  "invocation": "kimi --skills-dir <candidate>/skills",
+  "observedCapability": "--skills-dir 参数在帮助文本中可见并接受目录参数",
+  "status": "blocked_candidate",
+  "blocked": true,
+  "unverifiedCapabilities": ["skill_discovery", "skill_invocation", "plugin_install", "reload", "upgrade", "rollback", "functional_uninstall", "physical_cleanup"]
+}

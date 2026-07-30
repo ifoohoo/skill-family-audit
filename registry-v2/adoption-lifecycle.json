@@ -1,0 +1,180 @@
+{
+  "documentKind": "registry-adoption-lifecycle",
+  "schemaVersion": 1,
+  "familyId": "skill-family-audit",
+  "activeLevel": "v2_adopted",
+  "targetLevel": "v2_adopted",
+  "silentDowngradeAllowed": false,
+  "regenerationEvidence": {
+    "copiedPriorPassedState": false,
+    "descriptorDigests": {
+      "family-api.json": "sha256:afd4ee6d359e04d6fe5860622243f12d04138109e6b7ba6fbf3e23919f83ebdb",
+      "implementation.json": "sha256:e22e8caf36b822b6a58cadccb6d0570e24258e5801f2cde5aaf985ffc9c72dd6",
+      "contract-attestation.json": "sha256:50828febee05407e3f53af7d0807d6e044f01417c5640d0213eb6ff2d437a8a8"
+    },
+    "privateRuntimeDigests": {
+      "inventory.json": "sha256:8a823fceccc995e5ef758fbc13c505cac97caec1798b667e34a25b4fce513304",
+      "binding.json": "sha256:c2b0821f74201479838e6ac9ee55627fb2a52d2d0ea2ed77d5f084f8b401fd7b",
+      "projection.json": "sha256:30718f82abba302272a87eeab51c6f75e1cf14fe6ba73e01d569baca520494f2"
+    },
+    "dedicatedTestSourceDigests": {
+      "tests/spec/test_registry_v2_descriptor.py": "sha256:c35ef5734925160537b47bd6b377650e098843f05ced2e4aded7f36fa26b4a26",
+      "tests/spec/test_registry_adoption_lifecycle.py": "sha256:c3bdaaf8af37e2284d82c2989727a82f859f98e4852b8273aea21883b1c93b8a"
+    },
+    "runtimeChainAuditDigest": "sha256:80bc54c0f168f29ee7552e586587730b3ceef6152eb487b50552587a5f2b57c8",
+    "dedicatedTestReceiptDigest": "sha256:ca8127acb42114f662937e5c4b8ae64506bffe5139af9646f86b35328766b84a",
+    "runtimeCoreEvidenceDigest": "sha256:60935f3bfd39ce5404206085de9d7286e213216bd9a0ab92a6c95ab1b65d1a00",
+    "generatorDigest": "sha256:bc9e7232f635931b1d93809accec5c7d56be467c2be63d0d4d26dac9fd4e4696",
+    "implementationVersion": "0.1.7-candidate",
+    "registryVersion": "0.2.2"
+  },
+  "v1Compat": {
+    "entryMethod": "v1_catalog_overlay",
+    "fallbackExecutable": false,
+    "v1DiscoveryMaintained": true,
+    "v1Evidence": {
+      "packageInstalled": true,
+      "sevenFunctionsReturn": true,
+      "cliQueryResolve": true,
+      "typescriptCompatible": true
+    }
+  },
+  "v2Adoption": {
+    "descriptorComplete": true,
+    "inventoryComplete": true,
+    "bindingComplete": true,
+    "projectionComplete": true,
+    "runtimeChainStatus": "passed",
+    "runtimeChainEvidence": {
+      "registryVersion": "0.2.2",
+      "thirdPartyIdentityPrepare": true,
+      "originalHandle": true,
+      "strictResolve": true,
+      "runLock": true,
+      "reverify": true,
+      "sixStateNegativeMatrix": true,
+      "fullRepoDualRun": true
+    },
+    "onFailure": "stop_and_report"
+  },
+  "rollbackWindow": {
+    "status": "open",
+    "openConditions": {
+      "twoDistinctConsumersPassed": false,
+      "behaviorQualificationPassed": false,
+      "noP0P1": false,
+      "stabilizationPeriodCompleted": false,
+      "rollbackDrillPassed": false
+    },
+    "closeConditions": {
+      "allOpenConditionsMet": false,
+      "v1RemovalAllowed": false
+    },
+    "rollbackTarget": "v1_compatible",
+    "rollbackAction": "explicit_user_or_governance"
+  },
+  "stateMachine": {
+    "states": [
+      "v1_compatible",
+      "v2_candidate",
+      "v2_runtime_blocked",
+      "v2_adopted",
+      "rollback_window_open",
+      "v1_deprecated",
+      "v1_removed"
+    ],
+    "transitions": [
+      {
+        "from": "v1_compatible",
+        "to": "v2_candidate",
+        "trigger": "v2_descriptor_inventory_binding_projection_complete",
+        "conditions": [
+          "descriptorComplete=true",
+          "inventoryComplete=true",
+          "bindingComplete=true",
+          "projectionComplete=true"
+        ]
+      },
+      {
+        "from": "v2_candidate",
+        "to": "v2_runtime_blocked",
+        "trigger": "runtime_chain_blocked",
+        "conditions": [
+          "runtimeChainStatus=blocked_external_protocol"
+        ]
+      },
+      {
+        "from": "v2_candidate",
+        "to": "v2_adopted",
+        "trigger": "runtime_chain_passed",
+        "conditions": [
+          "runtimeChainStatus=passed",
+          "all_eight_evidence_items=true"
+        ]
+      },
+      {
+        "from": "v2_runtime_blocked",
+        "to": "v2_candidate",
+        "trigger": "blocker_resolved",
+        "conditions": [
+          "external_blocker_removed"
+        ]
+      },
+      {
+        "from": "v2_adopted",
+        "to": "rollback_window_open",
+        "trigger": "v2_failure_detected",
+        "conditions": [
+          "explicit_user_or_governance_action"
+        ]
+      },
+      {
+        "from": "rollback_window_open",
+        "to": "v1_compatible",
+        "trigger": "rollback_executed",
+        "conditions": [
+          "rollbackTarget=v1_compatible",
+          "rollbackAction=explicit_user_or_governance"
+        ]
+      },
+      {
+        "from": "rollback_window_open",
+        "to": "v1_deprecated",
+        "trigger": "window_close_conditions_met",
+        "conditions": [
+          "twoDistinctConsumersPassed=true",
+          "behaviorQualificationPassed=true",
+          "noP0P1=true",
+          "stabilizationPeriodCompleted=true",
+          "rollbackDrillPassed=true"
+        ]
+      },
+      {
+        "from": "v1_deprecated",
+        "to": "v1_removed",
+        "trigger": "deprecation_period_elapsed",
+        "conditions": [
+          "window_status=closed",
+          "v1RemovalAllowed=true"
+        ]
+      },
+      {
+        "from": "v2_runtime_blocked",
+        "to": "v1_compatible",
+        "trigger": "explicit_rollback",
+        "conditions": [
+          "explicit_user_or_governance_action",
+          "rollbackTarget=v1_compatible"
+        ]
+      }
+    ],
+    "constraints": {
+      "noAdoptionWithoutFullRuntimeChain": "activeLevel=v2_adopted 时 runtimeChainStatus 必须为 passed 且全部八项证据为 true",
+      "noSilentDowngrade": "silentDowngradeAllowed 必须为 false；v2 失败时不得自动通过 v1 继续执行",
+      "noV1FallbackOnV2Failure": "v2Adoption.onFailure 必须为 stop_and_report，不得为 execute-v1",
+      "rollbackOnlyToV1Compatible": "rollbackWindow.rollbackTarget 只能为 v1_compatible；回滚不得把 v1 当作 v2 执行替身",
+      "v1RemovedOnlyAfterWindowClose": "v1_removed 只能在 rollbackWindow.status=closed 且全部关闭条件满足后发生",
+      "noAdoptionWithExternalBlocker": "runtimeChainStatus=blocked_external_protocol 时 activeLevel 不得为 v2_adopted"
+    }
+  }
+}

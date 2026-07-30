@@ -1,0 +1,73 @@
+{
+  "approvalStatus": "no_active_approval_receipt",
+  "blocked": true,
+  "candidateId": "skill-family-audit:0.1.7-candidate",
+  "candidatePayloadDigest": "d7ba98af1da14dea53e75aea57780e7d51924f4d38915d4acdbbb7cd43590db1",
+  "claimsStableRelease": false,
+  "familyId": "skill-family-audit",
+  "lifecycleEvidence": {
+    "actionStatusMatrix": {
+      "claude-code": {
+        "cleanup": "blocked",
+        "discover": "verified",
+        "install": "blocked",
+        "manifest": "verified",
+        "minimalInvoke": "verified",
+        "uninstall": "verified"
+      },
+      "codex": {
+        "cleanup": "verified",
+        "discover": "verified",
+        "install": "verified",
+        "manifest": "verified",
+        "minimalInvoke": "verified",
+        "uninstall": "verified"
+      },
+      "kimi-code": {
+        "cleanup": "blocked",
+        "discover": "verified",
+        "install": "blocked",
+        "manifest": "verified",
+        "minimalInvoke": "verified",
+        "uninstall": "verified"
+      },
+      "workbuddy": {
+        "cleanup": "blocked",
+        "discover": "blocked",
+        "install": "blocked",
+        "manifest": "verified",
+        "minimalInvoke": "blocked",
+        "uninstall": "blocked"
+      }
+    },
+    "allLifecycleVerified": false,
+    "bindingStatus": "bound",
+    "blockingPlatforms": [
+      "claude-code",
+      "kimi-code",
+      "workbuddy"
+    ],
+    "digest": "0b7f80d8e8e8a699d4af57f0bbac21b2d89eeeede03c79623a3aed5f8a3d271a",
+    "path": "generated/platforms/_evidence/platform-lifecycle-probe.json",
+    "status": "PARTIALLY_VERIFIED_WITH_BLOCKERS"
+  },
+  "note": "无批准收据且四平台完整持久生命周期未全部验证；Claude Code 仅有 --plugin-dir 会话级闭环，Kimi 仅有显式技能目录闭环，Codex 已在独立 CODEX_HOME 中闭合安装、调用和卸载，WorkBuddy 当前只验证静态清单，发现、调用和功能卸载仍失败关闭。候选不得宣称稳定或全面受支持。",
+  "platformDigests": {
+    "claude-code": "b73d3dffd07254daf861ecf670d19f3d2af3b3f47825a07548a96f85ab0f51ef",
+    "codex": "9d2c1cc718432019e671e2f2bd8a3a8991f6da005b0ad93fedf50d2faf106941",
+    "kimi-code": "ba0f3a6f717758523b1699d0e744d42176fcaca7eef5d773f86f6ae4b7062060",
+    "workbuddy": "cc95c719703974ee51a83842b626f63affbf9f3b5cc2e5dbf89bf9f46515bf29"
+  },
+  "platforms": [
+    "claude-code",
+    "codex",
+    "kimi-code",
+    "workbuddy"
+  ],
+  "schemaVersion": "1.0.0-candidate",
+  "sourceDigest": "639256a31bc0e995b7d2ae78f2c07f807eb10db44625e7ff7def97ccc2271943",
+  "specIndexStatus": "not-approved",
+  "specLifecycle": "candidate",
+  "status": "candidate",
+  "version": "0.1.7-candidate"
+}

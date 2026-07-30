@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/side-effect.schema.json",
+  "title": "副作用声明",
+  "description": "方法运行期间产生的副作用记录",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "side_effect_id",
+    "kind",
+    "target",
+    "status"
+  ],
+  "properties": {
+    "side_effect_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "副作用标识"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "file_create",
+        "file_modify",
+        "file_delete",
+        "file_move",
+        "command_execute",
+        "dependency_install",
+        "network_request",
+        "external_write",
+        "key_use",
+        "publish_action"
+      ],
+      "description": "副作用种类"
+    },
+    "target": {
+      "type": "string",
+      "description": "受影响目标路径或标识"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED", "ROLLED_BACK", "UNKNOWN"],
+      "description": "副作用状态"
+    },
+    "reversible": {
+      "type": "boolean",
+      "description": "是否可逆"
+    },
+    "rollback_path": {
+      "type": "string",
+      "description": "回滚证据路径"
+    }
+  }
+}
