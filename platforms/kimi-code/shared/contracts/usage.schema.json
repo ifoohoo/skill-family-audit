@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/usage.schema.json",
+  "title": "资源使用量",
+  "description": "阶段结果中记录的实际资源使用量",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "measurement_method",
+    "context_limit_tokens"
+  ],
+  "properties": {
+    "measurement_method": {
+      "type": "string",
+      "enum": ["observed", "estimated", "unavailable"],
+      "description": "测量方式"
+    },
+    "measurement_source": {
+      "type": "string",
+      "description": "测量来源"
+    },
+    "estimator_version": {
+      "type": "string",
+      "description": "估算器版本"
+    },
+    "context_limit_tokens": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "上下文上限词元数"
+    },
+    "static_projected_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "静态估算峰值"
+    },
+    "observed_context_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "观测到的上下文占用"
+    },
+    "observation_threshold": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "观察阈值"
+    },
+    "failure_modes_checked": {
+      "type": "boolean",
+      "description": "是否执行了失效模式检查"
+    },
+    "failure_modes_detected": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "检测到的失效模式"
+    },
+    "split_decision": {
+      "type": "string",
+      "enum": ["continue", "split_recommended", "split_required"],
+      "description": "拆分决策"
+    },
+    "interventions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "已执行的干预措施"
+    }
+  }
+}

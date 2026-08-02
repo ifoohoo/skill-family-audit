@@ -1,0 +1,57 @@
+{
+  "api": {
+    "id": "io.github.mzdbxqh.skill-family-audit-family",
+    "major": 1,
+    "revisionDigest": "sha256:dcc169d5eb9c53df8fa530527559c133aa081e6ff8b961495baa22fe5c103c46"
+  },
+  "services": [
+    {
+      "id": "io.github.mzdbxqh.skill-family-audit.behavior-audit",
+      "kind": "workflow",
+      "intents": [
+        "audit"
+      ],
+      "summary": "在明确平台、模型、样例和限制下，验证技能族行为是否满足业务验收",
+      "sideEffectCeiling": "write-project-artifacts",
+      "mixSafe": false,
+      "methodContractRef": "spec/methods/behavior-audit.json",
+      "methodContractDigest": "sha256:ab2a508aeaae8e26cc99fb881fa1dc3496a99d5dfb56b60332e6d532a1e91e2a"
+    },
+    {
+      "id": "io.github.mzdbxqh.skill-family-audit.conformance-audit",
+      "kind": "workflow",
+      "intents": [
+        "audit"
+      ],
+      "summary": "根据版本化正式规则和证据判断技能族规范符合性",
+      "sideEffectCeiling": "read-only",
+      "mixSafe": false,
+      "methodContractRef": "spec/methods/conformance-audit.json",
+      "methodContractDigest": "sha256:2e2188e5e0cc7c446e0deb3386b6383646ab4ba858eeab3abcab721ccace8a1a"
+    },
+    {
+      "id": "io.github.mzdbxqh.skill-family-audit.runtime-audit",
+      "kind": "workflow",
+      "intents": [
+        "audit"
+      ],
+      "summary": "检查运行治理能力是否达到声明的成熟度等级",
+      "sideEffectCeiling": "read-only",
+      "mixSafe": false,
+      "methodContractRef": "spec/methods/runtime-audit.json",
+      "methodContractDigest": "sha256:fa16843d095b2c0e41250e6dce03e5f38a5dd0af5d0c399718d803f608fb19c0"
+    },
+    {
+      "id": "io.github.mzdbxqh.skill-family-audit.release-audit",
+      "kind": "workflow",
+      "intents": [
+        "audit"
+      ],
+      "summary": "判断技能族版本是否满足稳定发布的全部门禁条件",
+      "sideEffectCeiling": "read-only",
+      "mixSafe": false,
+      "methodContractRef": "spec/methods/release-audit.json",
+      "methodContractDigest": "sha256:c4bc5fcbe3744444b7e4da2c11809f272034ee714ac7cd562a444833a5852420"
+    }
+  ]
+}

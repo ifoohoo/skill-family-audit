@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "公开锁切片：六个 published_package 的最小版本事实。lockDigest 从各条目的 canonical JSON 独立重算；resolvedVersion 由私有推导收据另行绑定。",
+  "entries": [
+    {
+      "identityKey": "pypi:jsonschema@any",
+      "ecosystem": "pypi",
+      "name": "jsonschema",
+      "platform": "any",
+      "minimumVersion": "4.20.0"
+    },
+    {
+      "identityKey": "pypi:referencing@any",
+      "ecosystem": "pypi",
+      "name": "referencing",
+      "platform": "any",
+      "minimumVersion": "0.31.0"
+    },
+    {
+      "identityKey": "system:claude-code@any",
+      "ecosystem": "system",
+      "name": "claude-code",
+      "platform": "any",
+      "minimumVersion": "2.1.220"
+    },
+    {
+      "identityKey": "system:codex-cli@any",
+      "ecosystem": "system",
+      "name": "codex-cli",
+      "platform": "any",
+      "minimumVersion": "0.145.0"
+    },
+    {
+      "identityKey": "system:kimi-code@any",
+      "ecosystem": "system",
+      "name": "kimi-code",
+      "platform": "any",
+      "minimumVersion": "0.31.0"
+    },
+    {
+      "identityKey": "system:workbuddy@any",
+      "ecosystem": "system",
+      "name": "workbuddy",
+      "platform": "any",
+      "minimumVersion": "5.3.8"
+    }
+  ]
+}

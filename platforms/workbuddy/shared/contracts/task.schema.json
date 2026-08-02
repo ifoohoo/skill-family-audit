@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/task.schema.json",
+  "title": "规范化阶段任务",
+  "description": "通用阶段任务外层结构，承载跨技能族一致的运行事实",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "method_id",
+    "operation_id",
+    "stage_id",
+    "attempt",
+    "target",
+    "workspace_root",
+    "inputs",
+    "expected_outputs",
+    "output_dir",
+    "write_set",
+    "authorization_ref",
+    "acceptance_ref",
+    "required_extensions",
+    "budget",
+    "control_channel"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.1.0-candidate",
+      "description": "通用任务合同版本"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "端到端运行标识"
+    },
+    "method_id": {"type": "string", "minLength": 1, "description": "公开业务方法或稳定内部方法身份"},
+    "operation_id": {"type": "string", "minLength": 1, "description": "本次工序身份"},
+    "stage_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "当前阶段标识"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "仅表示技术执行重试，不表示业务返工"
+    },
+    "target": {
+      "type": "object",
+      "description": "方法、技能、执行单元或脚本绑定",
+      "required": ["skill"],
+      "properties": {
+        "skill": {"type": "string", "description": "主技能标识"},
+        "worker": {"type": "string", "description": "使用执行单元时同时包含"},
+        "method_ref": {"type": "string", "description": "通过注册方法进入时同时包含"},
+        "script_id": {"type": "string", "description": "确定性脚本使用脚本身份"}
+      },
+      "additionalProperties": false
+    },
+    "workspace_root": {
+      "type": "string",
+      "description": "已解析的工作区根目录绝对路径"
+    },
+    "parameters": {
+      "type": "object",
+      "description": "经方法参数结构校验的短小参数",
+      "additionalProperties": true
+    },
+    "inputs": {
+      "type": "array",
+      "description": "带路径和契约的输入资源",
+      "items": {"$ref": "resource.schema.json"},
+      "minItems": 0
+    },
+    "upstream_results": {
+      "type": "array",
+      "description": "上游通用结果或领域结果引用",
+      "items": {"type": "string"},
+      "minItems": 0
+    },
+    "expected_outputs": {
+      "type": "array",
+      "description": "预期输出契约",
+      "items": {"$ref": "resource.schema.json"},
+      "minItems": 0
+    },
+    "output_dir": {
+      "type": "string",
+      "description": "当前阶段独占的运行记录和临时输出目录"
+    },
+    "write_set": {
+      "type": "array",
+      "description": "经授权允许修改的项目路径集合；为空时只允许写 output_dir",
+      "items": {"type": "string"},
+      "minItems": 0
+    },
+    "authorization_ref": {
+      "type": "string",
+      "description": "实际授权证据引用"
+    },
+    "acceptance_ref": {
+      "type": "string",
+      "description": "验收合同引用"
+    },
+    "required_extensions": {
+      "type": "array",
+      "description": "本阶段必须理解的个性化扩展",
+      "items": {"type": "string"},
+      "minItems": 0
+    },
+    "routing_metadata": {
+      "type": "object",
+      "description": "Quickstart 路由元数据；不含业务参数，仅用于运行时绑定验证",
+      "required": [
+        "original_request",
+        "platform",
+        "selected_intent",
+        "candidate_digest",
+        "method_args_digest",
+        "platform_manifest_digest"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "original_request": {"type": "string"},
+        "platform": {"type": "string"},
+        "selected_intent": {"type": "string"},
+        "candidate_digest": {"type": "string"},
+        "method_args_digest": {"type": "string"},
+        "platform_manifest_digest": {"type": "string"}
+      }
+    },
+    "budget": {
+      "$ref": "budget.schema.json"
+    },
+    "control_channel": {"$ref": "control-channel.schema.json"},
+    "isolation_profile": {
+      "type": "object",
+      "description": "隔离执行环境约束",
+      "required": [
+        "identity",
+        "destroyable_environment",
+        "no_long_term_credentials",
+        "minimal_test_credentials",
+        "network_default_deny",
+        "input_read_only",
+        "output_dir_only_write",
+        "resource_limits",
+        "process_tree_terminable",
+        "isolation_proof"
+      ],
+      "properties": {
+        "identity": {
+          "type": "string",
+          "description": "可证明的隔离身份"
+        },
+        "destroyable_environment": {
+          "type": "boolean"
+        },
+        "no_long_term_credentials": {
+          "type": "boolean"
+        },
+        "minimal_test_credentials": {
+          "type": "boolean"
+        },
+        "network_default_deny": {
+          "type": "boolean"
+        },
+        "network_allowlist": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "input_read_only": {
+          "type": "boolean"
+        },
+        "output_dir_only_write": {
+          "type": "boolean"
+        },
+        "resource_limits": {
+          "type": "object",
+          "properties": {
+            "max_processes": {"type": "integer"},
+            "max_wall_seconds": {"type": "integer"},
+            "max_memory_mb": {"type": "integer"},
+            "max_files": {"type": "integer"},
+            "max_expanded_bytes": {"type": "integer"}
+          },
+          "additionalProperties": false
+        },
+        "process_tree_terminable": {
+          "type": "boolean"
+        },
+        "isolation_proof": {
+          "type": "string",
+          "description": "控制面签发的隔离证明"
+        }
+      },
+      "additionalProperties": false
+    },
+    "observer_contract": {
+      "type": "object",
+      "description": "专属观察器契约",
+      "required": [
+        "observer_identity",
+        "storage_type",
+        "target_writable"
+      ],
+      "properties": {
+        "observer_identity": {
+          "type": "string",
+          "description": "专属观察器身份"
+        },
+        "storage_type": {
+          "type": "string",
+          "enum": ["append_only_log", "event_store"]
+        },
+        "target_writable": {
+          "type": "boolean",
+          "const": false
+        },
+        "event_fields": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "事件必含字段列表"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

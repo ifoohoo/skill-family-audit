@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/isolation-profile.schema.json",
+  "title": "最低隔离画像",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "isolation_id", "destroyable_environment", "inherits_long_term_credentials",
+    "test_credential_policy", "network_default", "network_allowlist",
+    "candidate_read_only", "input_read_only", "writable_roots",
+    "max_processes", "max_wall_seconds", "max_memory_bytes", "max_files",
+    "max_expanded_bytes", "process_tree_terminable", "control_plane_proof"
+  ],
+  "properties": {
+    "isolation_id": {"type": "string", "minLength": 1},
+    "destroyable_environment": {"const": true},
+    "inherits_long_term_credentials": {"const": false},
+    "test_credential_policy": {"const": "minimal_short_lived_reference_only"},
+    "network_default": {"const": "deny"},
+    "network_allowlist": {"type": "array", "items": {"type": "string"}},
+    "candidate_read_only": {"const": true},
+    "input_read_only": {"const": true},
+    "writable_roots": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "max_processes": {"type": "integer", "minimum": 1},
+    "max_wall_seconds": {"type": "integer", "minimum": 1},
+    "max_memory_bytes": {"type": "integer", "minimum": 1},
+    "max_files": {"type": "integer", "minimum": 1},
+    "max_expanded_bytes": {"type": "integer", "minimum": 1},
+    "process_tree_terminable": {"const": true},
+    "control_plane_proof": {"type": "string", "minLength": 1}
+  }
+}

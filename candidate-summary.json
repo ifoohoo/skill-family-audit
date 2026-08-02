@@ -1,0 +1,80 @@
+{
+  "approvalStatus": "no_active_approval_receipt",
+  "blocked": true,
+  "candidateId": "skill-family-audit:0.1.24-candidate",
+  "candidatePayloadDigest": "8c5a546505e9cd13952a61f5e5b4ebc5f12969ad489b4050697cd643579ae572",
+  "claimsStableRelease": false,
+  "familyId": "skill-family-audit",
+  "lifecycleEvidence": {
+    "actionStatusMatrix": {
+      "claude-code": {
+        "cleanup": "blocked",
+        "discover": "verified",
+        "install": "verified",
+        "manifest": "verified",
+        "minimalInvoke": "verified",
+        "uninstall": "verified"
+      },
+      "codex": {
+        "cleanup": "verified",
+        "discover": "verified",
+        "install": "verified",
+        "manifest": "verified",
+        "minimalInvoke": "verified",
+        "uninstall": "verified"
+      },
+      "kimi-code": {
+        "cleanup": "blocked",
+        "discover": "verified",
+        "install": "verified",
+        "manifest": "verified",
+        "minimalInvoke": "verified",
+        "uninstall": "verified"
+      },
+      "workbuddy": {
+        "cleanup": "blocked",
+        "discover": "verified",
+        "install": "verified",
+        "manifest": "verified",
+        "minimalInvoke": "verified",
+        "uninstall": "verified"
+      }
+    },
+    "advisoryPlatforms": [
+      "claude-code",
+      "kimi-code",
+      "workbuddy"
+    ],
+    "allLifecycleVerified": false,
+    "bindingStatus": "bound",
+    "blockingPlatforms": [
+      "claude-code",
+      "kimi-code",
+      "workbuddy"
+    ],
+    "digest": "0f4782345f2070fb4647ffb0d96c5305a43980883575b03752ebe76c3b0ca92a",
+    "path": "generated/platforms/_evidence/platform-lifecycle-probe.json",
+    "releaseBlockingPlatforms": [],
+    "releaseRequiredLifecycleVerified": true,
+    "status": "REQUIRED_ACTIONS_VERIFIED_WITH_ADVISORIES"
+  },
+  "note": "无批准收据且四平台尚未完成升级、回滚与当前候选消费者验证；四平台发布必需生命周期动作已闭合。Claude Code、Kimi Code 与 WorkBuddy 的原生即时物理清理保持真实未验证状态，并作为不影响功能卸载的安全告警记录。候选不得据此自动宣称稳定或全面受支持。",
+  "platformDigests": {
+    "claude-code": "c31b60f0fdd2e58eb17c75113c6fa8fbf0a655015f9b0286df335202c64b73e0",
+    "codex": "04369ad937a9c689a9b032e8490157a366978373a0e0034b15bd033aeba1b016",
+    "kimi-code": "77d1cdd9c2a346d0a3822baf8f8e27a6d6ac7e1b27f611e3a0392fdc651be2de",
+    "workbuddy": "22858da6143c2ef729c2388a94804b101e4ecb4a94ab5586a0902aa5a7814eaa"
+  },
+  "platforms": [
+    "claude-code",
+    "codex",
+    "kimi-code",
+    "workbuddy"
+  ],
+  "schemaVersion": "1.0.0-candidate",
+  "sourceDigest": "4c78308c5fdc643d871cfa52b1a2fdb7c95c1e2806a73713db659472ae889332",
+  "specIndexStatus": "not-approved",
+  "specLifecycle": "candidate",
+  "status": "candidate",
+  "version": "0.1.24-candidate"
+}

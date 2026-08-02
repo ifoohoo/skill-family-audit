@@ -1,0 +1,217 @@
+{
+  "schemaVersion": "1.0.0-candidate",
+  "methodId": "skill-family-audit:conformance-audit",
+  "name": "规范符合性检查",
+  "description": "覆盖单个技能轻量检查、技能族源码完整检查、发行包检查和目标项目采用检查；组合确定性扫描与必要语义审阅",
+  "capability": {
+    "capabilityRef": "cap:skill-family-audit.family",
+    "capabilityDigest": "sha256:54c90ac1376e46fd6e1244e8932bd0893ab98d9cf40d11de180e98dad1b7548d",
+    "methodSlice": "根据版本化正式规则和证据判断技能族规范符合性"
+  },
+  "accepts": [
+    "target_project_path",
+    "spec_version_ref",
+    "scope_selector",
+    "platform_filter"
+  ],
+  "produces": [
+    "conformance_result",
+    "rule_findings",
+    "evidence_list",
+    "remediation_plan"
+  ],
+  "artifactTypes": [
+    "skill_family",
+    "skill_specification",
+    "skill_rule",
+    "skill_assessment"
+  ],
+  "sideEffects": [
+    "read-only"
+  ],
+  "idempotency": "read_only_repeatable",
+  "composability": "closed_leaf",
+  "executionEnvironment": {
+    "isolation": "none_required",
+    "codeExecution": false,
+    "note": "conformance-audit 不执行被测代码"
+  },
+  "maturity": "experimental",
+  "status": "candidate",
+  "created_at": "2026-07-20T00:00:00+08:00",
+  "permissions": {
+    "read": true,
+    "create": false,
+    "modify": false,
+    "overwrite": false,
+    "delete": false,
+    "move": false,
+    "execute_command": false,
+    "install_dependency": false,
+    "network_read": false,
+    "external_write": false,
+    "key_reference": false,
+    "publish": false
+  },
+  "costBudget": {
+    "estimated_tokens": 50000,
+    "max_wall_seconds": 300,
+    "budget_ref": "spec/contracts/budget.schema.json"
+  },
+  "acceptanceCriteria": [
+    "扫描覆盖全部适用规则",
+    "每条规则有独立结论",
+    "证据引用可追溯",
+    "不得遗漏强制规则"
+  ],
+  "errorCategories": [
+    "INPUT_INVALID",
+    "INPUT_MISSING",
+    "CONTRACT_INCOMPATIBLE",
+    "OUTPUT_INVALID"
+  ],
+  "businessLabels": [
+    "skill_family",
+    "skill_specification",
+    "skill_rule",
+    "skill_assessment"
+  ],
+  "compositionConstraints": {
+    "applicable": false,
+    "note": "composability is closed_leaf; composition constraints not applicable"
+  },
+  "strictIOBinding": {
+    "taskContract": "spec/contracts/task.schema.json",
+    "resultContract": "spec/contracts/result.schema.json",
+    "taskRevisionDigest": "d1fcc6ac0d229b3a8f12bba6b662f113bd61f0adcb891fa1ede45a5ec0c8309f",
+    "resultRevisionDigest": "d9e0155a14ac757abce4c463595245c745e08c81841a7f6994626d5ba640d792",
+    "note": "本方法为注册的严格业务方法；accepts/produces 槽位经公共任务/结果契约交接，不另建输入输出真源。taskRevisionDigest/resultRevisionDigest 精确绑定注册边界锁定的任务/结果契约真实内容摘要。",
+    "parameterSchema": {
+      "type": "object",
+      "properties": {
+        "target_project_path": {
+          "type": "string",
+          "description": "方法级输入参数 target_project_path"
+        },
+        "spec_version_ref": {
+          "type": "string",
+          "description": "方法级输入参数 spec_version_ref"
+        },
+        "scope_selector": {
+          "type": "string",
+          "description": "方法级输入参数 scope_selector"
+        },
+        "platform_filter": {
+          "type": "string",
+          "description": "方法级输入参数 platform_filter"
+        }
+      },
+      "required": [
+        "target_project_path",
+        "spec_version_ref",
+        "scope_selector",
+        "platform_filter"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "conformance_result": {
+          "$ref": "spec/contracts/result.schema.json#/properties/domain_results/items",
+          "description": "领域结果引用 conformance_result（经 result.domain_results 交接，原样追加一个元素）"
+        },
+        "rule_findings": {
+          "type": "array",
+          "items": {
+            "$ref": "spec/contracts/result.schema.json#/properties/outputs/items"
+          },
+          "description": "输出资源 rule_findings（经 result.outputs 交接，原样追加全部元素）"
+        },
+        "evidence_list": {
+          "type": "array",
+          "items": {
+            "$ref": "spec/contracts/result.schema.json#/properties/evidence/items"
+          },
+          "description": "证据引用 evidence_list（经 result.evidence 交接，原样追加全部元素）"
+        },
+        "remediation_plan": {
+          "type": "array",
+          "items": {
+            "$ref": "spec/contracts/result.schema.json#/properties/outputs/items"
+          },
+          "description": "输出资源 remediation_plan（经 result.outputs 交接，原样追加全部元素）"
+        }
+      },
+      "required": [
+        "conformance_result",
+        "rule_findings",
+        "evidence_list",
+        "remediation_plan"
+      ],
+      "additionalProperties": false
+    },
+    "slotMapping": {
+      "accepts": {
+        "target_project_path": {
+          "container": "parameters",
+          "pointer": "/properties/parameters",
+          "memberPointer": "/properties/target_project_path"
+        },
+        "spec_version_ref": {
+          "container": "parameters",
+          "pointer": "/properties/parameters",
+          "memberPointer": "/properties/spec_version_ref"
+        },
+        "scope_selector": {
+          "container": "parameters",
+          "pointer": "/properties/parameters",
+          "memberPointer": "/properties/scope_selector"
+        },
+        "platform_filter": {
+          "container": "parameters",
+          "pointer": "/properties/parameters",
+          "memberPointer": "/properties/platform_filter"
+        }
+      },
+      "produces": {
+        "conformance_result": {
+          "container": "domain_results",
+          "pointer": "/properties/domain_results",
+          "memberPointer": "/properties/conformance_result",
+          "elementMapping": {
+            "container": "domain_results",
+            "memberRole": "element"
+          }
+        },
+        "rule_findings": {
+          "container": "outputs",
+          "pointer": "/properties/outputs",
+          "memberPointer": "/properties/rule_findings",
+          "elementMapping": {
+            "container": "outputs",
+            "memberRole": "element_list"
+          }
+        },
+        "evidence_list": {
+          "container": "evidence",
+          "pointer": "/properties/evidence",
+          "memberPointer": "/properties/evidence_list",
+          "elementMapping": {
+            "container": "evidence",
+            "memberRole": "element_list"
+          }
+        },
+        "remediation_plan": {
+          "container": "outputs",
+          "pointer": "/properties/outputs",
+          "memberPointer": "/properties/remediation_plan",
+          "elementMapping": {
+            "container": "outputs",
+            "memberRole": "element_list"
+          }
+        }
+      }
+    }
+  }
+}

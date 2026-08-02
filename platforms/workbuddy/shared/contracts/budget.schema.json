@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/budget.schema.json",
+  "title": "上下文预算",
+  "description": "阶段任务预算结构，记录静态估算和运行观察",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "model_context_limit_tokens",
+    "skill_warning_tokens",
+    "skill_intervention_tokens",
+    "context_observation_threshold",
+    "context_static_split_threshold",
+    "reserved_output_tokens",
+    "measurement_policy"
+  ],
+  "properties": {
+    "model_context_limit_tokens": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "模型上下文上限词元数"
+    },
+    "skill_warning_tokens": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "单个 SKILL.md 静态告警线；默认 2000"
+    },
+    "skill_intervention_tokens": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "单个 SKILL.md 强制干预线；默认 2400"
+    },
+    "context_observation_threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "单会话观察阈值；公式 min(model_context_limit * 40%, 100000)"
+    },
+    "context_static_split_threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "静态强制拆分线；公式 observation_threshold * 1.2"
+    },
+    "reserved_output_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "预留输出词元数"
+    },
+    "measurement_policy": {
+      "type": "string",
+      "enum": ["observed", "estimated", "unavailable"],
+      "description": "测量方式"
+    },
+    "failure_mode_check_ref": {
+      "type": "string",
+      "description": "失效模式检查引用"
+    },
+    "split_strategy": {
+      "type": "string",
+      "description": "拆分策略说明"
+    },
+    "runtime_observer": {
+      "type": "string",
+      "description": "运行观察器标识"
+    }
+  }
+}

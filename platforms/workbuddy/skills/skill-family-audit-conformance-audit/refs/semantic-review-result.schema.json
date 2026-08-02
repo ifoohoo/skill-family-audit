@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "skill-family-audit:semantic-review-result",
+  "type": "object",
+  "required": ["schema_version", "task_digest", "reviews"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "task_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "rule_revision_digest", "status", "reason", "evidence"],
+        "properties": {
+          "rule_id": {"type": "string", "minLength": 1},
+          "rule_revision_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "status": {"enum": ["PASS", "FAIL", "EVIDENCE_MISSING"]},
+          "reason": {"type": "string"},
+          "evidence": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

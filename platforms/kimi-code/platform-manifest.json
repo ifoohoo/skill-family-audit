@@ -1,0 +1,181 @@
+{
+  "advisories": [
+    "Kimi Code 0.31.0 原生卸载移除安装记录但保留非活动托管副本；隔离根退出时销毁"
+  ],
+  "blocked": true,
+  "blockingReasons": [
+    "尚未验证升级与回滚"
+  ],
+  "claimsStableSupport": false,
+  "deliveryMode": "kimi_plugin",
+  "familyId": "skill-family-audit",
+  "fileCount": 55,
+  "files": [
+    "kimi.plugin.json",
+    "shared/contracts/behavior-fixture-manifest.schema.json",
+    "shared/contracts/budget.schema.json",
+    "shared/contracts/control-channel.schema.json",
+    "shared/contracts/error.schema.json",
+    "shared/contracts/evidence-ref.schema.json",
+    "shared/contracts/isolation-profile.schema.json",
+    "shared/contracts/non-waivable-candidate.schema.json",
+    "shared/contracts/observer-event.schema.json",
+    "shared/contracts/platform-lifecycle-receipt.schema.json",
+    "shared/contracts/platform-manifest.schema.json",
+    "shared/contracts/registry-adoption-lifecycle.schema.json",
+    "shared/contracts/release-policy.schema.json",
+    "shared/contracts/resource.schema.json",
+    "shared/contracts/result.schema.json",
+    "shared/contracts/runtime-packages.schema.json",
+    "shared/contracts/side-effect.schema.json",
+    "shared/contracts/task.schema.json",
+    "shared/contracts/usage.schema.json",
+    "shared/methods/behavior-audit.json",
+    "shared/methods/conformance-audit.json",
+    "shared/methods/release-audit.json",
+    "shared/methods/runtime-audit.json",
+    "skills/skill-family-audit-behavior-audit/SKILL.md",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_audit.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_contracts.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_domain.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_evidence.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_execution.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_fixture.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_install.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_public.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_publish.py",
+    "skills/skill-family-audit-conformance-audit/SKILL.md",
+    "skills/skill-family-audit-conformance-audit/refs/applicable-rules.json",
+    "skills/skill-family-audit-conformance-audit/refs/canonical-rule-projection.json",
+    "skills/skill-family-audit-conformance-audit/refs/conformance-trust-policy.json",
+    "skills/skill-family-audit-conformance-audit/refs/semantic-review-result.schema.json",
+    "skills/skill-family-audit-conformance-audit/scripts/conformance_check.py",
+    "skills/skill-family-audit-conformance-audit/scripts/conformance_workflow.py",
+    "skills/skill-family-audit-help/SKILL.md",
+    "skills/skill-family-audit-quickstart/SKILL.md",
+    "skills/skill-family-audit-quickstart/scripts/quickstart_route.py",
+    "skills/skill-family-audit-release-audit/SKILL.md",
+    "skills/skill-family-audit-release-audit/scripts/release_assessments.py",
+    "skills/skill-family-audit-release-audit/scripts/release_audit.py",
+    "skills/skill-family-audit-release-audit/scripts/release_public.py",
+    "skills/skill-family-audit-release-audit/scripts/release_publish.py",
+    "skills/skill-family-audit-release-audit/scripts/release_receipts.py",
+    "skills/skill-family-audit-runtime-audit/SKILL.md",
+    "skills/skill-family-audit-runtime-audit/refs/runtime-evidence-profile.json",
+    "skills/skill-family-audit-runtime-audit/scripts/runtime_audit.py",
+    "skills/skill-family-audit-runtime-audit/scripts/runtime_contracts.py",
+    "skills/skill-family-audit-runtime-audit/scripts/runtime_evidence.py",
+    "skills/skill-family-audit-setup/SKILL.md"
+  ],
+  "lifecycleStatus": "verified_persistent_install_cleanup_advisory",
+  "logicalMappings": [
+    {
+      "logicalName": "skill-family-audit:behavior-audit",
+      "path": "skills/skill-family-audit-behavior-audit/SKILL.md",
+      "physicalName": "skill-family-audit-behavior-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:conformance-audit",
+      "path": "skills/skill-family-audit-conformance-audit/SKILL.md",
+      "physicalName": "skill-family-audit-conformance-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:help",
+      "path": "skills/skill-family-audit-help/SKILL.md",
+      "physicalName": "skill-family-audit-help",
+      "type": "human_entry",
+      "userInvocable": true
+    },
+    {
+      "logicalName": "skill-family-audit:quickstart",
+      "path": "skills/skill-family-audit-quickstart/SKILL.md",
+      "physicalName": "skill-family-audit-quickstart",
+      "type": "human_entry",
+      "userInvocable": true
+    },
+    {
+      "logicalName": "skill-family-audit:release-audit",
+      "path": "skills/skill-family-audit-release-audit/SKILL.md",
+      "physicalName": "skill-family-audit-release-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:runtime-audit",
+      "path": "skills/skill-family-audit-runtime-audit/SKILL.md",
+      "physicalName": "skill-family-audit-runtime-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:setup",
+      "path": "skills/skill-family-audit-setup/SKILL.md",
+      "physicalName": "skill-family-audit-setup",
+      "type": "human_entry",
+      "userInvocable": true
+    }
+  ],
+  "manifestRequired": true,
+  "methodContracts": [
+    "shared/methods/behavior-audit.json",
+    "shared/methods/conformance-audit.json",
+    "shared/methods/release-audit.json",
+    "shared/methods/runtime-audit.json"
+  ],
+  "platformId": "kimi-code",
+  "platformManifest": "kimi.plugin.json",
+  "platformName": "Kimi Code",
+  "projectionDigest": "77d1cdd9c2a346d0a3822baf8f8e27a6d6ac7e1b27f611e3a0392fdc651be2de",
+  "projectionId": "skill-family-audit:kimi-code:0.1.24-candidate",
+  "schemaVersion": "1.0.0-candidate",
+  "sharedRuntime": {
+    "contractsRoot": "shared/contracts",
+    "explicitRoot": ".",
+    "resources": [
+      "shared/contracts/behavior-fixture-manifest.schema.json",
+      "shared/contracts/budget.schema.json",
+      "shared/contracts/control-channel.schema.json",
+      "shared/contracts/error.schema.json",
+      "shared/contracts/evidence-ref.schema.json",
+      "shared/contracts/isolation-profile.schema.json",
+      "shared/contracts/non-waivable-candidate.schema.json",
+      "shared/contracts/observer-event.schema.json",
+      "shared/contracts/platform-lifecycle-receipt.schema.json",
+      "shared/contracts/platform-manifest.schema.json",
+      "shared/contracts/registry-adoption-lifecycle.schema.json",
+      "shared/contracts/release-policy.schema.json",
+      "shared/contracts/resource.schema.json",
+      "shared/contracts/result.schema.json",
+      "shared/contracts/runtime-packages.schema.json",
+      "shared/contracts/side-effect.schema.json",
+      "shared/contracts/task.schema.json",
+      "shared/contracts/usage.schema.json"
+    ],
+    "rootMarker": "platform-manifest.json"
+  },
+  "skillsRoot": "skills",
+  "sourceDigest": "4c78308c5fdc643d871cfa52b1a2fdb7c95c1e2806a73713db659472ae889332",
+  "specIndexStatus": "not-approved",
+  "specLifecycle": "candidate",
+  "status": "blocked_candidate",
+  "unverifiedCapabilities": [
+    "upgrade",
+    "rollback",
+    "physical_cleanup"
+  ],
+  "verifiedCapabilities": [
+    "deterministic_projection",
+    "manifest_structure",
+    "frontmatter_first",
+    "skill_resource_closure",
+    "persistent_install",
+    "persistent_discover",
+    "persistent_invoke",
+    "persistent_functional_uninstall"
+  ],
+  "version": "0.1.24-candidate"
+}

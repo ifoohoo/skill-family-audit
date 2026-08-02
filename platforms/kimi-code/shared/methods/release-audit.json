@@ -1,0 +1,207 @@
+{
+  "schemaVersion": "1.0.0-candidate",
+  "methodId": "skill-family-audit:release-audit",
+  "name": "发布门禁检查",
+  "description": "汇总 conformance、behavior、runtime 结果以及 Codex、Claude Code、Kimi Code、WorkBuddy 四平台发行状态、运行时摘要、规范采用锁、例外、验证档位和发布政策；逐项报告七类状态，默认不重新执行前三项。",
+  "capability": {
+    "capabilityRef": "cap:skill-family-audit.family",
+    "capabilityDigest": "sha256:54c90ac1376e46fd6e1244e8932bd0893ab98d9cf40d11de180e98dad1b7548d",
+    "methodSlice": "判断技能族版本是否满足稳定发布的全部门禁条件"
+  },
+  "accepts": [
+    "target_project_path",
+    "candidate_release_ref",
+    "assessments_ref"
+  ],
+  "produces": [
+    "release_result",
+    "gate_findings",
+    "evidence_list",
+    "blocking_reasons"
+  ],
+  "artifactTypes": [
+    "skill_release",
+    "skill_spec_release",
+    "skill_assessment",
+    "skill_rule_exception"
+  ],
+  "sideEffects": [
+    "read-only"
+  ],
+  "idempotency": "read_only_repeatable",
+  "composability": "closed_leaf",
+  "executionEnvironment": {
+    "isolation": "none_required",
+    "codeExecution": false,
+    "note": "release-audit 默认只消费前三类审计及已有权威证据，不补造证据"
+  },
+  "maturity": "experimental",
+  "status": "candidate",
+  "created_at": "2026-07-20T00:00:00+08:00",
+  "permissions": {
+    "read": true,
+    "create": false,
+    "modify": false,
+    "overwrite": false,
+    "delete": false,
+    "move": false,
+    "execute_command": false,
+    "install_dependency": false,
+    "network_read": false,
+    "external_write": false,
+    "key_reference": false,
+    "publish": false
+  },
+  "costBudget": {
+    "estimated_tokens": 40000,
+    "max_wall_seconds": 180,
+    "budget_ref": "spec/contracts/budget.schema.json"
+  },
+  "acceptanceCriteria": [
+    "汇总前三类审计结论",
+    "不重新执行已有审计",
+    "门禁条件逐项判定",
+    "阻断条件精确到规则"
+  ],
+  "errorCategories": [
+    "INPUT_INVALID",
+    "INPUT_MISSING",
+    "CONTRACT_INCOMPATIBLE",
+    "AUTHORIZATION_INSUFFICIENT",
+    "OUTPUT_INVALID"
+  ],
+  "businessLabels": [
+    "skill_release",
+    "skill_spec_release",
+    "skill_assessment",
+    "skill_rule_exception"
+  ],
+  "compositionConstraints": {
+    "applicable": false,
+    "note": "composability is closed_leaf; composition constraints not applicable"
+  },
+  "strictIOBinding": {
+    "taskContract": "spec/contracts/task.schema.json",
+    "resultContract": "spec/contracts/result.schema.json",
+    "taskRevisionDigest": "d1fcc6ac0d229b3a8f12bba6b662f113bd61f0adcb891fa1ede45a5ec0c8309f",
+    "resultRevisionDigest": "d9e0155a14ac757abce4c463595245c745e08c81841a7f6994626d5ba640d792",
+    "note": "本方法为注册的严格业务方法；accepts/produces 槽位经公共任务/结果契约交接，不另建输入输出真源。taskRevisionDigest/resultRevisionDigest 精确绑定注册边界锁定的任务/结果契约真实内容摘要。",
+    "parameterSchema": {
+      "type": "object",
+      "properties": {
+        "target_project_path": {
+          "type": "string",
+          "description": "方法级输入参数 target_project_path"
+        },
+        "candidate_release_ref": {
+          "type": "string",
+          "description": "方法级输入参数 candidate_release_ref"
+        },
+        "assessments_ref": {
+          "type": "string",
+          "description": "方法级输入参数 assessments_ref"
+        }
+      },
+      "required": [
+        "target_project_path",
+        "candidate_release_ref",
+        "assessments_ref"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "release_result": {
+          "$ref": "spec/contracts/result.schema.json#/properties/domain_results/items",
+          "description": "领域结果引用 release_result（经 result.domain_results 交接，原样追加一个元素）"
+        },
+        "gate_findings": {
+          "type": "array",
+          "items": {
+            "$ref": "spec/contracts/result.schema.json#/properties/outputs/items"
+          },
+          "description": "输出资源 gate_findings（经 result.outputs 交接，原样追加全部元素）"
+        },
+        "evidence_list": {
+          "type": "array",
+          "items": {
+            "$ref": "spec/contracts/result.schema.json#/properties/evidence/items"
+          },
+          "description": "证据引用 evidence_list（经 result.evidence 交接，原样追加全部元素）"
+        },
+        "blocking_reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "spec/contracts/result.schema.json#/properties/outputs/items"
+          },
+          "description": "输出资源 blocking_reasons（经 result.outputs 交接，原样追加全部元素）"
+        }
+      },
+      "required": [
+        "release_result",
+        "gate_findings",
+        "evidence_list",
+        "blocking_reasons"
+      ],
+      "additionalProperties": false
+    },
+    "slotMapping": {
+      "accepts": {
+        "target_project_path": {
+          "container": "parameters",
+          "pointer": "/properties/parameters",
+          "memberPointer": "/properties/target_project_path"
+        },
+        "candidate_release_ref": {
+          "container": "parameters",
+          "pointer": "/properties/parameters",
+          "memberPointer": "/properties/candidate_release_ref"
+        },
+        "assessments_ref": {
+          "container": "parameters",
+          "pointer": "/properties/parameters",
+          "memberPointer": "/properties/assessments_ref"
+        }
+      },
+      "produces": {
+        "release_result": {
+          "container": "domain_results",
+          "pointer": "/properties/domain_results",
+          "memberPointer": "/properties/release_result",
+          "elementMapping": {
+            "container": "domain_results",
+            "memberRole": "element"
+          }
+        },
+        "gate_findings": {
+          "container": "outputs",
+          "pointer": "/properties/outputs",
+          "memberPointer": "/properties/gate_findings",
+          "elementMapping": {
+            "container": "outputs",
+            "memberRole": "element_list"
+          }
+        },
+        "evidence_list": {
+          "container": "evidence",
+          "pointer": "/properties/evidence",
+          "memberPointer": "/properties/evidence_list",
+          "elementMapping": {
+            "container": "evidence",
+            "memberRole": "element_list"
+          }
+        },
+        "blocking_reasons": {
+          "container": "outputs",
+          "pointer": "/properties/outputs",
+          "memberPointer": "/properties/blocking_reasons",
+          "elementMapping": {
+            "container": "outputs",
+            "memberRole": "element_list"
+          }
+        }
+      }
+    }
+  }
+}

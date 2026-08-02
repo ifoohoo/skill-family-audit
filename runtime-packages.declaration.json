@@ -1,0 +1,69 @@
+{
+  "embedded_runtime": [],
+  "host_interpreter": [
+    {
+      "identityKey": "python@any",
+      "name": "python",
+      "platform": "any",
+      "source": "host-contract:python",
+      "versionConstraint": ">=3.11"
+    }
+  ],
+  "published_package": [
+    {
+      "ecosystem": "pypi",
+      "identityKey": "pypi:jsonschema@any",
+      "lockDigest": "bdd8da1da789ca2d348fe8fb43d65e60d6103a6e24b187df56636ddcdc284fde",
+      "name": "jsonschema",
+      "platform": "any",
+      "source": "pypi/jsonschema",
+      "versionConstraint": ">=4.20.0"
+    },
+    {
+      "ecosystem": "pypi",
+      "identityKey": "pypi:referencing@any",
+      "lockDigest": "693352042514c4e418dfc3a9264d10463a4f4892e3ddcedaa28086f732649810",
+      "name": "referencing",
+      "platform": "any",
+      "source": "pypi/referencing",
+      "versionConstraint": ">=0.31.0"
+    },
+    {
+      "ecosystem": "system",
+      "identityKey": "system:claude-code@any",
+      "lockDigest": "e9a0d29883aa675a6b124cc0186fb41c48feddb063b25ef5e4c4be9a46960a53",
+      "name": "claude-code",
+      "platform": "any",
+      "source": "host-contract:claude",
+      "versionConstraint": ">=2.1.220"
+    },
+    {
+      "ecosystem": "system",
+      "identityKey": "system:codex-cli@any",
+      "lockDigest": "351564bd57f9ccaf61a2cce090f61e7f265ed1703bc108fd9a389cdb7f9d27f6",
+      "name": "codex-cli",
+      "platform": "any",
+      "source": "host-contract:codex",
+      "versionConstraint": ">=0.145.0"
+    },
+    {
+      "ecosystem": "system",
+      "identityKey": "system:kimi-code@any",
+      "lockDigest": "ff4154b638b797cfaf9a7d8d3c2cadc276ac29b5a56ed7c1227a19dc885f0fb0",
+      "name": "kimi-code",
+      "platform": "any",
+      "source": "host-contract:kimi",
+      "versionConstraint": ">=0.31.0"
+    },
+    {
+      "ecosystem": "system",
+      "identityKey": "system:workbuddy@any",
+      "lockDigest": "77236fd41f4421ce4dfe8d673f57702f9bf5fbdfbe76f03420314ca16571c423",
+      "name": "workbuddy",
+      "platform": "any",
+      "source": "host-contract:workbuddy",
+      "versionConstraint": ">=5.3.8"
+    }
+  ],
+  "schemaVersion": "1.0.0"
+}

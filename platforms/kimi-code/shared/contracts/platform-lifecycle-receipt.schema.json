@@ -1,0 +1,459 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/platform-lifecycle-receipt.schema.json",
+  "title": "Skill Family Audit platform lifecycle receipt",
+  "description": "四平台隔离生命周期探针的完整公共收据合同。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "evidenceKind",
+    "observedAt",
+    "status",
+    "allLifecycleVerified",
+    "releaseRequiredLifecycleVerified",
+    "releaseBlockingPlatforms",
+    "advisoryPlatforms",
+    "boundary",
+    "candidateBinding",
+    "platforms"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "1.0.0-candidate"},
+    "evidenceKind": {"const": "isolated_local_platform_lifecycle_probe"},
+    "observedAt": {"type": "string", "format": "date-time"},
+    "status": {"enum": ["VERIFIED", "REQUIRED_ACTIONS_VERIFIED_WITH_ADVISORIES", "PARTIALLY_VERIFIED_WITH_BLOCKERS", "BLOCKED"]},
+    "allLifecycleVerified": {"type": "boolean"},
+    "releaseRequiredLifecycleVerified": {"type": "boolean"},
+    "releaseBlockingPlatforms": {"$ref": "#/$defs/platformList"},
+    "advisoryPlatforms": {"$ref": "#/$defs/platformList"},
+    "boundary": {"type": "string", "minLength": 1},
+    "candidateBinding": {"$ref": "#/$defs/candidateBinding"},
+    "platforms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claude-code", "codex", "kimi-code", "workbuddy"],
+      "properties": {
+        "claude-code": {"$ref": "#/$defs/claudeCodeReceipt"},
+        "codex": {"$ref": "#/$defs/codexReceipt"},
+        "kimi-code": {"$ref": "#/$defs/kimiCodeReceipt"},
+        "workbuddy": {"$ref": "#/$defs/workbuddyReceipt"}
+      }
+    }
+  },
+  "$defs": {
+    "digestMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claude-code", "codex", "kimi-code", "workbuddy"],
+      "properties": {
+        "claude-code": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "codex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "kimi-code": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "workbuddy": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "candidateBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "candidatePayloadDigest",
+        "candidateTreeUnchanged",
+        "candidatePlatformTreesMatchGenerated",
+        "platformDigests",
+        "platformProjectionDigests",
+        "platformProjectionDigestsMatch"
+      ],
+      "properties": {
+        "candidateId": {"type": "string", "pattern": "^skill-family-audit:[0-9]+\\.[0-9]+\\.[0-9]+(-candidate)?$"},
+        "candidatePayloadDigest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "candidateTreeUnchanged": {"type": "boolean"},
+        "candidatePlatformTreesMatchGenerated": {"type": "boolean"},
+        "platformDigests": {"$ref": "#/$defs/digestMap"},
+        "platformProjectionDigests": {"$ref": "#/$defs/digestMap"},
+        "platformProjectionDigestsMatch": {"type": "boolean"}
+      }
+    },
+    "stringList": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "platformList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"enum": ["claude-code", "codex", "kimi-code", "workbuddy"]}
+    },
+    "cleanupAdvisory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification", "residualScope", "residualPresent",
+        "residualFileCount", "residualByteCount", "sensitiveStatePresent",
+        "residualEntries", "residualEntriesDigest", "unknownResidualPaths",
+        "sensitiveStateFindings", "privateStateFindings",
+        "residualWithinCandidateBoundary", "functionalUninstallVerified",
+        "postUninstallDiscoverable", "postUninstallInvocable",
+        "autoLoadRegistrationPresent", "sourceStateUnchanged",
+        "isolatedStateRootDestroyedOnHarnessExit", "manualCleanupBoundary",
+        "integrationActivity"
+      ],
+      "properties": {
+        "classification": {"const": "non_blocking_physical_cleanup_advisory"},
+        "residualScope": {"type": "string", "minLength": 1},
+        "residualPresent": {"type": "boolean"},
+        "residualFileCount": {"type": "integer", "minimum": 0},
+        "residualByteCount": {"type": "integer", "minimum": 0},
+        "residualEntries": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/residualEntry"}
+        },
+        "residualEntriesDigest": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+        "unknownResidualPaths": {"$ref": "#/$defs/stringList"},
+        "sensitiveStateFindings": {"$ref": "#/$defs/stringList"},
+        "privateStateFindings": {"$ref": "#/$defs/stringList"},
+        "sensitiveStatePresent": {"const": false},
+        "residualWithinCandidateBoundary": {"const": true},
+        "functionalUninstallVerified": {"const": true},
+        "postUninstallDiscoverable": {"const": false},
+        "postUninstallInvocable": {"const": false},
+        "autoLoadRegistrationPresent": {"const": false},
+        "sourceStateUnchanged": {"const": true},
+        "isolatedStateRootDestroyedOnHarnessExit": {"const": true},
+        "manualCleanupBoundary": {"type": "string", "minLength": 1},
+        "integrationActivity": {"$ref": "#/$defs/integrationActivity"}
+      }
+    },
+    "residualEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "candidatePath", "sha256", "byteCount", "candidateMatch", "classification"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"},
+        "candidatePath": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "sha256": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+        "byteCount": {"type": "integer", "minimum": 0},
+        "candidateMatch": {"type": "boolean"},
+        "classification": {"enum": ["candidate_payload", "known_host_metadata"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"classification": {"const": "candidate_payload"}}},
+          "then": {
+            "properties": {
+              "candidatePath": {"type": "string"},
+              "candidateMatch": {"const": true}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"classification": {"const": "known_host_metadata"}}},
+          "then": {
+            "properties": {
+              "path": {"pattern": "(?:^|/)\\.orphaned_at$"},
+              "candidatePath": {"type": "null"},
+              "byteCount": {"const": 13},
+              "candidateMatch": {"const": false}
+            }
+          }
+        }
+      ]
+    },
+    "integrationFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "detectedDefinitions", "activeIdentifiers", "evidenceRefs"],
+      "properties": {
+        "status": {"enum": ["not_applicable", "stopped"]},
+        "detectedDefinitions": {"$ref": "#/$defs/stringList"},
+        "activeIdentifiers": {"type": "array", "maxItems": 0},
+        "evidenceRefs": {"$ref": "#/$defs/stringList"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "not_applicable"}}},
+          "then": {
+            "properties": {
+              "detectedDefinitions": {"maxItems": 0},
+              "evidenceRefs": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "stopped"}}},
+          "then": {
+            "properties": {
+              "detectedDefinitions": {"minItems": 1},
+              "evidenceRefs": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    },
+    "integrationActivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hooks", "connectors", "mcpServers", "backgroundProcesses"],
+      "properties": {
+        "hooks": {"$ref": "#/$defs/integrationFact"},
+        "connectors": {"$ref": "#/$defs/integrationFact"},
+        "mcpServers": {"$ref": "#/$defs/integrationFact"},
+        "backgroundProcesses": {"$ref": "#/$defs/integrationFact"}
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commandDigest",
+        "normalizedCommand",
+        "durationMs",
+        "exitCode",
+        "outputDigest",
+        "normalizedEvents",
+        "processEnded",
+        "timedOut",
+        "workspaceBeforeDigest",
+        "workspaceAfterDigest",
+        "workspaceFileCountBefore",
+        "workspaceFileCountAfter",
+        "workspaceUnchanged"
+      ],
+      "properties": {
+        "commandDigest": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+        "normalizedCommand": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "durationMs": {"type": "integer", "minimum": 0},
+        "exitCode": {"type": ["integer", "null"]},
+        "outputDigest": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+        "normalizedEvents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "value"],
+            "properties": {
+              "kind": {"enum": ["json", "text"]},
+              "value": {}
+            }
+          }
+        },
+        "processEnded": {"type": "boolean"},
+        "timedOut": {"type": "boolean"},
+        "workspaceBeforeDigest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "workspaceAfterDigest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "workspaceFileCountBefore": {"type": "integer", "minimum": 0},
+        "workspaceFileCountAfter": {"type": "integer", "minimum": 0},
+        "workspaceUnchanged": {"type": "boolean"}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": ["process"],
+      "properties": {"process": {"$ref": "#/$defs/process"}}
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "blockingReasons", "evidenceRefs", "scope", "status"],
+      "properties": {
+        "attempted": {"type": "boolean"},
+        "blockingReasons": {"$ref": "#/$defs/stringList"},
+        "evidenceRefs": {"$ref": "#/$defs/stringList"},
+        "scope": {"type": "string", "minLength": 1},
+        "status": {"enum": ["verified", "blocked"]}
+      }
+    },
+    "lifecycleActions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cleanup", "discover", "install", "manifest", "minimalInvoke", "uninstall"],
+      "properties": {
+        "cleanup": {"$ref": "#/$defs/action"},
+        "discover": {"$ref": "#/$defs/action"},
+        "install": {"$ref": "#/$defs/action"},
+        "manifest": {"$ref": "#/$defs/action"},
+        "minimalInvoke": {"$ref": "#/$defs/action"},
+        "uninstall": {"$ref": "#/$defs/action"}
+      }
+    },
+    "claudeCodeReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockingReasons", "evidence", "lifecycleActions", "lifecycleStatus", "verifiedCapabilities"],
+      "properties": {
+        "blockingReasons": {"$ref": "#/$defs/stringList"},
+        "advisoryReasons": {"$ref": "#/$defs/stringList"},
+        "cleanupAdvisory": {"$ref": "#/$defs/cleanupAdvisory"},
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "before": {"$ref": "#/$defs/observation"},
+            "help": {"$ref": "#/$defs/observation"},
+            "setup": {"$ref": "#/$defs/observation"},
+            "after": {"$ref": "#/$defs/observation"},
+            "marketplaceAdd": {"$ref": "#/$defs/observation"},
+            "pluginInstall": {"$ref": "#/$defs/observation"},
+            "pluginList": {"$ref": "#/$defs/observation"},
+            "pluginUninstall": {"$ref": "#/$defs/observation"},
+            "marketplaceRemove": {"$ref": "#/$defs/observation"},
+            "pluginAfter": {"$ref": "#/$defs/observation"},
+            "physicalCleanup": {"type": "object"}
+          }
+        },
+        "functionalUninstallMeaning": {"type": "string", "minLength": 1},
+        "lifecycleActions": {"$ref": "#/$defs/lifecycleActions"},
+        "lifecycleStatus": {"enum": ["blocked", "verified_session_scoped", "verified_persistent_install_cleanup_advisory"]},
+        "modelBoundary": {"type": "string", "minLength": 1},
+        "sourceSettingsUnchanged": {"type": "boolean"},
+        "verifiedCapabilities": {"$ref": "#/$defs/stringList"}
+      },
+      "allOf": [{
+        "if": {"properties": {"lifecycleStatus": {"const": "verified_persistent_install_cleanup_advisory"}}},
+        "then": {
+          "required": ["advisoryReasons", "cleanupAdvisory", "modelBoundary", "sourceSettingsUnchanged"],
+          "properties": {"evidence": {"required": ["marketplaceAdd", "pluginInstall", "pluginList", "help", "setup", "pluginUninstall", "marketplaceRemove", "pluginAfter", "physicalCleanup", "after"]}}
+        }
+      }]
+    },
+    "codexReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockingReasons", "evidence", "lifecycleActions", "lifecycleStatus", "verifiedCapabilities"],
+      "properties": {
+        "blockingReasons": {"$ref": "#/$defs/stringList"},
+        "candidateTreeDigestMatch": {"type": "boolean"},
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "marketplaceAdd": {"$ref": "#/$defs/observation"},
+            "pluginAdd": {"$ref": "#/$defs/observation"},
+            "pluginList": {"$ref": "#/$defs/observation"},
+            "minimalInvoke": {"$ref": "#/$defs/observation"},
+            "pluginRemove": {"$ref": "#/$defs/observation"},
+            "marketplaceRemove": {"$ref": "#/$defs/observation"},
+            "pluginAfter": {"$ref": "#/$defs/observation"}
+          }
+        },
+        "isolatedConfigRootOptionObserved": {"type": "boolean"},
+        "isolatedAuthIsRegularFile": {"type": "boolean"},
+        "isolatedAuthMode": {"const": 384},
+        "isolatedStateChainVerified": {"type": "boolean"},
+        "lifecycleActions": {"$ref": "#/$defs/lifecycleActions"},
+        "lifecycleStatus": {"enum": ["blocked", "verified_isolated_config_root"]},
+        "mutationAttempted": {"type": "boolean"},
+        "sourceAuthUnchanged": {"type": "boolean"},
+        "verifiedCapabilities": {"$ref": "#/$defs/stringList"}
+      },
+      "allOf": [{
+        "if": {"properties": {"lifecycleStatus": {"const": "verified_isolated_config_root"}}},
+        "then": {
+          "required": ["candidateTreeDigestMatch", "isolatedAuthIsRegularFile", "isolatedAuthMode", "isolatedConfigRootOptionObserved", "isolatedStateChainVerified", "mutationAttempted", "sourceAuthUnchanged"],
+          "properties": {"evidence": {"required": ["marketplaceAdd", "pluginAdd", "pluginList", "minimalInvoke", "pluginRemove", "marketplaceRemove", "pluginAfter"]}}
+        }
+      }]
+    },
+    "kimiCodeReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockingReasons", "evidence", "lifecycleActions", "lifecycleStatus", "verifiedCapabilities"],
+      "properties": {
+        "blockingReasons": {"$ref": "#/$defs/stringList"},
+        "advisoryReasons": {"$ref": "#/$defs/stringList"},
+        "cleanupAdvisory": {"$ref": "#/$defs/cleanupAdvisory"},
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pluginInstall": {"$ref": "#/$defs/observation"},
+            "pluginList": {"$ref": "#/$defs/observation"},
+            "help": {"$ref": "#/$defs/observation"},
+            "quickstart": {"$ref": "#/$defs/observation"},
+            "pluginUninstall": {"$ref": "#/$defs/observation"},
+            "pluginAfter": {"$ref": "#/$defs/observation"},
+            "hostInventoryAfter": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["source", "inventoryObserved", "availableSkillNames", "inventoryDigest", "targetSkill", "targetAbsent"],
+              "properties": {
+                "source": {"const": "isolated_session_config"},
+                "inventoryObserved": {"const": true},
+                "availableSkillNames": {"$ref": "#/$defs/stringList"},
+                "inventoryDigest": {"type": "string", "pattern": "^(?!0{64}$)[0-9a-f]{64}$"},
+                "targetSkill": {"const": "skill-family-audit-help"},
+                "targetAbsent": {"const": true}
+              }
+            },
+            "physicalCleanup": {"type": "object"},
+            "after": {"$ref": "#/$defs/observation"}
+          }
+        },
+        "fullPluginLifecycleVerified": {"type": "boolean"},
+        "lifecycleActions": {"$ref": "#/$defs/lifecycleActions"},
+        "lifecycleStatus": {"enum": ["blocked", "verified_persistent_install_cleanup_advisory"]},
+        "sourceCredentialStateUnchanged": {"type": "boolean"},
+        "sourceSettingsUnchanged": {"type": "boolean"},
+        "verifiedCapabilities": {"$ref": "#/$defs/stringList"}
+      },
+      "allOf": [{
+        "if": {"properties": {"lifecycleStatus": {"const": "verified_persistent_install_cleanup_advisory"}}},
+        "then": {
+          "required": ["advisoryReasons", "cleanupAdvisory", "fullPluginLifecycleVerified", "sourceCredentialStateUnchanged", "sourceSettingsUnchanged"],
+          "properties": {"evidence": {"required": ["pluginInstall", "pluginList", "help", "quickstart", "pluginUninstall", "pluginAfter", "hostInventoryAfter", "physicalCleanup", "after"]}}
+        }
+      }]
+    },
+    "workbuddyReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockingReasons", "clientProbeAttempted", "evidence", "independentClientEvidence", "lifecycleActions", "lifecycleStatus", "mutationAttempted", "projectionValid", "verifiedCapabilities"],
+      "properties": {
+        "blockingReasons": {"$ref": "#/$defs/stringList"},
+        "advisoryReasons": {"$ref": "#/$defs/stringList"},
+        "cleanupAdvisory": {"$ref": "#/$defs/cleanupAdvisory"},
+        "clientProbeAttempted": {"type": "boolean"},
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "before": {"$ref": "#/$defs/observation"},
+            "help": {"$ref": "#/$defs/observation"},
+            "quickstart": {"$ref": "#/$defs/observation"},
+            "after": {"$ref": "#/$defs/observation"},
+            "marketplaceAdd": {"$ref": "#/$defs/observation"},
+            "pluginInstall": {"$ref": "#/$defs/observation"},
+            "pluginUninstall": {"$ref": "#/$defs/observation"},
+            "marketplaceRemove": {"$ref": "#/$defs/observation"},
+            "marketplaceAfter": {"$ref": "#/$defs/observation"},
+            "physicalCleanup": {"type": "object"}
+          }
+        },
+        "functionalUninstallMeaning": {"type": "string", "minLength": 1},
+        "independentClientEvidence": {"type": "boolean"},
+        "lifecycleActions": {"$ref": "#/$defs/lifecycleActions"},
+        "lifecycleStatus": {"enum": ["blocked", "verified_persistent_install_cleanup_advisory"]},
+        "mutationAttempted": {"type": "boolean"},
+        "projectionValid": {"type": "boolean"},
+        "sourceAuthUnchanged": {"type": "boolean"},
+        "sourceSettingsUnchanged": {"type": "boolean"},
+        "verifiedCapabilities": {"$ref": "#/$defs/stringList"}
+      },
+      "allOf": [{
+        "if": {"properties": {"lifecycleStatus": {"const": "verified_persistent_install_cleanup_advisory"}}},
+        "then": {
+          "required": ["advisoryReasons", "cleanupAdvisory", "sourceAuthUnchanged", "sourceSettingsUnchanged"],
+          "properties": {"evidence": {"required": ["marketplaceAdd", "pluginInstall", "help", "quickstart", "pluginUninstall", "marketplaceRemove", "marketplaceAfter", "after", "physicalCleanup"]}}
+        }
+      }]
+    }
+  }
+}

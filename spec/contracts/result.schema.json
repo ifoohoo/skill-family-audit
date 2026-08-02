@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/result.schema.json",
+  "title": "规范化阶段结果",
+  "description": "通用阶段结果外层结构，领域结果通过引用关联",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "stage_id",
+    "attempt",
+    "execution_status",
+    "summary",
+    "outputs",
+    "domain_results",
+    "evidence",
+    "missing_inputs",
+    "warnings",
+    "errors",
+    "side_effects",
+    "producer",
+    "usage"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.1.0-candidate",
+      "description": "通用结果合同版本"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "对应运行标识"
+    },
+    "stage_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "对应阶段标识"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "对应技术尝试次数"
+    },
+    "execution_status": {
+      "type": "string",
+      "enum": [
+        "SUCCEEDED",
+        "SUCCEEDED_WITH_WARNINGS",
+        "FAILED",
+        "BLOCKED",
+        "NEEDS_INPUT",
+        "SKIPPED",
+        "CANCELLED"
+      ],
+      "description": "只表示本阶段执行状态"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "一句话执行摘要"
+    },
+    "outputs": {
+      "type": "array",
+      "description": "带契约的实际输出资源",
+      "items": {"$ref": "resource.schema.json"},
+      "minItems": 0
+    },
+    "domain_results": {
+      "type": "array",
+      "description": "领域结果协议引用",
+      "items": {
+        "type": "object",
+        "required": ["protocol_id", "protocol_version", "result_path"],
+        "properties": {
+          "protocol_id": {"type": "string"},
+          "protocol_version": {"type": "string"},
+          "result_path": {"type": "string"},
+          "content_digest": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "evidence": {
+      "type": "array",
+      "description": "证据资源引用",
+      "items": {"$ref": "evidence-ref.schema.json"},
+      "minItems": 0
+    },
+    "missing_inputs": {
+      "type": "array",
+      "description": "尚缺输入",
+      "items": {"type": "string"},
+      "minItems": 0
+    },
+    "warnings": {
+      "type": "array",
+      "description": "运行层非阻断问题",
+      "items": {"type": "string"},
+      "minItems": 0
+    },
+    "errors": {
+      "type": "array",
+      "items": {"$ref": "error.schema.json"},
+      "description": "结构化错误集合"
+    },
+    "side_effects": {
+      "type": "array",
+      "items": {"$ref": "side-effect.schema.json"},
+      "description": "本次实际副作用及最终状态"
+    },
+    "blocking_reason": {
+      "type": "object",
+      "description": "运行层受阻原因和原因码",
+      "properties": {
+        "reason_code": {"type": "string"},
+        "description": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "degradation": {
+      "type": "array",
+      "description": "运行层能力降级及语义影响",
+      "items": {
+        "type": "object",
+        "required": ["capability", "impact"],
+        "properties": {
+          "capability": {"type": "string"},
+          "impact": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "producer": {
+      "type": "object",
+      "description": "实际执行者身份",
+      "required": ["skill"],
+      "properties": {
+        "skill": {"type": "string"},
+        "worker": {"type": "string"},
+        "method_ref": {"type": "string"},
+        "script_id": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "array",
+      "description": "已声明的个性化运行元数据",
+      "items": {"type": "object"},
+      "minItems": 0
+    },
+    "usage": {
+      "$ref": "usage.schema.json"
+    },
+    "degradation_constraints": {
+      "type": "object",
+      "description": "降级不得覆盖的范围",
+      "properties": {
+        "forbidden_overrides": {
+          "type": "array",
+          "items": {"type": "string"},
+          "const": [
+            "required_outputs",
+            "security_checks",
+            "authorization",
+            "paths",
+            "contract",
+            "release_digest"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

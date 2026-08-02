@@ -1,0 +1,677 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/registry-adoption-lifecycle.schema.json",
+  "title": "Registry Adoption Lifecycle",
+  "description": "机器可判定的 Registry 采用生命周期合同。声明当前采用级别、目标级别、回滚窗口状态、v1 兼容边界和 v2 运行链证据。任何 v2 失败不得静默降级为 v1 后继续执行。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "familyId",
+    "activeLevel",
+    "targetLevel",
+    "silentDowngradeAllowed",
+    "regenerationEvidence",
+    "v1Compat",
+    "v2Adoption",
+    "rollbackWindow",
+    "stateMachine"
+  ],
+  "allOf": [
+    {
+      "if": { "properties": { "activeLevel": { "const": "v2_adopted" } }, "required": ["activeLevel"] },
+      "then": {
+        "properties": {
+          "v2Adoption": {
+            "required": ["runtimeChainStatus", "runtimeChainEvidence"],
+            "properties": {
+              "runtimeChainStatus": { "const": "passed" },
+              "runtimeChainEvidence": {
+                "properties": {
+                  "thirdPartyIdentityPrepare": { "const": true },
+                  "originalHandle": { "const": true },
+                  "strictResolve": { "const": true },
+                  "runLock": { "const": true },
+                  "reverify": { "const": true },
+                  "sixStateNegativeMatrix": { "const": true },
+                  "fullRepoDualRun": { "const": true }
+                },
+                "required": ["thirdPartyIdentityPrepare", "originalHandle", "strictResolve", "runLock", "reverify", "sixStateNegativeMatrix", "fullRepoDualRun"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "v2Adoption": { "properties": { "runtimeChainStatus": { "const": "passed" } }, "required": ["runtimeChainStatus"] }
+        },
+        "required": ["v2Adoption"]
+      },
+      "then": {
+        "properties": {
+          "v2Adoption": {
+            "properties": {
+              "runtimeChainEvidence": {
+                "properties": {
+                  "thirdPartyIdentityPrepare": { "const": true },
+                  "originalHandle": { "const": true },
+                  "strictResolve": { "const": true },
+                  "runLock": { "const": true },
+                  "reverify": { "const": true },
+                  "sixStateNegativeMatrix": { "const": true },
+                  "fullRepoDualRun": { "const": true }
+                },
+                "required": ["thirdPartyIdentityPrepare", "originalHandle", "strictResolve", "runLock", "reverify", "sixStateNegativeMatrix", "fullRepoDualRun"]
+              }
+            },
+            "required": ["runtimeChainEvidence"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "v2Adoption": { "properties": { "runtimeChainStatus": { "const": "blocked_external_protocol" } }, "required": ["runtimeChainStatus"] }
+        },
+        "required": ["v2Adoption"]
+      },
+      "then": {
+        "not": { "properties": { "activeLevel": { "const": "v2_adopted" } }, "required": ["activeLevel"] }
+      }
+    },
+    {
+      "if": { "properties": { "activeLevel": { "const": "rollback_window_open" } }, "required": ["activeLevel"] },
+      "then": {
+        "properties": { "rollbackWindow": { "properties": { "status": { "const": "open" } }, "required": ["status"] } },
+        "required": ["rollbackWindow"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "activeLevel": { "enum": ["v1_deprecated", "v1_removed"] } },
+        "required": ["activeLevel"]
+      },
+      "then": {
+        "properties": {
+          "rollbackWindow": {
+            "properties": {
+              "openConditions": {
+                "properties": {
+                  "twoDistinctConsumersPassed": { "const": true },
+                  "behaviorQualificationPassed": { "const": true },
+                  "noP0P1": { "const": true },
+                  "stabilizationPeriodCompleted": { "const": true },
+                  "rollbackDrillPassed": { "const": true }
+                },
+                "required": ["twoDistinctConsumersPassed", "behaviorQualificationPassed", "noP0P1", "stabilizationPeriodCompleted", "rollbackDrillPassed"]
+              },
+              "closeConditions": {
+                "properties": { "allOpenConditionsMet": { "const": true } },
+                "required": ["allOpenConditionsMet"]
+              }
+            },
+            "required": ["openConditions", "closeConditions"]
+          }
+        },
+        "required": ["rollbackWindow"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "activeLevel": { "enum": ["v1_deprecated", "v1_removed"] } },
+        "required": ["activeLevel"]
+      },
+      "then": {
+        "properties": {
+          "v1Compat": {
+            "properties": { "fallbackExecutable": { "const": false } },
+            "required": ["fallbackExecutable"]
+          }
+        },
+        "required": ["v1Compat"]
+      }
+    },
+    {
+      "if": { "properties": { "activeLevel": { "const": "v1_removed" } }, "required": ["activeLevel"] },
+      "then": {
+        "properties": {
+          "rollbackWindow": {
+            "properties": {
+              "status": { "const": "closed" },
+              "closeConditions": {
+                "properties": { "v1RemovalAllowed": { "const": true } },
+                "required": ["v1RemovalAllowed"]
+              }
+            },
+            "required": ["status", "closeConditions"]
+          },
+          "v1Compat": {
+            "properties": {
+              "fallbackExecutable": { "const": false },
+              "v1DiscoveryMaintained": { "const": false }
+            },
+            "required": ["fallbackExecutable", "v1DiscoveryMaintained"]
+          }
+        },
+        "required": ["rollbackWindow", "v1Compat"]
+      }
+    }
+  ],
+  "properties": {
+    "documentKind": {
+      "const": "registry-adoption-lifecycle",
+      "description": "文档鉴别器"
+    },
+    "schemaVersion": {
+      "const": 1,
+      "description": "Schema 版本，整数 1"
+    },
+    "familyId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "技能族标识"
+    },
+    "activeLevel": {
+      "$ref": "#/$defs/adoptionLevel",
+      "description": "当前实际采用级别"
+    },
+    "targetLevel": {
+      "$ref": "#/$defs/adoptionLevel",
+      "description": "目标采用级别"
+    },
+    "silentDowngradeAllowed": {
+      "const": false,
+      "description": "是否允许静默降级到 v1 执行；必须为 false"
+    },
+    "regenerationEvidence": {
+      "$ref": "#/$defs/regenerationEvidence"
+    },
+    "v1Compat": {
+      "$ref": "#/$defs/v1Compat"
+    },
+    "v2Adoption": {
+      "$ref": "#/$defs/v2Adoption"
+    },
+    "rollbackWindow": {
+      "$ref": "#/$defs/rollbackWindow"
+    },
+    "stateMachine": {
+      "$ref": "#/$defs/stateMachine"
+    }
+  },
+  "$defs": {
+    "sha256Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "regenerationEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "copiedPriorPassedState",
+        "descriptorDigests",
+        "privateRuntimeDigests",
+        "dedicatedTestSourceDigests",
+        "runtimeChainAuditDigest",
+        "dedicatedTestReceiptDigest",
+        "runtimeCoreEvidenceDigest",
+        "generatorDigest",
+        "implementationVersion",
+        "registryVersion"
+      ],
+      "properties": {
+        "copiedPriorPassedState": {
+          "const": false
+        },
+        "descriptorDigests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "family-api.json",
+            "implementation.json",
+            "contract-attestation.json"
+          ],
+          "properties": {
+            "family-api.json": { "$ref": "#/$defs/sha256Digest" },
+            "implementation.json": { "$ref": "#/$defs/sha256Digest" },
+            "contract-attestation.json": { "$ref": "#/$defs/sha256Digest" }
+          }
+        },
+        "privateRuntimeDigests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["inventory.json", "binding.json", "projection.json"],
+          "properties": {
+            "inventory.json": { "$ref": "#/$defs/sha256Digest" },
+            "binding.json": { "$ref": "#/$defs/sha256Digest" },
+            "projection.json": { "$ref": "#/$defs/sha256Digest" }
+          }
+        },
+        "dedicatedTestSourceDigests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tests/spec/test_registry_v2_descriptor.py",
+            "tests/spec/test_registry_adoption_lifecycle.py"
+          ],
+          "properties": {
+            "tests/spec/test_registry_v2_descriptor.py": {
+              "$ref": "#/$defs/sha256Digest"
+            },
+            "tests/spec/test_registry_adoption_lifecycle.py": {
+              "$ref": "#/$defs/sha256Digest"
+            }
+          }
+        },
+        "runtimeChainAuditDigest": {
+          "$ref": "#/$defs/sha256Digest"
+        },
+        "dedicatedTestReceiptDigest": {
+          "$ref": "#/$defs/sha256Digest"
+        },
+        "runtimeCoreEvidenceDigest": {
+          "$ref": "#/$defs/sha256Digest"
+        },
+        "generatorDigest": {
+          "$ref": "#/$defs/sha256Digest"
+        },
+        "implementationVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-candidate$"
+        },
+        "registryVersion": {
+          "const": "0.2.2"
+        }
+      }
+    },
+    "adoptionLevel": {
+      "type": "string",
+      "enum": [
+        "v1_compatible",
+        "v2_candidate",
+        "v2_runtime_blocked",
+        "v2_adopted",
+        "rollback_window_open",
+        "v1_deprecated",
+        "v1_removed"
+      ],
+      "description": "七个合法采用级别"
+    },
+    "v1Compat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryMethod", "fallbackExecutable", "v1DiscoveryMaintained"],
+      "properties": {
+        "entryMethod": {
+          "type": "string",
+          "const": "v1_catalog_overlay",
+          "description": "v1 入口方式"
+        },
+        "fallbackExecutable": {
+          "const": false,
+          "description": "v1 回退是否可执行；必须为 false——v1 只保留兼容发现入口，不作为 v2 失败后的自动执行替身"
+        },
+        "v1DiscoveryMaintained": {
+          "type": "boolean",
+          "description": "v1 兼容发现是否维护"
+        },
+        "v1Evidence": {
+          "$ref": "#/$defs/v1Evidence"
+        }
+      }
+    },
+    "v1Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packageInstalled", "sevenFunctionsReturn", "cliQueryResolve", "typescriptCompatible"],
+      "properties": {
+        "packageInstalled": { "const": true },
+        "sevenFunctionsReturn": { "const": true },
+        "cliQueryResolve": { "const": true },
+        "typescriptCompatible": { "const": true }
+      },
+      "description": "v1 兼容证据：全部四项必须为 true"
+    },
+    "v2Adoption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "descriptorComplete",
+        "inventoryComplete",
+        "bindingComplete",
+        "projectionComplete",
+        "runtimeChainStatus",
+        "runtimeChainEvidence",
+        "onFailure"
+      ],
+      "properties": {
+        "descriptorComplete": {
+          "type": "boolean",
+          "description": "v2 descriptor 是否完成"
+        },
+        "inventoryComplete": {
+          "type": "boolean",
+          "description": "v2 inventory 是否完成"
+        },
+        "bindingComplete": {
+          "type": "boolean",
+          "description": "v2 binding 是否完成"
+        },
+        "projectionComplete": {
+          "type": "boolean",
+          "description": "v2 projection 是否完成"
+        },
+        "runtimeChainStatus": {
+          "$ref": "#/$defs/runtimeChainStatus"
+        },
+        "runtimeChainEvidence": {
+          "$ref": "#/$defs/runtimeChainEvidence"
+        },
+        "onFailure": {
+          "type": "string",
+          "const": "stop_and_report",
+          "description": "v2 失败时行为；必须为 stop_and_report，不得为 execute-v1"
+        },
+        "prepareResult": {
+          "$ref": "#/$defs/prepareResult"
+        },
+        "strictResolveResult": {
+          "$ref": "#/$defs/strictResolveResult"
+        },
+        "runLockResult": {
+          "$ref": "#/$defs/runLockResult"
+        },
+        "reverifyResult": {
+          "$ref": "#/$defs/reverifyResult"
+        },
+        "sixStateNegativeMatrix": {
+          "$ref": "#/$defs/sixStateNegativeMatrix"
+        }
+      }
+    },
+    "runtimeChainStatus": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "pending_evidence",
+        "blocked_external_protocol",
+        "passed",
+        "failed"
+      ],
+      "description": "v2 运行链状态"
+    },
+    "runtimeChainEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registryVersion", "thirdPartyIdentityPrepare", "originalHandle", "strictResolve", "runLock", "reverify", "sixStateNegativeMatrix", "fullRepoDualRun"],
+      "properties": {
+        "registryVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "精确修复版本（如 0.2.0）"
+        },
+        "thirdPartyIdentityPrepare": {
+          "type": "boolean",
+          "description": "第三方身份 prepare 是否通过"
+        },
+        "originalHandle": {
+          "type": "boolean",
+          "description": "原始句柄是否获取"
+        },
+        "strictResolve": {
+          "type": "boolean",
+          "description": "strict resolve 是否通过"
+        },
+        "runLock": {
+          "type": "boolean",
+          "description": "run lock 是否获取"
+        },
+        "reverify": {
+          "type": "boolean",
+          "description": "执行前复验是否通过"
+        },
+        "sixStateNegativeMatrix": {
+          "type": "boolean",
+          "description": "六状态负向矩阵是否通过"
+        },
+        "fullRepoDualRun": {
+          "type": "boolean",
+          "description": "全仓双跑是否通过"
+        }
+      },
+      "description": "v2 运行链八项必要条件证据"
+    },
+    "prepareResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "handleIssued"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "handleIssued": { "type": "boolean" },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/locatableDiagnostic" }
+        }
+      }
+    },
+    "strictResolveResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "resolution"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "resolution": { "type": "string" },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/locatableDiagnostic" }
+        }
+      }
+    },
+    "runLockResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "lockAcquired"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "lockAcquired": { "type": "boolean" },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/locatableDiagnostic" }
+        }
+      }
+    },
+    "reverifyResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "preExecutionVerified"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "preExecutionVerified": { "type": "boolean" },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/locatableDiagnostic" }
+        }
+      }
+    },
+    "sixStateNegativeMatrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "statesCovered"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "statesCovered": {
+          "type": "integer",
+          "minimum": 6,
+          "description": "覆盖状态数，至少 6"
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/locatableDiagnostic" }
+        }
+      }
+    },
+    "rollbackWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "openConditions"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["closed", "open", "pending_close"],
+          "description": "回滚窗口状态"
+        },
+        "openConditions": {
+          "$ref": "#/$defs/rollbackOpenConditions"
+        },
+        "closeConditions": {
+          "$ref": "#/$defs/rollbackCloseConditions"
+        },
+        "rollbackTarget": {
+          "const": "v1_compatible",
+          "description": "回滚目标级别；只能为 v1_compatible"
+        },
+        "rollbackAction": {
+          "type": "string",
+          "const": "explicit_user_or_governance",
+          "description": "回滚必须是显式用户/治理动作"
+        }
+      }
+    },
+    "rollbackOpenConditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["twoDistinctConsumersPassed", "behaviorQualificationPassed", "noP0P1", "stabilizationPeriodCompleted", "rollbackDrillPassed"],
+      "properties": {
+        "twoDistinctConsumersPassed": {
+          "type": "boolean",
+          "description": "两个不同消费方是否通过"
+        },
+        "behaviorQualificationPassed": {
+          "type": "boolean",
+          "description": "行为资格是否通过"
+        },
+        "noP0P1": {
+          "type": "boolean",
+          "description": "无 P0/P1 问题"
+        },
+        "stabilizationPeriodCompleted": {
+          "type": "boolean",
+          "description": "稳定期是否完成"
+        },
+        "rollbackDrillPassed": {
+          "type": "boolean",
+          "description": "回滚演练是否通过"
+        }
+      },
+      "description": "关闭回滚窗口的必要条件（全部为 true 时可关闭）"
+    },
+    "rollbackCloseConditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allOpenConditionsMet", "v1RemovalAllowed"],
+      "properties": {
+        "allOpenConditionsMet": {
+          "type": "boolean",
+          "description": "全部开放条件是否满足"
+        },
+        "v1RemovalAllowed": {
+          "type": "boolean",
+          "description": "v1 removal 是否被允许（仅在窗口关闭后）"
+        }
+      }
+    },
+    "stateMachine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["states", "transitions", "constraints"],
+      "properties": {
+        "states": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/adoptionLevel" },
+          "minItems": 7,
+          "description": "全部合法状态"
+        },
+        "transitions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/transition" },
+          "minItems": 1,
+          "description": "合法状态转换"
+        },
+        "constraints": {
+          "$ref": "#/$defs/stateMachineConstraints"
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "trigger", "conditions"],
+      "properties": {
+        "from": { "$ref": "#/$defs/adoptionLevel" },
+        "to": { "$ref": "#/$defs/adoptionLevel" },
+        "trigger": {
+          "type": "string",
+          "minLength": 1,
+          "description": "触发条件"
+        },
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "前置条件列表"
+        }
+      }
+    },
+    "stateMachineConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "noAdoptionWithoutFullRuntimeChain",
+        "noSilentDowngrade",
+        "noV1FallbackOnV2Failure",
+        "rollbackOnlyToV1Compatible",
+        "v1RemovedOnlyAfterWindowClose",
+        "noAdoptionWithExternalBlocker"
+      ],
+      "properties": {
+        "noAdoptionWithoutFullRuntimeChain": {
+          "type": "string",
+          "description": "activeLevel=v2_adopted 时运行链证据必须完整"
+        },
+        "noSilentDowngrade": {
+          "type": "string",
+          "description": "silentDowngradeAllowed 必须为 false"
+        },
+        "noV1FallbackOnV2Failure": {
+          "type": "string",
+          "description": "v2 失败时 onFailure 不得为 execute-v1"
+        },
+        "rollbackOnlyToV1Compatible": {
+          "type": "string",
+          "description": "回滚目标只能为 v1_compatible"
+        },
+        "v1RemovedOnlyAfterWindowClose": {
+          "type": "string",
+          "description": "v1 removed 只能在窗口关闭后发生"
+        },
+        "noAdoptionWithExternalBlocker": {
+          "type": "string",
+          "description": "当前外部 blocker 存在时不得声明 v2 adopted"
+        }
+      }
+    },
+    "locatableDiagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

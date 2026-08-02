@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/observer-event.schema.json",
+  "title": "权威观察器事件",
+  "description": "由目标不可写的专属观察器追加记录；目标自报不能替代。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id", "candidate_id", "candidate_digest", "task_id", "task_digest", "sandbox_id", "environment_digest",
+    "process_id", "observer_id", "observer_version", "sequence_number",
+    "previous_digest", "event_digest", "event_type", "observed_at", "control_plane_isolated"
+  ],
+  "properties": {
+    "run_id": {"type": "string", "minLength": 1},
+    "candidate_id": {"type": "string", "minLength": 1},
+    "candidate_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "task_id": {"type": "string", "minLength": 1},
+    "task_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sandbox_id": {"type": "string", "minLength": 1},
+    "environment_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "process_id": {"type": "string", "minLength": 1},
+    "observer_id": {"type": "string", "minLength": 1},
+    "observer_version": {"type": "string", "minLength": 1},
+    "sequence_number": {"type": "integer", "minimum": 0},
+    "previous_digest": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "event_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "event_type": {"type": "string", "minLength": 1},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "control_plane_isolated": {"const": true}
+  }
+}

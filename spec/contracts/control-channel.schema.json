@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/control-channel.schema.json",
+  "title": "控制与取消通道",
+  "description": "运行中取消控制通道，管理运行身份、取消序列、租约和授权复验",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "process_id",
+    "cancel_sequence",
+    "lease_deadline",
+    "cancel_acknowledged",
+    "pre_submit_auth_recheck",
+    "late_result_disposition"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "运行标识"
+    },
+    "process_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "进程标识"
+    },
+    "cancel_sequence": {
+      "type": "array",
+      "description": "取消步骤序列",
+      "items": {
+        "type": "string",
+        "enum": [
+          "STOP_DISPATCH",
+          "PROPAGATE_CANCEL",
+          "GRACEFUL_STOP",
+          "TERMINATE_PROCESS_TREE",
+          "CLEANUP_TEMP_RESOURCES",
+          "WRITE_CHECKPOINT",
+          "WRITE_RESULT"
+        ]
+      },
+      "minItems": 1
+    },
+    "lease_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "租约或截止时间"
+    },
+    "cancel_acknowledged": {
+      "type": "boolean",
+      "description": "取消是否已确认"
+    },
+    "pre_submit_auth_recheck": {
+      "type": "boolean",
+      "description": "提交前是否需要授权复验"
+    },
+    "late_result_disposition": {
+      "type": "string",
+      "enum": ["discard", "checkpoint_only", "notify"],
+      "description": "迟到结果处置方式"
+    }
+  }
+}

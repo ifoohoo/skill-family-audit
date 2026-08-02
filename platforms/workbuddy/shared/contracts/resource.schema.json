@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/resource.schema.json",
+  "title": "资源引用",
+  "description": "输入输出资源描述，具有稳定身份、种类、路径、契约、摘要和访问方式",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "resource_id",
+    "name",
+    "kind",
+    "path",
+    "required",
+    "access",
+    "workspace_scope"
+  ],
+  "properties": {
+    "resource_id": {"type": "string", "minLength": 1, "description": "跨任务稳定资源身份"},
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "在方法签名中的稳定槽位名"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["file", "directory", "artifact", "domain_result", "external"],
+      "description": "资源种类"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "资源路径"
+    },
+    "required": {
+      "type": "boolean",
+      "description": "是否必需"
+    },
+    "contract": {
+      "type": "object",
+      "description": "正式制品契约或普通协议引用；不适用时省略",
+      "properties": {
+        "protocol_id": {"type": "string"},
+        "protocol_version": {"type": "string"},
+        "content_digest": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "content_digest": {
+      "type": "string",
+      "description": "本次实际内容摘要"
+    },
+    "access": {
+      "type": "string",
+      "enum": ["read_only", "authorized_write"],
+      "description": "输入允许只读还是经授权可修改"
+    },
+    "workspace_scope": {
+      "type": "string",
+      "enum": ["inside_workspace", "outside_workspace"],
+      "description": "资源位于工作区内或外"
+    }
+  }
+}

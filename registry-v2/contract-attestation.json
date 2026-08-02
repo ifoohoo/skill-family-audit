@@ -1,0 +1,27 @@
+{
+  "documentKind": "contract-attestation",
+  "schemaVersion": 1,
+  "status": "candidate",
+  "testEntry": "tests/spec/test_registry_v2_descriptor.py",
+  "inputDigests": {
+    "registryTarball": "sha256:76ce9a7f685068c0f91700c2db3bb94b13f82db357287ef28276dc76602b3244",
+    "registrySchemas": {
+      "binding.schema.json": "sha256:c0ce6192b34ff45cb46d44824b5d5f02bb6f968a6bdd4023b378ce3c186dd288",
+      "implementation.schema.json": "sha256:092ad286093434bafa7b94d49ca30e95d4184015ff53d97bc27f67b1cb756602",
+      "inventory.schema.json": "sha256:8392249efdc0a660d5321cc834ef3dbda774f7c0031dc476d1c8bd16c09369c3",
+      "method-query.schema.json": "sha256:32ef735242c7b522b425495398e7cff3ac819217429a6e60daeddfbd9c44d3fb",
+      "projection.schema.json": "sha256:7b765598ffaf1a53d92f54d77955769fbeabe71f97a77f96ea9ce9ef5463537c",
+      "run-lock.schema.json": "sha256:e0e8a9a15909cca2d42782ccce4039df09c452d14c722c6aa5b6f477661cf8d5"
+    },
+    "methodContractSet": "sha256:6a0121079de14caa160a714518aadd94c3ec4cabdf52edf75c3d334c69c93962",
+    "methodContractCount": 4,
+    "familyApiPayload": "sha256:dcc169d5eb9c53df8fa530527559c133aa081e6ff8b961495baa22fe5c103c46",
+    "bundleTree": "sha256:e9cb4c4a17e8e3447b290e11c2d4726ae16df5dfc4a887063b85bbd0fae813e4",
+    "adoptionLifecycleSchema": "sha256:830ce00ea088efe35207bfccc60c28f64a6d85d0125bc809784f15b1aee18970",
+    "generator": "sha256:ca58e51c80c226bd63064516fc1c19bc31a5c727ec2e06c8b8a4bcfde28088c7",
+    "dedicatedTestSources": {
+      "tests/spec/test_registry_v2_descriptor.py": "sha256:d3c469dcc90ecf2e3a8f7a6453ff7655aa267df9cfc44eb5c8fe1e564f2b961a",
+      "tests/spec/test_registry_adoption_lifecycle.py": "sha256:e0fb451850a1b65b00cefd1e207bfadb67b5dd5bff7f75d4b5fd8e6f7889573e"
+    }
+  }
+}
