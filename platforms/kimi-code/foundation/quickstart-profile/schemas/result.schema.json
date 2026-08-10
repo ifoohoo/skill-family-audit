@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v1/result.json",
+  "title": "QuickstartResult",
+  "description": "Candidate narrow profile over the stable terminal operation-result envelope.",
+  "allOf": [
+    {
+      "$ref": "https://contracts.skill-family.example/v1/operation-result.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": {
+            "name": "skill-family.quickstart-profile",
+            "version": 1
+          }
+        },
+        "operation": {
+          "const": "audit"
+        },
+        "outputs": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/outputs"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "succeeded"
+              }
+            },
+            "required": ["state"]
+          },
+          "then": {
+            "type": "object",
+            "required": ["outputs"],
+            "properties": {
+              "outputs": {
+                "$ref": "#/$defs/outputs"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "correlation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run", "stage", "attempt"],
+      "properties": {
+        "run": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "stage": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "taskBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operationId", "taskDigest", "observationId", "observationDigest", "correlation"],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "taskDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "observationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "observationDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "correlation": {
+          "$ref": "#/$defs/correlation"
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "outputs", "evidence", "domainResult", "taskBinding"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://contracts.skill-family.example/candidate/quickstart-profile/v1/resource.json"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "const": "output"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://contracts.skill-family.example/candidate/quickstart-profile/v1/resource.json"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "const": "evidence"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "domainResult": {},
+        "taskBinding": {
+          "$ref": "#/$defs/taskBinding"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "non-waivable-candidate.schema.json",
+  "title": "十类不可豁免政策边界候选映射（节点 1.8 第二部分）",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_digest_status",
+    "mappings",
+    "summary",
+    "business_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "policy_digest_status": {
+      "const": "pending_user_approval"
+    },
+    "status_semantics": {
+      "type": "string"
+    },
+    "authority_note": {
+      "type": "string"
+    },
+    "authoritative_inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mappings": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/mapping"
+      }
+    },
+    "summary": {
+      "type": "object"
+    },
+    "business_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_id",
+        "baseline_name",
+        "baseline_description",
+        "policy_boundary",
+        "combination_semantics",
+        "admission_requirement",
+        "source_locator",
+        "mapped_rules",
+        "policy_summary_digest",
+        "status"
+      ],
+      "properties": {
+        "baseline_id": {
+          "type": "string",
+          "pattern": "^NW-(0[1-9]|10)$"
+        },
+        "baseline_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline_description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy_boundary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "combination_semantics": {
+          "type": "string",
+          "minLength": 1
+        },
+        "admission_requirement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mapped_rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/mapped_rule"
+          }
+        },
+        "policy_summary_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "const": "pending_user_approval"
+        }
+      }
+    },
+    "mapped_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_rule_id",
+        "revision_digest",
+        "content_summary",
+        "relevance",
+        "explanation"
+      ],
+      "properties": {
+        "canonical_rule_id": {
+          "type": "string",
+          "pattern": "^SFA-[A-Z][A-Z0-9]*-[0-9]{3}$"
+        },
+        "revision_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "content_summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relevance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

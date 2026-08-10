@@ -1,0 +1,24 @@
+{
+  "author": {
+    "name": "广州市风荷科技有限公司"
+  },
+  "description": "技能族规范检查候选插件；当前仅用于第一档预演，不代表稳定发布。",
+  "interface": {
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "category": "Developer Tools",
+    "defaultPrompt": [
+      "检查这个技能族的规范符合性"
+    ],
+    "developerName": "广州市风荷科技有限公司",
+    "displayName": "技能族规范检查",
+    "longDescription": "提供帮助、环境预检、请求路由和候选规范检查；未完成的平台生命周期不声明为已支持。",
+    "shortDescription": "检查技能族结构、规则和候选发布边界"
+  },
+  "license": "Apache-2.0",
+  "name": "skill-family-audit",
+  "skills": "./skills/",
+  "version": "0.1.26-candidate"
+}

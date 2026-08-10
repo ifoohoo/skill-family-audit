@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "1.0.0-candidate",
+  "methodId": "skill-family-audit:release-audit",
+  "name": "发布门禁检查",
+  "description": "汇总前三类审计结果，检查候选复现、公开允许列表、泄漏与就绪语义；不声明远端发布状态，也不重新执行前三项。",
+  "capability": {
+    "capabilityRef": "cap:skill-family-audit.family",
+    "capabilityDigest": "sha256:54c90ac1376e46fd6e1244e8932bd0893ab98d9cf40d11de180e98dad1b7548d",
+    "methodSlice": "判断技能族版本是否满足稳定发布的全部门禁条件"
+  },
+  "accepts": [
+    "target_project_path",
+    "candidate_release_ref",
+    "assessments_ref"
+  ],
+  "produces": [
+    "release_result",
+    "gate_findings",
+    "evidence_list",
+    "blocking_reasons"
+  ],
+  "artifactTypes": [
+    "skill",
+    "skill_release",
+    "skill_spec_release",
+    "skill_assessment",
+    "skill_rule_exception"
+  ],
+  "sideEffects": [
+    "read-only"
+  ],
+  "maturity": "experimental",
+  "status": "candidate",
+  "acceptanceCriteria": [
+    "汇总前三类审计结论",
+    "不重新执行已有审计",
+    "门禁条件逐项判定",
+    "阻断条件精确到规则"
+  ],
+  "businessLabels": [
+    "skill_release",
+    "skill_spec_release",
+    "skill_assessment",
+    "skill_rule_exception"
+  ],
+  "strictIOBinding": {
+    "foundationProfile": {
+      "id": "quickstart-profile",
+      "version": 1,
+      "taskContract": "https://contracts.skill-family.example/candidate/quickstart-profile/v1/task.json",
+      "resultContract": "https://contracts.skill-family.example/candidate/quickstart-profile/v1/result.json"
+    },
+    "note": "方法只声明领域参数和领域输出；Task、Result、Resource 及其摘要绑定由 Foundation quickstart-profile 提供。",
+    "parameterSchema": {
+      "type": "object",
+      "properties": {
+        "target_project_path": {
+          "type": "string",
+          "description": "方法级输入参数 target_project_path"
+        },
+        "candidate_release_ref": {
+          "type": "string",
+          "description": "方法级输入参数 candidate_release_ref"
+        },
+        "assessments_ref": {
+          "type": "string",
+          "description": "方法级输入参数 assessments_ref"
+        }
+      },
+      "required": [
+        "target_project_path",
+        "candidate_release_ref",
+        "assessments_ref"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "release_result": {
+          "type": "object",
+          "description": "发布审计领域结论"
+        },
+        "gate_findings": {
+          "type": "array",
+          "items": {},
+          "description": "发布门禁发现"
+        },
+        "evidence_list": {
+          "type": "array",
+          "items": {},
+          "description": "发布审计领域证据"
+        },
+        "blocking_reasons": {
+          "type": "array",
+          "items": {},
+          "description": "发布阻断原因"
+        }
+      },
+      "required": [
+        "release_result",
+        "gate_findings",
+        "evidence_list",
+        "blocking_reasons"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

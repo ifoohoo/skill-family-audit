@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "catalog": {
+    "id": "skill-family-audit",
+    "version": "0.1.26-candidate"
+  },
+  "entries": [
+    {
+      "ref": "skill-family-audit:behavior-audit",
+      "provider": {
+        "scope": "plugin",
+        "plugin": "skill-family-audit",
+        "skill": "skills/skill-family-audit"
+      },
+      "kind": "workflow",
+      "summary": "在明确平台、模型、样例和限制下，验证技能族行为是否满足业务验收",
+      "match": {
+        "domains": [
+          "skill-governance"
+        ],
+        "artifactTypes": [
+          "skill",
+          "skill_family",
+          "skill_capability",
+          "skill_method_contract",
+          "skill_assessment"
+        ],
+        "intents": [
+          "audit"
+        ]
+      },
+      "accepts": [
+        "target_project_path",
+        "fixture_manifest",
+        "isolation_profile"
+      ],
+      "produces": [
+        "behavior_result",
+        "execution_records",
+        "evidence_list",
+        "regression_record"
+      ],
+      "sideEffects": [
+        "write-project-artifacts"
+      ]
+    },
+    {
+      "ref": "skill-family-audit:conformance-audit",
+      "provider": {
+        "scope": "plugin",
+        "plugin": "skill-family-audit",
+        "skill": "skills/skill-family-audit"
+      },
+      "kind": "workflow",
+      "summary": "根据版本化正式规则和证据判断技能族规范符合性",
+      "match": {
+        "domains": [
+          "skill-governance"
+        ],
+        "artifactTypes": [
+          "skill",
+          "skill_family",
+          "skill_specification",
+          "skill_rule",
+          "skill_assessment"
+        ],
+        "intents": [
+          "audit"
+        ]
+      },
+      "accepts": [
+        "target_project_path",
+        "scope_selector"
+      ],
+      "produces": [
+        "conformance_result",
+        "rule_findings",
+        "evidence_list",
+        "remediation_plan"
+      ],
+      "sideEffects": [
+        "read-only"
+      ]
+    },
+    {
+      "ref": "skill-family-audit:release-audit",
+      "provider": {
+        "scope": "plugin",
+        "plugin": "skill-family-audit",
+        "skill": "skills/skill-family-audit"
+      },
+      "kind": "workflow",
+      "summary": "判断技能族版本是否满足稳定发布的全部门禁条件",
+      "match": {
+        "domains": [
+          "skill-governance"
+        ],
+        "artifactTypes": [
+          "skill",
+          "skill_release",
+          "skill_spec_release",
+          "skill_assessment",
+          "skill_rule_exception"
+        ],
+        "intents": [
+          "audit"
+        ]
+      },
+      "accepts": [
+        "target_project_path",
+        "candidate_release_ref",
+        "assessments_ref"
+      ],
+      "produces": [
+        "release_result",
+        "gate_findings",
+        "evidence_list",
+        "blocking_reasons"
+      ],
+      "sideEffects": [
+        "read-only"
+      ]
+    },
+    {
+      "ref": "skill-family-audit:runtime-audit",
+      "provider": {
+        "scope": "plugin",
+        "plugin": "skill-family-audit",
+        "skill": "skills/skill-family-audit"
+      },
+      "kind": "workflow",
+      "summary": "检查运行治理能力是否达到声明的成熟度等级",
+      "match": {
+        "domains": [
+          "skill-governance"
+        ],
+        "artifactTypes": [
+          "skill",
+          "skill_family",
+          "skill_assessment",
+          "skill_release"
+        ],
+        "intents": [
+          "audit"
+        ]
+      },
+      "accepts": [
+        "target_project_path",
+        "runtime_evidence_ref",
+        "maturity_level"
+      ],
+      "produces": [
+        "runtime_result",
+        "governance_findings",
+        "evidence_list"
+      ],
+      "sideEffects": [
+        "read-only"
+      ]
+    }
+  ]
+}
