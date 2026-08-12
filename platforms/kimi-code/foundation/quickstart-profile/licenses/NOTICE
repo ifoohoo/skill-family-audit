@@ -1,0 +1,11 @@
+Foundation Quickstart Profile offline bundle: third-party notice.
+Each entry lists the package actually carried in runtime/, the locked
+version, the projected source files, and the license file in licenses/.
+
+- ajv 8.20.0
+  source files: ajv/dist/runtime/ucs2length.js, generated standalone validator code
+  license file: licenses/ajv-LICENSE
+
+- fast-deep-equal 3.1.3
+  source files: fast-deep-equal/index.js
+  license file: licenses/fast-deep-equal-LICENSE

@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/result.json",
+  "title": "QuickstartResult",
+  "description": "Candidate narrow profile (v2) over the stable terminal operation-result envelope. Every terminal state fixes outputs explicitly: succeeded requires the outputs object, failed and rejected require null outputs plus at least one error whose code is registered in the frozen contracts error registry. succeeded.outputs fixes summary, outputs, evidence, domainResult, and a taskBinding whose evidenceBindings carries exactly one mechanism back-reference per evidence Resource. domainResult is an arbitrary caller-owned JSON value that Foundation never interprets.",
+  "allOf": [
+    {
+      "$ref": "https://contracts.skill-family.example/v1/operation-result.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": {
+            "name": "skill-family.quickstart-profile",
+            "version": 2
+          }
+        },
+        "operation": {
+          "const": "execute-method"
+        },
+        "completedAt": false,
+        "outputs": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/outputs"
+            }
+          ]
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "enum": [
+                  "SFC1001",
+                  "SFC1002",
+                  "SFC1003",
+                  "SFC1004",
+                  "SFC1005",
+                  "SFC1006",
+                  "SFC1007",
+                  "SFC1008",
+                  "SFC1009",
+                  "SFC1010",
+                  "SFC1011",
+                  "SFC1012",
+                  "SFC2002",
+                  "SFC2003",
+                  "SFC2004",
+                  "SFC3001",
+                  "SFC3002",
+                  "SFC3003"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "succeeded"
+              }
+            },
+            "required": ["state"]
+          },
+          "then": {
+            "required": ["outputs"],
+            "properties": {
+              "outputs": {
+                "$ref": "#/$defs/outputs"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": ["failed", "rejected"]
+              }
+            },
+            "required": ["state"]
+          },
+          "then": {
+            "required": ["outputs"],
+            "properties": {
+              "outputs": {
+                "const": null
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "correlation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run", "stage", "attempt"],
+      "properties": {
+        "run": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "stage": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "evidenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resourceId", "operationId", "observationId", "correlation"],
+      "properties": {
+        "resourceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "operationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "observationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "correlation": {
+          "$ref": "#/$defs/correlation"
+        }
+      }
+    },
+    "taskBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operationId", "taskDigest", "observationId", "observationDigest", "correlation", "evidenceBindings"],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "taskDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "observationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "observationDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "correlation": {
+          "$ref": "#/$defs/correlation"
+        },
+        "evidenceBindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceBinding"
+          }
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "outputs", "evidence", "domainResult", "taskBinding"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/resource.json"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "const": "output"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/resource.json"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "const": "evidence"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "domainResult": {},
+        "taskBinding": {
+          "$ref": "#/$defs/taskBinding"
+        }
+      }
+    }
+  }
+}

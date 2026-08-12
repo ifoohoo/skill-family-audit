@@ -1,0 +1,195 @@
+{
+  "advisories": [
+    "安装与调用由消费者按宿主文档人工验证，不阻断候选发布"
+  ],
+  "blocked": false,
+  "blockingReasons": [],
+  "claimsStableSupport": false,
+  "deliveryMode": "codex_plugin",
+  "familyId": "skill-family-audit",
+  "fileCount": 78,
+  "files": [
+    ".agents/plugins/marketplace.json",
+    ".codex-plugin/plugin.json",
+    "foundation/quickstart-profile/foundation-projection.json",
+    "foundation/quickstart-profile/licenses/NOTICE",
+    "foundation/quickstart-profile/licenses/ajv-LICENSE",
+    "foundation/quickstart-profile/licenses/fast-deep-equal-LICENSE",
+    "foundation/quickstart-profile/runner.mjs",
+    "foundation/quickstart-profile/runtime/ajv/equal.mjs",
+    "foundation/quickstart-profile/runtime/ajv/ucs2length.mjs",
+    "foundation/quickstart-profile/runtime/contracts-candidate/index.mjs",
+    "foundation/quickstart-profile/runtime/contracts/canonical.mjs",
+    "foundation/quickstart-profile/runtime/contracts/error-codes.json",
+    "foundation/quickstart-profile/runtime/contracts/errors.mjs",
+    "foundation/quickstart-profile/runtime/contracts/index.mjs",
+    "foundation/quickstart-profile/runtime/fast-deep-equal/index.mjs",
+    "foundation/quickstart-profile/runtime/generated/formats.mjs",
+    "foundation/quickstart-profile/runtime/generated/standalone-map.mjs",
+    "foundation/quickstart-profile/runtime/generated/validate-2020-12.mjs",
+    "foundation/quickstart-profile/runtime/harness/closure.mjs",
+    "foundation/quickstart-profile/runtime/harness/errors.mjs",
+    "foundation/quickstart-profile/runtime/harness/paths.mjs",
+    "foundation/quickstart-profile/runtime/harness/quickstart-profile.mjs",
+    "foundation/quickstart-profile/runtime/json-boundary.mjs",
+    "foundation/quickstart-profile/schemas/consumer/methods/behavior-parameters.schema.json",
+    "foundation/quickstart-profile/schemas/consumer/methods/behavior-result.schema.json",
+    "foundation/quickstart-profile/schemas/consumer/methods/conformance-parameters.schema.json",
+    "foundation/quickstart-profile/schemas/consumer/methods/conformance-result.schema.json",
+    "foundation/quickstart-profile/schemas/consumer/methods/release-parameters.schema.json",
+    "foundation/quickstart-profile/schemas/consumer/methods/release-result.schema.json",
+    "foundation/quickstart-profile/schemas/consumer/methods/runtime-parameters.schema.json",
+    "foundation/quickstart-profile/schemas/consumer/methods/runtime-result.schema.json",
+    "foundation/quickstart-profile/schemas/consumer/plugin-project-observation.schema.json",
+    "foundation/quickstart-profile/schemas/foundation/operation-request.schema.json",
+    "foundation/quickstart-profile/schemas/foundation/operation-result.schema.json",
+    "foundation/quickstart-profile/schemas/foundation/protocol.json",
+    "foundation/quickstart-profile/schemas/foundation/resource.schema.json",
+    "foundation/quickstart-profile/schemas/foundation/result.schema.json",
+    "foundation/quickstart-profile/schemas/foundation/task.schema.json",
+    "foundation/quickstart-profile/validators.mjs",
+    "shared/contracts/behavior-fixture-manifest.schema.json",
+    "shared/contracts/non-waivable-candidate.schema.json",
+    "shared/contracts/platform-manifest.schema.json",
+    "shared/contracts/plugin-project-observation.schema.json",
+    "shared/contracts/release-policy.schema.json",
+    "shared/methods/behavior-audit.json",
+    "shared/methods/conformance-audit.json",
+    "shared/methods/registry-projection.json",
+    "shared/methods/release-audit.json",
+    "shared/methods/runtime-audit.json",
+    "skills/skill-family-audit-behavior-audit/SKILL.md",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_audit.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_domain.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_evidence.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_execution.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_fixture.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_public.py",
+    "skills/skill-family-audit-behavior-audit/scripts/behavior_publish.py",
+    "skills/skill-family-audit-conformance-audit/SKILL.md",
+    "skills/skill-family-audit-conformance-audit/refs/applicable-rules.json",
+    "skills/skill-family-audit-conformance-audit/refs/canonical-rule-projection.json",
+    "skills/skill-family-audit-conformance-audit/refs/conformance-trust-policy.json",
+    "skills/skill-family-audit-conformance-audit/refs/semantic-review-result.schema.json",
+    "skills/skill-family-audit-conformance-audit/scripts/conformance_check.py",
+    "skills/skill-family-audit-conformance-audit/scripts/conformance_workflow.py",
+    "skills/skill-family-audit-help/SKILL.md",
+    "skills/skill-family-audit-quickstart/SKILL.md",
+    "skills/skill-family-audit-quickstart/scripts/quickstart_route.py",
+    "skills/skill-family-audit-release-audit/SKILL.md",
+    "skills/skill-family-audit-release-audit/scripts/release_assessments.py",
+    "skills/skill-family-audit-release-audit/scripts/release_audit.py",
+    "skills/skill-family-audit-release-audit/scripts/release_public.py",
+    "skills/skill-family-audit-release-audit/scripts/release_publish.py",
+    "skills/skill-family-audit-release-audit/scripts/release_receipts.py",
+    "skills/skill-family-audit-runtime-audit/SKILL.md",
+    "skills/skill-family-audit-runtime-audit/refs/runtime-evidence-profile.json",
+    "skills/skill-family-audit-runtime-audit/scripts/runtime_audit.py",
+    "skills/skill-family-audit-runtime-audit/scripts/runtime_evidence.py",
+    "skills/skill-family-audit-setup/SKILL.md"
+  ],
+  "foundationProjection": {
+    "bundleDigest": "c981a193fe2f2995b1d334b07019b19b8d86ba69b96ede2b9e7dbe2906a640a3",
+    "path": "foundation/quickstart-profile/foundation-projection.json",
+    "profile": {
+      "contractsVersion": "1.4.0",
+      "id": "quickstart-profile",
+      "version": 2
+    },
+    "source": {
+      "baseCommit": "d7f0d506a58ccef282d4def5b4542c0f8f589f04",
+      "repository": "skill-family-foundation-workspace"
+    }
+  },
+  "logicalMappings": [
+    {
+      "logicalName": "skill-family-audit:behavior-audit",
+      "path": "skills/skill-family-audit-behavior-audit/SKILL.md",
+      "physicalName": "skill-family-audit-behavior-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:conformance-audit",
+      "path": "skills/skill-family-audit-conformance-audit/SKILL.md",
+      "physicalName": "skill-family-audit-conformance-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:help",
+      "path": "skills/skill-family-audit-help/SKILL.md",
+      "physicalName": "skill-family-audit-help",
+      "type": "human_entry",
+      "userInvocable": true
+    },
+    {
+      "logicalName": "skill-family-audit:quickstart",
+      "path": "skills/skill-family-audit-quickstart/SKILL.md",
+      "physicalName": "skill-family-audit-quickstart",
+      "type": "human_entry",
+      "userInvocable": true
+    },
+    {
+      "logicalName": "skill-family-audit:release-audit",
+      "path": "skills/skill-family-audit-release-audit/SKILL.md",
+      "physicalName": "skill-family-audit-release-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:runtime-audit",
+      "path": "skills/skill-family-audit-runtime-audit/SKILL.md",
+      "physicalName": "skill-family-audit-runtime-audit",
+      "type": "method_implementation",
+      "userInvocable": false
+    },
+    {
+      "logicalName": "skill-family-audit:setup",
+      "path": "skills/skill-family-audit-setup/SKILL.md",
+      "physicalName": "skill-family-audit-setup",
+      "type": "human_entry",
+      "userInvocable": true
+    }
+  ],
+  "manifestRequired": true,
+  "methodContracts": [
+    "shared/methods/behavior-audit.json",
+    "shared/methods/conformance-audit.json",
+    "shared/methods/release-audit.json",
+    "shared/methods/runtime-audit.json"
+  ],
+  "platformId": "codex",
+  "platformManifest": ".codex-plugin/plugin.json",
+  "platformName": "Codex",
+  "projectionDigest": "6b50f8709a8e186277e7f12dbb062cd1880f7c3990c262907368790aaf656b48",
+  "projectionId": "skill-family-audit:codex:0.1.27-candidate",
+  "schemaVersion": "1.0.0-candidate",
+  "sharedRuntime": {
+    "contractsRoot": "shared/contracts",
+    "explicitRoot": ".",
+    "resources": [
+      "shared/contracts/behavior-fixture-manifest.schema.json",
+      "shared/contracts/non-waivable-candidate.schema.json",
+      "shared/contracts/platform-manifest.schema.json",
+      "shared/contracts/plugin-project-observation.schema.json",
+      "shared/contracts/release-policy.schema.json"
+    ],
+    "rootMarker": "platform-manifest.json"
+  },
+  "skillsRoot": "skills",
+  "sourceDigest": "0c66d2fc5635481ad680142c74c8dda85b5d377640e50dc088990972f2f6af14",
+  "status": "candidate",
+  "supportStatus": "static_projection_available",
+  "unverifiedCapabilities": [
+    "manual_install"
+  ],
+  "verifiedCapabilities": [
+    "deterministic_projection",
+    "manifest_structure",
+    "frontmatter_first",
+    "skill_resource_closure",
+    "static_platform_projection"
+  ],
+  "version": "0.1.27-candidate"
+}

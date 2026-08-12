@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/behavior/parameters.json",
+  "title": "Skill Family Audit behavior-audit parameters",
+  "description": "行为验证方法的领域参数合同。",
+  "type": "object",
+  "properties": {
+    "target_project_path": {
+      "type": "string",
+      "description": "方法级输入参数 target_project_path"
+    },
+    "fixture_manifest": {
+      "type": "object",
+      "description": "调用方显式提供的命令或样例清单"
+    },
+    "isolation_profile": {
+      "type": "object",
+      "description": "命令执行的显式隔离约束"
+    }
+  },
+  "required": [
+    "target_project_path",
+    "fixture_manifest",
+    "isolation_profile"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/runtime/result.json",
+  "title": "Skill Family Audit runtime-audit domain result",
+  "description": "运行治理检查方法的领域结果合同。",
+  "type": "object",
+  "properties": {
+    "runtime_result": {
+      "type": "object",
+      "description": "运行时审计领域结论"
+    },
+    "governance_findings": {
+      "type": "array",
+      "items": {},
+      "description": "运行治理发现"
+    },
+    "evidence_list": {
+      "type": "array",
+      "items": {},
+      "description": "运行时审计领域证据"
+    }
+  },
+  "required": [
+    "runtime_result",
+    "governance_findings",
+    "evidence_list"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/resource.json",
+  "title": "QuickstartResource",
+  "description": "Candidate Resource profile (v2) for one content-addressed observation, output, or evidence item. location.path and location.uri are mutually exclusive; URIs are only structurally checked and never fetched.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "id", "location", "role", "digest"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "skill-family.resource"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "maxLength": 1024,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+        },
+        "uri": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s]+$"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["path"],
+          "properties": {
+            "path": {}
+          }
+        },
+        {
+          "required": ["uri"],
+          "properties": {
+            "uri": {}
+          }
+        }
+      ]
+    },
+    "role": {
+      "enum": ["observation", "output", "evidence"]
+    },
+    "digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

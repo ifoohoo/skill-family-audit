@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/task.json",
+  "title": "QuickstartTask",
+  "description": "Candidate narrow profile (v2) over the stable operation-request envelope. The single operation is the business-neutral execute-method; params.method and params.parameters are caller-owned and Foundation never interprets them. The Task digest binds the complete canonical Task, so the optional requestedAt timestamp is excluded from this profile.",
+  "allOf": [
+    {
+      "$ref": "https://contracts.skill-family.example/v1/operation-request.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": {
+            "name": "skill-family.quickstart-profile",
+            "version": 2
+          }
+        },
+        "operation": {
+          "const": "execute-method"
+        },
+        "requestedAt": false,
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "parameters", "inputs", "correlation"],
+          "properties": {
+            "method": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+            },
+            "parameters": {
+              "type": "object"
+            },
+            "inputs": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": {
+                "allOf": [
+                  {
+                    "$ref": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/resource.json"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "location": {
+                        "type": "object",
+                        "required": ["path"],
+                        "properties": {
+                          "path": {}
+                        }
+                      },
+                      "role": {
+                        "const": "observation"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "correlation": {
+              "$ref": "#/$defs/correlation"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "correlation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run", "stage", "attempt"],
+      "properties": {
+        "run": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "stage": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "author": {
+    "name": "广州市风荷科技有限公司"
+  },
+  "description": "技能族规范检查候选插件；当前仅用于第一档预演，不代表稳定发布。",
+  "license": "Apache-2.0",
+  "name": "skill-family-audit",
+  "skills": "./skills/",
+  "version": "0.1.27-candidate"
+}

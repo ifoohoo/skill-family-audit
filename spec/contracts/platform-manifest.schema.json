@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/contracts/platform-manifest.schema.json",
+  "title": "Skill Family Audit platform projection manifest",
+  "description": "四平台候选投影的完整公共清单合同。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "familyId",
+    "version",
+    "projectionId",
+    "platformId",
+    "platformName",
+    "deliveryMode",
+    "skillsRoot",
+    "platformManifest",
+    "manifestRequired",
+    "files",
+    "fileCount",
+    "logicalMappings",
+    "methodContracts",
+    "sharedRuntime",
+    "sourceDigest",
+    "projectionDigest",
+    "status",
+    "blocked",
+    "blockingReasons",
+    "advisories",
+    "supportStatus",
+    "foundationProjection",
+    "claimsStableSupport",
+    "verifiedCapabilities",
+    "unverifiedCapabilities"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "1.0.0-candidate"},
+    "familyId": {"const": "skill-family-audit"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-candidate)?$"},
+    "projectionId": {"type": "string", "pattern": "^skill-family-audit:(claude-code|codex|kimi-code|workbuddy):[0-9]+\\.[0-9]+\\.[0-9]+(-candidate)?$"},
+    "platformId": {"enum": ["claude-code", "codex", "kimi-code", "workbuddy"]},
+    "platformName": {"type": "string", "minLength": 1},
+    "deliveryMode": {"enum": ["claude_plugin", "codex_plugin", "kimi_plugin", "explicit_skills_dir", "workbuddy_plugin"]},
+    "skillsRoot": {"const": "skills"},
+    "platformManifest": {"type": "string", "minLength": 1},
+    "manifestRequired": {"type": "boolean"},
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "fileCount": {"type": "integer", "minimum": 1},
+    "logicalMappings": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["logicalName", "physicalName", "path", "type", "userInvocable"],
+        "properties": {
+          "logicalName": {"type": "string", "pattern": "^skill-family-audit:[a-z][a-z0-9-]*$"},
+          "physicalName": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+          "path": {"type": "string", "pattern": "^skills/.+/SKILL\\.md$"},
+          "type": {"enum": ["human_entry", "method_implementation"]},
+          "userInvocable": {"type": "boolean"}
+        }
+      }
+    },
+    "methodContracts": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^shared/methods/(behavior|conformance|release|runtime)-audit\\.json$"
+      }
+    },
+    "sharedRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractsRoot", "explicitRoot", "resources", "rootMarker"],
+      "properties": {
+        "contractsRoot": {"const": "shared/contracts"},
+        "explicitRoot": {"const": "."},
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^shared/contracts/[a-z0-9][a-z0-9.-]*\\.schema\\.json$"}
+        },
+        "rootMarker": {"const": "platform-manifest.json"}
+      }
+    },
+    "sourceDigest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "projectionDigest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "status": {"enum": ["candidate", "stable"]},
+    "blocked": {"type": "boolean"},
+    "blockingReasons": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "advisories": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "supportStatus": {
+      "enum": ["static_projection_available", "manual_unverified"]
+    },
+    "foundationProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "profile", "source", "bundleDigest"],
+      "properties": {
+        "path": {"const": "foundation/quickstart-profile/foundation-projection.json"},
+        "profile": {"type": "object"},
+        "source": {"type": "object"},
+        "bundleDigest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "claimsStableSupport": {"type": "boolean"},
+    "verifiedCapabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "unverifiedCapabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}
