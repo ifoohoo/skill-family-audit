@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill-family.rename-directory-no-replace-prebuild-sbom",
+  "status": "candidate",
+  "source": {
+    "path": "packages/skill-family-harness-node/candidate/rename-directory-no-replace/addon/rename_directory_no_replace.c",
+    "sha256": "17b301e9c82a0f825b04e9d8d20b3d58589f37bb937af1bec22e085d8505e82e"
+  },
+  "files": [
+    {
+      "platformKey": "darwin-arm64",
+      "binary": "prebuilds/darwin-arm64/rename_directory_no_replace.darwin-arm64.node",
+      "sha256": "c60f12ae0b518f5abc96f9e3a773d22271cabd498a04e6d85032fd794f310766",
+      "license": "Apache-2.0"
+    },
+    {
+      "platformKey": "darwin-x64",
+      "binary": "prebuilds/darwin-x64/rename_directory_no_replace.darwin-x64.node",
+      "sha256": "5c5a702bc8235478d6fd2b33479f73719bfd28141ae5dfdc59cfa55b2847179a",
+      "license": "Apache-2.0"
+    },
+    {
+      "platformKey": "linux-arm64-gnu",
+      "binary": "prebuilds/linux-arm64-gnu/rename_directory_no_replace.linux-arm64-gnu.node",
+      "sha256": "3b60733dd73b0ebcc0ec04f483355da4f11e4c1fa9aea50ea8053b9995a78506",
+      "license": "Apache-2.0"
+    },
+    {
+      "platformKey": "linux-x64-gnu",
+      "binary": "prebuilds/linux-x64-gnu/rename_directory_no_replace.linux-x64-gnu.node",
+      "sha256": "e601d5f63d2d36e5d503bd1275b20f1fa469884578c79730a8e47d8d384927d5",
+      "license": "Apache-2.0"
+    }
+  ]
+}

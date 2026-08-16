@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill-family.rename-directory-no-replace-prebuild-release-receipt",
+  "status": "candidate",
+  "node": {
+    "version": "v22.23.2",
+    "napi": 10
+  },
+  "source": {
+    "path": "packages/skill-family-harness-node/candidate/rename-directory-no-replace/addon/rename_directory_no_replace.c",
+    "sha256": "17b301e9c82a0f825b04e9d8d20b3d58589f37bb937af1bec22e085d8505e82e"
+  },
+  "manifestSha256": "6530a3564cc82a06803afb695b49a198ba2a44456514a342ad35f63dba851749",
+  "inputs": [
+    {
+      "platformKey": "darwin-arm64",
+      "platformReceiptSha256": "bea54165170c5c03a861d5347800796c5dce231863f0304882e2357d7f11e3be",
+      "binarySha256": "c60f12ae0b518f5abc96f9e3a773d22271cabd498a04e6d85032fd794f310766"
+    },
+    {
+      "platformKey": "darwin-x64",
+      "platformReceiptSha256": "9f6a3f1496b9760746480ffcdcf897055afecfd1287e022feb41847853e9c81b",
+      "binarySha256": "5c5a702bc8235478d6fd2b33479f73719bfd28141ae5dfdc59cfa55b2847179a"
+    },
+    {
+      "platformKey": "linux-arm64-gnu",
+      "platformReceiptSha256": "9f257b4c7b3ddb4cd1e36b29e4695c80d541c9a4eb90b9c241f5bb17461d801e",
+      "binarySha256": "3b60733dd73b0ebcc0ec04f483355da4f11e4c1fa9aea50ea8053b9995a78506"
+    },
+    {
+      "platformKey": "linux-x64-gnu",
+      "platformReceiptSha256": "f6142b9fde1b1db7f78ba2cba88997bdd41b9c96568af312b494040855911ff7",
+      "binarySha256": "e601d5f63d2d36e5d503bd1275b20f1fa469884578c79730a8e47d8d384927d5"
+    }
+  ]
+}

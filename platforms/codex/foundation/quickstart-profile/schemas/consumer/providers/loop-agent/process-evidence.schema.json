@@ -1,0 +1,544 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:loop-agent:schema:process-evidence",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "process_id",
+    "layer",
+    "process_status",
+    "cwd",
+    "command",
+    "started_at",
+    "finished_at",
+    "recorded_exit_code",
+    "context_health"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "2.0"
+    },
+    "process_id": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "layer": {
+      "enum": [
+        "L1",
+        "L2",
+        "L3"
+      ]
+    },
+    "process_status": {
+      "enum": [
+        "PLANNED",
+        "STARTING",
+        "RUNNING",
+        "EXITED",
+        "FAILED_TO_START",
+        "TIMED_OUT",
+        "TERMINATED"
+      ]
+    },
+    "cwd": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "command": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "host_runtime": {
+      "type": "object",
+      "required": [
+        "host_id",
+        "host_version",
+        "binding_digest"
+      ],
+      "properties": {
+        "host_id": {
+          "enum": [
+            "claude-code",
+            "workbuddy"
+          ]
+        },
+        "host_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "binding_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "started_at": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "finished_at": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "recorded_exit_code": {
+      "type": "integer"
+    },
+    "command_args": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pid": {
+      "type": "integer"
+    },
+    "process_group_id": {
+      "type": "integer"
+    },
+    "prompt": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "execution_log": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "exit_code_file": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "child_exit_code": {
+      "type": "integer"
+    },
+    "child_signal": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "spawn_error": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "watchdog_reason": {
+      "enum": [
+        "spawn_error",
+        "terminal_progress",
+        "max_seconds",
+        "startup_stale_progress",
+        "stale_progress",
+        "runtime_error",
+        "no_terminal_result",
+        "residual_process_group",
+        "startup_idle",
+        "stream_idle",
+        "tool_lease_expired",
+        "hard_ceiling",
+        "context_budget_exhausted"
+      ]
+    },
+    "termination_reason": {
+      "enum": [
+        "completed",
+        "startup_idle",
+        "stream_idle",
+        "tool_lease_expired",
+        "hard_ceiling",
+        "child_exit",
+        "failed_to_start",
+        "context_budget_exhausted"
+      ]
+    },
+    "last_stream_activity_at": {
+      "type": "string"
+    },
+    "last_business_progress_at": {
+      "type": "string"
+    },
+    "activity_kind": {
+      "enum": [
+        "startup",
+        "assistant",
+        "tool",
+        "long_tool",
+        "business_progress",
+        "idle"
+      ]
+    },
+    "timeout_policy": {
+      "type": "object",
+      "required": [
+        "startup_idle_seconds",
+        "stream_idle_seconds",
+        "tool_lease_seconds",
+        "hard_ceiling_seconds"
+      ],
+      "properties": {
+        "startup_idle_seconds": {
+          "type": "number"
+        },
+        "stream_idle_seconds": {
+          "type": "number"
+        },
+        "tool_lease_seconds": {
+          "type": "number"
+        },
+        "hard_ceiling_seconds": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "residual_group_cleanup_completed": {
+      "type": "boolean"
+    },
+    "forced_kill": {
+      "type": "boolean"
+    },
+    "requested_termination_mode": {
+      "enum": [
+        "process_group",
+        "child_process"
+      ]
+    },
+    "termination_mode": {
+      "enum": [
+        "process_group",
+        "child_process"
+      ]
+    },
+    "signal_sequence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "signal",
+          "requested_mode"
+        ],
+        "properties": {
+          "signal": {
+            "enum": [
+              "SIGTERM",
+              "SIGKILL",
+              "SIGINT"
+            ]
+          },
+          "requested_mode": {
+            "enum": [
+              "process_group",
+              "child_process"
+            ]
+          },
+          "successful_mode": {
+            "enum": [
+              "process_group",
+              "child_process"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "progress_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "terminal_progress_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "startup_progress_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "terminal_progress": {
+      "type": "object",
+      "required": [
+        "file"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "execution_status": {
+          "enum": [
+            "SUCCEEDED",
+            "FAILED",
+            "BLOCKED",
+            "NEEDS_INPUT"
+          ]
+        },
+        "recommendation": {
+          "enum": [
+            "CANDIDATE_ACCEPT",
+            "REWORK_REQUIRED",
+            "BLOCKED",
+            "NEEDS_INPUT"
+          ]
+        },
+        "status": {
+          "enum": [
+            "SUCCEEDED",
+            "FAILED",
+            "SKIPPED"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "terminal_status_domain": {
+      "enum": [
+        "execution",
+        "acceptance",
+        "phase"
+      ]
+    },
+    "terminal_status_field": {
+      "enum": [
+        "execution_status",
+        "recommendation",
+        "status"
+      ]
+    },
+    "legacy_terminal_status": {
+      "type": "boolean"
+    },
+    "terminal_grace_seconds": {
+      "type": "number"
+    },
+    "startup_stale_seconds": {
+      "type": "number"
+    },
+    "kill_grace_seconds": {
+      "type": "number"
+    },
+    "max_seconds": {
+      "type": "number"
+    },
+    "stale_seconds": {
+      "type": "number"
+    },
+    "interval_seconds": {
+      "type": "number"
+    },
+    "context_health": {
+      "type": "object",
+      "required": [
+        "estimated_current_tokens",
+        "estimated_peak_tokens",
+        "observed_current_tokens",
+        "observed_peak_tokens",
+        "observed_turn_usage",
+        "context_current_ratio",
+        "context_peak_ratio",
+        "level",
+        "risk_signals",
+        "mitigations",
+        "recommended_actions",
+        "mitigation_failed",
+        "control_events"
+      ],
+      "properties": {
+        "estimated_current_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "estimated_peak_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observed_current_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observed_peak_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observed_turn_usage": {
+          "type": "object",
+          "required": [
+            "input_tokens",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens"
+          ],
+          "properties": {
+            "input_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cache_read_input_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cache_creation_input_tokens": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "context_current_ratio": {
+          "type": "number",
+          "minimum": 0
+        },
+        "context_peak_ratio": {
+          "type": "number",
+          "minimum": 0
+        },
+        "level": {
+          "enum": [
+            "normal",
+            "warning",
+            "mitigate",
+            "blocked"
+          ]
+        },
+        "risk_signals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mitigations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "action",
+              "process_id",
+              "recorded_at",
+              "source_file",
+              "source_digest",
+              "evidence_paths"
+            ],
+            "properties": {
+              "action": {
+                "enum": [
+                  "selective_load",
+                  "summary_fanout",
+                  "fresh_session_split"
+                ]
+              },
+              "process_id": {
+                "type": "string",
+                "pattern": "^PROC-\\S+$"
+              },
+              "recorded_at": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "source_file": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "source_digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "evidence_paths": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "\\S"
+                },
+                "minItems": 1
+              },
+              "summary_evidence_path": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "successor_process_id": {
+                "type": "string",
+                "pattern": "^PROC-\\S+$"
+              },
+              "source": {
+                "enum": [
+                  "session_occupancy",
+                  "workflow_agent_cumulative"
+                ]
+              },
+              "workflow_identity": {
+                "type": "string",
+                "pattern": "\\S"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "recommended_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mitigation_failed": {
+          "type": "boolean"
+        },
+        "control_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "source",
+              "observed_tokens",
+              "limit_tokens",
+              "ratio",
+              "sent_at",
+              "outcome"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "session_occupancy",
+                  "workflow_agent_cumulative"
+                ]
+              },
+              "observed_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "limit_tokens": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ratio": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "sent_at": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "outcome": {
+                "enum": [
+                  "steering_sent",
+                  "mitigation_observed",
+                  "budget_exhausted"
+                ]
+              },
+              "workflow_identity": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

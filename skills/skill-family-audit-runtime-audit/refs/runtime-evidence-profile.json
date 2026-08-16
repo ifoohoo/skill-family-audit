@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "profile_version": "1.0.0-candidate",
+  "profile_id": "skill-family-audit-runtime-evidence-profile",
+  "description": "runtime-audit 方法的消费适配档案：定义允许的 provider、必需证据类别、摘要算法和失败关闭语义。本文件是消费适配层，不是第二份运行框架权威。",
+  "allowed_providers": [
+    {
+      "provider_id": "loop-agent",
+      "min_version": "0.4.0",
+      "max_version": "0.4.x",
+      "source": "loop-agent",
+      "package_digest": "f6ff87b57fc9722b3e772c914130efce483b465fe246e6e3868f65f0b811b654",
+      "schema_provider_manifest_digest": "3c5c89e65a309dcff4c8bc0a37dd82ac7ff600eba59d4c53428b96d0786389c8"
+    }
+  ],
+  "digest_algorithm": "sha256",
+  "cross_field_consistency": [
+    "run_id",
+    "task_id",
+    "platform",
+    "method_id"
+  ],
+  "required_evidence_categories": {
+    "candidate_ready": [
+      {
+        "category": "provider_identity",
+        "description": "provider 身份和版本声明",
+        "required_fields": ["provider_id", "provider_version", "source_digest", "contract_digest"]
+      },
+      {
+        "category": "process_evidence",
+        "description": "进程生命周期证据",
+        "required_fields": ["process_id", "layer", "process_status", "started_at", "finished_at", "recorded_exit_code"],
+        "schema_ref": "loop-agent:process-evidence.schema.json"
+      },
+      {
+        "category": "delivery_task",
+        "description": "交付任务定义",
+        "required_fields": ["delivery_task_id", "delivery_cycle_id", "task_type", "workflow_package_path", "write_set", "acceptance_criteria"],
+        "schema_ref": "loop-agent:delivery-task.schema.json"
+      },
+      {
+        "category": "task_result",
+        "description": "任务执行结果",
+        "required_fields": ["delivery_task_id", "process_id", "execution_status", "evidence_paths", "findings"],
+        "schema_ref": "loop-agent:delivery-task-result.schema.json"
+      },
+      {
+        "category": "isolation_manifest",
+        "description": "隔离画像",
+        "required_fields": ["schema_version", "domain_id", "top_level_task_id", "case_id", "parent_process_id", "input_digest", "baseline_digest", "domain_root", "workspace_root", "read_set", "write_set", "baseline", "domain_status"],
+        "schema_ref": "loop-agent:case-isolation-manifest.schema.json"
+      }
+    ],
+    "consumer_qualified": [
+      {
+        "category": "cleanup_proof",
+        "description": "清理证明",
+        "required_fields": ["schema_version", "domain_id", "overall_result", "domain_status", "evidence_seal_digest"],
+        "schema_ref": "loop-agent:cleanup-proof.schema.json"
+      },
+      {
+        "category": "attempt_seal",
+        "description": "尝试封存记录",
+        "required_fields": ["seal_id", "attempt_id", "outcome", "sealed_at"],
+        "schema_ref": "loop-agent:attempt-seal-record.schema.json"
+      },
+      {
+        "category": "finalization",
+        "description": "终局化请求",
+        "required_fields": ["schema_version", "run_id", "attempt_id", "subject_id", "review_level", "recommendation_sha256"],
+        "schema_ref": "loop-agent:finalization-request.schema.json"
+      }
+    ],
+    "stable": [
+      {
+        "category": "real_matrix_evidence",
+        "description": "真实矩阵运行证据（至少两个不同领域消费方）",
+        "required_fields": ["consumer_id", "consumer_domain", "validation_status", "validated_at", "evidence_path"],
+        "min_consumers": 2,
+        "consumer_domain_diversity": true
+      },
+      {
+        "category": "control_scenarios",
+        "description": "控制场景覆盖（环境失败、业务拒绝、不确定结果）",
+        "required_fields": ["scenario_type", "scenario_outcome", "evidence_path"],
+        "required_scenarios": ["environment_failure", "business_rejection", "uncertain_result"]
+      }
+    ]
+  },
+  "failure_close_semantics": {
+    "missing_evidence": {
+      "action": "BLOCKED",
+      "description": "缺失必需证据时返回 BLOCKED，列出 missing_inputs"
+    },
+    "digest_mismatch": {
+      "action": "FAILED",
+      "description": "摘要漂移时返回 FAILED，标记篡改"
+    },
+    "schema_violation": {
+      "action": "FAILED",
+      "description": "Schema 不匹配时返回 FAILED"
+    },
+    "identity_contradiction": {
+      "action": "FAILED",
+      "description": "run_id/task_id/platform/method_id/candidate_id 跨证据不一致时返回 FAILED"
+    },
+    "event_sequence_disorder": {
+      "action": "FAILED",
+      "description": "观察事件序号非严格递增时返回 FAILED"
+    },
+    "duplicate_terminal": {
+      "action": "FAILED",
+      "description": "重复终态时返回 FAILED"
+    },
+    "post_terminal_event": {
+      "action": "FAILED",
+      "description": "终态后出现新事件时返回 FAILED"
+    },
+    "path_escape": {
+      "action": "FAILED",
+      "description": "输出根逃逸时返回 FAILED"
+    },
+    "unresolvable_version": {
+      "action": "FAILED",
+      "description": "provider 版本不可解析时返回 FAILED（失败关闭，不放行）"
+    },
+    "dependency_unavailable": {
+      "action": "FAILED",
+      "description": "Foundation Bundle 机制不可用时返回 FAILED（禁止降级为本地浅校验）"
+    }
+  },
+  "terminal_state_rules": {
+    "terminal_status_domains": ["execution", "acceptance", "phase"],
+    "terminal_status_fields": {
+      "execution": "execution_status",
+      "acceptance": "recommendation",
+      "phase": "status"
+    },
+    "unique_terminal_per_process": true,
+    "terminal_promotion_blocked_after_watchdog": true
+  },
+  "process_status_consistency": {
+    "watchdog_reason_mappings": {
+      "spawn_error": {"process_status": "FAILED_TO_START", "recorded_exit_code": 127},
+      "max_seconds": {"process_status": "TIMED_OUT", "recorded_exit_code": 124},
+      "startup_stale_progress": {"process_status": "TIMED_OUT", "recorded_exit_code": 124},
+      "stale_progress": {"process_status": "TIMED_OUT", "recorded_exit_code": 124},
+      "terminal_progress": {"process_status": "TERMINATED", "recorded_exit_code": 0},
+      "runtime_error": {"process_status": "TERMINATED", "recorded_exit_code": 124},
+      "residual_process_group": {"process_status": "TERMINATED", "recorded_exit_code": 124},
+      "no_terminal_result": {"process_status": ["EXITED", "TERMINATED"], "recorded_exit_code": 124}
+    }
+  }
+}

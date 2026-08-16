@@ -1,0 +1,395 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:loop-agent:schema:cleanup-proof",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "domain_id",
+    "cleanup_at",
+    "evaluator_process_pid",
+    "seal_record_hash",
+    "before_snapshot",
+    "after_snapshot",
+    "process_tree_report",
+    "fsync_report",
+    "cleanup_commands",
+    "symlink_audit",
+    "home_tmp_cache_audit",
+    "overall_result",
+    "evidence_seal_digest",
+    "domain_status",
+    "external_resource_audit",
+    "executor_pid",
+    "os_process_id",
+    "os_process_group_id",
+    "process_start_time"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.0"
+    },
+    "domain_id": {
+      "type": "string",
+      "pattern": "^CID-[A-Za-z0-9_-]+$"
+    },
+    "cleanup_at": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "evaluator_process_pid": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "seal_record_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "before_snapshot": {
+      "$ref": "#/$defs/directorySnapshot"
+    },
+    "after_snapshot": {
+      "$ref": "#/$defs/directorySnapshot"
+    },
+    "process_tree_report": {
+      "$ref": "#/$defs/processTreeReport"
+    },
+    "fsync_report": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/flushReportItem"
+      }
+    },
+    "cleanup_commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/cleanupCommand"
+      }
+    },
+    "symlink_audit": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/symlinkAuditItem"
+      }
+    },
+    "home_tmp_cache_audit": {
+      "$ref": "#/$defs/envAudit"
+    },
+    "overall_result": {
+      "enum": [
+        "PASS",
+        "FAIL"
+      ]
+    },
+    "verification_failures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_seal_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "domain_status": {
+      "enum": [
+        "CLEANED",
+        "CLEANUP_FAILED"
+      ]
+    },
+    "external_resource_audit": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/externalResourceAuditItem"
+      }
+    },
+    "executor_pid": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "os_process_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "os_process_group_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "process_start_time": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "directorySnapshot": {
+      "type": "object",
+      "required": [
+        "domain_root",
+        "listing"
+      ],
+      "properties": {
+        "domain_root": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "listing": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "type",
+              "inode"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "file",
+                  "directory",
+                  "symlink",
+                  "other"
+                ]
+              },
+              "inode": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "length": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "processTreeReport": {
+      "type": "object",
+      "required": [
+        "tracked_pid",
+        "descendants_found",
+        "passed",
+        "root_pid_alive",
+        "scan_available"
+      ],
+      "properties": {
+        "tracked_pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "descendants_found": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "identity_consistent": {
+          "type": "boolean"
+        },
+        "root_pid_alive": {
+          "type": "boolean"
+        },
+        "scan_available": {
+          "type": "boolean"
+        },
+        "passed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "flushReportItem": {
+      "type": "object",
+      "required": [
+        "file_path",
+        "sha256",
+        "fsync_at"
+      ],
+      "properties": {
+        "file_path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fsync_at": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    },
+    "cleanupCommand": {
+      "type": "object",
+      "required": [
+        "command",
+        "exit_code"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "exit_code": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "symlinkAuditItem": {
+      "type": "object",
+      "required": [
+        "path",
+        "lstat_result"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "lstat_result": {
+          "type": "object",
+          "required": [
+            "is_symlink",
+            "exists"
+          ],
+          "properties": {
+            "is_symlink": {
+              "type": "boolean"
+            },
+            "exists": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "envAuditDir": {
+      "type": "object",
+      "required": [
+        "path",
+        "residual_files"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "residual_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "envAudit": {
+      "type": "object",
+      "required": [
+        "HOME",
+        "TMPDIR",
+        "XDG_CACHE_HOME"
+      ],
+      "properties": {
+        "HOME": {
+          "$ref": "#/$defs/envAuditDir"
+        },
+        "TMPDIR": {
+          "$ref": "#/$defs/envAuditDir"
+        },
+        "XDG_CACHE_HOME": {
+          "$ref": "#/$defs/envAuditDir"
+        }
+      },
+      "additionalProperties": false
+    },
+    "externalResourceIdentity": {
+      "type": "object",
+      "required": [
+        "kind",
+        "device",
+        "inode",
+        "size",
+        "mtime_ms"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "file",
+            "directory",
+            "other"
+          ]
+        },
+        "device": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inode": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mtime_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "externalResourceAuditItem": {
+      "type": "object",
+      "required": [
+        "resource_id",
+        "status_before",
+        "status_after",
+        "residual"
+      ],
+      "properties": {
+        "resource_id": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "status_before": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "status_after": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "identity_before": {
+          "$ref": "#/$defs/externalResourceIdentity"
+        },
+        "identity_after": {
+          "$ref": "#/$defs/externalResourceIdentity"
+        },
+        "residual": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

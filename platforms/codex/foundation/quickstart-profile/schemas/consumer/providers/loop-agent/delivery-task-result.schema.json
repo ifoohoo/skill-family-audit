@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:loop-agent:schema:delivery-task-result",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "delivery_task_id",
+    "process_id",
+    "execution_status",
+    "changed_files",
+    "verification_record_paths",
+    "evidence_paths",
+    "findings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "2.0"
+    },
+    "delivery_task_id": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "process_id": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "execution_status": {
+      "enum": [
+        "SUCCEEDED",
+        "FAILED",
+        "BLOCKED",
+        "NEEDS_INPUT"
+      ]
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "verification_record_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    }
+  },
+  "additionalProperties": false
+}

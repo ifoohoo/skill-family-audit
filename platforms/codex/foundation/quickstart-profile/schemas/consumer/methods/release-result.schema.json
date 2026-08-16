@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/result.json",
+  "title": "Skill Family Audit release-audit domain result",
+  "description": "发布门禁检查方法的领域结果合同。",
+  "type": "object",
+  "properties": {
+    "release_result": {
+      "type": "object",
+      "description": "发布审计领域结论"
+    },
+    "gate_findings": {
+      "type": "array",
+      "items": {},
+      "description": "发布门禁发现"
+    },
+    "evidence_list": {
+      "type": "array",
+      "items": {},
+      "description": "发布审计领域证据"
+    },
+    "blocking_reasons": {
+      "type": "array",
+      "items": {},
+      "description": "发布阻断原因"
+    }
+  },
+  "required": [
+    "release_result",
+    "gate_findings",
+    "evidence_list",
+    "blocking_reasons"
+  ],
+  "additionalProperties": false
+}

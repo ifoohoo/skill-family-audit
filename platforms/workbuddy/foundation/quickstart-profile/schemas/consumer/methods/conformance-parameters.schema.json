@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/parameters.json",
+  "title": "Skill Family Audit conformance-audit parameters",
+  "description": "规范符合性检查方法的领域参数合同。",
+  "type": "object",
+  "properties": {
+    "target_project_path": {
+      "type": "string",
+      "description": "方法级输入参数 target_project_path"
+    },
+    "scope_selector": {
+      "type": "string",
+      "enum": [
+        "skill",
+        "plugin",
+        "release"
+      ],
+      "description": "受检对象范围"
+    }
+  },
+  "required": [
+    "target_project_path",
+    "scope_selector"
+  ],
+  "additionalProperties": false
+}

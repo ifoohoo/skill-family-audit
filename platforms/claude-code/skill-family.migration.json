@@ -1,0 +1,26 @@
+{
+  "exceptions": [],
+  "foundationPackages": [
+    {
+      "digest": "sha256:fcdcd2134b43110d3fc73fa0897794047205c1dae2710454a4bfd8aba469045b",
+      "name": "skill-family-contracts",
+      "version": "0.4.0"
+    },
+    {
+      "digest": "sha256:99472ad4a68104483830925bacb11a1f8309348795d7de5c7002abf93aed76f5",
+      "name": "skill-family-engineering-kit",
+      "version": "0.4.0"
+    },
+    {
+      "digest": "sha256:5cfc000a543f8922c874289b82d31b7491d47521ec08b48754bd001782aa5774",
+      "name": "skill-family-harness-node",
+      "version": "0.4.0"
+    }
+  ],
+  "kind": "skill-family.migration-manifest",
+  "legacyInfra": [],
+  "legacyReferences": [],
+  "manifestVersion": 1,
+  "schemaVersion": 1,
+  "targetProfile": "quickstart-profile"
+}

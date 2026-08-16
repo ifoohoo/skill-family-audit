@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:loop-agent:schema:case-isolation-manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "domain_id",
+    "evaluation_round_id",
+    "top_level_task_id",
+    "technical_attempt_id",
+    "case_id",
+    "parent_process_id",
+    "input_digest",
+    "baseline_digest",
+    "domain_root",
+    "workspace_root",
+    "home_dir",
+    "tmp_dir",
+    "cache_dir",
+    "evidence_staging_dir",
+    "read_set",
+    "write_set",
+    "baseline",
+    "domain_status",
+    "evaluation_specification_digest",
+    "oracle_commitment_ref",
+    "oracle_commitment_version",
+    "external_resources"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.0"
+    },
+    "domain_id": {
+      "type": "string",
+      "pattern": "^CID-[A-Za-z0-9_-]+$"
+    },
+    "evaluation_round_id": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "top_level_task_id": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "technical_attempt_id": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "parent_process_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "case_process_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "spawn_audit_id": {
+      "type": "string",
+      "pattern": "^SA-[A-Za-z0-9_-]+$"
+    },
+    "spawn_audit_ref": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "spawn_audit_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "process_tracker_started_at": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "input_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "baseline_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "domain_root": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "workspace_root": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "home_dir": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "tmp_dir": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "cache_dir": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "evidence_staging_dir": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "read_set": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "write_set": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "files"
+      ],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "kind",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "kind": {
+                "enum": [
+                  "absent",
+                  "file",
+                  "directory"
+                ]
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^(|[0-9a-f]{64})$"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "environment_overrides": {
+      "type": "object",
+      "properties": {
+        "HOME": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "TMPDIR": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "XDG_CACHE_HOME": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    },
+    "domain_status": {
+      "enum": [
+        "PREPARED",
+        "ACTIVE",
+        "EVIDENCE_SEALED",
+        "CLEANED",
+        "CLEANUP_FAILED"
+      ]
+    },
+    "prepared_at": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "activated_at": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "sealed_at": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "attempt_seal_record_ref": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "cleanup_at": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "evaluation_specification_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "oracle_commitment_ref": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "oracle_commitment_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "case_process_group_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "external_resources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/externalResource"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "externalResource": {
+      "type": "object",
+      "required": [
+        "resource_id",
+        "action",
+        "path"
+      ],
+      "properties": {
+        "resource_id": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "action": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

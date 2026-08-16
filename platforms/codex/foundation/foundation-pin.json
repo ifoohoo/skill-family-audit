@@ -1,0 +1,164 @@
+{
+  "bundle": {
+    "payloadSha256": "679a7847a260937b4a425f5876c7c53fc68df56bf13740ac07d8abd08176321b",
+    "targetPrefix": "foundation/quickstart-profile"
+  },
+  "consumerSchemas": [
+    {
+      "$id": "spec/contracts/behavior-fixture-manifest.schema.json",
+      "path": "behavior-fixture-manifest.schema.json",
+      "sha256": "1229982dd7801259f9e8b47a34565dae57552b2c468ef9969f12c8757fc33f49",
+      "sourcePath": "spec/contracts/behavior-fixture-manifest.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/behavior/parameters.json",
+      "path": "methods/behavior-parameters.schema.json",
+      "sha256": "6f9e8c8fb815804b6dd59a8582c71c2aa9d71926e12002884ec9fd18ce2bb57b",
+      "sourcePath": "spec/contracts/methods/behavior-parameters.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/behavior/result.json",
+      "path": "methods/behavior-result.schema.json",
+      "sha256": "cfd6c36b69b27979bbc763716cd930a52e5b78dd8469db0a79c59e90bea54563",
+      "sourcePath": "spec/contracts/methods/behavior-result.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/parameters.json",
+      "path": "methods/conformance-parameters.schema.json",
+      "sha256": "487142bb46fb8c56e95ea1b9a63e26c9fe9b717c5c451d173eb9eeceb667b619",
+      "sourcePath": "spec/contracts/methods/conformance-parameters.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/result.json",
+      "path": "methods/conformance-result.schema.json",
+      "sha256": "4179b4a99e81861e54a5b9b282999c1eb40766b9ab278067a62e3a1d03363833",
+      "sourcePath": "spec/contracts/methods/conformance-result.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/parameters.json",
+      "path": "methods/release-parameters.schema.json",
+      "sha256": "e210fb305f23bfd22e4dced6e2e9c1c546cb67238420ba79761e29f2465c1fc0",
+      "sourcePath": "spec/contracts/methods/release-parameters.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/result.json",
+      "path": "methods/release-result.schema.json",
+      "sha256": "aea3f29140c1f199f2925c908f3b76da596922f126d71bf4c1da077fd2e0244d",
+      "sourcePath": "spec/contracts/methods/release-result.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/runtime/parameters.json",
+      "path": "methods/runtime-parameters.schema.json",
+      "sha256": "f361a27ca9f9a424b8180d75ea600df0cf1db46342640234cd191d9fc9d31f7d",
+      "sourcePath": "spec/contracts/methods/runtime-parameters.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/runtime/result.json",
+      "path": "methods/runtime-result.schema.json",
+      "sha256": "364adcb2603590bcc76574450a6a491bb87a3acdb8a50fac6dce758a469c2ddd",
+      "sourcePath": "spec/contracts/methods/runtime-result.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/plugin-project-observation.json",
+      "path": "plugin-project-observation.schema.json",
+      "sha256": "0cc3854c45925c5b3f589bdf1e9811ba341638f9386a53eca3ce1edb4e425148",
+      "sourcePath": "spec/contracts/plugin-project-observation.schema.json"
+    },
+    {
+      "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/project-adoption-lock.json",
+      "path": "project-adoption-lock.schema.json",
+      "sha256": "a64979287f88adf3ca84e9562995367302bc6e657314b1f7df23a70b4750c21b",
+      "sourcePath": "spec/contracts/project-adoption-lock.schema.json"
+    },
+    {
+      "$id": "urn:loop-agent:schema:attempt-seal-record",
+      "path": "providers/loop-agent/attempt-seal-record.schema.json",
+      "sha256": "cdb4039bee538d3aa09abb3d24fd86153e17c30c0a3c47db99523e5bbc1f522c",
+      "sourcePath": "loop-agent:references/schemas/attempt-seal-record.schema.json"
+    },
+    {
+      "$id": "urn:loop-agent:schema:case-isolation-manifest",
+      "path": "providers/loop-agent/case-isolation-manifest.schema.json",
+      "sha256": "cf63af9378b00b71892ae1b0ad8bf5011067f81bcb1ff883686882abcb064a3c",
+      "sourcePath": "loop-agent:references/schemas/case-isolation-manifest.schema.json"
+    },
+    {
+      "$id": "urn:loop-agent:schema:cleanup-proof",
+      "path": "providers/loop-agent/cleanup-proof.schema.json",
+      "sha256": "33e6fe400f60ee7b1f5d1ac924f1a23cdb7ec24ca418faf8c1abf1413e59831b",
+      "sourcePath": "loop-agent:references/schemas/cleanup-proof.schema.json"
+    },
+    {
+      "$id": "urn:loop-agent:schema:delivery-task-result",
+      "path": "providers/loop-agent/delivery-task-result.schema.json",
+      "sha256": "377364d5d899184bc290681b7d8037712677b2a47eb511b506daf8562a84a899",
+      "sourcePath": "loop-agent:references/schemas/delivery-task-result.schema.json"
+    },
+    {
+      "$id": "urn:loop-agent:schema:delivery-task",
+      "path": "providers/loop-agent/delivery-task.schema.json",
+      "sha256": "187feb483d0d17625d630e924fe930a0fff99878201340b75c0adaec021483d0",
+      "sourcePath": "loop-agent:references/schemas/delivery-task.schema.json"
+    },
+    {
+      "$id": "urn:loop-agent:schema:finalization-request",
+      "path": "providers/loop-agent/finalization-request.schema.json",
+      "sha256": "1bfcf654a1ce829970c3dd5b6f171dd70db9705a1ae0d4e2eafa6afb4505a1f5",
+      "sourcePath": "loop-agent:references/schemas/finalization-request.schema.json"
+    },
+    {
+      "$id": "urn:loop-agent:schema:process-evidence",
+      "path": "providers/loop-agent/process-evidence.schema.json",
+      "sha256": "5f5704d8f08b2b1eb180e39fcfc54106b0581f48036fc27a7ace18d94743b5ff",
+      "sourcePath": "loop-agent:references/schemas/process-evidence.schema.json"
+    },
+    {
+      "$id": "skill-family-audit:semantic-review-result",
+      "path": "semantic-review-result.schema.json",
+      "sha256": "7ce01ff00106250f28ba4751e37b36e30311343f929d3b81715ad577743e8eac",
+      "sourcePath": "spec/contracts/semantic-review-result.schema.json"
+    }
+  ],
+  "packages": [
+    {
+      "name": "skill-family-contracts",
+      "sha256": "fcdcd2134b43110d3fc73fa0897794047205c1dae2710454a4bfd8aba469045b",
+      "version": "0.4.0"
+    },
+    {
+      "name": "skill-family-engineering-kit",
+      "sha256": "99472ad4a68104483830925bacb11a1f8309348795d7de5c7002abf93aed76f5",
+      "version": "0.4.0"
+    },
+    {
+      "name": "skill-family-harness-node",
+      "sha256": "5cfc000a543f8922c874289b82d31b7491d47521ec08b48754bd001782aa5774",
+      "version": "0.4.0"
+    }
+  ],
+  "profile": {
+    "contractsVersion": "1.4.0",
+    "id": "quickstart-profile",
+    "stability": "candidate-only",
+    "version": 2
+  },
+  "runtime": {
+    "node": "v22.23.2",
+    "nodeRange": ">=22.22.2 <23"
+  },
+  "schemaProviders": [
+    {
+      "manifestDigest": "a52e3c0dbdd161acf84527ef2249fbc713c4a1acb3cac5d99ba9578e92453be8",
+      "manifestPath": "references/schema-provider-manifest.json",
+      "manifestSha256": "3c5c89e65a309dcff4c8bc0a37dd82ac7ff600eba59d4c53428b96d0786389c8",
+      "name": "loop-agent",
+      "version": "0.4.0"
+    }
+  ],
+  "schemaVersion": "1.0",
+  "source": {
+    "baseCommit": "8a0a400d7f0aeb266b554d09e54e0f9ec1887cff",
+    "repository": "skill-family-foundation-workspace",
+    "status": "VERIFIED"
+  }
+}

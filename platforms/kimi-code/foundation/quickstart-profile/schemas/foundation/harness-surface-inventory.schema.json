@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/harness-surface-inventory.json",
+  "title": "Harness Surface Inventory Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "scanRoot", "exhaustive", "surfaces", "inventoryDigest"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "skill-family.harness-surface-inventory" },
+    "scanRoot": {
+      "anyOf": [
+        { "const": "." },
+        { "$ref": "#/$defs/containedPath" }
+      ]
+    },
+    "exhaustive": { "const": true },
+    "surfaces": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/surface" }
+    },
+    "inventoryDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "containedPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surfaceId", "surfaceType", "path", "evidence"],
+      "properties": {
+        "surfaceId": { "type": "string", "minLength": 1 },
+        "surfaceType": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "path": { "$ref": "#/$defs/containedPath" },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sha256", "detectorId"],
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "detectorId": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" }
+          }
+        }
+      }
+    },
+    "detectorPredicate": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pathSuffix"],
+          "properties": { "pathSuffix": { "type": "string", "minLength": 1 } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pathFragment"],
+          "properties": { "pathFragment": { "type": "string", "minLength": 1 } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pathPrefix"],
+          "properties": {
+            "pathPrefix": {
+              "type": "string",
+              "pattern": "^(?!/)(?!.*//)(?!.*\\\\)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^/]+(?:/[^/]+)*$"
+            }
+          }
+        }
+      ]
+    },
+    "detectorClause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allOf"],
+      "properties": {
+        "allOf": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/detectorPredicate" }
+        }
+      }
+    },
+    "detectorMatch": {
+      "oneOf": [
+        { "$ref": "#/$defs/detectorClause" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["anyOf"],
+          "properties": {
+            "anyOf": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/detectorClause" }
+            }
+          }
+        }
+      ]
+    },
+    "detector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["detectorId", "surfaceType", "match"],
+      "properties": {
+        "detectorId": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+        "surfaceType": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "match": { "$ref": "#/$defs/detectorMatch" }
+      }
+    },
+    "detectorDocument": {
+      "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/harness-surface-detectors.json",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "kind", "detectors"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "kind": { "const": "skill-family.harness-surface-detectors" },
+        "detectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/harness-surface-inventory.json#/$defs/detector"
+          }
+        }
+      }
+    }
+  }
+}

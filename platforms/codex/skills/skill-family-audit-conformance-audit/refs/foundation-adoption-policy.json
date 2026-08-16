@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "1.0.0",
+  "kind": "skill-family-audit.foundation-adoption-policy",
+  "description": "Audit 领域 foundation adoption operational evidence adjudication policy。精确绑定 canonical rule bindings，不篡改全局 governance axis，不冒充用户批准。",
+  "policy_scope": "project_adoption_operational_evidence",
+  "canonical_rule_bindings": [
+    {
+      "canonical_id": "SFA-HARNESS-001",
+      "revision": 1,
+      "revision_digest": "a3db8bc1f2046d699b5c3ad82790aa893a29ac1fa92dd1849173698282515c99",
+      "binding_rationale": "Foundation harness surface inventory 必须穷举扫描整个项目根"
+    },
+    {
+      "canonical_id": "SFA-HARNESS-002",
+      "revision": 1,
+      "revision_digest": "d3b812e353e48c11a99042c3ff67cd40bbee818059b3f485730b79bca9ba8b4f",
+      "binding_rationale": "每个 surface 必须有 owner adjudication，phantom surface 不可存在"
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-005",
+      "revision": 1,
+      "revision_digest": "754d5fbc0c68813d71a7078a254a6fe1aab83412815b724e3eba9661a0d209cf",
+      "binding_rationale": "retained_domain surface 必须附带可验证证据（path+digest）"
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-012",
+      "revision": 1,
+      "revision_digest": "da9703f49c36e99d226b74ebea966c0c133a48f6a359b5ced9f07ce9e62f496e",
+      "binding_rationale": "adoption_route 必须明确 scaffold 或 adopt-plan"
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-013",
+      "revision": 1,
+      "revision_digest": "f75da1a9d49f009735dff140ace02076457f5d0e334eeec8f38078444d7df79f",
+      "binding_rationale": "新技能族必须通过 scaffold 路由且 Engineering Kit 可调用"
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-021",
+      "revision": 1,
+      "revision_digest": "87cc45822d00d9c364827e19111780aef676dc7003a53f2e5087f481dcefaf61",
+      "binding_rationale": "既有技能族必须通过 adopt-plan 路由"
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-023",
+      "revision": 1,
+      "revision_digest": "c7e329777588833fec6de02c97a2cce57c92fc0413b4b149aa909dd69589f48b",
+      "binding_rationale": "Foundation inventory receipt 必须存在且 exhaustive=true"
+    },
+    {
+      "canonical_id": "SFA-PLAT-005",
+      "revision": 1,
+      "revision_digest": "24303064b939678f0b23590c2d5591dd82e517e496975d21dabd1ed3bd747d9c",
+      "binding_rationale": "platform mapping retained_domain 必须附带可验证证据"
+    }
+  ],
+  "harness_detectors": [
+    {
+      "detectorId": "domain-contract-source.v1",
+      "surfaceType": "json-contract",
+      "match": {"anyOf": [
+        {"allOf": [
+          {"pathFragment": "plugin-src/skills/"},
+          {"pathFragment": "/refs/"},
+          {"pathSuffix": ".schema.json"}
+        ]},
+        {"allOf": [
+          {"pathFragment": "plugin-src/core/references/"},
+          {"pathSuffix": ".schema.json"}
+        ]}
+      ]}
+    },
+    {
+      "detectorId": "python-runtime-source.v1",
+      "surfaceType": "source-module",
+      "match": {"anyOf": [
+        {"allOf": [
+          {"pathFragment": "plugin-src/skills/"},
+          {"pathFragment": "/scripts/"},
+          {"pathSuffix": ".py"}
+        ]},
+        {"allOf": [
+          {"pathFragment": "plugin-src/core/scripts/"},
+          {"pathSuffix": ".py"}
+        ]},
+        {"allOf": [
+          {"pathFragment": "plugin-src/shared/scripts/"},
+          {"pathSuffix": ".py"}
+        ]}
+      ]}
+    },
+    {
+      "detectorId": "javascript-runtime-source.v1",
+      "surfaceType": "source-module",
+      "match": {"anyOf": [
+        {"allOf": [
+          {"pathFragment": "plugin-src/skills/"},
+          {"pathFragment": "/scripts/"},
+          {"pathSuffix": ".mjs"}
+        ]},
+        {"allOf": [
+          {"pathFragment": "plugin-src/core/scripts/"},
+          {"pathSuffix": ".mjs"}
+        ]}
+      ]}
+    },
+    {
+      "detectorId": "root-domain-contract-source.v1",
+      "surfaceType": "json-contract",
+      "match": {"allOf": [
+        {"pathPrefix": "references/schemas"},
+        {"pathSuffix": ".schema.json"}
+      ]}
+    },
+    {
+      "detectorId": "root-javascript-runtime-source.v1",
+      "surfaceType": "source-module",
+      "match": {"allOf": [
+        {"pathPrefix": "scripts"},
+        {"pathSuffix": ".mjs"}
+      ]}
+    }
+  ],
+  "disclaimer": "本文件是 project_adoption operational evidence adjudication，不篡改全局 governance axis，不冒充用户批准。"
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Local isolated lifecycle marketplace for Skill Family Audit",
+  "name": "skill-family-audit-local",
+  "owner": {
+    "name": "ifoohoo"
+  },
+  "plugins": [
+    {
+      "description": "技能族规范检查候选插件；当前仅用于第一档预演，不代表稳定发布。",
+      "name": "skill-family-audit",
+      "source": "./",
+      "strict": true,
+      "version": "1.0.0"
+    }
+  ]
+}

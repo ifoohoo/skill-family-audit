@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/packages/common-governance/schemas/release_policy.schema.json",
+  "title": "发布政策",
+  "description": "通用治理制品：定义技能集或组件的发布政策、规则和状态管理。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "policy_scope",
+    "rules"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "政策标题",
+      "minLength": 1
+    },
+    "policy_scope": {
+      "type": "string",
+      "description": "政策范围",
+      "minLength": 1
+    },
+    "rules": {
+      "type": "array",
+      "description": "政策规则列表",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rule_id",
+          "description"
+        ],
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "description": "规则唯一标识",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "规则描述",
+            "minLength": 1
+          },
+          "enforcement": {
+            "type": "string",
+            "enum": [
+              "required",
+              "recommended",
+              "optional"
+            ],
+            "description": "执行级别"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "superseded",
+        "deprecated"
+      ],
+      "description": "政策状态"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "创建时间（ISO 8601 格式）"
+    }
+  }
+}

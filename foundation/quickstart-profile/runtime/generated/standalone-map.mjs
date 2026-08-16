@@ -1,0 +1,36 @@
+// Fixed dispatch: every registered schema $id mapped to its generated
+// standalone validator function.
+import * as validate202012 from "./validate-2020-12.mjs";
+
+const STANDALONE_VALIDATORS = Object.freeze({
+  "https://contracts.skill-family.example/candidate/quickstart-profile/v2/consumer-schema-inventory.json": validate202012.__skillFamilyFoundationValidator_00000,
+  "https://contracts.skill-family.example/candidate/quickstart-profile/v2/harness-surface-detectors.json": validate202012.__skillFamilyFoundationValidator_00001,
+  "https://contracts.skill-family.example/candidate/quickstart-profile/v2/harness-surface-inventory.json": validate202012.__skillFamilyFoundationValidator_00002,
+  "https://contracts.skill-family.example/candidate/quickstart-profile/v2/resource.json": validate202012.__skillFamilyFoundationValidator_00003,
+  "https://contracts.skill-family.example/candidate/quickstart-profile/v2/result.json": validate202012.__skillFamilyFoundationValidator_00004,
+  "https://contracts.skill-family.example/candidate/quickstart-profile/v2/task.json": validate202012.__skillFamilyFoundationValidator_00005,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/behavior/parameters.json": validate202012.__skillFamilyFoundationValidator_00006,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/behavior/result.json": validate202012.__skillFamilyFoundationValidator_00007,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/parameters.json": validate202012.__skillFamilyFoundationValidator_00008,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/result.json": validate202012.__skillFamilyFoundationValidator_00009,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/parameters.json": validate202012.__skillFamilyFoundationValidator_00010,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/result.json": validate202012.__skillFamilyFoundationValidator_00011,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/runtime/parameters.json": validate202012.__skillFamilyFoundationValidator_00012,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/runtime/result.json": validate202012.__skillFamilyFoundationValidator_00013,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/plugin-project-observation.json": validate202012.__skillFamilyFoundationValidator_00014,
+  "https://contracts.skill-family.example/skill-family-audit/candidate/v2/project-adoption-lock.json": validate202012.__skillFamilyFoundationValidator_00015,
+  "https://contracts.skill-family.example/v1/migration-manifest.json": validate202012.__skillFamilyFoundationValidator_00016,
+  "https://contracts.skill-family.example/v1/operation-request.json": validate202012.__skillFamilyFoundationValidator_00017,
+  "https://contracts.skill-family.example/v1/operation-result.json": validate202012.__skillFamilyFoundationValidator_00018,
+  "skill-family-audit:semantic-review-result": validate202012.__skillFamilyFoundationValidator_00019,
+  "spec/contracts/behavior-fixture-manifest.schema.json": validate202012.__skillFamilyFoundationValidator_00020,
+  "urn:loop-agent:schema:attempt-seal-record": validate202012.__skillFamilyFoundationValidator_00021,
+  "urn:loop-agent:schema:case-isolation-manifest": validate202012.__skillFamilyFoundationValidator_00022,
+  "urn:loop-agent:schema:cleanup-proof": validate202012.__skillFamilyFoundationValidator_00023,
+  "urn:loop-agent:schema:delivery-task": validate202012.__skillFamilyFoundationValidator_00024,
+  "urn:loop-agent:schema:delivery-task-result": validate202012.__skillFamilyFoundationValidator_00025,
+  "urn:loop-agent:schema:finalization-request": validate202012.__skillFamilyFoundationValidator_00026,
+  "urn:loop-agent:schema:process-evidence": validate202012.__skillFamilyFoundationValidator_00027,
+});
+
+export default STANDALONE_VALIDATORS;

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/parameters.json",
+  "title": "Skill Family Audit release-audit parameters",
+  "description": "发布门禁检查方法的领域参数合同。",
+  "type": "object",
+  "properties": {
+    "target_project_path": {
+      "type": "string",
+      "description": "方法级输入参数 target_project_path"
+    },
+    "candidate_release_ref": {
+      "type": "string",
+      "description": "方法级输入参数 candidate_release_ref"
+    },
+    "assessments_ref": {
+      "type": "string",
+      "description": "方法级输入参数 assessments_ref"
+    }
+  },
+  "required": [
+    "target_project_path",
+    "candidate_release_ref",
+    "assessments_ref"
+  ],
+  "additionalProperties": false
+}

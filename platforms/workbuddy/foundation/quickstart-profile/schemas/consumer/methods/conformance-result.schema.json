@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/result.json",
+  "title": "Skill Family Audit conformance-audit domain result",
+  "description": "规范符合性检查方法的领域结果合同。",
+  "type": "object",
+  "properties": {
+    "conformance_result": {
+      "type": "object",
+      "description": "符合性审计领域结论"
+    },
+    "rule_findings": {
+      "type": "array",
+      "items": {},
+      "description": "规则发现"
+    },
+    "evidence_list": {
+      "type": "array",
+      "items": {},
+      "description": "符合性审计领域证据"
+    },
+    "remediation_plan": {
+      "type": "array",
+      "items": {},
+      "description": "修复建议"
+    }
+  },
+  "required": [
+    "conformance_result",
+    "rule_findings",
+    "evidence_list",
+    "remediation_plan"
+  ],
+  "additionalProperties": false
+}
