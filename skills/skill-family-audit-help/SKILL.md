@@ -4,7 +4,7 @@ description: 说明 skill-family-audit 的能力、适用范围、依赖、支�
 user-invocable: true
 internal: false
 ---
-<!-- platform-projection: platform=codex; logical=skill-family-audit:help; source=skills/skill-family-audit/help -->
+<!-- platform-projection: platform=claude-code; logical=skill-family-audit:help; source=skills/skill-family-audit/help -->
 
 # skill-family-audit:help
 

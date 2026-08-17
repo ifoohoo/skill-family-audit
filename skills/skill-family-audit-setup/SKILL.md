@@ -5,7 +5,7 @@ user-invocable: true
 internal: false
 argument-hint: "[额外检查选项]"
 ---
-<!-- platform-projection: platform=codex; logical=skill-family-audit:setup; source=skills/skill-family-audit/setup -->
+<!-- platform-projection: platform=claude-code; logical=skill-family-audit:setup; source=skills/skill-family-audit/setup -->
 
 # skill-family-audit:setup
 

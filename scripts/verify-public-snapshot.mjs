@@ -183,8 +183,11 @@ export async function verify(root) {
     // only the candidate payload roots.  README, LICENSE, package metadata,
     // marketplace mirrors and this verifier are release-wrapper files; they
     // must not silently redefine the candidate approval subject.
+    // 1.1.0 起候选根级含 claude 双重映射（.claude-plugin/** 与 skills/**，
+    // A1 裁决），与生成器 _populate_candidate 的闭包集合对齐。
     const payloadFiles = allFiles.filter(
-      (item) => (item.startsWith("platforms/") || item.startsWith("spec/"))
+      (item) => (item.startsWith("platforms/") || item.startsWith("spec/")
+        || item.startsWith(".claude-plugin/") || item.startsWith("skills/"))
         && !item.endsWith("#non-file"),
     );
     const payloadDigest = (await foundationClosure(runnerApi, root, payloadFiles)).digest;

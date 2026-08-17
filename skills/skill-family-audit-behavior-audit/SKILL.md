@@ -5,7 +5,7 @@ user-invocable: false
 internal: true
 method-id: "skill-family-audit:behavior-audit"
 ---
-<!-- platform-projection: platform=codex; logical=skill-family-audit:behavior-audit; source=skills/skill-family-audit-behavior -->
+<!-- platform-projection: platform=claude-code; logical=skill-family-audit:behavior-audit; source=skills/skill-family-audit-behavior -->
 
 # behavior-audit
 

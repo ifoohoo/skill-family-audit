@@ -5,7 +5,7 @@ user-invocable: true
 internal: false
 argument-hint: "<自然语言请求，如：对 /path/to/project 进行规范检查>"
 ---
-<!-- platform-projection: platform=codex; logical=skill-family-audit:quickstart; source=skills/skill-family-audit/quickstart -->
+<!-- platform-projection: platform=claude-code; logical=skill-family-audit:quickstart; source=skills/skill-family-audit/quickstart -->
 
 # skill-family-audit:quickstart
 

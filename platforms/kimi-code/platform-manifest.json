@@ -198,8 +198,8 @@
   "platformId": "kimi-code",
   "platformManifest": "kimi.plugin.json",
   "platformName": "Kimi Code",
-  "projectionDigest": "6099ecd454e1e197e507d7c95af3bf0dc9acf8548d568d6d4b5ec757be641e5c",
-  "projectionId": "skill-family-audit:kimi-code:1.0.0",
+  "projectionDigest": "64293df72110afb65e86664e9be69d620a5aa0406c36cff28b493a0916237314",
+  "projectionId": "skill-family-audit:kimi-code:1.1.0",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -214,7 +214,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "78fd5f1b354d280c050731cf30ef463ae093de85e9bf9fae3cad7d5c63bd85ef",
+  "sourceDigest": "d95b190b1807fe3a97d9b8c6d5c178fd6a9626c2540f6985643aa02798996b65",
   "status": "candidate",
   "supportStatus": "manual_unverified",
   "unverifiedCapabilities": [
@@ -228,5 +228,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

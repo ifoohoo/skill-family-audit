@@ -5,7 +5,7 @@ user-invocable: false
 internal: true
 method-id: "skill-family-audit:conformance-audit"
 ---
-<!-- platform-projection: platform=codex; logical=skill-family-audit:conformance-audit; source=skills/skill-family-audit-conformance -->
+<!-- platform-projection: platform=claude-code; logical=skill-family-audit:conformance-audit; source=skills/skill-family-audit-conformance -->
 
 # conformance-audit
 

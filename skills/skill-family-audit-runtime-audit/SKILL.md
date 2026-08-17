@@ -5,7 +5,7 @@ user-invocable: false
 internal: true
 method-id: "skill-family-audit:runtime-audit"
 ---
-<!-- platform-projection: platform=codex; logical=skill-family-audit:runtime-audit; source=skills/skill-family-audit-runtime -->
+<!-- platform-projection: platform=claude-code; logical=skill-family-audit:runtime-audit; source=skills/skill-family-audit-runtime -->
 
 # runtime-audit
 

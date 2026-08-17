@@ -198,8 +198,8 @@
   "platformId": "codex",
   "platformManifest": ".codex-plugin/plugin.json",
   "platformName": "Codex",
-  "projectionDigest": "52b4f2e918e063de127da27129f02f1d75c0f2f1b669bd41ce6eb6a163097c21",
-  "projectionId": "skill-family-audit:codex:1.0.0",
+  "projectionDigest": "04dfca73cd88bf84232df9a7b01b41ec7ba670f139327aebd6bc4d493ade7d2c",
+  "projectionId": "skill-family-audit:codex:1.1.0",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -214,7 +214,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "78fd5f1b354d280c050731cf30ef463ae093de85e9bf9fae3cad7d5c63bd85ef",
+  "sourceDigest": "d95b190b1807fe3a97d9b8c6d5c178fd6a9626c2540f6985643aa02798996b65",
   "status": "candidate",
   "supportStatus": "static_projection_available",
   "unverifiedCapabilities": [
@@ -227,5 +227,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

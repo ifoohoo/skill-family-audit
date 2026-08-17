@@ -5,7 +5,7 @@ user-invocable: false
 internal: true
 method-id: "skill-family-audit:release-audit"
 ---
-<!-- platform-projection: platform=codex; logical=skill-family-audit:release-audit; source=skills/skill-family-audit-release -->
+<!-- platform-projection: platform=claude-code; logical=skill-family-audit:release-audit; source=skills/skill-family-audit-release -->
 
 # release-audit
 
