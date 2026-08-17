@@ -198,7 +198,7 @@
   "platformId": "workbuddy",
   "platformManifest": ".codebuddy-plugin/plugin.json",
   "platformName": "WorkBuddy",
-  "projectionDigest": "94e274b66717295cf70afbc6e07bedc5f98d46fec0581c4a8318d0cb03aed728",
+  "projectionDigest": "5a3cf850f4e370a6a2bbaf849b7840513854a1ea8c88f9bedb1709f8fd411e1f",
   "projectionId": "skill-family-audit:workbuddy:1.1.0",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {

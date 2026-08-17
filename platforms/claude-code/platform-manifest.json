@@ -198,7 +198,7 @@
   "platformId": "claude-code",
   "platformManifest": ".claude-plugin/plugin.json",
   "platformName": "Claude Code",
-  "projectionDigest": "0d0fa955ef051552a008f309003ced4b5d9f745655808e53d0bba7cfe2db21cc",
+  "projectionDigest": "21cf5fbbfa423fa6c97220e95f3a8b221c43f18c15d398c33fc73c7ec938cf34",
   "projectionId": "skill-family-audit:claude-code:1.1.0",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {

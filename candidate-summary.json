@@ -1,15 +1,15 @@
 {
   "blocked": false,
   "candidateId": "skill-family-audit:1.1.0",
-  "candidatePayloadDigest": "44ead84dc67f49af5dc12e39c6c40664c9bfc3c45d3c589d663e9bf89cccfbed",
+  "candidatePayloadDigest": "afeaf312a55138904756486883b6faedb0846b9ab16d923390859f67e8b65550",
   "claimsStableRelease": false,
   "familyId": "skill-family-audit",
   "note": "四平台静态投影与 Foundation profile bundle 已冻结。Kimi 采用人工安装或可选 --skills-dir 会话加载；宿主自动安装不属于候选发布门。",
   "platformDigests": {
-    "claude-code": "0d0fa955ef051552a008f309003ced4b5d9f745655808e53d0bba7cfe2db21cc",
+    "claude-code": "21cf5fbbfa423fa6c97220e95f3a8b221c43f18c15d398c33fc73c7ec938cf34",
     "codex": "04dfca73cd88bf84232df9a7b01b41ec7ba670f139327aebd6bc4d493ade7d2c",
     "kimi-code": "64293df72110afb65e86664e9be69d620a5aa0406c36cff28b493a0916237314",
-    "workbuddy": "94e274b66717295cf70afbc6e07bedc5f98d46fec0581c4a8318d0cb03aed728"
+    "workbuddy": "5a3cf850f4e370a6a2bbaf849b7840513854a1ea8c88f9bedb1709f8fd411e1f"
   },
   "platforms": [
     "claude-code",

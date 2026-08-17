@@ -1,6 +1,6 @@
 {
   "description": "Local isolated lifecycle marketplace for Skill Family Audit",
-  "name": "skill-family-audit-local",
+  "name": "skill-family-audit",
   "owner": {
     "name": "ifoohoo"
   },
