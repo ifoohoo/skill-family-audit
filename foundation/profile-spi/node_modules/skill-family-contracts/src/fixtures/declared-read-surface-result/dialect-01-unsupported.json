@@ -1,0 +1,21 @@
+{
+  "fixtureId": "declared-read-surface-result.dialect-boundary.unsupported",
+  "contract": "declared-read-surface-result",
+  "class": "dialect-boundary",
+  "description": "The result is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/declared-read-surface-result.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.declared-read-surface-result",
+    "ok": true,
+    "violations": [],
+    "scannedModules": ["lib/reader-a.mjs"],
+    "scope": "esm-named-imports-only",
+    "guarantees": ["no-execution"]
+  }
+}

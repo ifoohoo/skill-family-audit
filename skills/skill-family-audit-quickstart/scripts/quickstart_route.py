@@ -475,28 +475,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             **os.environ,
             "SFA_PLUGIN_PROJECT_OBSERVATION_REF": str(observation),
             "SFA_AUDIT_BUNDLE_RUNNER_REF": str(runner),
-            **(
-                {
-                    "SFA_TARGET_BUNDLE_RUNNER_REF": str(
-                        Path(target_value).resolve()
-                        / json.loads(
-                            (
-                                Path(target_value).resolve()
-                                / ".skill-family-audit/adoption-lock.json"
-                            ).read_text(encoding="utf-8")
-                        )["installed_root"]
-                        / json.loads(
-                            (
-                                Path(target_value).resolve()
-                                / ".skill-family-audit/adoption-lock.json"
-                            ).read_text(encoding="utf-8")
-                        )["bundle_root"]
-                        / "runner.mjs"
-                    )
-                }
-                if target_type_value == "project_adoption"
-                else {}
-            ),
         },
     )
     try:

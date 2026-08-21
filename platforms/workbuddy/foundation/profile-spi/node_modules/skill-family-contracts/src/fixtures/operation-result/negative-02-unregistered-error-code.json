@@ -1,0 +1,30 @@
+{
+  "fixtureId": "operation-result.negative.unregistered-error-code",
+  "contract": "operation-result",
+  "class": "negative",
+  "description": "The envelope is schema-valid (the code matches the SFC pattern), but the code is not in the frozen registry and must fail the post-check.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/operation-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1009" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.operation-result",
+    "protocol": {
+      "name": "skill-family.kernel.operation",
+      "version": 1
+    },
+    "operationId": "op-example-0004",
+    "operation": "validate",
+    "state": "failed",
+    "outputs": null,
+    "errors": [
+      {
+        "code": "SFC9999",
+        "message": "This code is deliberately unregistered."
+      }
+    ]
+  }
+}

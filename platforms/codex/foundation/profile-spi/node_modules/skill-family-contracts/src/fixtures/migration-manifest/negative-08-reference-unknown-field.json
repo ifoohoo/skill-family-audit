@@ -1,0 +1,19 @@
+{
+  "fixtureId": "migration-manifest.negative.reference-unknown-field",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "Unknown fields inside a legacyReference item are rejected: the vocabulary is closed per item, preventing smuggled directives.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "legacyReferences": [
+      { "path": "src/index.mjs", "text": "old import", "replacedBy": "sf-kit check", "autoDelete": true }
+    ]
+  }
+}

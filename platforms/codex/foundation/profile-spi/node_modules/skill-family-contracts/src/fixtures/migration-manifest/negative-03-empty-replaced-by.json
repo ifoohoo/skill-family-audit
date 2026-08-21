@@ -1,0 +1,19 @@
+{
+  "fixtureId": "migration-manifest.negative.empty-replaced-by",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "An empty replacedBy is rejected: a legacy entry must name the facility that supersedes it before it can ever count as exited.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "legacyInfra": [
+      { "path": "scripts/legacy-validator.mjs", "replacedBy": "" }
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "fixtureId": "operation-result.positive.succeeded",
+  "contract": "operation-result",
+  "class": "positive",
+  "description": "A terminal success result with outputs and an empty error list.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/operation-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.operation-result",
+    "protocol": {
+      "name": "skill-family.kernel.operation",
+      "version": 1
+    },
+    "operationId": "op-example-0001",
+    "operation": "validate",
+    "state": "succeeded",
+    "outputs": {
+      "report": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    "errors": [],
+    "completedAt": "2026-08-03T09:05:01Z"
+  }
+}

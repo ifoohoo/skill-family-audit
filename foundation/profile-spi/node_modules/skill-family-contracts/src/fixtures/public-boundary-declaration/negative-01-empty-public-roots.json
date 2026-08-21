@@ -1,0 +1,22 @@
+{
+  "fixtureId": "public-boundary-declaration.negative.empty-public-roots",
+  "contract": "public-boundary-declaration",
+  "class": "negative",
+  "description": "A boundary declaration without any public root is rejected: the public set must live under at least one declared root.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/public-boundary-declaration.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.public-boundary-declaration",
+    "declarationId": "public-site",
+    "declaredVersion": "0.6.0",
+    "publicRoots": [],
+    "requiredPaths": [],
+    "forbiddenPaths": [],
+    "publicFiles": []
+  }
+}

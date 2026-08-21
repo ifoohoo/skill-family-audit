@@ -1,0 +1,30 @@
+{
+  "fixtureId": "operation-result.dialect-boundary.success-with-errors",
+  "contract": "operation-result",
+  "class": "dialect-boundary",
+  "description": "Conditional applicator boundary: the if/then composition over state is 2020-12 vocabulary; succeeded with a non-empty error list must be rejected.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/operation-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.operation-result",
+    "protocol": {
+      "name": "skill-family.kernel.operation",
+      "version": 1
+    },
+    "operationId": "op-example-0005",
+    "operation": "validate",
+    "state": "succeeded",
+    "outputs": {},
+    "errors": [
+      {
+        "code": "SFC1001",
+        "message": "A success result cannot carry errors."
+      }
+    ]
+  }
+}

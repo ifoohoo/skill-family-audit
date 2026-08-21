@@ -1,0 +1,39 @@
+{
+  "fixtureId": "profile-descriptor.positive.with-differences",
+  "contract": "profile-descriptor",
+  "class": "positive",
+  "description": "A fictional descriptor declaring one difference and one SPI implementation.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/profile-descriptor.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.profile-descriptor",
+    "profile": {
+      "id": "public-plugin",
+      "name": "Public Plugin Profile",
+      "version": "1.0.0"
+    },
+    "base": {
+      "contractsVersion": "1.0.0"
+    },
+    "differences": [
+      {
+        "id": "adds-plugin-entry",
+        "kind": "adds",
+        "target": "plugin-entry",
+        "note": "Fictional extension point."
+      }
+    ],
+    "spi": [
+      {
+        "id": "example-renderer",
+        "version": 1,
+        "entrypoint": "src/render.mjs"
+      }
+    ]
+  }
+}

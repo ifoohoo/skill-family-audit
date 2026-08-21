@@ -1,0 +1,27 @@
+{
+  "fixtureId": "state-event-envelope.negative.zero-fencing",
+  "contract": "state-event-envelope",
+  "class": "negative",
+  "description": "Fencing zero is reserved for an initializing lock and cannot appear in an event.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/state-event-envelope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.state-event-envelope",
+    "eventId": "evt-1",
+    "eventType": "fictional.counter.adjusted",
+    "payloadSchemaVersion": 1,
+    "producer": "fictional-producer",
+    "idempotencyKey": "key-1",
+    "writerOwner": "writer-a",
+    "writerFencing": 0,
+    "sequence": 1,
+    "prevDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": { "delta": 1 },
+    "recordDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

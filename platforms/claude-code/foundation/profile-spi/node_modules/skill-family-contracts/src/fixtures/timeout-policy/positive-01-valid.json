@@ -1,0 +1,24 @@
+{
+  "fixtureId": "timeout-policy.positive.valid",
+  "contract": "timeout-policy",
+  "class": "positive",
+  "description": "A fully specified consumer timeout policy: required maxSeconds and killGraceSeconds plus all four optional dimensions, all positive numbers in seconds.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/timeout-policy.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": true
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.timeout-policy",
+    "startupStaleSeconds": 60,
+    "startupIdleSeconds": 120,
+    "streamIdleSeconds": 1800,
+    "maxSeconds": 3600,
+    "toolLeaseSeconds": 7200,
+    "killGraceSeconds": 10
+  }
+}

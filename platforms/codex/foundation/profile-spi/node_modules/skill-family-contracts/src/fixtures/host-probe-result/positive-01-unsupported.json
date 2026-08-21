@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-probe-result.positive.unsupported", "contract": "host-probe-result", "class": "positive",
+  "description": "An unsupported host probe is explicit and contains no capability facts.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-probe-result.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-probe-result", "hostId": "fixture-host", "support": "unsupported", "reason": "No audited driver.", "facts": [] }
+}

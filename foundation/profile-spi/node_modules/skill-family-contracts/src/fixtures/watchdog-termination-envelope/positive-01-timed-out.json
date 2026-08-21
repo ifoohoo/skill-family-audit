@@ -1,0 +1,52 @@
+{
+  "fixtureId": "watchdog-termination-envelope.positive.timed-out",
+  "contract": "watchdog-termination-envelope",
+  "class": "positive",
+  "description": "A hard-ceiling termination envelope: closed enums (TIMED_OUT / hard_ceiling / max_seconds), deterministic exit status 124, full evidence with signal sequence and guarantees.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/watchdog-termination-envelope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.watchdog-termination-envelope",
+    "ok": false,
+    "exitStatus": 124,
+    "processStatus": "TIMED_OUT",
+    "terminationReason": "hard_ceiling",
+    "watchdogReason": "max_seconds",
+    "evidence": {
+      "command": "node",
+      "args": ["-e", "setTimeout(() => {}, 3600_000)"],
+      "cwd": "/tmp/fictitious-cwd",
+      "startedAt": "2026-08-18T00:00:00.000Z",
+      "finishedAt": "2026-08-18T01:00:00.000Z",
+      "checkIntervalSeconds": 1,
+      "pid": 4242,
+      "processGroupId": 4242,
+      "childExitCode": null,
+      "childSignal": "SIGTERM",
+      "signalSequence": [
+        { "signal": "SIGTERM", "requestedMode": "process_group", "successfulMode": "process_group" },
+        { "signal": "SIGKILL", "requestedMode": "process_group", "successfulMode": "process_group" }
+      ],
+      "forcedKill": true,
+      "startupProgressPaths": [],
+      "terminalProgressPaths": [],
+      "timeoutPolicy": {
+        "maxSeconds": 3600,
+        "killGraceSeconds": 10
+      },
+      "guarantees": [
+        "closed-enum-evidence",
+        "fail-closed",
+        "no-auto-restart",
+        "no-liveness-guessing",
+        "process-group-termination",
+        "mechanism-holds-no-timeout-values"
+      ]
+    }
+  }
+}

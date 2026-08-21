@@ -1,0 +1,62 @@
+{
+  "fixtureId": "report-model.positive.full-zh",
+  "contract": "report-model",
+  "class": "positive",
+  "description": "A complete zh-CN report model: every fact section populated, counts matching array lengths, source digest and renderer metadata present.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-model.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-model",
+    "identity": {
+      "runId": "run-aurora-0001",
+      "skillFamily": "aurora-notes-publish",
+      "stageId": "stage-publish-01",
+      "audience": "reviewer",
+      "locale": "zh-CN"
+   },
+    "timeRange": { "startedAt": "2026-08-09T08:00:00Z", "completedAt": "2026-08-09T08:05:00Z" },
+    "outcome": {
+      "executionStatus": "SUCCEEDED_WITH_WARNINGS",
+      "summary": "虚构技能族 aurora-notes-publish 的发布演练完成，两处样式告警未阻塞发布。",
+      "counts": {
+        "changes": 2,
+        "evidence": 2,
+        "risks": 1,
+        "unresolved": 1,
+        "nextActions": 2,
+        "appendices": 1
+      }
+    },
+    "errors": [],
+    "changes": [
+      { "path": "docs/release-notes.md", "description": "追加本次发布说明段落。" },
+      { "path": "src/render/zh.mjs", "description": "修正标题层级，无行为变化。" }
+    ],
+    "evidence": [
+      {
+        "id": "evd-001",
+        "title": "渲染字节稳定性输出",
+        "reference": "artifacts/logs/aurora-render-0001.txt",
+        "note": "十轮渲染字节一致。"
+      },
+      { "id": "evd-002", "title": "附录对照", "reference": "#appendix-a" }
+    ],
+    "risks": ["样式层尚未接入，告警仅以人工方式复核。"],
+    "unresolved": ["附录 A 的证据引用格式待下一版本统一。"],
+    "nextActions": ["在下一轮演练中接入样式检查。", "归档本次运行的机器摘要。"],
+    "appendices": [
+      { "title": "附录 A：摘要原文", "body": "本附录仅承载机器结果中的原文摘要，不做改写。" }
+    ],
+    "source": {
+      "resultDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "resultState": "succeeded",
+      "resultKind": "skill-family.operation-result"
+    },
+    "renderer": { "name": "skill-family-harness-node/report", "version": "0.2.0" }
+  }
+}

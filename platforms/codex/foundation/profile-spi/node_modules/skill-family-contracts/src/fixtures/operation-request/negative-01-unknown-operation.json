@@ -1,0 +1,23 @@
+{
+  "fixtureId": "operation-request.negative.unknown-operation",
+  "contract": "operation-request",
+  "class": "negative",
+  "description": "The envelope is schema-valid, but the operation name is outside the frozen kernel vocabulary and must fail intake with the stable code.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/operation-request.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC2002" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.operation-request",
+    "protocol": {
+      "name": "skill-family.kernel.operation",
+      "version": 1
+    },
+    "operationId": "op-example-0002",
+    "operation": "teleport",
+    "params": {}
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-capability-fact.dialect-boundary.unsupported", "contract": "host-capability-fact", "class": "dialect-boundary",
+  "description": "Unsupported schema dialect fails before validation.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-capability-fact.json", "dialect": "draft-04", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-capability-fact", "hostId": "fixture-host", "capability": "smoke", "state": "unknown", "evidence": ["No frozen probe."], "unknownReason": "driver-limited", "manualSteps": ["Verify manually."] }
+}

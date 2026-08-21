@@ -1,0 +1,27 @@
+{
+  "fixtureId": "project-manifest.positive.minimal",
+  "contract": "project-manifest",
+  "class": "positive",
+  "description": "A complete fictional manifest exercising every frozen field, including the date-time format.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": {
+      "id": "example-skill-suite",
+      "name": "Example Skill Suite",
+      "description": "Fictional example project used by contracts fixtures."
+    },
+    "contracts": {
+      "version": "1.0.0",
+      "profile": "public-plugin"
+    },
+    "managedFiles": ["docs/setup.md", "packages/example/package.json"],
+    "updatedAt": "2026-08-03T09:00:00Z"
+  }
+}

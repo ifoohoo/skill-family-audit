@@ -1,0 +1,49 @@
+{
+  "fixtureId": "watchdog-termination-envelope.positive.natural-completion",
+  "contract": "watchdog-termination-envelope",
+  "class": "positive",
+  "description": "A natural completion envelope: ok=true, exitStatus=0, processStatus=EXITED, null reasons, no signal sequence.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/watchdog-termination-envelope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.watchdog-termination-envelope",
+    "ok": true,
+    "exitStatus": 0,
+    "processStatus": "EXITED",
+    "terminationReason": null,
+    "watchdogReason": null,
+    "evidence": {
+      "command": "node",
+      "args": ["-e", "console.log('done')"],
+      "cwd": "/tmp/fictitious-cwd",
+      "startedAt": "2026-08-18T00:00:00.000Z",
+      "finishedAt": "2026-08-18T00:00:01.000Z",
+      "checkIntervalSeconds": 1,
+      "pid": 4243,
+      "processGroupId": 4243,
+      "childExitCode": 0,
+      "childSignal": null,
+      "signalSequence": [],
+      "forcedKill": false,
+      "startupProgressPaths": [],
+      "terminalProgressPaths": [],
+      "timeoutPolicy": {
+        "maxSeconds": 3600,
+        "killGraceSeconds": 10
+      },
+      "guarantees": [
+        "closed-enum-evidence",
+        "fail-closed",
+        "no-auto-restart",
+        "no-liveness-guessing",
+        "process-group-termination",
+        "mechanism-holds-no-timeout-values"
+      ]
+    }
+  }
+}

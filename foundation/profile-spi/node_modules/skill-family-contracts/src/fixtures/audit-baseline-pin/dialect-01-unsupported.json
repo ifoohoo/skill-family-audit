@@ -1,0 +1,76 @@
+{
+  "fixtureId": "audit-baseline-pin.dialect-boundary.unsupported",
+  "contract": "audit-baseline-pin",
+  "class": "dialect-boundary",
+  "description": "The document is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/audit-baseline-pin.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1006"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.audit-baseline-pin",
+    "provenance": "product-compatibility-fixture",
+    "frozenAt": "2026-08-18",
+    "contractsVersion": "1.6.0",
+    "auditSurfaceVersion": 1,
+    "digestAlgorithm": "sha256",
+    "note": "Baseline pin for Contracts 1.6.0 generated mechanically from describeAuditSurface().",
+    "supersedes": "contracts-1.5.0.pin.json",
+    "surfaceDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "documentDigests": {
+      "registry": "123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+      "errorCodes": "23456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
+      "rules": "3456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012",
+      "kernelProtocol": "456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123"
+    },
+    "schemaDigests": {
+      "https://contracts.skill-family.example/v1/project-manifest.json": "56789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234"
+    },
+    "facts": {
+      "contractObjects": [
+        "project-manifest"
+      ],
+      "checkTypes": [
+        "schema.compile"
+      ],
+      "mandatoryRuleIds": [
+        "CR-001"
+      ],
+      "ruleBudget": {
+        "firstVersionMax": 20,
+        "absoluteMax": 30
+      },
+      "errorCodes": [
+        "SFC1001"
+      ],
+      "kernelOperations": [
+        "validate"
+      ],
+      "kernelTerminalStates": [
+        "succeeded",
+        "failed",
+        "rejected"
+      ],
+      "validationPolicies": {
+        "strict": {
+          "coerceTypes": false,
+          "useDefaults": false,
+          "allErrors": true,
+          "validateFormats": true
+        }
+      },
+      "supportedDialects": [
+        "2020-12",
+        "draft-07"
+      ],
+      "errorCodeStabilityPolicy": "Codes are append-only.",
+      "schemaIdNamespace": "https://contracts.skill-family.example/v1/"
+    }
+  }
+}

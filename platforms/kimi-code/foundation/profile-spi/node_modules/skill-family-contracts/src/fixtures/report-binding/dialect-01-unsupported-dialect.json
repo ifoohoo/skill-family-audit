@@ -1,0 +1,21 @@
+{
+  "fixtureId": "report-binding.dialect-boundary.unsupported-dialect",
+  "contract": "report-binding",
+  "class": "dialect-boundary",
+  "description": "Dialect boundary: a valid binding document declared under an unsupported dialect (draft-04) is rejected before any schema validation, with the stable dialect code.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-binding.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-binding",
+    "runId": "run-aurora-0001",
+    "modelDigest": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "resultDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "reportDigest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "rendererVersion": "0.2.0"
+  }
+}

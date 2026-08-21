@@ -1,0 +1,38 @@
+{
+  "fixtureId": "operation-request.positive.validate-op",
+  "contract": "operation-request",
+  "class": "positive",
+  "description": "A well-formed kernel request for the frozen validate operation with conforming params.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/operation-request.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.operation-request",
+    "protocol": {
+      "name": "skill-family.kernel.operation",
+      "version": 1
+    },
+    "operationId": "op-example-0001",
+    "operation": "validate",
+    "params": {
+      "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+      "document": {
+        "schemaVersion": 1,
+        "kind": "skill-family.project-manifest",
+        "project": {
+          "id": "example-skill-suite",
+          "name": "Example Skill Suite"
+        },
+        "contracts": {
+          "version": "1.0.0",
+          "profile": "public-plugin"
+        }
+      }
+    },
+    "requestedAt": "2026-08-03T09:05:00Z"
+  }
+}

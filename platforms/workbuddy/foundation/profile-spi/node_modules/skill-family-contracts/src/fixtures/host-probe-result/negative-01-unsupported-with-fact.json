@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-probe-result.negative.unsupported-with-fact", "contract": "host-probe-result", "class": "negative",
+  "description": "An unsupported host cannot claim a capability fact.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-probe-result.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-probe-result", "hostId": "fixture-host", "support": "unsupported", "reason": "No audited driver.", "facts": [{ "schemaVersion": 1, "kind": "skill-family.host-capability-fact", "hostId": "fixture-host", "capability": "cli", "state": "unavailable", "evidence": ["Not present."] }] }
+}

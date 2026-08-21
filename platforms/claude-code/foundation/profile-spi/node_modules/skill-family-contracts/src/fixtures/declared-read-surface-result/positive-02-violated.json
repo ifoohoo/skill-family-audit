@@ -1,0 +1,42 @@
+{
+  "fixtureId": "declared-read-surface-result.positive.violation-evidence",
+  "contract": "declared-read-surface-result",
+  "class": "positive",
+  "description": "A violated declared read surface must be expressible with evidence entries: an undeclared module importing fs, an API outside the declared set, and a write-family API hit, each carrying its closed rule label.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/declared-read-surface-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.declared-read-surface-result",
+    "ok": false,
+    "violations": [
+      {
+        "module": "lib/undeclared.mjs",
+        "rule": "undeclared-module-imports-fs"
+      },
+      {
+        "module": "lib/reader-a.mjs",
+        "api": "readlinkSync",
+        "rule": "fs-api-outside-declared-set"
+      },
+      {
+        "module": "lib/reader-a.mjs",
+        "api": "writeFileSync",
+        "rule": "write-family-fs-api"
+      }
+    ],
+    "scannedModules": ["lib/reader-a.mjs", "lib/undeclared.mjs"],
+    "scope": "esm-named-imports-only",
+    "guarantees": [
+      "syntax-surface-only",
+      "conservative-approximation",
+      "no-execution",
+      "no-model-calls",
+      "no-network-access"
+    ]
+  }
+}

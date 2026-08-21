@@ -1,0 +1,27 @@
+{
+  "fixtureId": "state-event-envelope.dialect-boundary.unsupported",
+  "contract": "state-event-envelope",
+  "class": "dialect-boundary",
+  "description": "The envelope is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/state-event-envelope.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.state-event-envelope",
+    "eventId": "evt-1",
+    "eventType": "fictional.counter.adjusted",
+    "payloadSchemaVersion": 1,
+    "producer": "fictional-producer",
+    "idempotencyKey": "key-1",
+    "writerOwner": "writer-a",
+    "writerFencing": 1,
+    "sequence": 1,
+    "prevDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "payload": { "delta": 1 },
+    "recordDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

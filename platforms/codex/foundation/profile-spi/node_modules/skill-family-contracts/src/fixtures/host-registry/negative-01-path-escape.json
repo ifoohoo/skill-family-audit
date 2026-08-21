@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-registry.negative.duplicate-host", "contract": "host-registry", "class": "negative",
+  "description": "A registry cannot declare the same fictional host twice.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-registry.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-registry", "hosts": ["fixture-host", "fixture-host"] }
+}

@@ -1,0 +1,20 @@
+{
+  "fixtureId": "timeout-policy.negative.missing-required",
+  "contract": "timeout-policy",
+  "class": "negative",
+  "description": "A policy without the required maxSeconds is rejected; the mechanism must not hold a hidden default ceiling.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/timeout-policy.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1001"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.timeout-policy",
+    "killGraceSeconds": 10
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "fixtureId": "structured-scan-policy.positive.valid",
+  "contract": "structured-scan-policy",
+  "class": "positive",
+  "description": "A fictitious structured scan policy: TEST-NET CIDRs, one approved registry, fictitious approved coordinates, one format adapter and fail-closed symlink/binary modes.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/structured-scan-policy.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.structured-scan-policy",
+    "allowedNetworks": ["192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24"],
+    "approvedRegistries": ["https://registry.example.test/"],
+    "approvedCoordinates": [
+      "fictitious-scope/fictitious-lockfile-parser@1.2.3",
+      "fictitious-scope/fictitious-yaml-reader@4.5.6",
+      "fictitious-scope/fictitious-ip-parser@2.3.4"
+    ],
+    "formatAdapters": [
+      { "name": "fictitious-lockfile", "pathPattern": "pnpm-lock\\.yaml$" },
+      { "name": "fictitious-tree-json", "pathPattern": "\\.projen/tree\\.json$" }
+    ],
+    "symlinkPolicy": { "mode": "forbid" },
+    "binaryPolicy": { "mode": "fail-closed", "approvedPaths": ["vendor/prebuilt-fictitious.bin"] },
+    "hostKeyPattern": "^fictitious-[a-z0-9]+\\.example\\.test$"
+  }
+}

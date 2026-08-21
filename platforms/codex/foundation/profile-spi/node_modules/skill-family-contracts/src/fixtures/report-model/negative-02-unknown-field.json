@@ -1,0 +1,17 @@
+{
+  "fixtureId": "report-model.negative.unknown-field",
+  "contract": "report-model",
+  "class": "negative",
+  "description": "Unknown top-level fields are rejected: the report model vocabulary is closed, so renderer-added prose or smuggled directives cannot ride along with a valid envelope.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-model.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-model",
+    "styleHint": "make it friendlier"
+  }
+}

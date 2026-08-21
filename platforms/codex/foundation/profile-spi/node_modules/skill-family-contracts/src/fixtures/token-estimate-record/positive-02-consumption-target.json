@@ -1,0 +1,41 @@
+{
+  "fixtureId": "token-estimate-record.positive.consumption-target",
+  "contract": "token-estimate-record",
+  "class": "positive",
+  "description": "Consumption contract (SG-33): the numeric estimate a consumer must read is exactly the top-level integer field `tokens`. This valid record pins that guarantee — `tokens` is present, is a non-negative integer, and re-derives as segmentation.cjkCharacters + segmentation.otherRuns. A consumer reading any other field (segmentation, input) for display is violating the frozen consumption contract that produced the `[object Object]` bug.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/token-estimate-record.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.token-estimate-record",
+    "estimator": {
+      "id": "skill-family.token-estimator",
+      "version": "1.0.0"
+    },
+    "algorithm": "cjk-char-whitespace-split",
+    "unit": "tokens",
+    "input": {
+      "codePoints": 3,
+      "inputBytes": 3
+    },
+    "segmentation": {
+      "cjkCharacters": 2,
+      "whitespaceSeparators": 0,
+      "otherRuns": 1
+    },
+    "tokens": 3,
+    "precision": "deterministic-heuristic",
+    "scope": "content-text-only",
+    "guarantees": [
+      "covers-content-text-only",
+      "no-model-calls",
+      "no-tokenizer-dependency",
+      "no-network-access",
+      "deterministic-segmentation"
+    ]
+  }
+}

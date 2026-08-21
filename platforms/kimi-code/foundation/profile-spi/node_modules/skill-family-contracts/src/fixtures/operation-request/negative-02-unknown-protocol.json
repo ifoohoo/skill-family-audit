@@ -1,0 +1,26 @@
+{
+  "fixtureId": "operation-request.negative.unknown-protocol",
+  "contract": "operation-request",
+  "class": "negative",
+  "description": "The envelope is schema-valid, but the protocol name is not registered and must be rejected with the stable code.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/operation-request.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1011" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.operation-request",
+    "protocol": {
+      "name": "example.unknown.protocol",
+      "version": 1
+    },
+    "operationId": "op-example-0003",
+    "operation": "validate",
+    "params": {
+      "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+      "document": {}
+    }
+  }
+}

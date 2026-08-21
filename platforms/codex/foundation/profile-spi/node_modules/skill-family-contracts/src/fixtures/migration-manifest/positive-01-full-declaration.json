@@ -1,0 +1,28 @@
+{
+  "fixtureId": "migration-manifest.positive.full-declaration",
+  "contract": "migration-manifest",
+  "class": "positive",
+  "description": "A complete fictional migration manifest: one legacy validator bound to its replacement and one fully populated temporary exception.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "manifestVersion": 1,
+    "legacyInfra": [
+      { "path": "scripts/legacy-validator.mjs", "replacedBy": "sf-kit check" }
+    ],
+    "exceptions": [
+      {
+        "owner": "fictional-platform-team",
+        "reason": "fictional release train frozen until quarter end",
+        "deadline": "2099-12-31",
+        "migrationTarget": "sf-kit projection"
+      }
+    ]
+  }
+}

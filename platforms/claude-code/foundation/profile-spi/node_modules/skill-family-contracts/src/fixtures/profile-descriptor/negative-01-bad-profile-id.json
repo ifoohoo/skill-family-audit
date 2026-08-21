@@ -1,0 +1,24 @@
+{
+  "fixtureId": "profile-descriptor.negative.bad-profile-id",
+  "contract": "profile-descriptor",
+  "class": "negative",
+  "description": "profile.id must be kebab-case; spaces and capitals fail with the stable schema code.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/profile-descriptor.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.profile-descriptor",
+    "profile": {
+      "id": "Public Plugin",
+      "name": "Public Plugin Profile",
+      "version": "1.0.0"
+    },
+    "base": {
+      "contractsVersion": "1.0.0"
+    }
+  }
+}

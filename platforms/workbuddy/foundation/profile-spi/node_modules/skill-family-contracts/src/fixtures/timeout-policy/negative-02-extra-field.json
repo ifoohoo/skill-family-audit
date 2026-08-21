@@ -1,0 +1,22 @@
+{
+  "fixtureId": "timeout-policy.negative.extra-field",
+  "contract": "timeout-policy",
+  "class": "negative",
+  "description": "additionalProperties: false rejects a smuggled non-timeout field (e.g. a restart counter) — policy smuggling would violate the workflow-orchestration exclusion boundary.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/timeout-policy.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1001"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.timeout-policy",
+    "maxSeconds": 600,
+    "killGraceSeconds": 10,
+    "restartAfter": 30
+  }
+}

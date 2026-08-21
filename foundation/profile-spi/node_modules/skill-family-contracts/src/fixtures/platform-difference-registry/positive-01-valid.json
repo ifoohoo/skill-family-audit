@@ -1,0 +1,53 @@
+{
+  "fixtureId": "platform-difference-registry.positive.valid",
+  "contract": "platform-difference-registry",
+  "class": "positive",
+  "description": "A registry with one primary platform and one differing platform, all seven mandatory dimensions present, no status lowering and no semantics loosening.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/platform-difference-registry.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.platform-difference-registry",
+    "description": "Example family platform difference registry.",
+    "primaryPlatforms": ["claude-code"],
+    "requiredDimensions": [
+      "directory",
+      "manifest",
+      "discovery",
+      "invocation",
+      "internalIsolation",
+      "capabilityGaps",
+      "degradationConditions"
+    ],
+    "platforms": {
+      "claude-code": {
+        "platformId": "claude-code",
+        "primaryPlatform": true,
+        "directory": ".claude/skills",
+        "manifest": { "status": "present", "format": "json" },
+        "discovery": { "status": "automatic", "mechanism": "host-scan" },
+        "invocation": { "status": "native" },
+        "internalIsolation": { "status": "namespace" },
+        "capabilityGaps": [],
+        "degradationConditions": []
+      },
+      "codex": {
+        "platformId": "codex",
+        "primaryPlatform": false,
+        "lowersPrimaryPlatformStatus": false,
+        "loosensCommonBusinessSemantics": false,
+        "directory": ".codex/skills",
+        "manifest": { "status": "generated", "format": "json", "mechanism": "projection" },
+        "discovery": { "status": "automatic", "mechanism": "host-scan" },
+        "invocation": { "status": "native" },
+        "internalIsolation": { "status": "namespace" },
+        "capabilityGaps": ["no-hook-support"],
+        "degradationConditions": ["hooks-unavailable"]
+      }
+    }
+  }
+}

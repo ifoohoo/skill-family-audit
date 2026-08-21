@@ -1,0 +1,49 @@
+{
+  "fixtureId": "report-model.positive.empty-sections-en",
+  "contract": "report-model",
+  "class": "positive",
+  "description": "A minimal en-US report model: empty changes/risks/unresolved/nextActions/appendices are legitimate; conclusion, one evidence entry, counts, source digest and renderer stay mandatory.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-model.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-model",
+    "identity": {
+      "runId": "run-borealis-0042",
+      "skillFamily": "borealis-index-rebuild",
+      "audience": "operator",
+      "locale": "en-US"
+   },
+    "timeRange": { "startedAt": "2026-08-09T08:00:00Z", "completedAt": "2026-08-09T08:05:00Z" },
+    "outcome": {
+      "executionStatus": "SUCCEEDED",
+      "summary": "Index rebuild completed; no changes were required.",
+      "counts": {
+        "changes": 0,
+        "evidence": 1,
+        "risks": 0,
+        "unresolved": 0,
+        "nextActions": 0,
+        "appendices": 0
+      }
+    },
+    "errors": [],
+    "changes": [],
+    "evidence": [
+      { "id": "evd-1", "title": "Run log", "reference": "logs/borealis-0042.log" }
+    ],
+    "risks": [],
+    "unresolved": [],
+    "nextActions": [],
+    "appendices": [],
+    "source": {
+      "resultDigest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+      "resultState": "succeeded"
+    },
+    "renderer": { "name": "skill-family-harness-node/report", "version": "0.2.0" }
+  }
+}

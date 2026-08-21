@@ -1,0 +1,7 @@
+{
+  "fixtureId": "adapter-source.negative.path-escape", "contract": "adapter-source", "class": "negative",
+  "description": "An adapter source path cannot escape its declared skill directory.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/adapter-source.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.adapter-source", "skillFamilyId": "fixture-family", "skills": [{ "id": "demo-skill", "files": [{ "path": "../outside", "content": "bad" }] }] }
+}

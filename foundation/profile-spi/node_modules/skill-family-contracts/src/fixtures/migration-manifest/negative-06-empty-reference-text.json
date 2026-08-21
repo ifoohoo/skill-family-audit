@@ -1,0 +1,19 @@
+{
+  "fixtureId": "migration-manifest.negative.empty-reference-text",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "A legacyReference entry with an empty text field is rejected: minLength 1 ensures every declared reference targets a real literal.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "legacyReferences": [
+      { "path": "src/index.mjs", "text": "", "replacedBy": "sf-kit check" }
+    ]
+  }
+}

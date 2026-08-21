@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-operation-plan.negative.unsupported-action", "contract": "host-operation-plan", "class": "negative",
+  "description": "Unsupported planning cannot hide an action.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-operation-plan.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-operation-plan", "hostId": "fixture-host", "status": "unsupported", "unsupportedReason": "No frozen driver.", "probeFacts": [], "actions": [{ "sequence": 1 }], "writeSet": [], "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+}

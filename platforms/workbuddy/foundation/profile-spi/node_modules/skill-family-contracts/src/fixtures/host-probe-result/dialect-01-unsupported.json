@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-probe-result.dialect-boundary.unsupported", "contract": "host-probe-result", "class": "dialect-boundary",
+  "description": "Unsupported schema dialect fails before probe-result validation.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-probe-result.json", "dialect": "draft-04", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-probe-result", "hostId": "fixture-host", "support": "unsupported", "reason": "No audited driver.", "facts": [] }
+}

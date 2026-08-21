@@ -1,0 +1,21 @@
+{
+  "fixtureId": "timeout-policy.dialect-boundary.unsupported",
+  "contract": "timeout-policy",
+  "class": "dialect-boundary",
+  "description": "The policy is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/timeout-policy.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1006"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.timeout-policy",
+    "maxSeconds": 600,
+    "killGraceSeconds": 10
+  }
+}

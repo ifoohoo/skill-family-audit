@@ -1,0 +1,26 @@
+{
+  "fixtureId": "operation-request.dialect-boundary.coerce-version-tolerant",
+  "contract": "operation-request",
+  "class": "dialect-boundary",
+  "description": "Coercion policy boundary: a string protocol.version passes only because the tolerant policy enables Ajv integer coercion; the post-check then sees the coerced integer.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/operation-request.json",
+    "dialect": "2020-12",
+    "policy": "tolerant"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.operation-request",
+    "protocol": {
+      "name": "skill-family.kernel.operation",
+      "version": "1"
+    },
+    "operationId": "op-example-0005",
+    "operation": "validate",
+    "params": {
+      "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+      "document": {}
+    }
+  }
+}

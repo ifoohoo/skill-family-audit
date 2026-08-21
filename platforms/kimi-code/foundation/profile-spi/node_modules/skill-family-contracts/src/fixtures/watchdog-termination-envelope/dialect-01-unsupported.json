@@ -1,0 +1,35 @@
+{
+  "fixtureId": "watchdog-termination-envelope.dialect-boundary.unsupported",
+  "contract": "watchdog-termination-envelope",
+  "class": "dialect-boundary",
+  "description": "The envelope is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/watchdog-termination-envelope.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.watchdog-termination-envelope",
+    "ok": true,
+    "exitStatus": 0,
+    "processStatus": "EXITED",
+    "terminationReason": null,
+    "watchdogReason": null,
+    "evidence": {
+      "command": "node",
+      "args": [],
+      "cwd": "/tmp/fictitious-cwd",
+      "startedAt": "2026-08-18T00:00:00.000Z",
+      "finishedAt": "2026-08-18T00:00:01.000Z",
+      "checkIntervalSeconds": 1,
+      "signalSequence": [],
+      "forcedKill": false,
+      "startupProgressPaths": [],
+      "terminalProgressPaths": [],
+      "timeoutPolicy": { "maxSeconds": 3600, "killGraceSeconds": 10 },
+      "guarantees": ["fail-closed", "no-auto-restart"]
+    }
+  }
+}

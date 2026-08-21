@@ -1,0 +1,7 @@
+{
+  "fixtureId": "adapter-build-manifest.positive.single-file", "contract": "adapter-build-manifest", "class": "positive",
+  "description": "A manifest binds one source byte set to one controlled target.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/adapter-build-manifest.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": { "schemaVersion": 1, "kind": "skill-family.adapter-build-manifest", "hostId": "fixture-host", "pathCategory": { "id": "fixture-project-skills", "scope": "project", "anchor": "project-root", "relPath": ".fixture/skills" }, "sourceClosure": { "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "members": [{ "sourcePath": "demo/SKILL.md", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 4 }] }, "members": [{ "sourcePath": "demo/SKILL.md", "target": ".fixture/skills/demo/SKILL.md", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 4 }], "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+}

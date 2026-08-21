@@ -1,0 +1,21 @@
+{
+  "fixtureId": "report-binding.negative.wrong-kind",
+  "contract": "report-binding",
+  "class": "negative",
+  "description": "A binding with a wrong kind discriminator is rejected: a report model or any other document cannot impersonate the binding envelope.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-binding.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-model",
+    "runId": "run-aurora-0001",
+    "modelDigest": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "resultDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "reportDigest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "rendererVersion": "0.2.0"
+  }
+}

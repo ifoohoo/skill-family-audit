@@ -1,0 +1,21 @@
+{
+  "fixtureId": "timeout-policy.negative.non-positive",
+  "contract": "timeout-policy",
+  "class": "negative",
+  "description": "Zero and negative timeout values are rejected; a zero grace would make SIGTERM and SIGKILL indistinguishable.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/timeout-policy.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1001"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.timeout-policy",
+    "maxSeconds": 600,
+    "killGraceSeconds": 0
+  }
+}

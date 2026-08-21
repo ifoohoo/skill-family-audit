@@ -1,0 +1,9 @@
+{
+  "fixtureId": "project-profile.negative.unknown-field",
+  "contract": "project-profile",
+  "class": "negative",
+  "description": "Unknown project Profile fields are refused.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/project-profile.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.project-profile", "project": { "id": "fictional-project", "workspace": "fictional-project-workspace" }, "adoption": {}, "overrides": [], "unknown": true }
+}

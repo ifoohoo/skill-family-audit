@@ -1,0 +1,39 @@
+{
+  "fixtureId": "profile-adoption-declaration.negative.incomplete-pin",
+  "contract": "profile-adoption-declaration",
+  "class": "negative",
+  "description": "The Foundation pin must cover all three packages; a pin missing skill-family-engineering-kit is rejected.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/profile-adoption-declaration.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.profile-adoption-declaration",
+    "adoption": {
+      "foundation_profile": {
+        "id": "public-plugin",
+        "version": 1,
+        "stability": "stable"
+      },
+      "foundation_pin": {
+        "algorithm": "sha256",
+        "packages": {
+          "skill-family-contracts": {
+            "version": "1.6.0",
+            "path": "vendor/skill-family-contracts.tgz",
+            "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          },
+          "skill-family-harness-node": {
+            "version": "0.6.0",
+            "path": "vendor/skill-family-harness-node.tgz",
+            "sha256": "123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0"
+          }
+        }
+      },
+      "adopted_at": "2026-08-18T00:00:00Z"
+    }
+  }
+}

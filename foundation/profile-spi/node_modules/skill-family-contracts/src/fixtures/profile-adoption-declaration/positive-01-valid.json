@@ -1,0 +1,52 @@
+{
+  "fixtureId": "profile-adoption-declaration.positive.valid",
+  "contract": "profile-adoption-declaration",
+  "class": "positive",
+  "description": "A complete adoption declaration aligned with SPI v2: adopted Foundation profile identity, three-package pin with sha256 digests, adoption timestamp, and one self-tightening override.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/profile-adoption-declaration.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.profile-adoption-declaration",
+    "adoption": {
+      "foundation_profile": {
+        "id": "public-plugin",
+        "version": 1,
+        "stability": "candidate-only"
+      },
+      "foundation_pin": {
+        "algorithm": "sha256",
+        "packages": {
+          "skill-family-contracts": {
+            "version": "1.6.0",
+            "path": "vendor/skill-family-contracts.tgz",
+            "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          },
+          "skill-family-harness-node": {
+            "version": "0.6.0",
+            "path": "vendor/skill-family-harness-node.tgz",
+            "sha256": "123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0"
+          },
+          "skill-family-engineering-kit": {
+            "version": "0.6.0",
+            "path": "vendor/skill-family-engineering-kit.tgz",
+            "sha256": "23456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01"
+          }
+        }
+      },
+      "adopted_at": "2026-08-18T00:00:00Z"
+    },
+    "overrides": [
+      {
+        "ruleId": "SFA-CONTEXT-001",
+        "parameter": "hardLimitTokens",
+        "value": 2000,
+        "note": "Project tightens the context hard limit below the catalog baseline."
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-registry.positive.reference", "contract": "host-registry", "class": "positive",
+  "description": "A registry declares fictional host identifiers without embedding Profile data.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-registry.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-registry", "hosts": ["fixture-host"] }
+}

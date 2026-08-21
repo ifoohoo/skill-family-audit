@@ -1,0 +1,23 @@
+{
+  "fixtureId": "project-manifest.negative.missing-project-id",
+  "contract": "project-manifest",
+  "class": "negative",
+  "description": "project.id is required; omitting it must fail schema validation with the stable code.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": {
+      "name": "Example Skill Suite"
+    },
+    "contracts": {
+      "version": "1.0.0",
+      "profile": "public-plugin"
+    }
+  }
+}

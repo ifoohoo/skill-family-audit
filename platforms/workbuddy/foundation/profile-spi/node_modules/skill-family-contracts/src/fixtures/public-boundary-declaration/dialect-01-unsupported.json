@@ -1,0 +1,35 @@
+{
+  "fixtureId": "public-boundary-declaration.dialect-boundary.unsupported",
+  "contract": "public-boundary-declaration",
+  "class": "dialect-boundary",
+  "description": "The document is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/public-boundary-declaration.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1006"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.public-boundary-declaration",
+    "declarationId": "public-site",
+    "declaredVersion": "0.6.0",
+    "publicRoots": [
+      "docs/public"
+    ],
+    "requiredPaths": [
+      "docs/public/index.html"
+    ],
+    "forbiddenPaths": [
+      "docs/internal"
+    ],
+    "publicFiles": [
+      "docs/public/index.html",
+      "docs/public/site-baseline.json"
+    ],
+    "note": "Public site boundary for the 0.6.0 candidate release."
+  }
+}

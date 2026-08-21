@@ -1,0 +1,17 @@
+{
+  "fixtureId": "migration-manifest.dialect-boundary.coerce-integer-strict",
+  "contract": "migration-manifest",
+  "class": "dialect-boundary",
+  "description": "Coercion policy boundary: the same string manifestVersion is rejected under the strict policy (no coercion).",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "manifestVersion": "1"
+  }
+}

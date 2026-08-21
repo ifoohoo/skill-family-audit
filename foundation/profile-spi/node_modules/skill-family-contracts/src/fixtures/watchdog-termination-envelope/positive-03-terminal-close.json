@@ -1,0 +1,53 @@
+{
+  "fixtureId": "watchdog-termination-envelope.positive.terminal-close",
+  "contract": "watchdog-termination-envelope",
+  "class": "positive",
+  "description": "A terminal-progress close envelope: ok=true, exitStatus=0, processStatus=EXITED, terminationReason=completed, watchdogReason=terminal_progress, terminal identity carried in evidence.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/watchdog-termination-envelope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.watchdog-termination-envelope",
+    "ok": true,
+    "exitStatus": 0,
+    "processStatus": "EXITED",
+    "terminationReason": "completed",
+    "watchdogReason": "terminal_progress",
+    "evidence": {
+      "command": "node",
+      "args": ["-e", "setTimeout(() => {}, 60_000)"],
+      "cwd": "/tmp/fictitious-cwd",
+      "startedAt": "2026-08-18T00:00:00.000Z",
+      "finishedAt": "2026-08-18T00:00:05.000Z",
+      "checkIntervalSeconds": 1,
+      "pid": 4244,
+      "processGroupId": 4244,
+      "childExitCode": null,
+      "childSignal": "SIGTERM",
+      "signalSequence": [
+        { "signal": "SIGTERM", "requestedMode": "process_group", "successfulMode": "process_group" }
+      ],
+      "forcedKill": false,
+      "startupProgressPaths": [],
+      "terminalProgressPaths": ["terminal.json"],
+      "timeoutPolicy": {
+        "maxSeconds": 3600,
+        "killGraceSeconds": 10
+      },
+      "terminalIdentity": "fictitious-review-7",
+      "terminalStatus": "SUCCEEDED",
+      "guarantees": [
+        "closed-enum-evidence",
+        "fail-closed",
+        "no-auto-restart",
+        "no-liveness-guessing",
+        "process-group-termination",
+        "mechanism-holds-no-timeout-values"
+      ]
+    }
+  }
+}

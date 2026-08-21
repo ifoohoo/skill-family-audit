@@ -1,0 +1,21 @@
+{
+  "fixtureId": "state-snapshot-metadata.negative.extra-field",
+  "contract": "state-snapshot-metadata",
+  "class": "negative",
+  "description": "A snapshot cannot smuggle workflow state into an extra envelope field.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/state-snapshot-metadata.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.state-snapshot-metadata",
+    "lastSequence": 0,
+    "chainHeadDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "stateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "state": {},
+    "workflowStatus": "accepted"
+  }
+}

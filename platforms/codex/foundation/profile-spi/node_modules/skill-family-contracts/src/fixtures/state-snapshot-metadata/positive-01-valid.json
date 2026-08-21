@@ -1,0 +1,21 @@
+{
+  "fixtureId": "state-snapshot-metadata.positive.valid",
+  "contract": "state-snapshot-metadata",
+  "class": "positive",
+  "description": "A derived snapshot bound to an event prefix with an opaque host-session association.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/state-snapshot-metadata.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.state-snapshot-metadata",
+    "lastSequence": 1,
+    "chainHeadDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "stateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "state": { "total": 1 },
+    "hostSessionRef": "opaque-session"
+  }
+}

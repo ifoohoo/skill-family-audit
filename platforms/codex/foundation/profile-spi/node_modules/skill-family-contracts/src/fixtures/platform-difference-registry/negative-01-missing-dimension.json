@@ -1,0 +1,38 @@
+{
+  "fixtureId": "platform-difference-registry.negative.missing-dimension",
+  "contract": "platform-difference-registry",
+  "class": "negative",
+  "description": "A platform entry that omits one of the seven mandatory dimensions (degradationConditions) is rejected.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/platform-difference-registry.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.platform-difference-registry",
+    "primaryPlatforms": ["claude-code"],
+    "requiredDimensions": [
+      "directory",
+      "manifest",
+      "discovery",
+      "invocation",
+      "internalIsolation",
+      "capabilityGaps",
+      "degradationConditions"
+    ],
+    "platforms": {
+      "claude-code": {
+        "platformId": "claude-code",
+        "primaryPlatform": true,
+        "directory": ".claude/skills",
+        "manifest": { "status": "present" },
+        "discovery": { "status": "automatic" },
+        "invocation": { "status": "native" },
+        "internalIsolation": { "status": "namespace" },
+        "capabilityGaps": []
+      }
+    }
+  }
+}

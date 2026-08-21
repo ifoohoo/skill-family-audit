@@ -1,0 +1,24 @@
+{
+  "fixtureId": "operation-result.negative.non-terminal-state",
+  "contract": "operation-result",
+  "class": "negative",
+  "description": "Results carry terminal states only; a non-terminal lifecycle state must never be serialized in a result.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/operation-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.operation-result",
+    "protocol": {
+      "name": "skill-family.kernel.operation",
+      "version": 1
+    },
+    "operationId": "op-example-0003",
+    "operation": "validate",
+    "state": "running",
+    "errors": []
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "fixtureId": "report-binding.positive.valid-binding",
+  "contract": "report-binding",
+  "class": "positive",
+  "description": "A complete binding: run identity, sha256 result digest, sha256 report digest, and an exact renderer semver.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-binding.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-binding",
+    "runId": "run-aurora-0001",
+    "modelDigest": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "resultDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "reportDigest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "rendererVersion": "0.2.0"
+  }
+}

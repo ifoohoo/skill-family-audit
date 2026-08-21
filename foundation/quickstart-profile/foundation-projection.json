@@ -4,11 +4,11 @@
   "profile": {
     "id": "quickstart-profile",
     "version": 2,
-    "contractsVersion": "1.4.0"
+    "contractsVersion": "1.7.0"
   },
   "source": {
     "repository": "skill-family-foundation-workspace",
-    "baseCommit": "8a0a400d7f0aeb266b554d09e54e0f9ec1887cff",
+    "baseCommit": "2f4c4aefa26d03eb48404c9286b1c9ed7b96e22c",
     "foundation": [
       {
         "path": "packages/skill-family-contracts/candidate/quickstart-profile/consumer-schema-inventory.schema.json",
@@ -47,17 +47,17 @@
       },
       {
         "path": "packages/skill-family-contracts/package.json",
-        "sha256": "a47b81bfb35ae79cd64bb0b690bfdd277f19777cdd45b919ea8b42a5eff47c07",
+        "sha256": "0eed136792efc023a9c19dad557f40609f8498d51e9a98a8b13305ac248a855f",
         "role": "identity"
       },
       {
         "path": "packages/skill-family-contracts/src/audit-surface.mjs",
-        "sha256": "4e87b13f25b53391c026bb2769b0208e97a4f95b7d9c70a5fc8fb359d7d8ce6e",
+        "sha256": "eef7e4afe8df78b7055223b3e90ea5f677d7da09761121a1c58b04be83f67deb",
         "role": "extraction-input"
       },
       {
         "path": "packages/skill-family-contracts/src/error-codes.json",
-        "sha256": "a707e4a675e0fa12cd6c7bd660398f6120060e7d8097a407ff297dffd821fd59",
+        "sha256": "f017e765c3e1d2d3a3fdc49c0df4161143395bde6809d913764a78f32ceeca88",
         "role": "projected"
       },
       {
@@ -67,7 +67,7 @@
       },
       {
         "path": "packages/skill-family-contracts/src/index.mjs",
-        "sha256": "6d690f91e3b2075bfa32db1f6cf97883ed5f0f6d3eb4563314f0c44ba901275f",
+        "sha256": "8cb14c1996d33d32b271e289305e5ce11f63c2e17fc0b3250769363a1b95d29b",
         "role": "imported-surface"
       },
       {
@@ -107,7 +107,7 @@
       },
       {
         "path": "packages/skill-family-engineering-kit/package.json",
-        "sha256": "6b4be175c8a1dbe7d432ddf630f2b7df805d9b17d6ed471adfb49be54ba8758b",
+        "sha256": "2231875918e1f3b6bb3ae526b8b61d926a13fbada25e604961774f6f6f8b1a78",
         "role": "identity"
       },
       {
@@ -132,12 +132,12 @@
       },
       {
         "path": "packages/skill-family-harness-node/package.json",
-        "sha256": "54730ac67e555d1d497eafe0ec9886ba92c0864dbc3189f8bf2dfa384d9d16be",
+        "sha256": "e54e36ec0d07d00e598ef5726fd0ccb5b3a1dab22e26da51c081937517f564ee",
         "role": "identity"
       },
       {
         "path": "packages/skill-family-harness-node/src/atomic.mjs",
-        "sha256": "13cd31286ddd27978722a82549f7d4d8af43da8f0ba37f290f890111a90d8847",
+        "sha256": "324e5b092415c3c1fd19128bb372ad7b8fdb52569af3b3d57bf4a08687af062d",
         "role": "projected"
       },
       {
@@ -147,12 +147,12 @@
       },
       {
         "path": "packages/skill-family-harness-node/src/errors.mjs",
-        "sha256": "981b1c48560bee6090b59bea1ac4375465533daf303b77846bcb22aee0bf5393",
+        "sha256": "165284a56171546411d246b90636e111ffcde927b93316e616744f70c645e8ef",
         "role": "projected"
       },
       {
         "path": "packages/skill-family-harness-node/src/index.mjs",
-        "sha256": "422232e019a7bcda72613b2bb91455799ca36869cd6dcd66f1477f2284bfa107",
+        "sha256": "5a317de13e49b03b8caa10a0acfcd5b6fb88e6ab05ab97e66832d765cd70a289",
         "role": "imported-surface"
       },
       {
@@ -201,11 +201,11 @@
     "fixedSetCandidate": {
       "status": "candidate",
       "stableRegistry": false,
-      "releaseReceiptSha256": "8b8891033ad65d007ffa1e9c8529244c29d229905c07e8a01e7f959e07a3d50a",
+      "releaseReceiptSha256": "17432d7c418138784e3cfd4b5f27942e1b29cb80db49cd55b1adf31da3a469aa",
       "harnessTarball": {
-        "filename": "skill-family-harness-node-0.4.0.tgz",
-        "sha256": "5cfc000a543f8922c874289b82d31b7491d47521ec08b48754bd001782aa5774",
-        "size": 107602
+        "filename": "skill-family-harness-node-0.8.0.tgz",
+        "sha256": "d853c5a7dbf03c7888e6459aa07be225f8ae7c798fe665ee356ce155a0ef8443",
+        "size": 144441
       },
       "prebuildManifestSha256": "6530a3564cc82a06803afb695b49a198ba2a44456514a342ad35f63dba851749",
       "prebuildReleaseReceiptSha256": "d50e087669a3c4393be536d0a94b82834f80b916bb617de6bf85115ff0150d88",
@@ -280,6 +280,12 @@
         "sha256": "1229982dd7801259f9e8b47a34565dae57552b2c468ef9969f12c8757fc33f49"
       },
       {
+        "path": "foundation-adoption-exemption.schema.json",
+        "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/foundation-adoption-exemption.json",
+        "dialect": "2020-12",
+        "sha256": "85ac5e101e61bbc030bd7b056e8d2ae5146aade527b4f1e7a30dbcf985a41ecd"
+      },
+      {
         "path": "methods/behavior-parameters.schema.json",
         "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/behavior/parameters.json",
         "dialect": "2020-12",
@@ -331,13 +337,7 @@
         "path": "plugin-project-observation.schema.json",
         "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/plugin-project-observation.json",
         "dialect": "2020-12",
-        "sha256": "0cc3854c45925c5b3f589bdf1e9811ba341638f9386a53eca3ce1edb4e425148"
-      },
-      {
-        "path": "project-adoption-lock.schema.json",
-        "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/project-adoption-lock.json",
-        "dialect": "2020-12",
-        "sha256": "a64979287f88adf3ca84e9562995367302bc6e657314b1f7df23a70b4750c21b"
+        "sha256": "0a5a5a5675a968b27af703b1020f20fc9421d8a8fbf93fb85974b7dd27162435"
       },
       {
         "path": "providers/loop-agent/attempt-seal-record.schema.json",
@@ -503,7 +503,7 @@
       },
       {
         "path": "runtime/contracts/error-codes.json",
-        "sha256": "a707e4a675e0fa12cd6c7bd660398f6120060e7d8097a407ff297dffd821fd59"
+        "sha256": "f017e765c3e1d2d3a3fdc49c0df4161143395bde6809d913764a78f32ceeca88"
       },
       {
         "path": "runtime/contracts/errors.mjs",
@@ -523,15 +523,15 @@
       },
       {
         "path": "runtime/generated/standalone-map.mjs",
-        "sha256": "fd9a2f5f43a1c0508feca48d62fd14ea5ce7b5eaa595c60abd83481c9119d9ff"
+        "sha256": "a60736bc9bd6e5ad65e41086662afdf1cb909c53119fbea9aa0a9d8919a680ce"
       },
       {
         "path": "runtime/generated/validate-2020-12.mjs",
-        "sha256": "2d62e840628b5c0adde987daeecf7d267e7680605eb57d9bffc875c3746a86d9"
+        "sha256": "6791574cdb8ce7bcd094d274339514a3adc42242f4b1cc443460ae4e3b7d6567"
       },
       {
         "path": "runtime/harness/atomic.mjs",
-        "sha256": "13cd31286ddd27978722a82549f7d4d8af43da8f0ba37f290f890111a90d8847"
+        "sha256": "324e5b092415c3c1fd19128bb372ad7b8fdb52569af3b3d57bf4a08687af062d"
       },
       {
         "path": "runtime/harness/closure.mjs",
@@ -539,7 +539,7 @@
       },
       {
         "path": "runtime/harness/errors.mjs",
-        "sha256": "ef18d2fd9df21aff0a76286201326811d6833ef4402a074814136f1701741b6f"
+        "sha256": "2815eff3fc9140b8733cd967304c09ce434b2a840727da3a6463fb29d76e034f"
       },
       {
         "path": "runtime/harness/paths.mjs",
@@ -568,6 +568,10 @@
       {
         "path": "schemas/consumer/behavior-fixture-manifest.schema.json",
         "sha256": "56eb4e611db1a383f6980a15aafd4a7587e5e4a5db0e3c24c7f87da6c9bd869c"
+      },
+      {
+        "path": "schemas/consumer/foundation-adoption-exemption.schema.json",
+        "sha256": "74afa44897a0bd4341a8c36523ff6237c21ca21ad4b103c6f34ee37982d80db0"
       },
       {
         "path": "schemas/consumer/methods/behavior-parameters.schema.json",
@@ -603,11 +607,7 @@
       },
       {
         "path": "schemas/consumer/plugin-project-observation.schema.json",
-        "sha256": "eba6ae6348737e2f8d84b52447d4d631ef03266da269ddd10ae4a9053e971fa1"
-      },
-      {
-        "path": "schemas/consumer/project-adoption-lock.schema.json",
-        "sha256": "ec4fc4366a3d2f34e6f33931dd53ca8deeb411d7f9a6eb07bef2d2227544fde4"
+        "sha256": "8cb2410a376626146a0d4f7b58838b01a339255321a05acd43c41056e02cb311"
       },
       {
         "path": "schemas/consumer/providers/loop-agent/attempt-seal-record.schema.json",
@@ -682,6 +682,6 @@
         "sha256": "361cae9d2c2cfb87e0e0adafd584502121279237a42cbe5ec0987461179d88e7"
       }
     ],
-    "digest": "679a7847a260937b4a425f5876c7c53fc68df56bf13740ac07d8abd08176321b"
+    "digest": "968b5e0a6586a5c253232acdf525390e53189c341e483fa58d198716b1f67cdc"
   }
 }

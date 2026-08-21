@@ -1,0 +1,27 @@
+{
+  "fixtureId": "declared-read-surface-result.positive.valid",
+  "contract": "declared-read-surface-result",
+  "class": "positive",
+  "description": "A clean declared read surface: every scanned module's node:fs named imports stay inside its declared set, no write-family API anywhere, closed rule enumeration and guarantee vocabulary.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/declared-read-surface-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.declared-read-surface-result",
+    "ok": true,
+    "violations": [],
+    "scannedModules": ["lib/reader-a.mjs", "lib/reader-b.mjs", "lib/pure.mjs"],
+    "scope": "esm-named-imports-only",
+    "guarantees": [
+      "syntax-surface-only",
+      "conservative-approximation",
+      "no-execution",
+      "no-model-calls",
+      "no-network-access"
+    ]
+  }
+}

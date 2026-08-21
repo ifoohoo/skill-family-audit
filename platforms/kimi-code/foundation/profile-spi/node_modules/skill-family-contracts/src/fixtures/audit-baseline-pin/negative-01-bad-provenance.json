@@ -1,0 +1,52 @@
+{
+  "fixtureId": "audit-baseline-pin.negative.bad-provenance",
+  "contract": "audit-baseline-pin",
+  "class": "negative",
+  "description": "A pin whose provenance is outside the frozen authorship classes is rejected.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/audit-baseline-pin.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.audit-baseline-pin",
+    "provenance": "hand-written",
+    "frozenAt": "2026-08-18",
+    "contractsVersion": "1.6.0",
+    "auditSurfaceVersion": 1,
+    "digestAlgorithm": "sha256",
+    "note": "Provenance must be one of the frozen authorship classes.",
+    "surfaceDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "documentDigests": {
+      "registry": "123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+      "errorCodes": "23456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
+      "rules": "3456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012",
+      "kernelProtocol": "456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123"
+    },
+    "schemaDigests": {
+      "https://contracts.skill-family.example/v1/project-manifest.json": "56789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234"
+    },
+    "facts": {
+      "contractObjects": ["project-manifest"],
+      "checkTypes": ["schema.compile"],
+      "mandatoryRuleIds": ["CR-001"],
+      "ruleBudget": { "firstVersionMax": 20, "absoluteMax": 30 },
+      "errorCodes": ["SFC1001"],
+      "kernelOperations": ["validate"],
+      "kernelTerminalStates": ["succeeded", "failed", "rejected"],
+      "validationPolicies": {
+        "strict": {
+          "coerceTypes": false,
+          "useDefaults": false,
+          "allErrors": true,
+          "validateFormats": true
+        }
+      },
+      "supportedDialects": ["2020-12", "draft-07"],
+      "errorCodeStabilityPolicy": "Codes are append-only.",
+      "schemaIdNamespace": "https://contracts.skill-family.example/v1/"
+    }
+  }
+}

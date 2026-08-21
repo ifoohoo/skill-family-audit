@@ -1,0 +1,24 @@
+{
+  "fixtureId": "observation-scope.negative.unknown-platform",
+  "contract": "observation-scope",
+  "class": "negative",
+  "description": "A platform identifier outside the frozen controlled vocabulary is rejected; vocabularies extend only through this contract.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/observation-scope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.observation-scope",
+    "scopeVocabulary": ["skill", "plugin", "release"],
+    "standardPlatforms": ["claude-code", "some-new-platform"],
+    "severityLevels": ["block", "error", "warning", "observe"],
+    "adoptionStatuses": ["foundation-adopted", "self-built", "exempted", "not-adopted", "unknown"],
+    "pathBasisVocabulary": ["project-root-relative"],
+    "measurementSubjects": ["logical-source", "worst-projection"],
+    "missingPlatformIntents": ["unsupported", "planned", "experimental", "deprecated-host"],
+    "consumptionForms": ["dependencies", "vendored-bundle", "tarball-pin", "none", "other"]
+  }
+}

@@ -191,37 +191,70 @@ def _reject_ambiguous_runner_role() -> None:
         raise RuntimeError("FOUNDATION_RUNNER_ROLE_AMBIGUOUS")
 
 
+def _package_root() -> Path | None:
+    """从本脚本位置向上寻找包根（以 generated/platforms 目录存在为标识）。
+
+    plugin-src 源树与 generated 平台投影树中的脚本副本都能定位到同一个包根；
+    找不到时返回 None（例如被仓外独立安装时），调用方保持失败关闭。
+    """
+    here = Path(__file__).resolve(strict=True)
+    for ancestor in (here.parent, *here.parents):
+        if (ancestor / "generated" / "platforms").is_dir():
+            return ancestor
+    return None
+
+
+def _default_audit_bundle_candidates() -> list[Path]:
+    """仓内默认可发现的 Audit Foundation Bundle 候选（确定性排序）。
+
+    候选来自仓库自身受管平台投影 ``generated/platforms/<platform>/foundation/
+    quickstart-profile/runner.mjs``；任何候选在使用前仍经过
+    ``verify_foundation_bundle`` 全量校验（provenance、receipt、payload 摘要、
+    import 闭包），默认推断不放宽任何校验。
+    """
+    root = _package_root()
+    if root is None:
+        return []
+    platforms = root / "generated" / "platforms"
+    candidates: list[Path] = []
+    if platforms.is_dir() and not platforms.is_symlink():
+        for platform_dir in sorted(platforms.iterdir(), key=lambda item: item.name):
+            runner = platform_dir / "foundation" / "quickstart-profile" / "runner.mjs"
+            if runner.is_file() and not runner.is_symlink():
+                candidates.append(runner)
+    return candidates
+
+
 def foundation_runner() -> Path:
     """Resolve only Audit's Bundle for schemas, canonical data and closures."""
     _reject_ambiguous_runner_role()
     configured = os.environ.get("SFA_AUDIT_BUNDLE_RUNNER_REF")
     if configured:
         return verify_foundation_bundle(configured)
+    # D2 仓内默认可发现绑定：显式 env 优先；未显式绑定时按确定性顺序尝试仓内
+    # 受管投影 Bundle，每个候选都走完整 verify_foundation_bundle 校验。
+    candidate_errors: list[str] = []
+    for candidate in _default_audit_bundle_candidates():
+        try:
+            return verify_foundation_bundle(str(candidate))
+        except RuntimeError as exc:
+            candidate_errors.append(f"{candidate}: {exc}")
+    detail = (
+        f"（仓内默认候选校验失败: {'; '.join(candidate_errors)}）"
+        if candidate_errors
+        else "（未找到仓内默认 Bundle；可运行工作区 scripts/setup-self-audit-env.sh 生成显式绑定）"
+    )
     raise RuntimeError(
         "FOUNDATION_AUDIT_RUNNER_MISSING: 需要通过 SFA_AUDIT_BUNDLE_RUNNER_REF 显式绑定 Audit 的受管 Foundation Bundle"
+        + detail
     )
 
 
-def target_foundation_runner(expected: Path) -> Path:
-    """Resolve only the target Bundle and require exact lock-derived identity."""
-    _reject_ambiguous_runner_role()
-    configured = os.environ.get("SFA_TARGET_BUNDLE_RUNNER_REF")
-    if configured != str(expected):
-        raise RuntimeError("FOUNDATION_TARGET_RUNNER_MISMATCH")
-    return verify_foundation_bundle(configured)
-
-
-def foundation_node_runtime() -> tuple[Path, str]:
-    """Resolve the explicit, real Node 22 runtime used by every Bundle CLI."""
-    ref = os.environ.get("SFA_FOUNDATION_NODE")
-    if not ref:
-        raise FoundationNodeRuntimeError(
-            "FOUNDATION_NODE_MISSING", "SFA_FOUNDATION_NODE 环境变量未设置"
-        )
-    raw = Path(ref)
+def _validate_node_runtime(raw: Path) -> tuple[Path, str]:
+    """对单个 Node 运行时入口执行全量校验（路径链、文件、版本区间）。"""
     if not raw.is_absolute():
         raise FoundationNodeRuntimeError(
-            "FOUNDATION_NODE_NOT_ABSOLUTE", f"SFA_FOUNDATION_NODE 必须是绝对路径: {ref}"
+            "FOUNDATION_NODE_NOT_ABSOLUTE", f"Node.js 入口必须是绝对路径: {raw}"
         )
     try:
         _check_path_chain_no_symlinks(raw, "NODE_PATH_SYMLINK")
@@ -231,7 +264,7 @@ def foundation_node_runtime() -> tuple[Path, str]:
         ) from exc
     if not raw.is_file():
         raise FoundationNodeRuntimeError(
-            "FOUNDATION_NODE_MISSING_FILE", f"Node.js 入口文件不存在: {ref}"
+            "FOUNDATION_NODE_MISSING_FILE", f"Node.js 入口文件不存在: {raw}"
         )
     try:
         completed = subprocess.run(
@@ -265,9 +298,60 @@ def foundation_node_runtime() -> tuple[Path, str]:
     return raw, version
 
 
+def _default_node_candidates() -> list[Path]:
+    """主机上默认可发现的 Node 22 运行时候选（确定性排序）。
+
+    候选只来自受版本约束限定的常规安装位置（Homebrew Cellar 的 node@22、
+    nvm 的 v22.* 安装），每个候选在使用前都经过与显式绑定完全相同的全量
+    校验（绝对路径、无符号链接路径链、入口文件存在、版本 >=22.22.2 <23），
+    默认推断不放宽任何校验。
+    """
+    candidates: list[Path] = []
+    cellar_roots = [Path("/opt/homebrew/Cellar/node@22"), Path("/usr/local/Cellar/node@22")]
+    for cellar in cellar_roots:
+        if cellar.is_dir() and not cellar.is_symlink():
+            for version_dir in sorted(cellar.iterdir(), key=lambda item: item.name):
+                entry = version_dir / "bin" / "node"
+                if entry.is_file() and not entry.is_symlink():
+                    candidates.append(entry)
+    nvm_root = Path.home() / ".nvm" / "versions" / "node"
+    if nvm_root.is_dir() and not nvm_root.is_symlink():
+        for version_dir in sorted(nvm_root.iterdir(), key=lambda item: item.name):
+            if not version_dir.name.startswith("v22"):
+                continue
+            entry = version_dir / "bin" / "node"
+            if entry.is_file() and not entry.is_symlink():
+                candidates.append(entry)
+    return candidates
+
+
+def foundation_node_runtime() -> tuple[Path, str]:
+    """Resolve the explicit, real Node 22 runtime used by every Bundle CLI."""
+    ref = os.environ.get("SFA_FOUNDATION_NODE")
+    if ref:
+        return _validate_node_runtime(Path(ref))
+    # D2 仓内默认可发现绑定：显式 env 优先；未显式绑定时按确定性顺序探测
+    # 主机常规 Node 22 安装位置，每个候选都走与显式绑定相同的全量校验。
+    candidate_errors: list[str] = []
+    for candidate in _default_node_candidates():
+        try:
+            return _validate_node_runtime(candidate)
+        except FoundationNodeRuntimeError as exc:
+            candidate_errors.append(f"{candidate}: {exc.code}")
+    detail = (
+        f"（默认候选校验失败: {'; '.join(candidate_errors)}）"
+        if candidate_errors
+        else "（未找到默认 Node 22 候选；可运行工作区 scripts/setup-self-audit-env.sh 生成显式绑定）"
+    )
+    raise FoundationNodeRuntimeError(
+        "FOUNDATION_NODE_MISSING",
+        "SFA_FOUNDATION_NODE 环境变量未设置" + detail,
+    )
+
+
 def call_foundation_cli(runner: Path, cli_name: str, request: dict) -> object:
     """Call one fixed CLI from the already verified managed Bundle."""
-    if cli_name not in {"mechanisms-cli.mjs", "adoption-cli.mjs"}:
+    if cli_name != "mechanisms-cli.mjs":
         raise RuntimeError("FOUNDATION_CLI_NOT_ALLOWED")
     runner = verify_foundation_bundle(str(runner))
     cli = verify_foundation_bundle(str(runner.parent / cli_name))
@@ -405,6 +489,103 @@ def _validate_package(package: Path, test_fixture: bool) -> tuple[dict | None, d
     if test_fixture and index.get("test_fixture") is not True:
         return index, None, "SPEC_PACKAGE_NOT_TEST_FIXTURE"
     return index, manifest, None
+
+
+SELF_AUDIT_SPEC_SUBPATH = ("spec", "self-audit")
+
+
+def self_audit_spec_package_default() -> Path | None:
+    """默认发现路径下的仓内自审规范包。
+
+    仅当 authority-index.json 与 applicable-rules.json 同时存在时返回目录；
+    无法定位包根（如仓外独立安装）时返回 None，调用方保持失败关闭。
+    """
+    root = _package_root()
+    if root is None:
+        return None
+    spec_dir = root.joinpath(*SELF_AUDIT_SPEC_SUBPATH)
+    if (
+        (spec_dir / "authority-index.json").is_file()
+        and (spec_dir / "applicable-rules.json").is_file()
+    ):
+        return spec_dir
+    return None
+
+
+def _refs_root() -> Path:
+    """统一锚定源树 refs，使 generated 投影副本中的脚本也校验同一权威数据。"""
+    root = _package_root()
+    if root is None:
+        return Path(__file__).resolve().parent.parent / "refs"
+    return root / "plugin-src" / "skills" / "skill-family-audit-conformance" / "refs"
+
+
+def verify_self_audit_freshness(spec_dir: Path) -> str | None:
+    """校验自审规范包摘要新鲜性；陈旧或非法时返回错误码。
+
+    默认发现路径只接受 ``selfAudit: true`` 的规范包（外部规范必须显式
+    --spec-package 提供）；记录摘要必须与当前 refs 权威数据对齐，包内
+    applicable-rules.json 必须与 refs 字节一致。任何漂移都拒绝使用。
+    """
+    try:
+        index = _load(spec_dir / "authority-index.json")
+    except (OSError, json.JSONDecodeError):
+        return "SELF_AUDIT_SPEC_INVALID"
+    if index.get("selfAudit") is not True:
+        return "SELF_AUDIT_SPEC_REJECTED"
+    recorded = index.get("recordedDigests")
+    if not isinstance(recorded, dict):
+        return "SELF_AUDIT_SPEC_INVALID"
+    refs = _refs_root()
+    root = _package_root()
+    anchored_files = {
+        "conformance_trust_policy": refs / "conformance-trust-policy.json",
+        "canonical_rule_projection": refs / "canonical-rule-projection.json",
+    }
+    if root is not None:
+        anchored_files["canonical_rule_inventory"] = (
+            root / "governance" / "rules" / "canonical-rule-inventory.json"
+        )
+        anchored_files["governance_axis_adjudication_records"] = (
+            root / "spec" / "packages" / "skill-development"
+            / "governance-axis-adjudication-records.json"
+        )
+    for key, path in anchored_files.items():
+        expected_digest = recorded.get(key)
+        if not isinstance(expected_digest, str) or not HEX64.fullmatch(expected_digest):
+            return "SELF_AUDIT_SPEC_INVALID"
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected_digest:
+            return "SELF_AUDIT_SPEC_STALE"
+    tp_record = recorded.get("trust_policy_projection")
+    if not isinstance(tp_record, dict):
+        return "SELF_AUDIT_SPEC_INVALID"
+    try:
+        trust = _load(refs / "conformance-trust-policy.json")
+        projection = _load(refs / "canonical-rule-projection.json")
+    except (OSError, json.JSONDecodeError):
+        return "SELF_AUDIT_SPEC_STALE"
+    live = trust.get("canonical_rule_projection", {})
+    for field in ("digest", "source_digest", "business_digest", "total_rules"):
+        if tp_record.get(field) != live.get(field):
+            return "SELF_AUDIT_SPEC_STALE"
+    if (
+        projection.get("source_digest") != live.get("source_digest")
+        or projection.get("business_digest") != live.get("business_digest")
+    ):
+        return "SELF_AUDIT_SPEC_STALE"
+    refs_manifest_path = refs / "applicable-rules.json"
+    spec_manifest_path = spec_dir / "applicable-rules.json"
+    if not refs_manifest_path.is_file() or not spec_manifest_path.is_file():
+        return "SELF_AUDIT_SPEC_STALE"
+    refs_manifest_bytes = refs_manifest_path.read_bytes()
+    spec_manifest_bytes = spec_manifest_path.read_bytes()
+    if (
+        recorded.get("refs_applicable_rules") != hashlib.sha256(refs_manifest_bytes).hexdigest()
+        or recorded.get("spec_applicable_rules") != hashlib.sha256(spec_manifest_bytes).hexdigest()
+        or spec_manifest_bytes != refs_manifest_bytes
+    ):
+        return "SELF_AUDIT_SPEC_STALE"
+    return None
 
 
 def _scan(target: Path) -> dict:
@@ -664,9 +845,20 @@ def run_conformance_check(target_path: str, project_root: str, spec_version_ref:
     if spec_package:
         index, manifest, error = _validate_package(Path(spec_package).resolve(), test_fixture)
         if error: return _blocked(error, index, target_path)
+        self_audit = index.get("selfAudit") is True
     else:
-        # 当前仓库无批准收据，正式路径必须默认关闭；绝不读取本地 refs。
-        return _blocked("NO_ACTIVE_APPROVED_SPEC", target=target_path)
+        # D2 自审默认发现路径：无显式规范包时只接受本仓裁决权威派生的
+        # 自审规范包（selfAudit: true，摘要新鲜性逐条校验）；外部规范必须
+        # 显式 --spec-package 提供。自审包缺失时维持原失败关闭结论。
+        spec_dir = self_audit_spec_package_default()
+        if spec_dir is None:
+            return _blocked("NO_ACTIVE_APPROVED_SPEC", target=target_path)
+        freshness_error = verify_self_audit_freshness(spec_dir)
+        if freshness_error:
+            return _blocked(freshness_error, target=target_path)
+        index, manifest, error = _validate_package(spec_dir, test_fixture)
+        if error: return _blocked(error, index, target_path)
+        self_audit = True
     if manifest.get("checkerMethodId") != CHECKER_METHOD_ID:
         return _blocked("UNKNOWN_CHECKER", index, target_path)
     scan, results = _scan(target), []
@@ -711,7 +903,8 @@ def run_conformance_check(target_path: str, project_root: str, spec_version_ref:
               "rule_release_summary": {"release_id": "", "release_digest": "", "rule_manifest_digest": ""},
               "checker_summary": _checker_summary(), "warnings": [], "blocked_reason": "",
               "test_fixture": index.get("test_fixture") is True,
-              "publication_eligible": index.get("test_fixture") is not True}
+              "self_audit": self_audit,
+              "publication_eligible": index.get("test_fixture") is not True and index.get("selfAudit") is not True}
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")

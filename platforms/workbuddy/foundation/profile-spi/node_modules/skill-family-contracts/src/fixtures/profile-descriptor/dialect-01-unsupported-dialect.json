@@ -1,0 +1,24 @@
+{
+  "fixtureId": "profile-descriptor.dialect-boundary.unsupported-dialect",
+  "contract": "profile-descriptor",
+  "class": "dialect-boundary",
+  "description": "Dialect detection boundary: a dialect outside the frozen supported set is rejected before any validation runs.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/profile-descriptor.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.profile-descriptor",
+    "profile": {
+      "id": "public-plugin",
+      "name": "Public Plugin Profile",
+      "version": "1.0.0"
+    },
+    "base": {
+      "contractsVersion": "1.0.0"
+    }
+  }
+}

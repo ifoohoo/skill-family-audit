@@ -1,0 +1,40 @@
+{
+  "fixtureId": "platform-difference-registry.negative.lowers-primary-status",
+  "contract": "platform-difference-registry",
+  "class": "negative",
+  "description": "A difference entry is never allowed to lower the primary platform's status: lowersPrimaryPlatformStatus=true is mechanically rejected (PSG-02).",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/platform-difference-registry.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.platform-difference-registry",
+    "primaryPlatforms": ["claude-code"],
+    "requiredDimensions": [
+      "directory",
+      "manifest",
+      "discovery",
+      "invocation",
+      "internalIsolation",
+      "capabilityGaps",
+      "degradationConditions"
+    ],
+    "platforms": {
+      "codex": {
+        "platformId": "codex",
+        "primaryPlatform": false,
+        "lowersPrimaryPlatformStatus": true,
+        "directory": ".codex/skills",
+        "manifest": { "status": "generated" },
+        "discovery": { "status": "automatic" },
+        "invocation": { "status": "native" },
+        "internalIsolation": { "status": "namespace" },
+        "capabilityGaps": [],
+        "degradationConditions": []
+      }
+    }
+  }
+}

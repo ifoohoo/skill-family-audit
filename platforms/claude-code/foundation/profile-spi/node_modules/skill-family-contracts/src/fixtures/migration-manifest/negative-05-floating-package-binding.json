@@ -1,0 +1,25 @@
+{
+  "fixtureId": "migration-manifest.negative.floating-package-binding",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "Foundation package bindings must be exact: a semver range in the version field is not a binding (migration manifest binding), so the manifest is rejected.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "legacyInfra": [],
+    "exceptions": [],
+    "foundationPackages": [
+      {
+        "name": "skill-family-contracts",
+        "version": "^1.1.0",
+        "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+      }
+    ]
+  }
+}

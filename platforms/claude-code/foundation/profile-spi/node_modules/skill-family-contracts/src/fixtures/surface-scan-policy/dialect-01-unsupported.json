@@ -1,0 +1,19 @@
+{
+  "fixtureId": "surface-scan-policy.dialect-boundary.unsupported",
+  "contract": "surface-scan-policy",
+  "class": "dialect-boundary",
+  "description": "The policy is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/surface-scan-policy.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.surface-scan-policy",
+    "pathPatterns": ["(^|/)hidden-root/"],
+    "contentPatterns": [],
+    "allowedUses": ["fictitious-project-inspection"]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "fixtureId": "adapter-source.positive.minimal", "contract": "adapter-source", "class": "positive",
+  "description": "A minimal source closure contains one skill and its required SKILL.md bytes.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/adapter-source.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": { "schemaVersion": 1, "kind": "skill-family.adapter-source", "skillFamilyId": "fixture-family", "skills": [{ "id": "demo-skill", "files": [{ "path": "SKILL.md", "content": "# Demo\n" }] }] }
+}

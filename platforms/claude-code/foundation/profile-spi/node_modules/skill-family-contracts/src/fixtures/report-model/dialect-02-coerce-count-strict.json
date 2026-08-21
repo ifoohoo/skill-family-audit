@@ -1,0 +1,48 @@
+{
+  "fixtureId": "report-model.dialect-boundary.coerce-count-strict",
+  "contract": "report-model",
+  "class": "dialect-boundary",
+  "description": "Coercion policy boundary: the same string-valued section count is rejected under the strict policy (no coercion).",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-model.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-model",
+    "identity": {
+      "runId": "run-borealis-0043",
+      "skillFamily": "borealis-index-rebuild",
+      "audience": "operator",
+      "locale": "en-US"
+    },
+    "outcome": {
+      "executionStatus": "SUCCEEDED",
+      "summary": "Coercion boundary probe.",
+      "counts": {
+        "changes": "0",
+        "evidence": 1,
+        "risks": 0,
+        "unresolved": 0,
+        "nextActions": 0,
+        "appendices": 0
+      }
+    },
+    "errors": [],
+    "changes": [],
+    "evidence": [
+      { "id": "evd-1", "title": "Run log", "reference": "logs/borealis-0043.log" }
+    ],
+    "risks": [],
+    "unresolved": [],
+    "nextActions": [],
+    "appendices": [],
+    "source": {
+      "resultDigest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+      "resultState": "succeeded"
+    },
+    "renderer": { "name": "skill-family-harness-node/report", "version": "0.2.0" }
+  }
+}

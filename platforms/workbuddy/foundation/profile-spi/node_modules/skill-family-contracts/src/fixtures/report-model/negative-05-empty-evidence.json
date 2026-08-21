@@ -1,0 +1,46 @@
+{
+  "fixtureId": "report-model.negative.empty-evidence",
+  "contract": "report-model",
+  "class": "negative",
+  "description": "An empty evidence array is rejected: every report must carry at least one traceable evidence entry; a fact-less report is a missing element, not a renderable document.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-model.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-model",
+    "identity": {
+      "runId": "run-aurora-0003",
+      "skillFamily": "aurora-notes-publish",
+      "audience": "operator",
+      "locale": "zh-CN"
+    },
+    "outcome": {
+      "executionStatus": "SUCCEEDED",
+      "summary": "演练完成。",
+      "counts": {
+        "changes": 0,
+        "evidence": 0,
+        "risks": 0,
+        "unresolved": 0,
+        "nextActions": 0,
+        "appendices": 0
+      }
+    },
+    "errors": [],
+    "changes": [],
+    "evidence": [],
+    "risks": [],
+    "unresolved": [],
+    "nextActions": [],
+    "appendices": [],
+    "source": {
+      "resultDigest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+      "resultState": "succeeded"
+    },
+    "renderer": { "name": "skill-family-harness-node/report", "version": "0.2.0" }
+  }
+}

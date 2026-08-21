@@ -1,0 +1,20 @@
+{
+  "fixtureId": "state-snapshot-metadata.dialect-boundary.unsupported",
+  "contract": "state-snapshot-metadata",
+  "class": "dialect-boundary",
+  "description": "The snapshot is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/state-snapshot-metadata.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.state-snapshot-metadata",
+    "lastSequence": 0,
+    "chainHeadDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "stateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "state": {}
+  }
+}

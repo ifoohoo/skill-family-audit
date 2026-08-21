@@ -1,0 +1,21 @@
+{
+  "fixtureId": "report-binding.negative.floating-renderer-version",
+  "contract": "report-binding",
+  "class": "negative",
+  "description": "A floating renderer version is rejected: the binding must pin an exact renderer semver; ranges and tags are not bindings.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-binding.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-binding",
+    "runId": "run-aurora-0001",
+    "modelDigest": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "resultDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "reportDigest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "rendererVersion": "^1.2.0"
+  }
+}

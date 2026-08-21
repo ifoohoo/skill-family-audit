@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-operation-plan.positive.unsupported", "contract": "host-operation-plan", "class": "positive",
+  "description": "Unsupported planning is an explicit zero-action result.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-operation-plan.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-operation-plan", "hostId": "fixture-host", "status": "unsupported", "unsupportedReason": "No frozen driver.", "probeFacts": [], "actions": [], "writeSet": [], "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+}

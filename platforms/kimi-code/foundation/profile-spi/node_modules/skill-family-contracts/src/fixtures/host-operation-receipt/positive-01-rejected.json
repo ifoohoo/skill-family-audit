@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-operation-receipt.positive.rejected", "contract": "host-operation-receipt", "class": "positive",
+  "description": "A rejected receipt has a reason and zero writes.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-operation-receipt.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-operation-receipt", "hostId": "fixture-host", "planDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "overall": "rejected", "reason": "Apply is unavailable.", "writes": [] }
+}

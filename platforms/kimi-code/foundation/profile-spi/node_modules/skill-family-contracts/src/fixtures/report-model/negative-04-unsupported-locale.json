@@ -1,0 +1,22 @@
+{
+  "fixtureId": "report-model.negative.unsupported-locale",
+  "contract": "report-model",
+  "class": "negative",
+  "description": "A locale outside the frozen set (zh-CN, en-US) is rejected at the contract layer; an unsupported locale is a hard failure (SFC3002 upstream), never a silent fallback.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-model.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-model",
+    "identity": {
+      "runId": "run-aurora-0002",
+      "skillFamily": "aurora-notes-publish",
+      "audience": "reviewer",
+      "locale": "fr-FR"
+    }
+  }
+}

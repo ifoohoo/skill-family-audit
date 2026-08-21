@@ -1,0 +1,69 @@
+{
+  "fixtureId": "observation-scope.dialect-boundary.unsupported",
+  "contract": "observation-scope",
+  "class": "dialect-boundary",
+  "description": "The document is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/observation-scope.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1006"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.observation-scope",
+    "alignedObservationSchemaVersions": [
+      "1.0.0-candidate",
+      "2.0.0-candidate"
+    ],
+    "scopeVocabulary": [
+      "skill",
+      "plugin",
+      "release"
+    ],
+    "standardPlatforms": [
+      "claude-code",
+      "codex",
+      "kimi-code",
+      "workbuddy",
+      "qoder",
+      "dsh"
+    ],
+    "severityLevels": [
+      "block",
+      "error",
+      "warning",
+      "observe"
+    ],
+    "adoptionStatuses": [
+      "foundation-adopted",
+      "self-built",
+      "exempted",
+      "not-adopted",
+      "unknown"
+    ],
+    "pathBasisVocabulary": [
+      "project-root-relative"
+    ],
+    "measurementSubjects": [
+      "logical-source",
+      "worst-projection"
+    ],
+    "missingPlatformIntents": [
+      "unsupported",
+      "planned",
+      "experimental",
+      "deprecated-host"
+    ],
+    "consumptionForms": [
+      "dependencies",
+      "vendored-bundle",
+      "tarball-pin",
+      "none",
+      "other"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "fixtureId": "timeout-policy.positive.minimal",
+  "contract": "timeout-policy",
+  "class": "positive",
+  "description": "The minimal valid policy: only the two required dimensions. Absent optional dimensions disable their timeout dimension in the mechanism.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/timeout-policy.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": true
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.timeout-policy",
+    "maxSeconds": 600,
+    "killGraceSeconds": 5
+  }
+}

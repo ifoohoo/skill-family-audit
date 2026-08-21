@@ -1,0 +1,21 @@
+{
+  "fixtureId": "report-binding.negative.short-report-digest",
+  "contract": "report-binding",
+  "class": "negative",
+  "description": "A truncated reportDigest is rejected: a binding must carry the full sha256 hex of the rendered report bytes; a shortened digest never verifies.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-binding.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-binding",
+    "runId": "run-aurora-0001",
+    "modelDigest": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "resultDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "reportDigest": "fedcba9876543210",
+    "rendererVersion": "0.2.0"
+  }
+}

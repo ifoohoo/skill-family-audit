@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-registry.dialect-boundary.unsupported", "contract": "host-registry", "class": "dialect-boundary",
+  "description": "Unsupported schema dialect fails before registry validation.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-registry.json", "dialect": "draft-04", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-registry", "hosts": ["fixture-host"] }
+}

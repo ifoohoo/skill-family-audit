@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill-family.profile-spi.rule-baseline-catalog",
+  "catalogVersion": 1,
+  "status": "candidate",
+  "authorityNote": "Local verification input for verifyProfile's overrides-policy checks. verifyProfile consumes only this file when validating override declarations, so the Profile SPI carries no hard dependency on the audit repository. Rule ids mirror audit canonical rule ids; whenever the referenced rules are adjudicated or their baselines change upstream, this catalog must be reconciled in the same change that consumes the new baselines.",
+  "effectNote": "Candidate effect: the referenced audit rules are still candidate-status at catalog time; the baselines below are the user-confirmed retained thresholds (remediation handoff D-7: 2000-token warning and 2400-token hard line stay unchanged).",
+  "tighteningPolicy": {
+    "ruleIdPattern": "^SFA-[A-Z0-9]+-[0-9]{3}$",
+    "onlyTightening": true,
+    "equalityIsNotTightening": true,
+    "directions": {
+      "not-increase": "upper bound: an override must be strictly LESS than the baseline to tighten (relaxation and equality are refused)",
+      "not-decrease": "lower bound: an override must be strictly GREATER than the baseline to tighten (relaxation and equality are refused)"
+    },
+    "basis": "Monotonic tightening semantics (audit canonical rule SFA-RULE-007): projects may only tighten upstream rules, never close, override-away, or relax them. Self-tightening reuses the original rule id plus a project-level numeric value and never mints new rule ids (remediation handoff D-6)."
+  },
+  "rules": [
+    {
+      "ruleId": "SFA-CONTEXT-001",
+      "name": "skill description two-thousand-token warning",
+      "description": "Static scanning must raise a context-budget warning when a single SKILL.md reaches the warning threshold.",
+      "parameters": [
+        {
+          "parameter": "warnLimitTokens",
+          "baselineValue": 2000,
+          "valueType": "integer",
+          "tighteningDirection": "not-increase",
+          "unit": "tokens",
+          "note": "Tightening warns earlier: a project override must set the warning line strictly below 2000 tokens."
+        }
+      ]
+    },
+    {
+      "ruleId": "SFA-CONTEXT-002",
+      "name": "skill description twenty-four-hundred-token mandatory intervention",
+      "description": "Reaching the hard line (120% of the warning threshold at baseline) mandates context reduction or responsibility splitting.",
+      "parameters": [
+        {
+          "parameter": "hardLimitTokens",
+          "baselineValue": 2400,
+          "valueType": "integer",
+          "tighteningDirection": "not-increase",
+          "unit": "tokens",
+          "note": "Tightening intervenes earlier: a project override must set the hard line strictly below 2400 tokens."
+        }
+      ]
+    }
+  ]
+}

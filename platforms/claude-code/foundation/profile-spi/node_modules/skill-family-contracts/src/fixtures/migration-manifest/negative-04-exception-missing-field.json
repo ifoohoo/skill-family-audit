@@ -1,0 +1,22 @@
+{
+  "fixtureId": "migration-manifest.negative.exception-missing-field",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "A temporary exception without all four mandatory fields (owner, reason, deadline, migrationTarget) is rejected at the schema layer.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "exceptions": [
+      {
+        "owner": "fictional-platform-team",
+        "reason": "fictional freeze"
+      }
+    ]
+  }
+}

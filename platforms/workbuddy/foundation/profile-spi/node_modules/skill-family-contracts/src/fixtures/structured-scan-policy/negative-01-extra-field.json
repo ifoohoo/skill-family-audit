@@ -1,0 +1,23 @@
+{
+  "fixtureId": "structured-scan-policy.negative.extra-field",
+  "contract": "structured-scan-policy",
+  "class": "negative",
+  "description": "A structured scan policy document with an undeclared suppression capability field; additionalProperties is false so this must be rejected.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/structured-scan-policy.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.structured-scan-policy",
+    "allowedNetworks": ["192.0.2.0/24"],
+    "approvedRegistries": ["https://registry.example.test/"],
+    "approvedCoordinates": ["fictitious-scope/fictitious-lockfile-parser@1.2.3"],
+    "formatAdapters": [{ "name": "fictitious-lockfile", "pathPattern": "pnpm-lock\\.yaml$" }],
+    "symlinkPolicy": { "mode": "forbid" },
+    "binaryPolicy": { "mode": "fail-closed", "approvedPaths": [] },
+    "suppress": ["non-public-address"]
+  }
+}

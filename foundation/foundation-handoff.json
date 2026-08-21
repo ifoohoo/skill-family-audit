@@ -1,6 +1,7 @@
 {
   "consumerSchemas": [
     "behavior-fixture-manifest.schema.json",
+    "foundation-adoption-exemption.schema.json",
     "methods/behavior-parameters.schema.json",
     "methods/behavior-result.schema.json",
     "methods/conformance-parameters.schema.json",
@@ -10,7 +11,6 @@
     "methods/runtime-parameters.schema.json",
     "methods/runtime-result.schema.json",
     "plugin-project-observation.schema.json",
-    "project-adoption-lock.schema.json",
     "providers/loop-agent/attempt-seal-record.schema.json",
     "providers/loop-agent/case-isolation-manifest.schema.json",
     "providers/loop-agent/cleanup-proof.schema.json",
@@ -21,17 +21,17 @@
     "semantic-review-result.schema.json"
   ],
   "kind": "skill-family-audit.foundation-handoff",
-  "payloadDigest": "679a7847a260937b4a425f5876c7c53fc68df56bf13740ac07d8abd08176321b",
+  "payloadDigest": "968b5e0a6586a5c253232acdf525390e53189c341e483fa58d198716b1f67cdc",
   "profile": {
-    "contractsVersion": "1.4.0",
+    "contractsVersion": "1.7.0",
     "id": "quickstart-profile",
     "version": 2
   },
-  "provenanceDigest": "2c3e1031abe7077a7ec37af40ffe5e94fc22f689da611fa2a2173479f9ad86ca",
+  "provenanceDigest": "28fd855055801174b8eb5dd8fd4aea8252920dff1a22ec24934b8194ddfe03d4",
   "receipt": {
     "kind": "skill-family.release-artifacts-manifest",
-    "receiptId": "foundation-release-manifest:8b8891033ad65d007ffa1e9c8529244c29d229905c07e8a01e7f959e07a3d50a",
-    "sha256": "8b8891033ad65d007ffa1e9c8529244c29d229905c07e8a01e7f959e07a3d50a"
+    "receiptId": "foundation-release-manifest:17432d7c418138784e3cfd4b5f27942e1b29cb80db49cd55b1adf31da3a469aa",
+    "sha256": "17432d7c418138784e3cfd4b5f27942e1b29cb80db49cd55b1adf31da3a469aa"
   },
   "schemaProviders": [
     {
@@ -95,7 +95,7 @@
   ],
   "schemaVersion": 2,
   "source": {
-    "baseCommit": "8a0a400d7f0aeb266b554d09e54e0f9ec1887cff",
+    "baseCommit": "2f4c4aefa26d03eb48404c9286b1c9ed7b96e22c",
     "repository": "skill-family-foundation-workspace"
   }
 }

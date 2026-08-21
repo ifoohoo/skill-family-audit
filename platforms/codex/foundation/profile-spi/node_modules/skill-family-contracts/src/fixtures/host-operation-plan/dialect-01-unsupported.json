@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-operation-plan.dialect-boundary.unsupported", "contract": "host-operation-plan", "class": "dialect-boundary",
+  "description": "Unsupported schema dialect fails before validation.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-operation-plan.json", "dialect": "draft-04", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-operation-plan" }
+}

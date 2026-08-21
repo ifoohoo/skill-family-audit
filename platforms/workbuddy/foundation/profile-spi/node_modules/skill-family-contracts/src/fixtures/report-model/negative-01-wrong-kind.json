@@ -1,0 +1,17 @@
+{
+  "fixtureId": "report-model.negative.wrong-kind",
+  "contract": "report-model",
+  "class": "negative",
+  "description": "A report model with a wrong kind discriminator is rejected: kind is a frozen const, so another document type cannot impersonate the report model.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-model.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-binding",
+    "identity": {}
+  }
+}

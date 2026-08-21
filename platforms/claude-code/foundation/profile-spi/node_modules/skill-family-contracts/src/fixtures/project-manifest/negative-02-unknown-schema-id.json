@@ -1,0 +1,24 @@
+{
+  "fixtureId": "project-manifest.negative.unknown-schema-id",
+  "contract": "project-manifest",
+  "class": "negative",
+  "description": "Targeting an unregistered $id must fail before validation with the unknown-id code.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/does-not-exist.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1002" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": {
+      "id": "example-skill-suite",
+      "name": "Example Skill Suite"
+    },
+    "contracts": {
+      "version": "1.0.0",
+      "profile": "public-plugin"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "fixtureId": "managed-file-lock.dialect-boundary.coerce-integer-tolerant",
+  "contract": "managed-file-lock",
+  "class": "dialect-boundary",
+  "description": "Coercion policy boundary: a string lockVersion passes only because the tolerant policy enables Ajv integer coercion.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/managed-file-lock.json",
+    "dialect": "2020-12",
+    "policy": "tolerant"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.managed-file-lock",
+    "lockVersion": "1",
+    "entries": [
+      {
+        "path": "package.json",
+        "hash": {
+          "algorithm": "sha256",
+          "value": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "generator": {
+          "tool": "projen",
+          "version": "0.101.23"
+        }
+      }
+    ]
+  }
+}

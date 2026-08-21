@@ -1,0 +1,19 @@
+{
+  "fixtureId": "surface-scan-policy.positive.valid",
+  "contract": "surface-scan-policy",
+  "class": "positive",
+  "description": "A fictitious scan policy with forbidden paths, forbidden content patterns and an intended-use list.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/surface-scan-policy.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.surface-scan-policy",
+    "pathPatterns": ["(^|/)hidden-root/", "\\.secret\\.json$"],
+    "contentPatterns": ["forbidden-marker-42"],
+    "allowedUses": ["fictitious-project-inspection"]
+  }
+}

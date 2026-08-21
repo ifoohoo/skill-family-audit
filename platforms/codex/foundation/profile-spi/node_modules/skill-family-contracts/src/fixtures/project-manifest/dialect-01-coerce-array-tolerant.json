@@ -1,0 +1,25 @@
+{
+  "fixtureId": "project-manifest.dialect-boundary.coerce-array-tolerant",
+  "contract": "project-manifest",
+  "class": "dialect-boundary",
+  "description": "Coercion policy boundary: a scalar managedFiles value passes only because the tolerant policy maps Ajv coerceTypes to array mode.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "tolerant"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": {
+      "id": "example-skill-suite",
+      "name": "Example Skill Suite"
+    },
+    "contracts": {
+      "version": "1.0.0",
+      "profile": "public-plugin"
+    },
+    "managedFiles": "docs/setup.md"
+  }
+}

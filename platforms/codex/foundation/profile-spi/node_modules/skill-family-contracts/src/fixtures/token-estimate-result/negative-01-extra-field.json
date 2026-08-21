@@ -1,0 +1,30 @@
+{
+  "fixtureId": "token-estimate-result.negative.extra-field",
+  "contract": "token-estimate-result",
+  "class": "negative",
+  "description": "The result cannot smuggle a timestamp or a model/cost field into an extra envelope field.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/token-estimate-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.token-estimate-result",
+    "algorithm": "utf8-byte-count",
+    "unit": "bytes",
+    "inputBytes": 12,
+    "upperBound": 12,
+    "precision": "exact",
+    "scope": "content-text-only",
+    "guarantees": [
+      "covers-content-text-only",
+      "no-model-calls",
+      "no-tokenizer-dependency",
+      "no-network-access",
+      "deterministic-byte-count"
+    ],
+    "estimatedAt": "2026-08-15T00:00:00Z"
+  }
+}

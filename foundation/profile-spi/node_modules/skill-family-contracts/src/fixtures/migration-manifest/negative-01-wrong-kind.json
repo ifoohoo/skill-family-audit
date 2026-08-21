@@ -1,0 +1,17 @@
+{
+  "fixtureId": "migration-manifest.negative.wrong-kind",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "A manifest with a wrong kind discriminator is rejected: kind is a frozen const, so an empty or foreign declaration cannot impersonate the contract.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.something-else",
+    "legacyInfra": []
+  }
+}

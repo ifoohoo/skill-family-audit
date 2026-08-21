@@ -1,0 +1,29 @@
+{
+  "fixtureId": "token-estimate-result.positive.valid",
+  "contract": "token-estimate-result",
+  "class": "positive",
+  "description": "An exact UTF-8 byte-count estimate of a mixed Chinese/emoji content text, with closed guarantee enumeration.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/token-estimate-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.token-estimate-result",
+    "algorithm": "utf8-byte-count",
+    "unit": "bytes",
+    "inputBytes": 12,
+    "upperBound": 12,
+    "precision": "exact",
+    "scope": "content-text-only",
+    "guarantees": [
+      "covers-content-text-only",
+      "no-model-calls",
+      "no-tokenizer-dependency",
+      "no-network-access",
+      "deterministic-byte-count"
+    ]
+  }
+}

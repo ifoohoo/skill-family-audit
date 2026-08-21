@@ -90,7 +90,30 @@ async function runTestHook(name, context) {
   if (typeof testHooks?.[name] === "function") await testHooks[name](context);
 }
 
-async function strictTarget(root, relPath, { target = "optional" } = {}) {
+async function createParentDirectory(cursor, relPath) {
+  try {
+    await mkdir(cursor);
+  } catch (cause) {
+    // EEXIST is a benign concurrent creation race: re-verify the entry below.
+    if (cause?.code !== "EEXIST") {
+      throw mechanismError(
+        HARNESS_ERROR_KINDS.INVALID_ROOT,
+        "strict file operation could not create a missing parent directory",
+        { input: relPath, code: cause?.code },
+      );
+    }
+  }
+  const created = await lstat(cursor);
+  if (created.isSymbolicLink() || !created.isDirectory()) {
+    throw mechanismError(
+      HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY,
+      "strict file operation requires real intermediate directories",
+      { input: relPath },
+    );
+  }
+}
+
+async function strictTarget(root, relPath, { target = "optional", createParents = false } = {}) {
   const lexical = await resolveContained(root, relPath);
   const rootReal = await realpath(root);
   const relative = path.relative(rootReal, lexical);
@@ -102,6 +125,10 @@ async function strictTarget(root, relPath, { target = "optional" } = {}) {
     try {
       stats = await lstat(cursor);
     } catch (cause) {
+      if (createParents && cause?.code === "ENOENT") {
+        await createParentDirectory(cursor, relPath);
+        continue;
+      }
       throw mechanismError(
         HARNESS_ERROR_KINDS.INVALID_ROOT,
         "strict file operation requires every parent directory to exist",
@@ -267,17 +294,25 @@ function strictFailure(kind, operation, cause, relPath, committed, verified) {
 }
 
 /**
- * Creates one file without replacing any existing directory entry. The
- * parent must already exist and contain no symlink components. The returned
+ * Creates one file without replacing any existing directory entry. Every
+ * parent must be a real directory and contain no symlink components; with
+ * `createParents` enabled, the missing portion of the parent chain is created
+ * as real directories (any symlink component is still refused). The returned
  * receipt is emitted only after byte/mode/identity verification and directory
  * fsync have completed.
  */
-export async function publishFileExclusive(root, relPath, data, { mode = 0o644 } = {}) {
+export async function publishFileExclusive(
+  root,
+  relPath,
+  data,
+  { mode = 0o644, createParents = false } = {},
+) {
   assertWritableData(data, "publishFileExclusive");
   const normalizedMode = normalizeMode(mode);
   const bytes = bytesOf(data);
   const { targetPath, directory, directoryStats, directoryReal } = await strictTarget(root, relPath, {
     target: "absent",
+    createParents,
   });
   const staging = path.join(
     directory,

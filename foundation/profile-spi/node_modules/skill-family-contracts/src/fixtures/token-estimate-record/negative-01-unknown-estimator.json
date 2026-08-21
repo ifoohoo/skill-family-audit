@@ -1,0 +1,35 @@
+{
+  "fixtureId": "token-estimate-record.negative.unknown-estimator",
+  "contract": "token-estimate-record",
+  "class": "negative",
+  "description": "A record attributed to an estimator identity other than the frozen authoritative estimator is rejected: threshold decisions must never mix estimation methods.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/token-estimate-record.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.token-estimate-record",
+    "estimator": {
+      "id": "some-other-estimator",
+      "version": "1.0.0"
+    },
+    "algorithm": "cjk-char-whitespace-split",
+    "unit": "tokens",
+    "input": {
+      "codePoints": 3,
+      "inputBytes": 3
+    },
+    "segmentation": {
+      "cjkCharacters": 0,
+      "whitespaceSeparators": 0,
+      "otherRuns": 1
+    },
+    "tokens": 1,
+    "precision": "deterministic-heuristic",
+    "scope": "content-text-only",
+    "guarantees": ["deterministic-segmentation"]
+  }
+}

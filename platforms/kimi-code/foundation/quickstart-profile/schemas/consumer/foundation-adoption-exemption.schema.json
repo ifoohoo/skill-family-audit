@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/foundation-adoption-exemption.json",
+  "title": "Foundation Adoption Exemption Registration",
+  "description": "Foundation 采用义务的自建豁免登记契约（B9/D-11；义务条文载体 spec/policies/foundation-adoption-obligation.json FADO-003/004/006）。项目因真实承载边界（如语言栈）未采用 foundation 三包之一部或全部时，必须登记本记录：豁免理由、承载边界证据、批准与期限；记录本身机器可审计（schema_validation + 证据引用可解析 + 状态追加式留痕）。candidate 效力限制声明：本契约为 candidate 状态，正式效力待规则效力裁决与库存 intake 完成后确立。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "exemptionId",
+    "project",
+    "exemptedPackages",
+    "reasonCategory",
+    "reason",
+    "boundaryEvidence",
+    "approval",
+    "expiresAt",
+    "status"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0-candidate"
+    },
+    "exemptionId": {
+      "type": "string",
+      "pattern": "^FAE-[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "豁免登记唯一标识；建议含项目标识前缀（如 FAE-glaf4-test-python-stack）。"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectId"
+      ],
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "被豁免项目的唯一标识。"
+        },
+        "familyId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "所属技能族标识（如适用）。"
+        },
+        "repositoryRef": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "项目仓库坐标或本地权威路径引用。"
+        }
+      }
+    },
+    "exemptedPackages": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "skill-family-contracts",
+          "skill-family-harness-node",
+          "skill-family-engineering-kit"
+        ]
+      },
+      "description": "豁免覆盖的 foundation 包清单；必须显式枚举，不允许通配。未列入的包仍负采用义务。"
+    },
+    "reasonCategory": {
+      "enum": [
+        "language_stack_boundary",
+        "runtime_environment_boundary",
+        "dependency_supply_boundary",
+        "temporary_migration_window"
+      ],
+      "description": "豁免理由类别：language_stack_boundary=语言栈边界（如 Python 栈项目 vs Node-only harness，glaf4-test 证据型）；runtime_environment_boundary=运行环境边界；dependency_supply_boundary=依赖供给边界；temporary_migration_window=存量自建链过渡迁移窗口（必须同时给出 selfBuildReplacement 与迁移计划，且只能限期）。"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "豁免理由陈述：必须说明承载边界为何使采用不可行，以及边界是否可能随 foundation 能力扩展消失。"
+    },
+    "boundaryEvidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "description",
+          "evidenceRefs"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "language_stack",
+              "runtime_environment",
+              "dependency_supply",
+              "migration_plan"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "承载边界证据引用：文件路径、观察报告坐标或决策记录；审计时逐项要求可解析。"
+          }
+        }
+      },
+      "description": "承载边界证据：至少一项；证据须支撑 reasonCategory 所指边界，不得以空泛叙述充数。"
+    },
+    "selfBuildReplacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "description"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "自建替代物陈述：项目以何种自建机制替代被豁免包。"
+        },
+        "parityScope": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "自建替代物与 foundation 能力的等价范围声明。"
+        }
+      },
+      "description": "自建替代物声明；reasonCategory=temporary_migration_window 时必填。"
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approver",
+        "grantedAt"
+      ],
+      "properties": {
+        "approver": {
+          "type": "string",
+          "minLength": 1,
+          "description": "批准主体（用户或获授权的治理主体）。"
+        },
+        "grantedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "approvalRef": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "批准记录引用（决策记录、批复条目等）。"
+        }
+      }
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "豁免期限：禁止无期限豁免（与 exception-policy EC-005 一致）；到期后必须续期重审、收窄范围或恢复采用。"
+    },
+    "status": {
+      "enum": [
+        "pending_approval",
+        "active",
+        "expired",
+        "revoked"
+      ],
+      "description": "豁免状态。"
+    },
+    "statusEvents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "at",
+          "from",
+          "to",
+          "recordedBy"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from": {
+            "enum": [
+              "pending_approval",
+              "active",
+              "expired",
+              "revoked"
+            ]
+          },
+          "to": {
+            "enum": [
+              "pending_approval",
+              "active",
+              "expired",
+              "revoked"
+            ]
+          },
+          "recordedBy": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "description": "状态事实追加式留痕（与 exception-policy EC-002 一致）：只增不改，不原地改写历史条目。"
+    },
+    "reviewEvents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "at",
+          "trigger",
+          "outcome"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 1,
+            "description": "复审触发事件（如 foundation 大版本升级，联动 foundation-version-drift 政策 FVD-003）。"
+          },
+          "outcome": {
+            "enum": [
+              "renewed",
+              "narrowed",
+              "revoked",
+              "maintained"
+            ]
+          }
+        }
+      },
+      "description": "复审事件追加式留痕：foundation 代际升级时豁免必须重审，重审结论登记于此。"
+    }
+  }
+}

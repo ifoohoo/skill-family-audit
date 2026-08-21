@@ -1,0 +1,19 @@
+{
+  "fixtureId": "migration-manifest.negative.empty-reference-replaced-by",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "A legacyReference entry with an empty replacedBy field is rejected: every declared reference must name its replacement.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "legacyReferences": [
+      { "path": "src/index.mjs", "text": "old import", "replacedBy": "" }
+    ]
+  }
+}

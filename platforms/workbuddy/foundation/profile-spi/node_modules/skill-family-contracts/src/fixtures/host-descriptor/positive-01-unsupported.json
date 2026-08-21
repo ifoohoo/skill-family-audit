@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.positive.unsupported", "contract": "host-descriptor", "class": "positive",
+  "description": "An unsupported host is explicit and carries neither a driver nor paths.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "fixture-host", "displayName": "Fixture Host", "support": "unsupported", "unsupportedReason": "No frozen driver.", "pathCategories": [], "probeCapabilities": [] }
+}

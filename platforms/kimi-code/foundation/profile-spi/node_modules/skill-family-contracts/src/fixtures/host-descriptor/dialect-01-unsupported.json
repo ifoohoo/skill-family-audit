@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.dialect-boundary.unsupported", "contract": "host-descriptor", "class": "dialect-boundary",
+  "description": "Unsupported schema dialect fails before validation.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "draft-04", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "fixture-host", "displayName": "Fixture Host", "support": "unsupported", "unsupportedReason": "No frozen driver.", "pathCategories": [], "probeCapabilities": [] }
+}

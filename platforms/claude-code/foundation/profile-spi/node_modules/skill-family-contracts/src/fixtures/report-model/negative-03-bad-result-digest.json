@@ -1,0 +1,17 @@
+{
+  "fixtureId": "report-model.negative.bad-result-digest",
+  "contract": "report-model",
+  "class": "negative",
+  "description": "A source resultDigest that is not sha256 lowercase hex (64 chars) is rejected: a truncated digest cannot bind a report to its machine result.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/report-model.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.report-model",
+    "source": { "resultDigest": "0123456789ABCDEF", "resultState": "succeeded" }
+  }
+}

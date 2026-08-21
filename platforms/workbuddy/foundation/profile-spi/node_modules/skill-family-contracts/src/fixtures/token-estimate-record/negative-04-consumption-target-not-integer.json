@@ -1,0 +1,41 @@
+{
+  "fixtureId": "token-estimate-record.negative.consumption-target-not-integer",
+  "contract": "token-estimate-record",
+  "class": "negative",
+  "description": "Consumption contract (SG-33) fail-closed guarantee: a record whose `tokens` field is not a non-negative integer (here a JSON string) is rejected. Consumers are entitled to rely on `tokens` being a non-negative integer; any other type fails schema validation and, at the consumption boundary, fails closed rather than being interpolated into human output (the `[object Object]` display bug this contract eliminates).",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/token-estimate-record.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.token-estimate-record",
+    "estimator": {
+      "id": "skill-family.token-estimator",
+      "version": "1.0.0"
+    },
+    "algorithm": "cjk-char-whitespace-split",
+    "unit": "tokens",
+    "input": {
+      "codePoints": 2,
+      "inputBytes": 2
+    },
+    "segmentation": {
+      "cjkCharacters": 2,
+      "whitespaceSeparators": 0,
+      "otherRuns": 0
+    },
+    "tokens": "2",
+    "precision": "deterministic-heuristic",
+    "scope": "content-text-only",
+    "guarantees": [
+      "covers-content-text-only",
+      "no-model-calls",
+      "no-tokenizer-dependency",
+      "no-network-access",
+      "deterministic-segmentation"
+    ]
+  }
+}

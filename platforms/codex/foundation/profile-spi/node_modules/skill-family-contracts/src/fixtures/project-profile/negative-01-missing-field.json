@@ -1,0 +1,14 @@
+{
+  "fixtureId": "project-profile.negative.missing-field",
+  "contract": "project-profile",
+  "class": "negative",
+  "description": "A project Profile missing its required adoption declaration is refused.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/project-profile.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-profile",
+    "project": { "id": "fictional-project", "workspace": "fictional-project-workspace" },
+    "overrides": []
+  }
+}

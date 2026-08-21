@@ -1,0 +1,25 @@
+{
+  "fixtureId": "project-manifest.dialect-boundary.coerce-array-strict",
+  "contract": "project-manifest",
+  "class": "dialect-boundary",
+  "description": "Coercion policy boundary: the same scalar managedFiles document is rejected under the strict policy (no coercion).",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": {
+      "id": "example-skill-suite",
+      "name": "Example Skill Suite"
+    },
+    "contracts": {
+      "version": "1.0.0",
+      "profile": "public-plugin"
+    },
+    "managedFiles": "docs/setup.md"
+  }
+}

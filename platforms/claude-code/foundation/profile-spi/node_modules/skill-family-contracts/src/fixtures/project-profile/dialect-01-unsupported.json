@@ -1,0 +1,15 @@
+{
+  "fixtureId": "project-profile.dialect.unsupported",
+  "contract": "project-profile",
+  "class": "dialect-boundary",
+  "description": "Unsupported dialects fail closed.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/project-profile.json", "dialect": "future", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-profile",
+    "project": { "id": "fictional-project", "workspace": "fictional-project-workspace" },
+    "adoption": {},
+    "overrides": []
+  }
+}

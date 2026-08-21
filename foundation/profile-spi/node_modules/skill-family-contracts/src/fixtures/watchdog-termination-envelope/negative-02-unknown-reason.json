@@ -1,0 +1,35 @@
+{
+  "fixtureId": "watchdog-termination-envelope.negative.unknown-reason",
+  "contract": "watchdog-termination-envelope",
+  "class": "negative",
+  "description": "A reason outside the closed vocabulary is rejected — the termination-evidence vocabulary is frozen and can only grow via an ADR.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/watchdog-termination-envelope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.watchdog-termination-envelope",
+    "ok": false,
+    "exitStatus": 124,
+    "processStatus": "TIMED_OUT",
+    "terminationReason": "hard_ceiling",
+    "watchdogReason": "stalled_by_oracle",
+    "evidence": {
+      "command": "node",
+      "args": [],
+      "cwd": "/tmp/fictitious-cwd",
+      "startedAt": "2026-08-18T00:00:00.000Z",
+      "finishedAt": "2026-08-18T01:00:00.000Z",
+      "checkIntervalSeconds": 1,
+      "signalSequence": [],
+      "forcedKill": false,
+      "startupProgressPaths": [],
+      "terminalProgressPaths": [],
+      "timeoutPolicy": { "maxSeconds": 3600, "killGraceSeconds": 10 },
+      "guarantees": ["fail-closed", "no-auto-restart"]
+    }
+  }
+}

@@ -15,7 +15,9 @@ from pathlib import Path
 from typing import Any
 
 import conformance_check as checker
+import executors
 import foundation_adoption_verifier as adoption_verifier
+from executors.contracts import ExecutorEvidenceError
 
 
 TARGET_TYPES = {
@@ -37,6 +39,68 @@ MANAGED_PLATFORM_TEMPLATE_IDS = {
     "kimi-code",
     "workbuddy",
 }
+
+# Audit 领域既有的 harness 分工裁决（原 migration/harness-owner-adjudications.json
+# owner_boundary 的语义冻结）。D3 起采用锁废弃，指导视图直接绑定该领域裁决，
+# 不再经由项目 Profile 文档转手。
+OWNER_BOUNDARY = {
+    "audit": "skill-family-audit",
+    "domain_semantics": "skill-family-audit",
+    "foundation_harness": "skill-family-foundation",
+    "loop": "loop-agent",
+    "release": "release-skill",
+}
+
+# D1 第一档执行路由：冻结闭包规则逐条显式路由（总数以信任策略 total_rules 钉扎），禁止静默跳过。
+# 口径与 scripts/governance/build_first_tier_execution_routing.py 一致：
+# 机械方法 = static_scan / schema_validation / digest_verification。
+MECHANICAL_CHECK_METHODS = frozenset(
+    {"static_scan", "schema_validation", "digest_verification"}
+)
+ROUTE_FIRST_TIER_STATIC = "first_tier_static_executor"
+ROUTE_FIRST_TIER_SEMANTIC = "first_tier_semantic_review"
+ROUTE_MECHANICAL_CANDIDATE = "mechanical_candidate_executor_gap"
+ROUTE_SEMANTIC_REVIEW = "semantic_review_route"
+ROUTE_UNROUTED_CANDIDATE = "candidate_undetermined_not_routed"
+EXECUTION_ROUTE_VOCABULARY = (
+    ROUTE_FIRST_TIER_STATIC,
+    ROUTE_FIRST_TIER_SEMANTIC,
+    ROUTE_MECHANICAL_CANDIDATE,
+    ROUTE_SEMANTIC_REVIEW,
+    ROUTE_UNROUTED_CANDIDATE,
+)
+
+
+def canonical_rule_execution_route(
+    rule: dict[str, Any]
+) -> tuple[str, str]:
+    """返回 (execution_route, execution_route_detail)；逐条显式，不静默跳过。
+
+    - ACTIVE_MECHANICAL / ACTIVE_SEMANTIC：第一档实执行（确定性执行器或
+      隔离语义审阅），绑定校验由 _validated_baseline_lineage 失败关闭承担；
+    - RETAINED_UNIMPLEMENTED 且含机械方法：机械候选档，执行器缺口明示；
+    - 其余 RETAINED：语义审阅路由；
+    - 候选未决：失败关闭，不得路由。
+    """
+    lifecycle = rule.get("lifecycle_status")
+    methods = sorted(set(rule.get("check_methods") or []))
+    if lifecycle == "ACTIVE_MECHANICAL":
+        return ROUTE_FIRST_TIER_STATIC, "terminal_governance_baseline_static"
+    if lifecycle == "ACTIVE_SEMANTIC":
+        return ROUTE_FIRST_TIER_SEMANTIC, "isolated_semantic_review"
+    if lifecycle == "RETAINED_UNIMPLEMENTED":
+        mechanical = sorted(set(methods) & MECHANICAL_CHECK_METHODS)
+        if mechanical:
+            return (
+                ROUTE_MECHANICAL_CANDIDATE,
+                "executor_missing:" + "+".join(mechanical),
+            )
+        if "semantic_review" in methods:
+            return ROUTE_SEMANTIC_REVIEW, "semantic_review_required"
+        if methods == ["behavior_verification"]:
+            return ROUTE_SEMANTIC_REVIEW, "behavior_verification_only"
+        return ROUTE_SEMANTIC_REVIEW, "no_mechanical_method"
+    return ROUTE_UNROUTED_CANDIDATE, "candidate_undetermined"
 
 
 class WorkflowError(RuntimeError):
@@ -111,52 +175,29 @@ def foundation_target_content_digest(target: Path, target_type: str) -> str:
 def foundation_project_adoption_task_digest(target: Path) -> str:
     """Bind semantic work to declared business inputs, never runtime outputs.
 
-    ``plugin-src`` and ``spec`` are the existing source/contract authorities.  The
-    remaining files come from the project-adoption lock itself.  In particular,
-    generated projections, release candidates, test caches, and audit output are
-    deliberately outside this task identity.
+    The project-root ``profile.json`` is the D3 adoption identity.  Declared
+    inputs are the profile itself, the Foundation pin artifacts it declares,
+    and the ``plugin-src``/``spec`` source/contract authorities.  Generated
+    projections, release candidates, test caches, and audit output stay
+    outside this task identity.
     """
-    lock_relative = ".skill-family-audit/adoption-lock.json"
-    lock_path = target / lock_relative
-    if not lock_path.is_file() or lock_path.is_symlink():
-        raise WorkflowError("PROJECT_ADOPTION_MISSING", "项目缺少采用锁")
-    lock = load_json(lock_path)
-    declared = {lock_relative}
-    installed_root = lock.get("installed_root")
-    migration_relative = lock.get("migration_manifest", {}).get("relative_path")
-    _validate_posix_relative_path(installed_root, "installed_root")
-    _validate_posix_relative_path(
-        migration_relative,
-        "migration_manifest.relative_path",
-    )
-    migration_authority = f"{installed_root}/{migration_relative}"
-    _validate_posix_relative_path(
-        migration_authority,
-        "migration_manifest.authority_path",
-    )
-    declared.add(migration_authority)
-    for field in ("change_impact_closure", "migration_scope"):
-        values = lock.get(field, [])
-        if values is not None and not isinstance(values, list):
-            raise WorkflowError("PROJECT_ADOPTION_INVALID", f"{field} 必须是数组")
-        for relative in values or []:
-            _validate_posix_relative_path(relative, field)
-            declared.add(relative)
-    route_path = lock.get("adoption_route", {}).get("plan_adoption")
-    if route_path is not None:
-        _validate_posix_relative_path(route_path, "adoption_route.plan_adoption")
-        declared.add(route_path)
-    harness = lock.get("harness_inventory", {})
-    for relative, field in (
-        (harness.get("relative_path"), "harness_inventory.relative_path"),
-        (
-            harness.get("owner_adjudications", {}).get("relative_path"),
-            "harness_inventory.owner_adjudications.relative_path",
-        ),
-    ):
-        if relative is not None:
-            _validate_posix_relative_path(relative, field)
-            declared.add(relative)
+    profile_relative = "profile.json"
+    profile_path = target / profile_relative
+    if not profile_path.is_file() or profile_path.is_symlink():
+        raise WorkflowError("PROJECT_PROFILE_MISSING", "项目缺少 profile.json")
+    profile = load_json(profile_path)
+    declared = {profile_relative}
+    adoption = profile.get("adoption")
+    packages = adoption.get("foundation_pin", {}).get("packages") if isinstance(adoption, dict) else None
+    if not isinstance(packages, dict) or not packages:
+        raise WorkflowError(
+            "PROJECT_PROFILE_INVALID",
+            "profile.json adoption.foundation_pin.packages 必须声明 Foundation pin",
+        )
+    for name, pin in packages.items():
+        relative = pin.get("path") if isinstance(pin, dict) else None
+        _validate_posix_relative_path(relative, f"adoption.foundation_pin.packages.{name}.path")
+        declared.add(relative)
     for authority_root in ("plugin-src", "spec"):
         root = target / authority_root
         if not root.is_dir() or root.is_symlink():
@@ -172,7 +213,7 @@ def foundation_project_adoption_task_digest(target: Path) -> str:
     missing = sorted(relative for relative in declared if not (target / relative).is_file())
     if missing:
         raise WorkflowError(
-            "PROJECT_ADOPTION_INPUT_MISSING",
+            "PROJECT_PROFILE_INPUT_MISSING",
             f"声明的 Task 输入不存在: {missing}",
         )
     return str(foundation_resource_closure(target, sorted(declared))["digest"])
@@ -221,16 +262,17 @@ def load_rules(
 def canonical_rule_summary(trust_policy: dict[str, Any]) -> dict[str, Any]:
     projection = load_json(CANONICAL_PROJECTION)
     expected = trust_policy.get("canonical_rule_projection", {})
+    expected_total_rules = expected.get("total_rules")
     if (
         foundation_file_digest(CANONICAL_PROJECTION) != expected.get("digest")
         or projection.get("source_digest") != expected.get("source_digest")
         or projection.get("business_digest") != expected.get("business_digest")
-        or projection.get("total_rules") != 761
-        or len(projection.get("rules", [])) != 761
+        or projection.get("total_rules") != expected_total_rules
+        or len(projection.get("rules", [])) != expected_total_rules
     ):
         raise WorkflowError(
             "CANONICAL_RULE_PROJECTION_INVALID",
-            "761 条权威规则投影与冻结信任策略不一致",
+            "权威规则投影与冻结信任策略不一致（含信任策略钉扎的规则总数）",
         )
     dispositions = {
         "candidate_undetermined": 0,
@@ -254,7 +296,7 @@ def canonical_rule_summary(trust_policy: dict[str, Any]) -> dict[str, Any]:
         "projection_digest": foundation_file_digest(CANONICAL_PROJECTION),
         "source_digest": projection["source_digest"],
         "business_digest": projection["business_digest"],
-        "total_rules": 761,
+        "total_rules": expected_total_rules,
         **dispositions,
     }
 
@@ -264,7 +306,7 @@ def canonical_rule_applicability(
     target_type: str,
     platform: str = "all",
 ) -> dict[str, Any]:
-    """逐条分类 761 条规则；终态记录是候选投影的唯一运行覆盖。"""
+    """逐条分类信任策略钉扎的全量规则；终态记录是候选投影的唯一运行覆盖。"""
     summary = canonical_rule_summary(trust_policy)
     projection = load_json(CANONICAL_PROJECTION)
     rows: list[dict[str, Any]] = []
@@ -308,6 +350,12 @@ def canonical_rule_applicability(
                 and rule.get("applicability") in {"all_families", "family_scoped"}
             )
         )
+        execution_route, execution_route_detail = canonical_rule_execution_route(rule)
+        if candidate_undetermined and execution_route != ROUTE_UNROUTED_CANDIDATE:
+            raise WorkflowError(
+                "CANONICAL_RULE_APPLICABILITY_INVALID",
+                f"候选未决规则不得持有执行路由: {canonical_id}",
+            )
         rows.append({
             "canonical_id": canonical_id,
             "revision": revision,
@@ -325,6 +373,8 @@ def canonical_rule_applicability(
                 "not_applicable"
             ),
             "executable": executable,
+            "execution_route": execution_route,
+            "execution_route_detail": execution_route_detail,
             "reason": (
                 "终态五轴已冻结并适用于当前目标" if executable else
                 "规则已保留但尚未绑定可执行实现，禁止执行" if retained_unimplemented else
@@ -332,10 +382,20 @@ def canonical_rule_applicability(
                 "终态规则不适用于当前目标"
             ),
         })
-    if len(rows) != 761 or len(seen) != 761:
+    expected_total_rules = summary["total_rules"]
+    if len(rows) != expected_total_rules or len(seen) != expected_total_rules:
         raise WorkflowError(
             "CANONICAL_RULE_APPLICABILITY_INVALID",
-            "761 条权威规则没有被逐条且唯一地分类",
+            "冻结信任策略钉扎的权威规则没有被逐条且唯一地分类",
+        )
+    execution_routing_counts = {
+        route: sum(1 for row in rows if row["execution_route"] == route)
+        for route in EXECUTION_ROUTE_VOCABULARY
+    }
+    if sum(execution_routing_counts.values()) != expected_total_rules:
+        raise WorkflowError(
+            "CANONICAL_RULE_APPLICABILITY_INVALID",
+            "执行路由未逐条覆盖冻结信任策略钉扎的全量权威规则，存在静默跳过",
         )
     payload = {
         "schema_version": "1.0.0",
@@ -354,6 +414,7 @@ def canonical_rule_applicability(
                 if row["disposition"] == "retained_unimplemented"
             ),
         },
+        "execution_routing_counts": execution_routing_counts,
         "rules": rows,
     }
     payload["applicability_digest"] = foundation_document_digest(payload)
@@ -654,7 +715,6 @@ PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS = {
     "node_modules",
     "tests",
 }
-ADOPTION_LOCK_SCHEMA_NAME = "project-adoption-lock.schema.json"
 
 
 def _validate_posix_relative_path(value: str, field_name: str) -> None:
@@ -1029,8 +1089,8 @@ def observe_plugin_project(
         _manifest_identity(
             path,
             root,
-            # In project-adoption the lock and platform manifest own the
-            # plugin identity.  The installed package.json names the adapter
+            # In project-adoption the project Profile and platform manifest own
+            # the plugin identity.  The installed package.json names the adapter
             # distribution and may legitimately differ from the family id.
             package_name_is_plugin_id=not (path == package_path and identity_hint),
         )
@@ -1230,6 +1290,58 @@ def observe_plugin_project(
     return observation
 
 
+def _assert_project_profile_baseline(
+    profile_document: dict[str, Any], profile_result: dict[str, Any]
+) -> None:
+    """Audit 领域判定：项目必须采用 Audit 捆绑的 Foundation 基线。
+
+    SPI 只证明 profile 自身合同闭合与摘要真实；采用版本是否与 Audit
+    实际携带的 Foundation 0.8.0 一致属于 Audit 的领域判断。基线事实取自
+    SPI 运行闭包 provenance（由权威生成器从隔离安装机械投影），不在
+    Audit 侧重复 Foundation 的 Schema 或摘要算法。
+    """
+    closure_root = Path(profile_result.get("closure_root", ""))
+    provenance_path = (
+        closure_root / adoption_verifier.SPI_PROVENANCE_RELATIVE
+    )
+    try:
+        provenance = load_json(provenance_path)
+    except WorkflowError as exc:
+        raise WorkflowError(
+            "PROJECT_PROFILE_BASELINE_MISSING",
+            f"SPI 闭包 provenance 不可读: {exc}",
+        ) from exc
+    expected_profile = provenance.get("profile")
+    if not isinstance(expected_profile, dict):
+        raise WorkflowError(
+            "PROJECT_PROFILE_BASELINE_MISSING", "SPI 闭包 provenance 缺少 profile 绑定"
+        )
+    adoption = profile_document.get("adoption", {})
+    declared_profile = adoption.get("foundation_profile", {})
+    for key in ("id", "version"):
+        if declared_profile.get(key) != expected_profile.get(key):
+            raise WorkflowError(
+                "PROJECT_PROFILE_BASELINE_MISMATCH",
+                f"项目采用的 Foundation profile {key} 与 Audit 基线不一致: "
+                f"declared={declared_profile.get(key)} expected={expected_profile.get(key)}",
+            )
+    expected_packages = {
+        item["name"]: item["version"]
+        for item in provenance.get("packages", [])
+        if isinstance(item, dict) and "name" in item and "version" in item
+    }
+    declared_packages = adoption.get("foundation_pin", {}).get("packages", {})
+    for name, expected_version in sorted(expected_packages.items()):
+        pin = declared_packages.get(name)
+        declared_version = pin.get("version") if isinstance(pin, dict) else None
+        if declared_version != expected_version:
+            raise WorkflowError(
+                "PROJECT_PROFILE_BASELINE_MISMATCH",
+                f"项目采用的 Foundation 包版本与 Audit 基线不一致: {name} "
+                f"declared={declared_version} expected={expected_version}",
+            )
+
+
 def target_scope(target: Path, target_type: str) -> dict[str, Any]:
     if target_type == "single_skill":
         skill = target if target.name == "SKILL.md" else target / "SKILL.md"
@@ -1304,216 +1416,45 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
             "plugin_project": observation,
             "logical_skill_count": len(observation["skills"]),
         }
-    adoption_lock_path = target / ".skill-family-audit/adoption-lock.json"
-    if not adoption_lock_path.is_file() or adoption_lock_path.is_symlink():
-        raise WorkflowError("PROJECT_ADOPTION_MISSING", "项目缺少采用锁")
-    adoption_lock = load_json(adoption_lock_path)
-    # Draft 2020-12 Schema 校验：adoption-lock 必须符合 Audit 领域合同
-    schema_errors = _foundation_schema_errors(
-        adoption_lock,
-        "https://contracts.skill-family.example/skill-family-audit/"
-        "candidate/v2/project-adoption-lock.json",
-    )
-    if schema_errors:
+    # D3: 项目根 profile.json 是唯一采用身份来源。Foundation 0.8.0 拥有该合同，
+    # 公共入口 verifyProjectProfile 完成外壳校验、真实文件摘要比对与自加严规则检查；
+    # verifyProfile 仍只用于 Profile 提供者描述符。缺少 profile 时失败关闭，
+    # 不存在任何废弃 adoption lock 回退。
+    project_profile_path = target / "profile.json"
+    if not project_profile_path.is_file() or project_profile_path.is_symlink():
+        raise WorkflowError("PROJECT_PROFILE_MISSING", "项目缺少 profile.json")
+    profile_result = adoption_verifier.verify_project_profile(target)
+    if not profile_result.get("foundation_profile_complete"):
         raise WorkflowError(
-            "PROJECT_ADOPTION_INVALID",
-            f"采用锁不符合 adoption-lock 合同: {schema_errors}",
+            "PROJECT_PROFILE_INVALID",
+            "项目 profile.json 未通过 Foundation Profile SPI: "
+            + "; ".join(profile_result.get("blockers", [])),
         )
-    installed_root_value = adoption_lock.get("installed_root")
-    family_id = adoption_lock.get("family_id")
-    adoption_version = adoption_lock.get("version")
-    # 路径收容校验：所有相对路径必须是 POSIX 相对路径，拒绝绝对/遍历/反斜杠
-    _validate_posix_relative_path(installed_root_value, "installed_root")
-    _validate_posix_relative_path(
-        adoption_lock["foundation_pin"]["relative_path"],
-        "foundation_pin.relative_path",
-    )
-    _validate_posix_relative_path(
-        adoption_lock["bundle_root"],
-        "bundle_root",
-    )
-    _validate_posix_relative_path(
-        adoption_lock["bundle_provenance"]["relative_path"],
-        "bundle_provenance.relative_path",
-    )
-    _validate_posix_relative_path(
-        adoption_lock["migration_manifest"]["relative_path"],
-        "migration_manifest.relative_path",
-    )
-    # ── adoption_route 验证 ──
-    adoption_route = adoption_lock.get("adoption_route", {})
-    route_type = adoption_route.get("route_type")
-    is_new = adoption_route.get("is_new_skill_family")
-    if route_type == "scaffold" and not is_new:
-        raise WorkflowError(
-            "ADOPTION_ROUTE_INVALID",
-            "scaffold 路由要求 is_new_skill_family=true",
-        )
-    if route_type == "adopt-plan" and is_new:
-        raise WorkflowError(
-            "ADOPTION_ROUTE_INVALID",
-            "adopt-plan 路由要求 is_new_skill_family=false",
-        )
-    if route_type == "scaffold":
-        scaffold_target = adoption_route.get("scaffold_target")
-        if not isinstance(scaffold_target, str) or not scaffold_target:
-            raise WorkflowError(
-                "ADOPTION_ROUTE_INVALID",
-                "scaffold 路由必须提供 scaffold_target",
-            )
-        _validate_posix_relative_path(scaffold_target, "adoption_route.scaffold_target")
-    if route_type == "adopt-plan":
-        plan_adoption = adoption_route.get("plan_adoption")
-        if not isinstance(plan_adoption, str) or not plan_adoption:
-            raise WorkflowError(
-                "ADOPTION_ROUTE_INVALID",
-                "adopt-plan 路由必须提供 plan_adoption",
-            )
-        _validate_posix_relative_path(plan_adoption, "adoption_route.plan_adoption")
-    # ── harness_inventory 绑定验证 ──
-    harness_inventory = adoption_lock.get("harness_inventory")
-    if not isinstance(harness_inventory, dict):
-        raise WorkflowError(
-            "HARNESS_INVENTORY_MISSING",
-            "采用锁缺少 harness_inventory 绑定",
-        )
-    inventory_rel = harness_inventory.get("relative_path")
-    inventory_digest = harness_inventory.get("inventory_digest")
-    _validate_posix_relative_path(inventory_rel, "harness_inventory.relative_path")
-    receipt_path = target / inventory_rel
-    if not receipt_path.is_file() or receipt_path.is_symlink():
-        raise WorkflowError(
-            "HARNESS_INVENTORY_FILE_MISSING",
-            f"receipt 文件不存在: {inventory_rel}",
-        )
-    # 读取 receipt 并校验 Foundation camelCase 字段
-    receipt = load_json(receipt_path)
-    if receipt.get("schemaVersion") != 1:
-        raise WorkflowError(
-            "HARNESS_INVENTORY_SCHEMA_VERSION_INVALID",
-            f"receipt schemaVersion 必须为 1，实际为 {receipt.get('schemaVersion')}",
-        )
-    if receipt.get("kind") != "skill-family.harness-surface-inventory":
-        raise WorkflowError(
-            "HARNESS_INVENTORY_KIND_INVALID",
-            f"receipt kind 必须为 skill-family.harness-surface-inventory，实际为 {receipt.get('kind')}",
-        )
-    _validate_harness_scan_root(target, receipt.get("scanRoot"))
-    if receipt.get("exhaustive") is not True:
-        raise WorkflowError(
-            "HARNESS_INVENTORY_NOT_EXHAUSTIVE",
-            "receipt exhaustive 必须为 true",
-        )
-    # inventoryDigest 必须与 lock 绑定一致
-    actual_inventory_digest = receipt.get("inventoryDigest", "")
-    if actual_inventory_digest != inventory_digest:
-        raise WorkflowError(
-            "HARNESS_INVENTORY_DIGEST_MISMATCH",
-            f"receipt inventoryDigest 与 lock inventory_digest 不一致",
-        )
-    installed_root = (target / installed_root_value).resolve()
-    if target not in installed_root.parents or not installed_root.is_dir():
-        raise WorkflowError("PROJECT_ADOPTION_INVALID", "采用锁安装根无效")
-    # 符号链接逃逸检查：resolved 路径不得在 target 之外
-    try:
-        installed_root.relative_to(target.resolve())
-    except ValueError:
-        raise WorkflowError(
-            "PROJECT_ADOPTION_INVALID",
-            "采用锁安装根逃逸出目标边界",
-        )
-    skill_files = [
-        path for path in installed_root.rglob("SKILL.md")
-        if path.is_file() and not path.is_symlink()
-    ]
-    if not skill_files:
-        raise WorkflowError("PROJECT_ADOPTION_SKILL_MISSING", "安装根缺少 SKILL.md")
-    manifest_path = installed_root / "platform-manifest.json"
-    if not manifest_path.is_file() or manifest_path.is_symlink():
-        raise WorkflowError(
-            "PROJECT_ADOPTION_MANIFEST_MISSING", "安装根缺少平台清单"
-        )
-    manifest = load_json(manifest_path)
-    if (
-        manifest.get("familyId") != family_id
-        or manifest.get("platformId") != adoption_lock["platform"]
-        or manifest.get("version") != adoption_lock["version"]
-        or manifest.get("projectionDigest") != adoption_lock["candidate_digest"]
-    ):
-        raise WorkflowError(
-            "PROJECT_ADOPTION_IDENTITY_INVALID",
-            "采用锁未绑定安装清单的 family/platform/version/candidate",
-        )
-    if _foundation_platform_payload_digest(installed_root) != adoption_lock["candidate_digest"]:
-        raise WorkflowError("PROJECT_ADOPTION_STALE", "采用锁摘要与安装内容不一致")
-    # Foundation 采用验证：通过进程外 Foundation Engineering Kit 调用只读函数
-    foundation_adoption_result = None
-    foundation_adoption_error = None
-    try:
-        foundation_adoption_result = adoption_verifier.verify_foundation_adoption(
-            target, adoption_lock
-        )
-    except Exception as exc:
-        foundation_adoption_error = str(exc)
-    # Foundation harness inventory 验证：真实调用 verifyHarnessSurfaceInventory
-    harness_inventory_result = None
-    harness_inventory_error = None
-    policy_path = REFS / "foundation-adoption-policy.json"
-    if policy_path.is_file():
-        policy = load_json(policy_path)
-        detectors = policy.get("harness_detectors", [])
-        try:
-            harness_inventory_result = adoption_verifier.verify_harness_inventory(
-                target, adoption_lock, detectors,
-            )
-        except Exception as exc:
-            harness_inventory_error = str(exc)
+    profile_document = load_json(project_profile_path)
+    _assert_project_profile_baseline(profile_document, profile_result)
     observation = observe_plugin_project(
-        installed_root,
+        target,
         target_type,
         identity_hint={
-            "pluginId": family_id,
-            "version": adoption_version,
-            "candidateId": adoption_lock["candidate_id"],
+            "pluginId": profile_document.get("project", {}).get("id"),
+            "profileKind": profile_document.get("kind"),
         },
         install_digests=[
             {
-                "kind": "adoption_lock",
-                "path": adoption_lock_path.relative_to(target).as_posix(),
-                "contentDigest": foundation_file_digest(adoption_lock_path),
-            },
-            {
-                "kind": "installed_tree",
-                "path": installed_root.relative_to(target).as_posix(),
-                "contentDigest": adoption_lock["candidate_digest"],
-            },
+                "kind": "project_profile",
+                "path": "profile.json",
+                "contentDigest": foundation_file_digest(project_profile_path),
+            }
         ],
     )
-    result = {
-        "adoption_lock_document": adoption_lock,
-        "adoption_lock": adoption_lock_path.relative_to(target).as_posix(),
-        "adoption_lock_digest": foundation_file_digest(adoption_lock_path),
-        "installed_root": installed_root.relative_to(target).as_posix(),
-        "installed_digest": adoption_lock["candidate_digest"],
+    return {
+        "project_profile_document": profile_document,
+        "project_profile": "profile.json",
+        "project_profile_digest": foundation_file_digest(project_profile_path),
+        "foundation_profile": profile_result,
         "plugin_project": observation,
         "logical_skill_count": len(observation["skills"]),
     }
-    if foundation_adoption_result:
-        result["foundation_adoption"] = foundation_adoption_result
-    elif foundation_adoption_error:
-        result["foundation_adoption"] = {
-            "foundation_adoption_complete": False,
-            "blockers": [f"VERIFIER_EXCEPTION: {foundation_adoption_error}"],
-        }
-    if harness_inventory_result:
-        result["harness_inventory"] = harness_inventory_result
-    elif harness_inventory_error:
-        result["harness_inventory"] = {
-            "harness_inventory_verified": False,
-            "blockers": [f"VERIFIER_EXCEPTION: {harness_inventory_error}"],
-        }
-    return result
-
 
 def semantic_reviews(
     path: Path | None,
@@ -1639,96 +1580,183 @@ def _gmin_static_outcome(
     rule_id: str,
     scope: dict[str, Any],
 ) -> dict[str, Any]:
-    """Execute the mechanical half of the twelve terminal governance rules."""
-    adoption = scope.get("foundation_adoption", {})
-    harness = scope.get("harness_inventory", {})
-    adoption_lock = scope.get("adoption_lock_document", {})
+    """Execute the mechanical half of the twelve terminal governance rules.
+
+    D3 rebasing: adoption proof is the project-root profile verified through
+    Foundation Profile SPI v3.  Facts now come from the profile document and
+    the SPI result.  Rules whose evidence fields only existed in the retired
+    lock contract return a stable NOT_APPLICABLE with a deprecation reason
+    code instead of inventing substitute evidence.
+    """
+    profile_result = scope.get("foundation_profile", {})
+    profile_document = scope.get("project_profile_document", {})
+    complete = profile_result.get("foundation_profile_complete") is True
+    steps = profile_result.get("steps", [])
     if rule_id == "gmin:compat-status-evidence":
-        checks = adoption.get("checks", {})
-        complete = adoption.get("foundation_adoption_complete") is True
+        required_steps = {
+            "project-profile-schema",
+            "adoption-pin-digests",
+            "overrides-policy",
+        }
+        checks = {
+            "spi_code": profile_result.get("code"),
+            "steps": steps,
+        }
+        status_ok = complete and required_steps <= set(steps)
         return {
-            "status": "PASS" if complete and checks else "FAIL",
+            "status": "PASS" if status_ok else "FAIL",
             "evidence": {"foundation_complete": complete, "checks": checks},
         }
     if rule_id == "gmin:harness-authority-dependencies":
-        owners = harness.get("verifier_facts", {}).get("owner_adjudications", [])
-        complete = bool(owners) and all(
-            isinstance(item.get("authority_source"), str)
-            and item["authority_source"]
-            and isinstance(item.get("dependency_edges"), list)
-            for item in owners
+        packages = (
+            profile_document.get("adoption", {}).get("foundation_pin", {}).get("packages", {})
         )
+        owners = []
+        if isinstance(packages, dict):
+            for name in sorted(packages):
+                pin = packages.get(name)
+                if (
+                    isinstance(pin, dict)
+                    and isinstance(pin.get("version"), str)
+                    and isinstance(pin.get("path"), str)
+                    and isinstance(pin.get("sha256"), str)
+                ):
+                    owners.append({
+                        "authority_source": f"foundation_pin:{name}",
+                        "dependency_edges": [
+                            other for other in sorted(packages) if other != name
+                        ],
+                    })
+        status_ok = complete and len(owners) == len(packages) and len(owners) >= 3
         return {
-            "status": "PASS" if complete else "FAIL",
+            "status": "PASS" if status_ok else "FAIL",
             "evidence": {
-                "inventory_verified": harness.get("harness_inventory_verified") is True,
-                "authority_dependency_closure": complete,
+                "inventory_verified": complete,
+                "authority_dependency_closure": status_ok,
                 "owner_count": len(owners),
+                "owner_adjudications": owners,
             },
         }
     if rule_id == "gmin:legacy-risk-plan":
-        facts = adoption.get("verifier_facts", {})
-        legacy = facts.get("legacy_exit_list", [])
-        references = facts.get("legacy_reference_exit", [])
-        present = [
-            item for item in [*legacy, *references]
-            if isinstance(item, dict) and item.get("status") == "present"
-        ] if isinstance(legacy, list) and isinstance(references, list) else []
-        plan = adoption_lock.get("adoption_route", {}).get("plan_adoption")
-        valid = not present or isinstance(plan, str) and bool(plan)
         return {
-            "status": "PASS" if valid else "FAIL",
+            "status": "NOT_APPLICABLE",
             "evidence": {
-                "legacy_risk_count": len(present),
-                "plan": plan if present else "plan_not_required",
+                "reason_code": "CONTRACT_DEPRECATED_D8",
+                "legacy_risk_count": 0,
+                "plan": "plan_not_required",
             },
         }
     if rule_id == "gmin:new-family-native-outer":
-        route = adoption_lock.get("adoption_route", {})
-        if route.get("is_new_skill_family") is not True:
-            return {"status": "NOT_APPLICABLE", "evidence": {"reason": "existing_family"}}
-        required = ("foundation_pin", "bundle_provenance", "migration_manifest")
-        present = [key for key in required if isinstance(adoption_lock.get(key), dict)]
         return {
-            "status": "PASS" if len(present) == len(required) else "FAIL",
-            "evidence": {"required": list(required), "present": present},
+            "status": "NOT_APPLICABLE",
+            "evidence": {
+                "reason_code": "PROFILE_ADOPTION_NO_ROUTE",
+                "required": ["foundation_pin", "bundle_provenance", "migration_manifest"],
+                "present": [],
+            },
         }
     if rule_id == "gmin:affected-scope-migration":
-        impact = adoption_lock.get("change_impact_closure")
-        planned = adoption_lock.get("migration_scope")
-        valid = (
-            isinstance(impact, list) and impact
-            and isinstance(planned, list) and planned
-            and set(planned) <= set(impact)
-        )
         return {
-            "status": "PASS" if valid else "EVIDENCE_MISSING",
-            "evidence": {"impact_closure": impact, "migration_scope": planned},
+            "status": "NOT_APPLICABLE",
+            "evidence": {
+                "reason_code": "CONTRACT_DEPRECATED_D8",
+                "impact_closure": [],
+                "migration_scope": [],
+            },
         }
     if rule_id == "gmin:family-migration-checklist":
-        checklist = adoption_lock.get("migration_checklist", {})
-        required = {
-            "source_digest", "target_rules", "current_implementation",
-            "compatibility", "adapters", "controlled_aliases",
-            "behavior_verification", "deprecation", "owner",
+        return {
+            "status": "NOT_APPLICABLE",
+            "evidence": {"reason_code": "CONTRACT_DEPRECATED_D8", "missing": []},
         }
-        missing = sorted(required - set(checklist)) if isinstance(checklist, dict) else sorted(required)
-        return {"status": "PASS" if not missing else "FAIL", "evidence": {"missing": missing}}
     if rule_id == "gmin:profile-composition-conflicts":
-        composition = adoption_lock.get("profile_composition")
-        if not isinstance(composition, dict):
-            return {"status": "EVIDENCE_MISSING", "evidence": {"missing": "profile_composition"}}
-        conflicts = composition.get("conflicts", [])
-        return {"status": "PASS" if conflicts == [] else "FAIL", "evidence": {"conflicts": conflicts}}
-    if rule_id == "gmin:generated-state-traceability":
-        trace = adoption_lock.get("generated_state_traceability", {})
-        required = {
-            "human_selection", "project_extension", "method_binding",
-            "domain_spec", "composer_version",
+        required_sections = {
+            "schemaVersion", "kind", "project", "adoption", "overrides",
         }
-        missing = sorted(required - set(trace)) if isinstance(trace, dict) else sorted(required)
-        return {"status": "PASS" if not missing else "FAIL", "evidence": {"missing": missing}}
+        overrides = profile_document.get("overrides", [])
+        seen: set[tuple[Any, Any]] = set()
+        conflicts: list[dict[str, Any]] = []
+        if isinstance(overrides, list):
+            for index, override in enumerate(overrides):
+                key = (
+                    override.get("ruleId") if isinstance(override, dict) else None,
+                    override.get("parameter") if isinstance(override, dict) else None,
+                )
+                if key in seen:
+                    conflicts.append({"index": index, "ruleId": key[0], "parameter": key[1]})
+                seen.add(key)
+        else:
+            conflicts.append({"index": None, "reason": "overrides_not_array"})
+        missing = sorted(required_sections - set(profile_document))
+        if missing:
+            conflicts.append({"missing_sections": missing})
+        return {
+            "status": "PASS" if complete and not conflicts else "FAIL",
+            "evidence": {"conflicts": conflicts},
+        }
+    if rule_id == "gmin:generated-state-traceability":
+        project = profile_document.get("project", {})
+        adoption = profile_document.get("adoption", {})
+        facts = {
+            "project_id": project.get("id") if isinstance(project, dict) else None,
+            "adopted_at": adoption.get("adopted_at") if isinstance(adoption, dict) else None,
+            "spi_project_id": profile_result.get("projectId"),
+            "closure_root": profile_result.get("closure_root"),
+        }
+        missing = sorted(key for key, value in facts.items() if value in (None, ""))
+        return {
+            "status": "PASS" if complete and not missing else "FAIL",
+            "evidence": {"missing": missing, **facts},
+        }
     raise WorkflowError("GMIN_RULE_UNIMPLEMENTED", rule_id)
+
+
+def _w2b1_executor_outcome(
+    rule_id: str,
+    scope: dict[str, Any],
+    target: Path,
+    output_dir: Path,
+    args: argparse.Namespace,
+    spec_index: dict[str, Any],
+    manifest: dict[str, Any],
+) -> dict[str, Any]:
+    """Execute one W2-B1 first-tier mechanical rule through the executor package.
+
+    The context carries only observable target facts and this run's invariants;
+    executors never mutate the target. Declared-evidence shape failures are
+    fail-closed as EVIDENCE_MISSING findings, never silent passes.
+    """
+    ctx: dict[str, Any] = {
+        "target": target,
+        "target_type": args.target_type,
+        "scope": scope,
+        "manifest": manifest,
+        "spec_index": spec_index,
+        "output_dir": output_dir,
+        "run_args": {
+            "target_is_absolute": Path(args.target).is_absolute(),
+            "output_dir_declared": bool(args.output_dir),
+            "run_id_declared": bool(args.run_id),
+        },
+        "remediation_patch_status": "unapplied",
+    }
+    installed = scope.get("installed_root")
+    if isinstance(installed, str) and installed:
+        installed_root = target / installed
+        ctx["recompute_installed_digest"] = (
+            lambda: foundation_candidate_payload_digest(installed_root)
+        )
+    try:
+        return executors.execute(rule_id, ctx)
+    except ExecutorEvidenceError as exc:
+        return {
+            "status": "EVIDENCE_MISSING",
+            "evidence": {
+                "reason": "executor_evidence_invalid",
+                "code": getattr(exc, "code", type(exc).__name__),
+                "detail": str(exc),
+            },
+        }
 
 
 def _canonical_guidance_from_results(
@@ -1741,7 +1769,7 @@ def _canonical_guidance_from_results(
 
     The view does not restate canonical rule prose and does not invent another
     rule layer.  It binds each existing guidance group to the route and owner
-    facts in the adoption lock, summarizes the evidence shape actually returned
+    facts in the project Profile, summarizes the evidence shape actually returned
     by its terminal implementations, and links non-passing rules to the current
     remediation items.
     """
@@ -1770,19 +1798,22 @@ def _canonical_guidance_from_results(
             continue
         result_index[canonical_id] = result
 
-    adoption_lock = scope.get("adoption_lock_document")
-    if not isinstance(adoption_lock, dict):
+    profile_document = scope.get("project_profile_document")
+    profile_result = scope.get("foundation_profile")
+    if not isinstance(profile_document, dict) or not isinstance(profile_result, dict):
         raise WorkflowError(
             "CANONICAL_GUIDANCE_CONTEXT_MISSING",
-            "四类指导必须绑定当前 project adoption lock",
+            "四类指导必须绑定当前项目 Profile 与 SPI 校验结果",
         )
-    adoption_route = adoption_lock.get("adoption_route")
-    owner_boundary = adoption_lock.get("owner_boundary")
-    if not isinstance(adoption_route, dict) or not isinstance(owner_boundary, dict):
+    if profile_result.get("foundation_profile_complete") is not True:
         raise WorkflowError(
             "CANONICAL_GUIDANCE_CONTEXT_MISSING",
-            "四类指导缺少采用路由或 owner boundary",
+            "四类指导要求项目 Profile 已通过 Foundation Profile SPI",
         )
+    # D3: profile 采用合同不声明 scaffold/adopt-plan 路由；项目 Profile
+    # 是存量工作区的采用声明，指导上下文按存量采用路由组织。
+    adoption_route = {"route_type": "adopt-plan", "is_new_skill_family": False}
+    owner_boundary = OWNER_BOUNDARY
     is_new_family = adoption_route.get("is_new_skill_family")
     if not isinstance(is_new_family, bool):
         raise WorkflowError(
@@ -1936,17 +1967,35 @@ def _canonical_guidance_from_results(
 
 
 def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
-    if not args.spec_package or not args.output_dir or not args.run_id:
+    if not args.output_dir or not args.run_id:
         raise WorkflowError(
             "WORKFLOW_ARGS_MISSING",
-            "完整工作流需要 --spec-package、--output-dir 与 --run-id",
+            "完整工作流需要 --output-dir 与 --run-id；规范包可省略（默认自审规范包）或显式 --spec-package",
         )
+    spec_package = args.spec_package
+    if not spec_package:
+        # D2 自审默认发现路径：无显式规范包时只接受本仓裁决权威派生的
+        # 自审规范包（selfAudit: true，摘要新鲜性逐条校验）；外部规范必须
+        # 显式 --spec-package 提供。自审包缺失时维持失败关闭结论。
+        default_spec = checker.self_audit_spec_package_default()
+        if default_spec is None:
+            raise WorkflowError(
+                "NO_ACTIVE_APPROVED_SPEC",
+                "未找到批准规范包：自审需要仓内 spec/self-audit/，外部规范需要显式 --spec-package",
+            )
+        freshness_error = checker.verify_self_audit_freshness(default_spec)
+        if freshness_error:
+            raise WorkflowError(
+                freshness_error,
+                "自审规范包陈旧或非法；运行 scripts/spec/build_self_audit_spec_package.py 重建",
+            )
+        spec_package = str(default_spec)
     target = Path(args.target).resolve(strict=True)
     output_dir = Path(args.output_dir).resolve()
     if output_dir == target or target in output_dir.parents:
         raise WorkflowError("OUTPUT_INSIDE_TARGET", "输出目录不得位于只读目标内")
     index, manifest, is_fixture, trust_policy = load_rules(
-        Path(args.spec_package).resolve(strict=True), args.allow_test_fixture
+        Path(spec_package).resolve(strict=True), args.allow_test_fixture
     )
     scope = target_scope(target, args.target_type)
     declared_observation = os.environ.get("SFA_PLUGIN_PROJECT_OBSERVATION_REF")
@@ -2058,28 +2107,53 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
                     }
                 results.append(result)
                 continue
+            if executors.supports(rule["ruleId"]):
+                outcome = _w2b1_executor_outcome(
+                    rule["ruleId"],
+                    scope,
+                    target,
+                    output_dir,
+                    args,
+                    index,
+                    manifest,
+                )
+                outcome["worker"] = "deterministic-first-tier-executor"
+                result = {
+                    "rule_id": rule["ruleId"],
+                    "rule_revision_digest": rule["revisionDigest"],
+                    **outcome,
+                }
+                lineage = canonical_lineage.get(rule["ruleId"])
+                if lineage is not None:
+                    result["canonical_lineage"] = {
+                        "canonical_id": lineage["canonical_id"],
+                        "revision_digest": lineage["canonical_revision_digest"],
+                    }
+                results.append(result)
+                continue
             scope_rule = {
                 "scope:single-skill-complete": ("skill_files",),
                 "scope:family-source-complete": ("skill_files", "source_files"),
                 "scope:release-artifact-complete": ("release_files",),
-                "scope:project-adoption-present": ("adoption_lock",),
+                "scope:project-adoption-present": ("project_profile",),
             }.get(rule["ruleId"])
             if scope_rule:
                 all_present = all(scope.get(key) for key in scope_rule)
                 evidence = {key: scope.get(key, []) for key in scope_rule}
-                # project_adoption 规则还需要验证 Foundation 采用完整性
+                # project_adoption 规则还要求项目 Profile 已通过 Foundation
+                # Profile SPI v3（D3：采用证明 = 项目根 profile.json）
                 if rule["ruleId"] == "scope:project-adoption-present":
-                    foundation_adoption = scope.get("foundation_adoption", {})
-                    foundation_complete = foundation_adoption.get(
-                        "foundation_adoption_complete", False
+                    foundation_profile = scope.get("foundation_profile", {})
+                    foundation_complete = (
+                        foundation_profile.get("foundation_profile_complete") is True
                     )
-                    harness_inventory = scope.get("harness_inventory", {})
-                    harness_complete = harness_inventory.get(
-                        "harness_inventory_verified", False
-                    )
-                    all_present = all_present and foundation_complete and harness_complete
-                    evidence["foundation_adoption"] = foundation_adoption
-                    evidence["harness_inventory"] = harness_inventory
+                    all_present = all_present and foundation_complete
+                    evidence["foundation_profile"] = {
+                        "foundation_profile_complete": foundation_complete,
+                        "code": foundation_profile.get("code"),
+                        "projectId": foundation_profile.get("projectId"),
+                        "steps": foundation_profile.get("steps", []),
+                    }
                 outcome = {
                     "status": "PASS" if all_present else "FAIL",
                     "evidence": evidence,
@@ -2199,7 +2273,9 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         "path": str(target),
         "source": "conformance-workflow",
         "target_digest": foundation_target_content_digest(target, args.target_type),
-        "credibility": "verified" if not is_fixture else "self_reported",
+        "credibility": (
+            "self_reported" if is_fixture or index.get("selfAudit") is True else "verified"
+        ),
     }]
     result = {
         "conformance_result": domain,
@@ -2215,7 +2291,13 @@ def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser()
     value.add_argument("--target", required=True)
     value.add_argument("--target-type", required=True, choices=sorted(TARGET_TYPES))
-    value.add_argument("--spec-package")
+    value.add_argument(
+        "--spec-package",
+        help=(
+            "显式规范包目录；省略时默认使用仓内自审规范包 spec/self-audit/"
+            "（selfAudit: true，仅用于自审，永不具备发布资格）"
+        ),
+    )
     value.add_argument("--output-dir")
     value.add_argument("--run-id")
     value.add_argument("--semantic-result")

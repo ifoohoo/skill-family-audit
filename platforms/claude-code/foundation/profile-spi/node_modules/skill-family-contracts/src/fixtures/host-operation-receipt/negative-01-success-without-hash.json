@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-operation-receipt.negative.success-without-hash", "contract": "host-operation-receipt", "class": "negative",
+  "description": "A successful write without sha256 is rejected.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-operation-receipt.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-operation-receipt", "hostId": "fixture-host", "planDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "overall": "succeeded", "authorizationRef": "approval-1", "writes": [{ "target": ".fixture/skills/demo/SKILL.md", "outcome": "succeeded" }], "closure": { "digestAlgorithm": "sha256", "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resources": [{ "path": ".fixture/skills/demo/SKILL.md", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }] } }
+}

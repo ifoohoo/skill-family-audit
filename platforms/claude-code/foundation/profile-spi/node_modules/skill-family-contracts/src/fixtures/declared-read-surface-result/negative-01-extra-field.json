@@ -1,0 +1,22 @@
+{
+  "fixtureId": "declared-read-surface-result.negative.extra-field",
+  "contract": "declared-read-surface-result",
+  "class": "negative",
+  "description": "The result cannot smuggle a timestamp or any other undeclared field into an extra envelope field.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/declared-read-surface-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.declared-read-surface-result",
+    "ok": true,
+    "violations": [],
+    "scannedModules": ["lib/reader-a.mjs"],
+    "scope": "esm-named-imports-only",
+    "guarantees": ["no-execution"],
+    "checkedAt": "2026-08-16T00:00:00Z"
+  }
+}

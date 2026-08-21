@@ -1,0 +1,23 @@
+{
+  "fixtureId": "token-estimate-result.dialect-boundary.unsupported",
+  "contract": "token-estimate-result",
+  "class": "dialect-boundary",
+  "description": "The result is rejected before validation under an unsupported dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/token-estimate-result.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.token-estimate-result",
+    "algorithm": "utf8-byte-count",
+    "unit": "bytes",
+    "inputBytes": 0,
+    "upperBound": 0,
+    "precision": "exact",
+    "scope": "content-text-only",
+    "guarantees": ["no-model-calls"]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "fixtureId": "migration-manifest.negative.unknown-field",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "Unknown top-level fields are rejected: the manifest vocabulary is closed, so smuggled directives cannot ride along with a valid envelope.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "autoDeleteLegacy": true
+  }
+}

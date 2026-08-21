@@ -1,0 +1,22 @@
+{
+  "fixtureId": "public-boundary-declaration.negative.duplicate-public-file",
+  "contract": "public-boundary-declaration",
+  "class": "negative",
+  "description": "The public file enumeration is a set: a duplicated entry is rejected.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/public-boundary-declaration.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.public-boundary-declaration",
+    "declarationId": "public-site",
+    "declaredVersion": "0.6.0",
+    "publicRoots": ["docs/public"],
+    "requiredPaths": [],
+    "forbiddenPaths": [],
+    "publicFiles": ["docs/public/index.html", "docs/public/index.html"]
+  }
+}

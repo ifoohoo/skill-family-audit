@@ -1,0 +1,7 @@
+{
+  "fixtureId": "adapter-build-manifest.negative.path-escape", "contract": "adapter-build-manifest", "class": "negative",
+  "description": "An escaping target is rejected.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/adapter-build-manifest.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.adapter-build-manifest", "hostId": "fixture-host", "pathCategory": { "id": "fixture-project-skills", "scope": "project", "anchor": "project-root", "relPath": ".fixture/skills" }, "sourceClosure": { "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "members": [{ "sourcePath": "demo/SKILL.md", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 4 }] }, "members": [{ "sourcePath": "demo/SKILL.md", "target": "../outside", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 4 }], "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+}
