@@ -8,7 +8,7 @@
   },
   "source": {
     "repository": "skill-family-foundation-workspace",
-    "baseCommit": "2f4c4aefa26d03eb48404c9286b1c9ed7b96e22c",
+    "baseCommit": "db3348e7f84700107818de76aacfad7e14669aa8",
     "foundation": [
       {
         "path": "packages/skill-family-contracts/candidate/quickstart-profile/consumer-schema-inventory.schema.json",
@@ -47,7 +47,7 @@
       },
       {
         "path": "packages/skill-family-contracts/package.json",
-        "sha256": "0eed136792efc023a9c19dad557f40609f8498d51e9a98a8b13305ac248a855f",
+        "sha256": "3fd0ee455408c4d63d323f5f2975704df2dbb9447bad51e6100062e95151036e",
         "role": "identity"
       },
       {
@@ -107,7 +107,7 @@
       },
       {
         "path": "packages/skill-family-engineering-kit/package.json",
-        "sha256": "2231875918e1f3b6bb3ae526b8b61d926a13fbada25e604961774f6f6f8b1a78",
+        "sha256": "c61f864db79ab2d16cae3b547420e9b2b1d326f5ac28a065a7d6d5e5e6f8518a",
         "role": "identity"
       },
       {
@@ -132,7 +132,7 @@
       },
       {
         "path": "packages/skill-family-harness-node/package.json",
-        "sha256": "e54e36ec0d07d00e598ef5726fd0ccb5b3a1dab22e26da51c081937517f564ee",
+        "sha256": "60b94ce51aa429a37b1361c0ea3bf1a655db5bef729e79052c7b54af7b7e3d61",
         "role": "identity"
       },
       {
@@ -201,11 +201,11 @@
     "fixedSetCandidate": {
       "status": "candidate",
       "stableRegistry": false,
-      "releaseReceiptSha256": "17432d7c418138784e3cfd4b5f27942e1b29cb80db49cd55b1adf31da3a469aa",
+      "releaseReceiptSha256": "bbd355aca8c366f7f3607bd6d94d8e2c8f128e9d9145cc4fef3cb1689ad46a0d",
       "harnessTarball": {
-        "filename": "skill-family-harness-node-0.8.0.tgz",
-        "sha256": "d853c5a7dbf03c7888e6459aa07be225f8ae7c798fe665ee356ce155a0ef8443",
-        "size": 144441
+        "filename": "skill-family-harness-node-0.8.1.tgz",
+        "sha256": "f4f01aff2375f35c499faea026df3874a63a871e589287d11736c289595157e0",
+        "size": 146342
       },
       "prebuildManifestSha256": "6530a3564cc82a06803afb695b49a198ba2a44456514a342ad35f63dba851749",
       "prebuildReleaseReceiptSha256": "d50e087669a3c4393be536d0a94b82834f80b916bb617de6bf85115ff0150d88",

@@ -2,7 +2,7 @@
 
 技能族规范、四个严格审计方法和四平台投影的唯一公开发布源。
 
-当前版本 `1.1.1` 是尚未批准的本地修订候选，
+当前版本 `1.1.2` 是尚未批准的本地修订候选，
 不声明为稳定发布。候选批准不等于 Release Skill 计划批准、生产发布确认
 或任何远端写入授权。
 
@@ -34,7 +34,7 @@ Bundle 内 `node_modules`。
 
 ```sh
 codex plugin marketplace add ifoohoo/skill-family-audit \
-  --ref skill-family-audit-v1.1.1 --json
+  --ref skill-family-audit-v1.1.2 --json
 codex plugin add skill-family-audit@skill-family-audit --json
 # 安装后先在 Codex 中调用 skill-family-audit 的 help 技能。
 ```
@@ -42,7 +42,7 @@ codex plugin add skill-family-audit@skill-family-audit --json
 在正式发布完成前，只能从本仓库冻结的候选目录进行隔离验证：
 
 ```text
-dist/candidate/1.1.1/platforms/<platform>
+dist/candidate/1.1.2/platforms/<platform>
 ```
 
 四个平台目录都是静态、自包含投影。Kimi 只支持人工安装或会话级

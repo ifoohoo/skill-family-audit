@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import {
   canonicalJson,
   digestDocument,
@@ -7,6 +6,7 @@ import {
 } from "skill-family-contracts";
 import { digestBytes } from "./closure.mjs";
 import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";
+import { REPORT_RENDERER_VERSION } from "./report-version.mjs";
 import { validateContractDocument } from "./validation.mjs";
 
 /**
@@ -18,10 +18,8 @@ import { validateContractDocument } from "./validation.mjs";
  * operation's outputs, derives an execution status, or fills missing facts.
  */
 
-const PACKAGE_META = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-
 export const REPORT_RENDERER_NAME = "skill-family-harness-node/report";
-export const REPORT_RENDERER_VERSION = PACKAGE_META.version;
+export { REPORT_RENDERER_VERSION };
 export const SUPPORTED_REPORT_LOCALES = Object.freeze(["zh-CN", "en-US"]);
 export const EXECUTION_STATUSES = Object.freeze([
   "SUCCEEDED",

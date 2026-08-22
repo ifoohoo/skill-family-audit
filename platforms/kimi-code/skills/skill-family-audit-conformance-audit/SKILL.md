@@ -40,7 +40,7 @@ method-id: "skill-family-audit:conformance-audit"
 - `single_skill`：绑定单个 `SKILL.md` 字节并检查技能范围规则。
 - `family_source`：绑定完整源码树；当目标包含私有 workspace 合同时，强制消费进程外 verifier 的真实收据，不从目标加载或执行 verifier。
 - `release_artifact`：验证候选身份、payload 摘要以及公开 JSON 引用闭包。
-- `project_adoption`：以项目根 `profile.json`（Foundation 项目 Profile）为唯一采用证明。通过平台包自带的离线 Profile SPI 运行闭包，在受控 Node 22 进程中调用 Foundation Engineering Kit 0.8.0 公开入口 `verifyProjectProfile()`：项目 Profile 合同外壳、`adoption.foundation_pin` 逐包真实文件摘要比对（GK-4）、仅加严 override 政策；Audit 另行核对采用的 Foundation profile/包版本与自身冻结基线一致。profile 缺失、符号链接、pin 摘要不匹配、任何非 `SPE0000` 结果或运行时不可用一律失败关闭。旧采用锁合同已按 D-8（2026-08-18）废弃，其全部现役消费与产出路径已随 D3 移除；对应历史 Schema 文件仅作为只读历史记录保留。
+- `project_adoption`：以项目根 `profile.json`（Foundation 项目 Profile）为唯一采用证明。通过平台包自带的离线 Profile SPI 运行闭包，在受控 Node 22 进程中调用 Foundation Engineering Kit 0.8.1 公开入口 `verifyProjectProfile()`：项目 Profile 合同外壳、`adoption.foundation_pin` 逐包真实文件摘要比对（GK-4）、仅加严 override 政策；Audit 另行核对采用的 Foundation profile/包版本与自身冻结基线一致。profile 缺失、符号链接、pin 摘要不匹配、任何非 `SPE0000` 结果或运行时不可用一律失败关闭。旧采用锁合同已按 D-8（2026-08-18）废弃，其全部现役消费与产出路径已随 D3 移除；对应历史 Schema 文件仅作为只读历史记录保留。
 
 ## 规则与信任
 

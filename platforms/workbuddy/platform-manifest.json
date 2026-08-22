@@ -7,7 +7,7 @@
   "claimsStableSupport": false,
   "deliveryMode": "workbuddy_plugin",
   "familyId": "skill-family-audit",
-  "fileCount": 780,
+  "fileCount": 781,
   "files": [
     ".codebuddy-plugin/marketplace.json",
     ".codebuddy-plugin/plugin.json",
@@ -561,6 +561,7 @@
     "foundation/profile-spi/node_modules/skill-family-harness-node/src/host.mjs",
     "foundation/profile-spi/node_modules/skill-family-harness-node/src/index.mjs",
     "foundation/profile-spi/node_modules/skill-family-harness-node/src/paths.mjs",
+    "foundation/profile-spi/node_modules/skill-family-harness-node/src/report-version.mjs",
     "foundation/profile-spi/node_modules/skill-family-harness-node/src/report.mjs",
     "foundation/profile-spi/node_modules/skill-family-harness-node/src/request.mjs",
     "foundation/profile-spi/node_modules/skill-family-harness-node/src/state-store.mjs",
@@ -799,7 +800,7 @@
       "version": 2
     },
     "source": {
-      "baseCommit": "2f4c4aefa26d03eb48404c9286b1c9ed7b96e22c",
+      "baseCommit": "db3348e7f84700107818de76aacfad7e14669aa8",
       "repository": "skill-family-foundation-workspace"
     }
   },
@@ -864,8 +865,8 @@
   "platformId": "workbuddy",
   "platformManifest": ".codebuddy-plugin/plugin.json",
   "platformName": "WorkBuddy",
-  "projectionDigest": "5a14ab91c3ab08b1fb22ec1c4515823b90c6dc407f31bd5a2c801121b9d65d4d",
-  "projectionId": "skill-family-audit:workbuddy:1.1.1",
+  "projectionDigest": "65795bcb9173d654debdd200bda938f093fd84a3fc42447e2a01c14e66bfd4ff",
+  "projectionId": "skill-family-audit:workbuddy:1.1.2",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -880,7 +881,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "10425e3ebef49d25c8c28cbacff83b0eb5afed95152e2a6ad6a159a802423249",
+  "sourceDigest": "0db50d7b699864550608f587998d643610a199d10511c45add10a60a50973f92",
   "status": "candidate",
   "supportStatus": "static_projection_available",
   "unverifiedCapabilities": [
@@ -893,5 +894,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.1.1"
+  "version": "1.1.2"
 }

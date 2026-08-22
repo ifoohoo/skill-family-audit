@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Foundation Profile SPI 验证器：进程外调用 Foundation 0.8.0 verifyProjectProfile。
+"""Foundation Profile SPI 验证器：进程外调用 Foundation 0.8.1 verifyProjectProfile。
 
 职责：
 - 项目根 profile.json 只通过公共入口
   ``verifyProjectProfile({projectRoot, profileRelPath})`` 校验；
-- SPI 运行闭包来自平台包内机械投影的 Foundation 0.8.0 隔离安装
+- SPI 运行闭包来自平台包内机械投影的 Foundation 0.8.1 隔离安装
   （``foundation/profile-spi/``），或来自显式绑定
   ``SFA_FOUNDATION_PROFILE_SPI_ROOT``（隔离测试用）；不依赖 PATH、
   全局 npm 或被审项目的 node_modules；

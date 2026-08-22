@@ -1296,7 +1296,7 @@ def _assert_project_profile_baseline(
     """Audit 领域判定：项目必须采用 Audit 捆绑的 Foundation 基线。
 
     SPI 只证明 profile 自身合同闭合与摘要真实；采用版本是否与 Audit
-    实际携带的 Foundation 0.8.0 一致属于 Audit 的领域判断。基线事实取自
+    实际携带的 Foundation 0.8.1 一致属于 Audit 的领域判断。基线事实取自
     SPI 运行闭包 provenance（由权威生成器从隔离安装机械投影），不在
     Audit 侧重复 Foundation 的 Schema 或摘要算法。
     """
@@ -1416,7 +1416,7 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
             "plugin_project": observation,
             "logical_skill_count": len(observation["skills"]),
         }
-    # D3: 项目根 profile.json 是唯一采用身份来源。Foundation 0.8.0 拥有该合同，
+    # D3: 项目根 profile.json 是唯一采用身份来源。Foundation 0.8.1 拥有该合同，
     # 公共入口 verifyProjectProfile 完成外壳校验、真实文件摘要比对与自加严规则检查；
     # verifyProfile 仍只用于 Profile 提供者描述符。缺少 profile 时失败关闭，
     # 不存在任何废弃 adoption lock 回退。

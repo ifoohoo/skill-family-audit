@@ -27,11 +27,11 @@
     "id": "quickstart-profile",
     "version": 2
   },
-  "provenanceDigest": "28fd855055801174b8eb5dd8fd4aea8252920dff1a22ec24934b8194ddfe03d4",
+  "provenanceDigest": "199844a88091b703f4e60d746cc50f138238ca72ab992b32465d100e3e58bd3d",
   "receipt": {
     "kind": "skill-family.release-artifacts-manifest",
-    "receiptId": "foundation-release-manifest:17432d7c418138784e3cfd4b5f27942e1b29cb80db49cd55b1adf31da3a469aa",
-    "sha256": "17432d7c418138784e3cfd4b5f27942e1b29cb80db49cd55b1adf31da3a469aa"
+    "receiptId": "foundation-release-manifest:bbd355aca8c366f7f3607bd6d94d8e2c8f128e9d9145cc4fef3cb1689ad46a0d",
+    "sha256": "bbd355aca8c366f7f3607bd6d94d8e2c8f128e9d9145cc4fef3cb1689ad46a0d"
   },
   "schemaProviders": [
     {
@@ -95,7 +95,7 @@
   ],
   "schemaVersion": 2,
   "source": {
-    "baseCommit": "2f4c4aefa26d03eb48404c9286b1c9ed7b96e22c",
+    "baseCommit": "db3348e7f84700107818de76aacfad7e14669aa8",
     "repository": "skill-family-foundation-workspace"
   }
 }

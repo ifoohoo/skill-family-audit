@@ -1751,12 +1751,12 @@
         },
         {
           "ruleId": "scope:project-adoption-present",
-          "description": "项目采纳目标必须以项目根 profile.json（kind 为 skill-family.project-profile）作为唯一采用证明，且 Foundation 采用验证全部通过：项目 Profile 合同外壳、adoption.foundation_pin 逐包真实文件摘要比对（GK-4 纪律）、仅加严 override 政策，以及采用的 Foundation profile 与包版本同本仓冻结基线一致。验证必须在平台包自带的离线 Profile SPI 运行闭包内进程外调用 Foundation Engineering Kit 0.8.0 公开入口 verifyProjectProfile()，任何非 SPE0000 结果一律失败关闭。",
+          "description": "项目采纳目标必须以项目根 profile.json（kind 为 skill-family.project-profile）作为唯一采用证明，且 Foundation 采用验证全部通过：项目 Profile 合同外壳、adoption.foundation_pin 逐包真实文件摘要比对（GK-4 纪律）、仅加严 override 政策，以及采用的 Foundation profile 与包版本同本仓冻结基线一致。验证必须在平台包自带的离线 Profile SPI 运行闭包内进程外调用 Foundation Engineering Kit 0.8.1 公开入口 verifyProjectProfile()，任何非 SPE0000 结果一律失败关闭。",
           "applicability": "project_adoption",
           "checkType": "static",
           "failureImpact": "block",
-          "remediation": "在项目根提供完整 profile.json：adoption.foundation_profile 与 adoption.foundation_pin 必填，pin 的 path 与 sha256 必须与项目内实际 Foundation 0.8.0 tarball 字节一致；采用的 profile 与包版本必须等于 Audit 冻结基线（quickstart-profile v2，三包 0.8.0）。profile 缺失、摘要不匹配或校验失败时按 SPI 结果码在源头修复，不得绕过或放宽检查。",
-      "revisionDigest": "02759b0b01b09805f5a661e1cf821ef7c8e3017ba627b79dcc38499a5dc135db"
+          "remediation": "在项目根提供完整 profile.json：adoption.foundation_profile 与 adoption.foundation_pin 必填，pin 的 path 与 sha256 必须与项目内实际 Foundation 0.8.1 tarball 字节一致；采用的 profile 与包版本必须等于 Audit 冻结基线（quickstart-profile v2，三包 0.8.1）。profile 缺失、摘要不匹配或校验失败时按 SPI 结果码在源头修复，不得绕过或放宽检查。",
+      "revisionDigest": "b4afb0eeb91e83db25aaa3620d560dbde3787f4a87f652ab827b96bac4e7b0af"
         }
       ]
     }
