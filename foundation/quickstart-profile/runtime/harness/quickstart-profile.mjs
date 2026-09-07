@@ -1,4 +1,4 @@
-import { canonicalJson, digestDocument, isRegisteredErrorCode } from "../contracts/index.mjs";
+import { canonicalJson, ContractsError, digestDocument, isRegisteredErrorCode } from "../contracts/index.mjs";
 import {
   QUICKSTART_PROTOCOL,
   findNonJsonValue,
@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { computeResourceClosure, digestBytes } from "./closure.mjs";
 import { HARNESS_ERROR_KINDS, HarnessError, mechanismError } from "./errors.mjs";
 import { resolveContained } from "./paths.mjs";
+import { readFileStrict } from "./strict-read.mjs";
 
 /**
  * Candidate quickstart profile v2 mechanisms (unstable).
@@ -451,10 +452,12 @@ export async function verifyHarnessSurfaceInventory({ root, inventory, detectors
 
 const FOUNDATION_MECHANISM_OPERATIONS = Object.freeze([
   "validate-by-schema-id",
+  "validate-many-by-schema-id",
   "canonical-json",
   "digest-document",
   "resource-closure",
   "resolve-contained",
+  "read-file-strict",
   "create-task",
   "wrap-result",
   "verify-exchange",
@@ -483,12 +486,81 @@ function findUnsafeInteger(value, instancePath = "") {
   return null;
 }
 
+function assertReadFileStrictParams(params) {
+  const allowedKeys = new Set(["root", "path", "encoding", "expectedSha256"]);
+  const unknownKey = Object.keys(params).find((key) => !allowedKeys.has(key));
+  if (unknownKey !== undefined) {
+    throw new TypeError(`invokeFoundationMechanism: read-file-strict unknown param: ${unknownKey}`);
+  }
+  for (const key of ["root", "path"]) {
+    if (!Object.hasOwn(params, key) || typeof params[key] !== "string" || params[key].length === 0) {
+      throw new TypeError(`invokeFoundationMechanism: read-file-strict ${key} must be a non-empty string`);
+    }
+  }
+  if (Object.hasOwn(params, "encoding") && params.encoding !== "utf8") {
+    throw new TypeError('invokeFoundationMechanism: read-file-strict encoding must be "utf8" or omitted');
+  }
+}
+
+async function invokeReadFileStrict(params) {
+  assertReadFileStrictParams(params);
+  const receipt = await readFileStrict(params.root, params.path, {
+    ...(Object.hasOwn(params, "encoding") ? { encoding: params.encoding } : {}),
+    ...(Object.hasOwn(params, "expectedSha256") ? { expectedSha256: params.expectedSha256 } : {}),
+  });
+  return {
+    ...receipt,
+    content: Buffer.isBuffer(receipt.content) ? receipt.content.toJSON() : receipt.content,
+  };
+}
+
 /**
  * Fixed, business-neutral mechanism bridge for consumers that cannot import
  * several Foundation modules directly. validateBySchemaId is injected only
  * by the trusted offline Bundle; callers cannot name arbitrary functions.
  */
-export async function invokeFoundationMechanism(request, { validateBySchemaId } = {}) {
+function assertBatchRequest(request) {
+  if (Object.keys(request).sort().join(",") !== "operation,params" ||
+      request.operation !== "validate-many-by-schema-id" ||
+      request.params === null || typeof request.params !== "object" || Array.isArray(request.params) ||
+      Object.keys(request.params).sort().join(",") !== "requests" ||
+      !Array.isArray(request.params.requests) || request.params.requests.length === 0) {
+    throw new TypeError("invokeFoundationMechanism: validate-many-by-schema-id request is malformed");
+  }
+  for (const item of request.params.requests) {
+    if (item === null || typeof item !== "object" || Array.isArray(item) ||
+        Object.keys(item).sort().join(",") !== "document,schemaId" ||
+        typeof item.schemaId !== "string" || item.schemaId.length === 0) {
+      throw new TypeError("invokeFoundationMechanism: validate-many-by-schema-id item is malformed");
+    }
+  }
+}
+
+function invokeValidationBatch(request, { validateBySchemaId, listValidatableSchemaIds } = {}) {
+  assertBatchRequest(request);
+  if (typeof validateBySchemaId !== "function" || typeof listValidatableSchemaIds !== "function") {
+    throw new TypeError("invokeFoundationMechanism: validate-many-by-schema-id requires the trusted Bundle validator index");
+  }
+  const schemaIds = listValidatableSchemaIds();
+  if (!Array.isArray(schemaIds) || schemaIds.some((schemaId) => typeof schemaId !== "string")) {
+    throw new TypeError("invokeFoundationMechanism: trusted Bundle validator index is unavailable");
+  }
+  const known = new Set(schemaIds);
+  for (const item of request.params.requests) {
+    if (!known.has(item.schemaId)) {
+      throw new ContractsError("SFC1002", `unknown schema $id: ${item.schemaId}`, { schemaId: item.schemaId });
+    }
+  }
+  return {
+    results: request.params.requests.map((item, inputIndex) => ({
+      inputIndex,
+      schemaId: item.schemaId,
+      result: validateBySchemaId(item.schemaId, item.document),
+    })),
+  };
+}
+
+export async function invokeFoundationMechanism(request, { validateBySchemaId, listValidatableSchemaIds } = {}) {
   if (request === null || typeof request !== "object" || Array.isArray(request)) {
     throw new TypeError("invokeFoundationMechanism: request must be an object");
   }
@@ -499,6 +571,9 @@ export async function invokeFoundationMechanism(request, { validateBySchemaId } 
   }
   if (params === null || typeof params !== "object" || Array.isArray(params)) {
     throw new TypeError("invokeFoundationMechanism: params must be an object");
+  }
+  if (operation === "validate-many-by-schema-id") {
+    return invokeValidationBatch(request, { validateBySchemaId, listValidatableSchemaIds });
   }
   if (operation === "validate-by-schema-id") {
     if (typeof validateBySchemaId !== "function") {
@@ -524,6 +599,9 @@ export async function invokeFoundationMechanism(request, { validateBySchemaId } 
   }
   if (operation === "resource-closure") {
     return computeResourceClosure({ root: params.root, resources: params.resources });
+  }
+  if (operation === "read-file-strict") {
+    return invokeReadFileStrict(params);
   }
   if (operation === "create-task") {
     return createQuickstartTask(params);

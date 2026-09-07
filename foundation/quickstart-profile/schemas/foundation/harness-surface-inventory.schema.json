@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/harness-surface-inventory.json",
+  "$id": "https://contracts.skill-family.example/quickstart-profile/v2/harness-surface-inventory.json",
   "title": "Harness Surface Inventory Receipt",
   "type": "object",
   "additionalProperties": false,
@@ -117,7 +117,7 @@
       }
     },
     "detectorDocument": {
-      "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/harness-surface-detectors.json",
+      "$id": "https://contracts.skill-family.example/quickstart-profile/v2/harness-surface-detectors.json",
       "type": "object",
       "additionalProperties": false,
       "required": ["schemaVersion", "kind", "detectors"],
@@ -128,7 +128,7 @@
           "type": "array",
           "minItems": 1,
           "items": {
-            "$ref": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/harness-surface-inventory.json#/$defs/detector"
+            "$ref": "https://contracts.skill-family.example/quickstart-profile/v2/harness-surface-inventory.json#/$defs/detector"
           }
         }
       }

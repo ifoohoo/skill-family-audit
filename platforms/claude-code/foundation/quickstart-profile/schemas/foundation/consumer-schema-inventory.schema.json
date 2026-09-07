@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/consumer-schema-inventory.json",
+  "$id": "https://contracts.skill-family.example/quickstart-profile/v2/consumer-schema-inventory.json",
   "title": "Consumer Schema Inventory",
   "type": "object",
   "additionalProperties": false,

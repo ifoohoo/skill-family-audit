@@ -13,6 +13,7 @@ tokens、接受裸整数降级形态与记录对象形态、降级不放宽阈�
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -206,32 +207,599 @@ def check_harness_003(ctx: dict[str, Any]) -> dict[str, Any]:
     return result("PASS", recovery_actions_checked=True, mechanical_half=True)
 
 
-def check_harness_004(ctx: dict[str, Any]) -> dict[str, Any]:
-    """初版必须提供版本化样例清单接口（六类声明字段）。
+# ---------------------------------------------------------------------------
+# SFA-HARNESS-004 三角色核验（public_input_contract / consumer_implementation /
+# version_bound_review_record）：材料与锚点定义、逐方法行助手与真实核验。
+#
+# 已发布语义锚点值引证：只读取证报告转录（h06-three-role-evidence.md §2）逐字项
+# 与 spec/contracts 两份 schema 实读；只核对关键锚点（$id/const/required 键集），
+# 不硬编码 schema 全文。目标根 = ctx["target"]（Audit 产品包根，与
+# .skill-family-audit/governance 同级）。全部核验只读目标文件，不 import、不执行
+# 目标代码。
+# ---------------------------------------------------------------------------
 
-    机械断言：已声明 harness 必须携带版本化 sample_list 接口且字段齐全。
-    """
-    document = load_governance_document(ctx, "harness-interfaces")
-    if document is None:
-        return result("PASS", harness_declared=False, mechanical_half=True)
-    sample_list = document.get("sample_list_interface")
-    if not isinstance(sample_list, dict):
-        return result("FAIL", reason="sample_list_interface_missing", mechanical_half=True)
-    required = {
-        "version",
-        "sample_identity",
-        "input_reference",
-        "expected_contract",
-        "applicable_platforms_and_methods",
-        "side_effects",
-        "cleanup_requirements",
+#: 角色① governance-gate-run-evidence 合同锚点（取证报告 2c 逐字项）。
+_H004_GATE_SCHEMA_ID = (
+    "https://contracts.skill-family.example/skill-family-audit/"
+    "candidate/v2/governance-gate-run-evidence.json"
+)
+_H004_GATE_KIND_CONST = "skill-family-audit.governance-gate-run-evidence"
+_H004_GATE_RULE_ID_CONST = "SFA-GOVERNANCE-001"
+_H004_GATE_REQUIRED = ("schemaVersion", "kind", "ruleId", "binding", "gates")
+_H004_GATE_BINDING_KEYS = (
+    "target_version", "target_digest", "task_id", "platform", "environment",
+)
+_H004_GATE_OBSERVATION_KEYS = (
+    "id", "ran", "argv", "cwd", "env", "input_refs", "stdout", "stderr",
+    "exit_code", "conclusion",
+)
+#: 角色① semantic-review-result v2 合同锚点（取证报告 2c 逐字项）。
+_H004_SEMANTIC_SCHEMA_ID = "skill-family-audit:semantic-review-result"
+_H004_SEMANTIC_KIND_CONST = "skill-family-audit.semantic-review-result"
+_H004_SEMANTIC_PRODUCER_CONST = "skill-family-audit:conformance-audit"
+_H004_SEMANTIC_REQUIRED = (
+    "schema_version", "kind", "producer_method_id", "cognitive_independence",
+    "foundation_task_digest", "review_request_digest", "evidence_set_digest",
+    "reviewed_rule_set_digest", "reviews",
+)
+_H004_EVIDENCE_REF_KEYS = ("evidence_id", "sha256", "locator", "role")
+_H004_CONSUMER_SCHEMAS = (
+    "governance-gate-run-evidence.schema.json",
+    "semantic-review-result.schema.json",
+)
+#: 四平台发布副本（contracts.REQUIRED_PLATFORMS；取证报告 2c 路径）。
+_H004_REQUIRED_PLATFORMS = ("claude-code", "codex", "kimi-code", "workbuddy")
+_H004_CONTRACT_REL_PATHS = (
+    # (platform 内子目录, 发布副本文件名)
+    ("shared/contracts", "governance-gate-run-evidence.schema.json"),
+    ("foundation/quickstart-profile/schemas/consumer",
+     "semantic-review-result.schema.json"),
+)
+#: 公开输入参数声明（SKILL.md --evidence-set 锚点；取证报告 2d，L26-34）。
+_H004_SKILL_MD_REL = (
+    "plugin-src/skills/skill-family-audit-conformance/SKILL.md"
+)
+#: 角色② 只读消费实现锚点：(target 根相对路径, 必须出现的文本锚点)。
+#: 只做文本级核验，不执行目标代码。锚点出处：取证报告 §3a（rule_method_assurance
+#: L81-83/L269-272）、§3b（conformance_workflow._load_evidence_set）、§3c
+#: （m1_rule_governance_b2._governance_gate_behavior L5014+ docstring 合同）。
+_H004_CONSUMER_ANCHORS = (
+    (
+        "plugin-src/skills/skill-family-audit-conformance/scripts/"
+        "conformance_workflow.py",
+        ("def _load_evidence_set(", "仅含 evidence_set 键"),
+    ),
+    (
+        "plugin-src/skills/skill-family-audit-conformance/scripts/"
+        "rule_method_assurance.py",
+        (
+            'EVIDENCE_BUNDLE_KIND = "skill-family-audit.'
+            'rule-method-evidence-bundle"',
+            'METHOD_RECEIPT_KIND = "skill-family-audit.method-obligation-receipt"',
+            "def _receipt_observation(",
+            "without promoting them to execution proof",
+        ),
+    ),
+    (
+        "plugin-src/skills/skill-family-audit-conformance/scripts/executors/"
+        "m1_rule_governance_b2.py",
+        (
+            "def _governance_gate_behavior(",
+            "这里仅重算",
+            "并不会执行",
+            "接受 scope 中的自填观察",
+        ),
+    ),
+)
+#: 角色③ 治理声明键与记录内容字段。声明键 = harness-interfaces 顶层键
+#: （003/005/007 同文档同通道）；记录内容字段逐字引证 canonical 义务句 3 与
+#: evidence_requirements 第 4 条（版本/审阅对象/输入输出绑定的既有审阅记录）。
+_H004_REVIEW_RECORD_KEY = "version_bound_review_record"
+_H004_RECORD_CONTENT_FIELDS = (
+    "target_version", "reviewed_object", "input_binding", "output_binding",
+)
+
+
+def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[str, Any]:
+    return {
+        "check_method": method,
+        "status": status,
+        "observation_source": source,
+        "evidence": evidence or {"reason": status.lower()},
     }
-    missing = sorted(required - set(sample_list))
-    if not isinstance(sample_list.get("version"), str) or not sample_list.get("version"):
-        missing = sorted(set(missing) | {"version"})
+
+
+def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    """从逐方法行确定性推导聚合状态（形态同 m2_entry_platform_b2._finish，
+    与 contracts.validate_method_subresults 一致性同构）。"""
+    statuses = {row["status"] for row in rows}
+    if "FAIL" in statuses:
+        status = "FAIL"
+    elif "EVIDENCE_MISSING" in statuses or "NOT_RUN" in statuses:
+        status = "EVIDENCE_MISSING"
+    elif statuses == {"NOT_APPLICABLE"}:
+        status = "NOT_APPLICABLE"
+    elif statuses == {"PASS"}:
+        status = "PASS"
+    else:
+        raise ExecutorEvidenceError(
+            "METHOD_RESULT_COMBINATION_INVALID", repr(sorted(statuses))
+        )
+    return {
+        "status": status,
+        "evidence": dict(evidence),
+        "check_method_subresults": rows,
+    }
+
+
+def _static_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "static_scan", status, "executor_static_scan_observation", **evidence
+    )
+
+
+def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "schema_validation", status, "executor_schema_validation_observation", **evidence
+    )
+
+
+def _h004_target_path(ctx: dict[str, Any], relative: str) -> Path:
+    return Path(ctx["target"]).joinpath(*Path(relative).parts)
+
+
+def _h004_read_json(ctx: dict[str, Any], relative: str) -> dict[str, Any] | None:
+    """读目标根相对 JSON 文件；缺失返回 None；符号链接/不可读/解析失败失败关闭。"""
+    path = _h004_target_path(ctx, relative)
+    if path.is_symlink():
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_UNREADABLE", f"目标文件不得是符号链接: {relative}"
+        )
+    if not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_INVALID", f"目标文件无法解析: {relative}: {exc}"
+        ) from exc
+    if not isinstance(value, dict):
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_INVALID", f"目标 JSON 顶层必须是对象: {relative}"
+        )
+    return value
+
+
+def _h004_read_text(ctx: dict[str, Any], relative: str) -> str | None:
+    """读目标根相对文本文件；缺失返回 None；符号链接/不可读失败关闭。"""
+    path = _h004_target_path(ctx, relative)
+    if path.is_symlink():
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_UNREADABLE", f"目标文件不得是符号链接: {relative}"
+        )
+    if not path.is_file():
+        return None
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_UNREADABLE", f"{relative}: {exc}"
+        ) from exc
+
+
+def _h004_gate_schema_errors(doc: Any) -> list[str]:
+    """governance-gate-run-evidence schema 的 $id/const/required 键集锚点核验。"""
+    if not isinstance(doc, dict):
+        return ["gate_schema_not_object"]
+    errors = []
+    if doc.get("$id") != _H004_GATE_SCHEMA_ID:
+        errors.append("gate_schema_id_drift")
+    if doc.get("required") != list(_H004_GATE_REQUIRED):
+        errors.append("gate_schema_required_drift")
+    properties = doc.get("properties")
+    if not isinstance(properties, dict):
+        return errors + ["gate_schema_properties_missing"]
+    kind = properties.get("kind")
+    rule = properties.get("ruleId")
+    binding = properties.get("binding")
+    gates = properties.get("gates")
+    if not isinstance(kind, dict) or kind.get("const") != _H004_GATE_KIND_CONST:
+        errors.append("gate_kind_const_drift")
+    if not isinstance(rule, dict) or rule.get("const") != _H004_GATE_RULE_ID_CONST:
+        errors.append("gate_rule_id_const_drift")
+    if not isinstance(binding, dict) or binding.get("required") != list(
+        _H004_GATE_BINDING_KEYS
+    ):
+        errors.append("gate_binding_keys_drift")
+    gate_items = gates.get("items") if isinstance(gates, dict) else None
+    if not isinstance(gate_items, dict) or gate_items.get("required") != list(
+        _H004_GATE_OBSERVATION_KEYS
+    ):
+        errors.append("gate_observation_keys_drift")
+    return errors
+
+
+def _h004_semantic_schema_errors(doc: Any) -> list[str]:
+    """semantic-review-result schema 的 $id/const/required 键集锚点核验。"""
+    if not isinstance(doc, dict):
+        return ["semantic_schema_not_object"]
+    errors = []
+    if doc.get("$id") != _H004_SEMANTIC_SCHEMA_ID:
+        errors.append("semantic_schema_id_drift")
+    defs = doc.get("$defs")
+    if not isinstance(defs, dict):
+        return errors + ["semantic_defs_missing"]
+    for key in ("internalReviewV2", "internalRuleReview", "evidenceRef"):
+        if key not in defs:
+            errors.append(f"semantic_def_missing:{key}")
+    v2 = defs.get("internalReviewV2")
+    if not isinstance(v2, dict):
+        errors.append("semantic_v2_missing")
+    else:
+        v2props = v2.get("properties")
+        if not isinstance(v2props, dict):
+            errors.append("semantic_v2_properties_missing")
+        else:
+            for prop, expected in (
+                ("kind", _H004_SEMANTIC_KIND_CONST),
+                ("producer_method_id", _H004_SEMANTIC_PRODUCER_CONST),
+            ):
+                entry = v2props.get(prop)
+                if not isinstance(entry, dict) or entry.get("const") != expected:
+                    errors.append(f"semantic_{prop}_const_drift")
+            independence = v2props.get("cognitive_independence")
+            if (
+                not isinstance(independence, dict)
+                or independence.get("const") != "not_attested"
+            ):
+                errors.append("semantic_cognitive_independence_const_drift")
+        if v2.get("required") != list(_H004_SEMANTIC_REQUIRED):
+            errors.append("semantic_v2_required_drift")
+    ref = defs.get("evidenceRef")
+    if not isinstance(ref, dict):
+        errors.append("semantic_evidence_ref_missing")
+    else:
+        refprops = ref.get("properties")
+        if not isinstance(refprops, dict) or set(refprops) != set(_H004_EVIDENCE_REF_KEYS):
+            errors.append("semantic_evidence_ref_keys_drift")
+    return errors
+
+
+def _h004_role_public_input_contract(
+    ctx: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    """角色①公开输入合同材料核验；返回 (verdict, evidence)。
+
+    verdict ∈ {"ok", "missing", "invalid"}。既有文件存在但解析失败按家族先例
+    失败关闭（抛 ExecutorEvidenceError）；解析成功但锚点/注册表/发布副本/声明
+    不符以 invalid 返回（不实引用口径）。
+    """
+    gate_rel = "spec/contracts/governance-gate-run-evidence.schema.json"
+    semantic_rel = "spec/contracts/semantic-review-result.schema.json"
+    registry_rel = "spec/contracts/package.json"
+    missing: list[str] = []
+    invalid: list[dict[str, Any]] = []
+    gate_doc = _h004_read_json(ctx, gate_rel)
+    semantic_doc = _h004_read_json(ctx, semantic_rel)
+    if gate_doc is None:
+        missing.append(gate_rel)
+    else:
+        errors = _h004_gate_schema_errors(gate_doc)
+        if errors:
+            invalid.append({"material": gate_rel, "anchor_errors": errors})
+    if semantic_doc is None:
+        missing.append(semantic_rel)
+    else:
+        errors = _h004_semantic_schema_errors(semantic_doc)
+        if errors:
+            invalid.append({"material": semantic_rel, "anchor_errors": errors})
+    registry = _h004_read_json(ctx, registry_rel)
+    if registry is None:
+        missing.append(registry_rel)
+    else:
+        schemas = registry.get("consumerSchemas")
+        if not isinstance(schemas, list):
+            invalid.append({
+                "material": registry_rel,
+                "anchor_errors": ["consumer_schemas_not_a_list"],
+            })
+        else:
+            absent = [name for name in _H004_CONSUMER_SCHEMAS if name not in schemas]
+            if absent:
+                missing.extend(
+                    f"{registry_rel} consumerSchemas:{name}" for name in absent
+                )
+    platform_missing: list[str] = []
+    platform_drift: list[str] = []
+    for platform in _H004_REQUIRED_PLATFORMS:
+        for subdir, filename in _H004_CONTRACT_REL_PATHS:
+            rel = f"generated/platforms/{platform}/{subdir}/{filename}"
+            copy = _h004_read_json(ctx, rel)
+            source = gate_doc if filename == "governance-gate-run-evidence.schema.json" else semantic_doc
+            if copy is None:
+                platform_missing.append(rel)
+            elif source is not None and copy != source:
+                platform_drift.append(rel)
+    missing.extend(platform_missing)
+    if platform_drift:
+        invalid.append({
+            "material": "generated/platforms/*",
+            "anchor_errors": [
+                f"platform_copy_drift:{rel}" for rel in platform_drift
+            ],
+        })
+    skill_text = _h004_read_text(ctx, _H004_SKILL_MD_REL)
+    if skill_text is None:
+        missing.append(_H004_SKILL_MD_REL)
+    elif "--evidence-set" not in skill_text or "SHA-256" not in skill_text:
+        invalid.append({
+            "material": _H004_SKILL_MD_REL,
+            "anchor_errors": ["evidence_set_declaration_anchor_missing"],
+        })
+    if invalid:
+        return "invalid", {"reason": "public_input_contract_reference_invalid",
+                           "invalid": invalid}
     if missing:
-        return result("FAIL", sample_list_fields_missing=missing, mechanical_half=True)
-    return result("PASS", sample_list_version=sample_list.get("version"), mechanical_half=True)
+        return "missing", {"reason": "public_input_contract_missing",
+                           "missing": missing}
+    return "ok", {
+        "reason": "public_input_contract_valid",
+        "schema_files_checked": 2,
+        "platforms_checked": len(_H004_REQUIRED_PLATFORMS),
+        "consumer_schema_registry": list(_H004_CONSUMER_SCHEMAS),
+    }
+
+
+def _h004_role_consumer_implementation(
+    ctx: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    """角色②实际消费实现源码锚点核验（只读文本级，不执行目标代码）。"""
+    missing: list[str] = []
+    invalid: list[dict[str, Any]] = []
+    for relative, anchors in _H004_CONSUMER_ANCHORS:
+        text = _h004_read_text(ctx, relative)
+        if text is None:
+            missing.append(relative)
+            continue
+        absent = [anchor for anchor in anchors if anchor not in text]
+        if absent:
+            invalid.append({
+                "material": relative,
+                "missing_anchors": absent,
+            })
+    if invalid:
+        return "invalid", {"reason": "consumer_implementation_anchor_missing",
+                           "invalid": invalid}
+    if missing:
+        return "missing", {"reason": "consumer_implementation_missing",
+                           "missing": missing}
+    return "ok", {
+        "reason": "consumer_implementation_anchors_present",
+        "materials_checked": len(_H004_CONSUMER_ANCHORS),
+    }
+
+
+def _h004_current_version(ctx: dict[str, Any]) -> str | None:
+    """目标当前版本：沿 .skill-family-audit/governance/version-authority.json 的
+    unique_truth_source 声明读取版本载体文件（缺省语义同 PKG 实测）。"""
+    authority_path = (
+        Path(ctx["target"]) / ".skill-family-audit" / "governance"
+        / "version-authority.json"
+    )
+    if authority_path.is_symlink():
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_UNREADABLE", "version-authority.json 不得是符号链接"
+        )
+    if not authority_path.is_file():
+        return None
+    try:
+        authority = json.loads(authority_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_INVALID", f"version-authority.json 无法解析: {exc}"
+        ) from exc
+    if not isinstance(authority, dict):
+        return None
+    source_name = authority.get("unique_truth_source")
+    if not isinstance(source_name, str) or not source_name:
+        return None
+    source = _h004_read_json(ctx, source_name)
+    if source is None:
+        return None
+    version = source.get("version")
+    return version if isinstance(version, str) and version else None
+
+
+def _h004_role_version_bound_review_record(
+    ctx: dict[str, Any], document: dict[str, Any] | None
+) -> tuple[str, dict[str, Any]]:
+    """角色③既有审阅记录引用核验；引用必须可回读闭合（存在+sha256+版本绑定）。"""
+    if not isinstance(document, dict):
+        return "missing", {"reason": "version_bound_review_record_missing",
+                           "detail": "harness-interfaces 未声明"}
+    record = document.get(_H004_REVIEW_RECORD_KEY)
+    if record is None:
+        return "missing", {"reason": "version_bound_review_record_missing",
+                           "detail": "harness-interfaces 无该键"}
+    if not isinstance(record, dict):
+        return "missing", {"reason": "review_record_reference_incomplete",
+                           "detail": "记录引用必须是对象"}
+    file_value = record.get("file")
+    sha_value = record.get("sha256")
+    if (
+        not isinstance(file_value, str)
+        or not file_value
+        or file_value.startswith("/")
+    ):
+        return "missing", {"reason": "review_record_reference_incomplete",
+                           "detail": "file 引用缺失、非字符串或为绝对路径"}
+    if not is_hex64(sha_value):
+        return "missing", {"reason": "review_record_reference_incomplete",
+                           "detail": "sha256 缺失或非法"}
+    record_path = Path(ctx["target"]).joinpath(*Path(file_value).parts)
+    try:
+        record_path.resolve().relative_to(Path(ctx["target"]).resolve())
+    except ValueError:
+        return "invalid", {"reason": "review_record_file_unreadable",
+                           "detail": "记录引用越出目标根"}
+    if record_path.is_symlink() or not record_path.is_file():
+        return "invalid", {"reason": "review_record_file_unreadable",
+                           "detail": "记录文件不存在或为符号链接"}
+    try:
+        raw = record_path.read_bytes()
+    except OSError as exc:
+        return "invalid", {"reason": "review_record_file_unreadable",
+                           "detail": str(exc)}
+    import hashlib
+    if hashlib.sha256(raw).hexdigest() != sha_value:
+        return "invalid", {"reason": "review_record_digest_mismatch",
+                           "detail": "实读摘要与声明不符"}
+    try:
+        content = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return "invalid", {"reason": "review_record_content_invalid",
+                           "detail": "记录内容不是 JSON 对象"}
+    if not isinstance(content, dict):
+        return "invalid", {"reason": "review_record_content_invalid",
+                           "detail": "记录内容不是 JSON 对象"}
+    current_version = _h004_current_version(ctx)
+    if current_version is None:
+        return "missing", {"reason": "current_version_undeterminable",
+                           "detail": "目标当前版本权威链不可得"}
+    if content.get("target_version") != current_version:
+        return "invalid", {"reason": "review_record_version_mismatch",
+                           "current_version": current_version}
+    missing_fields = [
+        field for field in _H004_RECORD_CONTENT_FIELDS[1:]
+        if not content.get(field)
+    ]
+    if missing_fields:
+        return "missing", {"reason": "review_record_fields_incomplete",
+                           "missing_fields": missing_fields}
+    return "ok", {
+        "reason": "review_record_bound_to_current_version",
+        "target_version": current_version,
+        "record_file": file_value,
+    }
+
+
+def check_harness_004(ctx: dict[str, Any]) -> dict[str, Any]:
+    """只审计 Audit 产品自身的只读样例证据审阅能力（真实三角色核验）。
+
+    目标身份必须由 ``target_scope`` 的 ``scope.plugin_project.plugin.id``
+    确认。其他已确认产品不适用。Audit 目标按义务核验三角色：
+    ① 公开输入合同（schema_validation 半区：spec/contracts 两份 schema 的
+    $id/const/required 键集、四平台发布副本、consumerSchemas 注册表条目、
+    SKILL.md evidence-set 参数声明锚点）；
+    ② 实际消费实现（static_scan 半区：_load_evidence_set / _receipt_observation
+    与 EVIDENCE_BUNDLE_KIND、METHOD_RECEIPT_KIND / _governance_gate_behavior
+    的"不执行命令、不接受自填、摘要重算"合同锚点；只读文本级核验，不执行
+    目标代码）；
+    ③ 与该版本绑定的既有审阅记录（harness-interfaces 治理声明引用必须可回读
+    闭合：文件真实存在、sha256 相符、版本与审阅对象/输入输出绑定字段核验）。
+    缺失必要信息时如实报告缺证且 missing 只列真实缺失角色；清单存在不构成
+    能力证明。旧的自填 ``sample_list_interface`` 与本次审阅宿主输入、执行行为
+    均不构成目标能力证明。双机械方法分项行形态遵循 m2_entry_platform_b2
+    双方法先例（executor_schema_validation_observation /
+    executor_static_scan_observation）。
+    """
+    scope = ctx.get("scope")
+    plugin_project = scope.get("plugin_project") if isinstance(scope, dict) else None
+    plugin = plugin_project.get("plugin") if isinstance(plugin_project, dict) else None
+    plugin_id = plugin.get("id") if isinstance(plugin, dict) else None
+    if not isinstance(plugin_id, str) or not plugin_id:
+        return _finish(
+            [
+                _schema_row(
+                    "EVIDENCE_MISSING", reason="target_plugin_identity_unconfirmed"
+                ),
+                _static_row(
+                    "EVIDENCE_MISSING", reason="target_plugin_identity_unconfirmed"
+                ),
+            ],
+            reason="target_plugin_identity_unconfirmed",
+            mechanical_half=True,
+        )
+    if plugin_id != "skill-family-audit":
+        return _finish(
+            [
+                _schema_row(
+                    "NOT_APPLICABLE",
+                    reason="target_plugin_is_not_skill_family_audit",
+                    target_plugin_id=plugin_id,
+                ),
+                _static_row(
+                    "NOT_APPLICABLE",
+                    reason="target_plugin_is_not_skill_family_audit",
+                    target_plugin_id=plugin_id,
+                ),
+            ],
+            reason="target_plugin_is_not_skill_family_audit",
+            target_plugin_id=plugin_id,
+            mechanical_half=True,
+        )
+    document = load_governance_document(ctx, "harness-interfaces")
+    legacy_sample_list_present = (
+        isinstance(document.get("sample_list_interface"), dict)
+        if isinstance(document, dict)
+        else False
+    )
+    role1, evidence1 = _h004_role_public_input_contract(ctx)
+    role2, evidence2 = _h004_role_consumer_implementation(ctx)
+    role3, evidence3 = _h004_role_version_bound_review_record(ctx, document)
+
+    role_names = (
+        "public_input_contract",
+        "consumer_implementation",
+        "version_bound_review_record",
+    )
+    role_verdicts = {
+        role_names[0]: {"verdict": role1, **evidence1},
+        role_names[1]: {"verdict": role2, **evidence2},
+        role_names[2]: {"verdict": role3, **evidence3},
+    }
+    missing_roles = [
+        name for name, entry in role_verdicts.items()
+        if entry["verdict"] == "missing"
+    ]
+    invalid_roles = [
+        name for name, entry in role_verdicts.items()
+        if entry["verdict"] == "invalid"
+    ]
+
+    schema_status = {
+        "ok": "PASS", "missing": "EVIDENCE_MISSING", "invalid": "FAIL",
+    }[role1]
+    static_failed = role2 == "invalid" or role3 == "invalid"
+    static_missing = role2 == "missing" or role3 == "missing"
+    if static_failed:
+        static_status = "FAIL"
+    elif static_missing:
+        static_status = "EVIDENCE_MISSING"
+    else:
+        static_status = "PASS"
+    rows = [
+        _schema_row(schema_status, **evidence1),
+        _static_row(
+            static_status,
+            consumer_implementation=role_verdicts["consumer_implementation"],
+            version_bound_review_record=role_verdicts["version_bound_review_record"],
+        ),
+    ]
+    evidence: dict[str, Any] = {
+        "role_verdicts": role_verdicts,
+        "legacy_sample_list_present": legacy_sample_list_present,
+        "mechanical_half": True,
+    }
+    if invalid_roles:
+        evidence["reason"] = role_verdicts[invalid_roles[0]].get(
+            "reason", "audit_target_capability_reference_invalid"
+        )
+        evidence["invalid_roles"] = invalid_roles
+    elif missing_roles:
+        evidence["reason"] = "audit_target_capability_evidence_missing"
+        evidence["missing"] = missing_roles
+    return _finish(rows, **evidence)
 
 
 def check_harness_005(ctx: dict[str, Any]) -> dict[str, Any]:

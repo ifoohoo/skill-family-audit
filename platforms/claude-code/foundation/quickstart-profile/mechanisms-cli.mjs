@@ -22,6 +22,8 @@ function errorResponse(cause) {
     error: {
       name: typeof cause?.name === "string" ? cause.name : "Error",
       message: cause?.message ?? String(cause),
+      ...(typeof cause?.code === "string" ? { code: cause.code } : {}),
+      ...(cause?.details !== undefined ? { details: cause.details } : {}),
     },
   };
 }

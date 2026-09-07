@@ -1,0 +1,8 @@
+{
+  "fixtureId": "skill-family-directory-verification-request/dialect-01-unsupported",
+  "class": "dialect-boundary",
+  "contract": "skill-family-directory-verification-request",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/skill-family-directory-verification-request.json", "dialect": "draft-99", "policy": "strict" },
+  "data": {},
+  "expect": { "valid": false, "errorCode": "SFC1006" }
+}

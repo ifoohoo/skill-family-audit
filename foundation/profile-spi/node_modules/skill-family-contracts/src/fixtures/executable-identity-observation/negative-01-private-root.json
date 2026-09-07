@@ -1,0 +1,26 @@
+{
+  "fixtureId": "executable-identity-observation/negative-01-private-root",
+  "class": "negative",
+  "contract": "executable-identity-observation",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/executable-identity-observation.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.executable-identity-observation",
+    "lookup": { "requested": "tool", "mode": "explicit-path-search", "pathEntries": ["/tmp/fake-bin"], "selectedPath": "/tmp/fake-bin/tool" },
+    "canonicalEntry": {
+      "path": "/tmp/fake-bin/tool",
+      "symlinkChain": [],
+      "binding": { "kind": "trusted-filesystem-root-binding", "digestAlgorithm": "sha256", "basis": "canonical-realpath-device-inode-type-mode-v1", "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "relPath": "tool",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "bytes": 4,
+      "statMode": 33261,
+      "entryKind": "native-binary",
+      "root": "/private/secret"
+    },
+    "interpreter": null,
+    "launch": { "file": "/tmp/fake-bin/tool", "argvPrefix": [] },
+    "observationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.negative.crossed-driver", "contract": "host-descriptor", "class": "negative",
+  "description": "Cross binding between host and verification driver is rejected by the closed combination.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "claude", "displayName": "Claude Code", "support": "supported", "maturity": "stable", "sourceAliases": ["claude-code"], "driverId": "claude-version-v1", "adapterFormat": "skill-directory-v1", "verification": { "driverId": "workbuddy-codebuddy-print-v1", "authStrategy": "existing-user-state", "credentialMutation": "host-managed" }, "pathCategories": [ { "id": "claude-user-skills", "role": "skill-root", "scope": "user", "anchor": "user-home", "relPath": ".claude/skills" }, { "id": "claude-project-skills", "role": "skill-root", "scope": "project", "anchor": "project-root", "relPath": ".claude/skills" } ], "probeCapabilities": ["cli", "version", "payload", "registry", "discover", "enabled", "reload", "smoke", "uninstall"] }
+}

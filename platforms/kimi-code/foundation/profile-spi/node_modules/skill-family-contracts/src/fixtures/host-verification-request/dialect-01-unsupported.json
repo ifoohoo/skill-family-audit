@@ -1,0 +1,8 @@
+{
+  "fixtureId": "host-verification-request/dialect-01-unsupported",
+  "class": "dialect-boundary",
+  "contract": "host-verification-request",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-verification-request.json", "dialect": "draft-99", "policy": "strict" },
+  "data": {},
+  "expect": { "valid": false, "errorCode": "SFC1006" }
+}

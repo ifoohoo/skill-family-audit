@@ -22,6 +22,8 @@
     - m2_entry_platform_b3   M2 命名边界/词表扩展/平台模型/支持边界（6 条）
     - m7_registry_b3         M7 制品方法/注册对象/基础模板/覆盖（4 条）
     - m1_rule_governance_b3  M1 规则整改复验/外部组件条件规则（2 条）
+候选模块 ``m1_rule_governance_gap``（W2-C2 候选批）保留在磁盘上，但不登记到
+生产注册表：其九条规则尚未完成正式激活与实现绑定，不得进入生产路由闭包。
 
 设计边界（与任务书一致）：
 - 只落真实机械断言；behavior_also_required 规则只覆盖机械半区，行为义务继续挂账。
@@ -33,6 +35,12 @@
 from __future__ import annotations
 
 from typing import Any, Callable
+
+from .contracts import (
+    AGGREGATE_EVIDENCE_REFERENCE,
+    ExecutorEvidenceError,
+    validate_method_subresults,
+)
 
 from . import (
     m1_rule_governance,
@@ -107,6 +115,134 @@ B3_RULE_COUNT = len(_REGISTRIES["w2b3"])
 EXECUTOR_RULE_COUNT = B1_RULE_COUNT + B2_RULE_COUNT + B3_RULE_COUNT
 
 _LEGAL_STATUSES = {"PASS", "FAIL", "EVIDENCE_MISSING", "NOT_APPLICABLE"}
+_CANONICAL_CHECK_METHODS = {
+    "behavior_verification",
+    "digest_verification",
+    "schema_validation",
+    "semantic_review",
+    "static_scan",
+}
+_MECHANICAL_CHECK_METHODS = {
+    "digest_verification", "schema_validation", "static_scan",
+}
+_EXECUTOR_MODULE_FAMILIES = {
+    "m1_": "M1",
+    "m2_": "M2",
+    "m3_": "M3",
+    "m4_": "M4",
+    "m5_": "M5",
+    "m7_": "M7",
+}
+
+
+def _validate_method_route(route: Any) -> tuple[list[str], list[str]]:
+    if not isinstance(route, dict):
+        raise ValueError("执行器缺少受管 method route")
+    methods = route.get("check_methods")
+    required = route.get("required_mechanical_methods")
+    revision_digest = route.get("revision_digest")
+    if (
+        not isinstance(methods, list)
+        or not methods
+        or len(methods) != len(set(methods))
+        or any(method not in _CANONICAL_CHECK_METHODS for method in methods)
+        or not isinstance(required, list)
+        or not required
+        or len(required) != len(set(required))
+        or any(method not in _MECHANICAL_CHECK_METHODS for method in required)
+        or sorted(set(methods) & _MECHANICAL_CHECK_METHODS) != sorted(required)
+        or not isinstance(revision_digest, str)
+        or len(revision_digest) != 64
+        or any(ch not in "0123456789abcdef" for ch in revision_digest)
+    ):
+        raise ValueError("受管 method route 非法")
+    return methods, required
+
+
+def _check_method_subresults(
+    outcome: dict[str, Any], route: Any, *, require_multi_itemization: bool = False
+) -> list[dict[str, Any]]:
+    """Project method observations only from this actual executor call.
+
+    Aggregate outcomes are attributable to one method only when the managed
+    route requires exactly one mechanical method.  A multi-method dispatcher
+    call must carry executor-owned, itemized observations for the entire
+    managed mechanical method set.
+    """
+    methods, required = _validate_method_route(route)
+    supplied = outcome.get("check_method_subresults")
+    itemized = None
+    if supplied is not None or (require_multi_itemization and len(required) > 1):
+        itemized = validate_method_subresults(
+            supplied,
+            required_methods=required,
+            aggregate_status=outcome["status"],
+        )
+    single = required[0] if len(required) == 1 and itemized is None else None
+    itemized_by_method = {
+        row["check_method"]: row for row in (itemized or [])
+    }
+    rows = []
+    for method in sorted(methods):
+        if method in itemized_by_method:
+            rows.append(itemized_by_method[method])
+        elif method == single:
+            rows.append({
+                "check_method": method,
+                "status": outcome["status"],
+                "observation_source": "executor_aggregate_single_mechanical_method",
+                "evidence": dict(AGGREGATE_EVIDENCE_REFERENCE),
+            })
+        else:
+            rows.append({
+                "check_method": method,
+                "status": "NOT_RUN",
+                "observation_source": (
+                    "executor_does_not_report_per_method"
+                    if method in required
+                    else "method_not_executed_by_mechanical_executor"
+                ),
+                "evidence": {
+                    "kind": "method_not_executed",
+                    "reason": (
+                        "executor_does_not_report_per_method"
+                        if method in required
+                        else "non_mechanical_method"
+                    ),
+                },
+            })
+    return rows
+
+
+def _failed_method_subresults(
+    route: dict[str, Any], error: ExecutorEvidenceError
+) -> list[dict[str, Any]]:
+    """Produce explicit non-passing rows after an executor contract failure."""
+    required = set(route["required_mechanical_methods"])
+    rows = []
+    for method in sorted(route["check_methods"]):
+        if method in required:
+            rows.append({
+                "check_method": method,
+                "status": "EVIDENCE_MISSING",
+                "observation_source": "executor_method_subresults_invalid",
+                "evidence": {
+                    "kind": "executor_error_reference",
+                    "field": "evidence",
+                    "code": error.code,
+                },
+            })
+        else:
+            rows.append({
+                "check_method": method,
+                "status": "NOT_RUN",
+                "observation_source": "method_not_executed_by_mechanical_executor",
+                "evidence": {
+                    "kind": "method_not_executed",
+                    "reason": "non_mechanical_method",
+                },
+            })
+    return rows
 
 
 def _registry_for(rule_id: str):
@@ -133,6 +269,21 @@ def canonical_id_of(rule_id: str) -> str:
     return rule_id[len(prefix) + 1:]
 
 
+def executor_family_of(rule_id: str) -> str:
+    """Derive the execution family from the actual registered check module."""
+    prefix, registry = _registry_for(rule_id)
+    if registry is None or rule_id[len(prefix) + 1:] not in registry:
+        raise KeyError(rule_id)
+    module_name = registry[rule_id[len(prefix) + 1:]].__module__.rsplit(".", 1)[-1]
+    matches = [
+        family for module_prefix, family in _EXECUTOR_MODULE_FAMILIES.items()
+        if module_name.startswith(module_prefix)
+    ]
+    if len(matches) != 1:
+        raise ValueError(f"执行器模块未绑定唯一 execution family: {rule_id}")
+    return matches[0]
+
+
 def execute(rule_id: str, ctx: dict[str, Any]) -> dict[str, Any]:
     """执行单条 W2 第一档机械规则，返回 {status, evidence}。
 
@@ -142,12 +293,61 @@ def execute(rule_id: str, ctx: dict[str, Any]) -> dict[str, Any]:
     prefix, registry = _registry_for(rule_id)
     if registry is None or rule_id[len(prefix) + 1:] not in registry:
         raise KeyError(rule_id)
+    route = ctx.get("method_route")
+    if route is not None and (
+        not isinstance(route, dict)
+        or route.get("baseline_rule_id") != rule_id
+        or route.get("canonical_id") != canonical_id_of(rule_id)
+        or not isinstance(route.get("revision_digest"), str)
+        or len(route["revision_digest"]) != 64
+        or any(
+            ch not in "0123456789abcdef"
+            for ch in route["revision_digest"]
+        )
+    ):
+        raise ValueError(f"执行器 method route 身份不匹配: {rule_id}")
+    if route is not None:
+        _validate_method_route(route)
     check = registry[rule_id[len(prefix) + 1:]]
-    outcome = check(ctx)
+    try:
+        outcome = check(ctx)
+    except ExecutorEvidenceError as exc:
+        if ctx.get("method_route") is None:
+            raise
+        outcome = {
+            "status": "EVIDENCE_MISSING",
+            "evidence": {
+                "reason": "executor_evidence_invalid",
+                "code": getattr(exc, "code", type(exc).__name__),
+                "detail": str(exc),
+            },
+        }
+    if not isinstance(outcome, dict):
+        raise ValueError(f"执行器返回值不是对象: {rule_id}")
     if outcome.get("status") not in _LEGAL_STATUSES:
         raise ValueError(f"执行器返回非法状态: {rule_id} {outcome.get('status')!r}")
     if "evidence" not in outcome:
         raise ValueError(f"执行器缺少证据: {rule_id}")
+    # Only the conformance runner supplies the build-managed route.  Direct
+    # executor unit calls remain aggregate-only and cannot masquerade as a
+    # trusted method observation.
+    if route is not None:
+        outcome["executor_family"] = executor_family_of(rule_id)
+        try:
+            outcome["check_method_subresults"] = _check_method_subresults(
+                outcome, route, require_multi_itemization=True
+            )
+        except ExecutorEvidenceError as exc:
+            outcome = {
+                "status": "EVIDENCE_MISSING",
+                "evidence": {
+                    "reason": "executor_method_subresults_invalid",
+                    "code": exc.code,
+                    "detail": str(exc),
+                },
+                "executor_family": executor_family_of(rule_id),
+                "check_method_subresults": _failed_method_subresults(route, exc),
+            }
     return outcome
 
 

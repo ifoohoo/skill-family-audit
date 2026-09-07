@@ -1,0 +1,4280 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "skill-family-audit.semantic-rule-groups",
+  "status": "implementation-design-authority-for-sfa-814-goal",
+  "review_families": [
+    {
+      "review_family": "artifact-contracts",
+      "group_ids": [
+        "artifact.assessment-layering",
+        "artifact.capability-contract",
+        "artifact.derived-projections",
+        "artifact.identity-granularity",
+        "artifact.internal-skill-binding",
+        "artifact.method-contract-registry",
+        "artifact.release-facts",
+        "artifact.spec-rule-lifecycle"
+      ]
+    },
+    {
+      "review_family": "audit-methods",
+      "group_ids": [
+        "audit.pipeline-release-summary",
+        "audit.public-methods",
+        "audit.readonly-control"
+      ]
+    },
+    {
+      "review_family": "compatibility",
+      "group_ids": [
+        "compatibility.adoption-state",
+        "compatibility.strong-composition"
+      ]
+    },
+    {
+      "review_family": "dependency-supply",
+      "group_ids": [
+        "dependency.consumer-compatibility",
+        "dependency.product-direction",
+        "supply.provenance"
+      ]
+    },
+    {
+      "review_family": "ecosystem-architecture",
+      "group_ids": [
+        "ecosystem.bridge-lifecycle",
+        "ecosystem.extension-boundary",
+        "ecosystem.product-roles",
+        "ecosystem.single-graph",
+        "profile.authoring-generation",
+        "profile.domain-selection",
+        "profile.logical-views",
+        "topology.assistant-routing",
+        "topology.domain-release",
+        "topology.kernel-composer"
+      ]
+    },
+    {
+      "review_family": "family-method-surfaces",
+      "group_ids": [
+        "family.identity-capability",
+        "method.public-surfaces",
+        "method.registration"
+      ]
+    },
+    {
+      "review_family": "foundation-governance-adoption",
+      "group_ids": [
+        "foundation.engineering-kit",
+        "foundation.quickstart-exchange",
+        "foundation.terminology",
+        "governance.machine-truth",
+        "repository.foundation-adoption",
+        "repository.initial-layout",
+        "repository.published-dependencies",
+        "upstream.consumer-compatibility"
+      ]
+    },
+    {
+      "review_family": "installation",
+      "group_ids": [
+        "install.deactivation",
+        "install.physical-cleanup",
+        "install.recoverable-transaction"
+      ]
+    },
+    {
+      "review_family": "method-composition",
+      "group_ids": [
+        "compose.ordering-parallelism",
+        "compose.public-boundaries",
+        "compose.repair-loop"
+      ]
+    },
+    {
+      "review_family": "migration",
+      "group_ids": [
+        "migration.contract-adaptation",
+        "migration.decision",
+        "migration.lifecycle-boundaries",
+        "migration.truth-and-portability"
+      ]
+    },
+    {
+      "review_family": "reference-governance",
+      "group_ids": [
+        "reference.adjudication",
+        "reference.completion",
+        "reference.lineage"
+      ]
+    },
+    {
+      "review_family": "release-publishing",
+      "group_ids": [
+        "publish.byte-chain",
+        "publish.candidate-authorization",
+        "publish.channel-qualification",
+        "publish.licensing-authorship"
+      ]
+    },
+    {
+      "review_family": "repair-boundary",
+      "group_ids": [
+        "repair.audit-boundary",
+        "repair.autofix"
+      ]
+    },
+    {
+      "review_family": "runtime-packaging",
+      "group_ids": [
+        "runtime.mixed-boundary",
+        "runtime.node-package",
+        "runtime.python-package"
+      ]
+    },
+    {
+      "review_family": "security-data-and-release",
+      "group_ids": [
+        "security.crypto",
+        "security.release-payload",
+        "security.sensitive-data"
+      ]
+    },
+    {
+      "review_family": "security-execution-boundary",
+      "group_ids": [
+        "security.authorization",
+        "security.filesystem-write",
+        "security.tools-network",
+        "security.untrusted-input"
+      ]
+    },
+    {
+      "review_family": "specification-layers",
+      "group_ids": [
+        "specification.audit-consumption",
+        "specification.authority-layers"
+      ]
+    },
+    {
+      "review_family": "worker-isolation",
+      "group_ids": [
+        "worker.execution-isolation",
+        "worker.executor-topology",
+        "worker.semantic-stage-responsibility"
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "group_id": "artifact.assessment-layering",
+      "name": "评估分层与结果引用",
+      "review_family": "artifact-contracts",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-009",
+          "revision": 2,
+          "revision_digest": "4d742ad726f7a07f1d3c0b389e370f4c5013c2c963dbbd87af2ffd8ed262909b",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-010",
+          "revision": 2,
+          "revision_digest": "7be2297787961ca086bba4019e64d50fa9fc0921010cdec22c832edf14f2de86",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "artifact.capability-contract",
+      "name": "能力合同责任",
+      "review_family": "artifact-contracts",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-007",
+          "revision": 2,
+          "revision_digest": "36911e23a7f3328b58ec0e16878a1a4124841090b6e67f33753e110aa0421d3c",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-018",
+          "revision": 2,
+          "revision_digest": "2f6e6ef1f13db18b7cc123992563c7816b2985388a1403a1365b88a03d93cad6",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-019",
+          "revision": 2,
+          "revision_digest": "ee474597c1417ed18eeef7faaaa930a56051233bfbe5ffa00c02c1eab8e0e7c7",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-020",
+          "revision": 2,
+          "revision_digest": "1f7b86c42ab1d4693e5946a18733a78eacc24d932d349b491e5a1774b22978f3",
+          "scan_packs": [
+            "declaration",
+            "platform",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "artifact.derived-projections",
+      "name": "生成投影与单向权威",
+      "review_family": "artifact-contracts",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-025",
+          "revision": 2,
+          "revision_digest": "a6912cc2b1f929b94d738086f2b57b335632a51e81b5385407c872efd4897d1b",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-027",
+          "revision": 2,
+          "revision_digest": "81848e1553e5554fd37b7e74fc79a722fe2338035cdcd66ffac5ad815c661c58",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "platform",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-028",
+          "revision": 2,
+          "revision_digest": "c06c2ea76e7ed45e69234efe46b21d931e1593c6b52d40a6c5ab6ec662dbeb42",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-029",
+          "revision": 2,
+          "revision_digest": "1dce8f0981cebee62ded7ea5a2d1cbe87c4200ab25958c98f9b69620ddd2eedd",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-030",
+          "revision": 2,
+          "revision_digest": "4f33bf677ffe7f868e25bbb129d745e5feb67120697ab018ae938aa3951e3b49",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "platform",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "artifact.identity-granularity",
+      "name": "制品身份与粒度",
+      "review_family": "artifact-contracts",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-001",
+          "revision": 2,
+          "revision_digest": "adb825347c2d8343a871e14b7195708ce1fc0dd56aa3066a15a9d01fa8b93bf5",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-002",
+          "revision": 2,
+          "revision_digest": "e047e0bfb32c6619b7c4670d7a883fe0f8513b868528f154a467bef07a21c742",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-003",
+          "revision": 2,
+          "revision_digest": "918164efd2b90711f2d4f733c25ebe77ec29b1b6b4995d6d58aabc26303ccafe",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-004",
+          "revision": 2,
+          "revision_digest": "21f7710852c59402a67085e8fa9fa9f64ca48c15fc006515a62fe9b1c33eb206",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-032",
+          "revision": 2,
+          "revision_digest": "de339442793327859205426a304ee687f05f7dd43fde9ae4d6908252ac807c3c",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "artifact.internal-skill-binding",
+      "name": "内部 skill 约束",
+      "review_family": "artifact-contracts",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-023",
+          "revision": 2,
+          "revision_digest": "1939a4f41b372289a182acaefc668457645736713e0a195238a4d76ff2cea6f0",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-024",
+          "revision": 2,
+          "revision_digest": "a6c8557f97ed6fde04077ef1ff1c0f8326a2f552995e5fe2fbe33ed89697cd82",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "artifact.method-contract-registry",
+      "name": "方法合同与 Registry 投影",
+      "review_family": "artifact-contracts",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-005",
+          "revision": 2,
+          "revision_digest": "7179d451afadb19da0aada334cc0ce34ddb372dbcdb0eefd653afb2a415a390a",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-008",
+          "revision": 2,
+          "revision_digest": "bd39b6ebdd35f84e7d73f9d2561eed01a98ab0b23e312a29f044bdc92d9fb5f9",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-021",
+          "revision": 2,
+          "revision_digest": "d297b7fe50bbbda14cf62d71e788d3083e0a076fcc64677f12f5848ad6aaefad",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-022",
+          "revision": 2,
+          "revision_digest": "4cf4f09353fa455af97b002584e07612a89ddfeaeca26ef03974003ab8cc0755",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-026",
+          "revision": 2,
+          "revision_digest": "38e70a03f20bba564514dfd079b5eac03e636f292043d47bb55f80e0c924b593",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-033",
+          "revision": 2,
+          "revision_digest": "84f8a0adebe478a60eb8c5f6914082aaa9d72503fe1fb4fbd20e45d3c2a1c873",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "artifact.release-facts",
+      "name": "发布事实与冻结输入",
+      "review_family": "artifact-contracts",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-011",
+          "revision": 2,
+          "revision_digest": "07c943c2293b09d74c702674e55b4b2bc9ab20e2f30ca38d134de58b10fe465f",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-012",
+          "revision": 2,
+          "revision_digest": "4886a95429381cd98acfc1c8749ee0516510e5901a8750f275ca893a8e0d541b",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "platform",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-013",
+          "revision": 2,
+          "revision_digest": "3cc31f0c817a0a322f7c7285afee4f09c2d072d7d208ce2fabb132e57d5f8256",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "artifact.spec-rule-lifecycle",
+      "name": "规范根、规则与例外生命周期",
+      "review_family": "artifact-contracts",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-006",
+          "revision": 2,
+          "revision_digest": "438b0be0ed6d7357d5bd42eb9c701c5b25a18ab985b7aec7a7a884a37bdeed9c",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-014",
+          "revision": 2,
+          "revision_digest": "7121af80672aa2655c501f574cd55492c4a83601691d976512d613522263771b",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-015",
+          "revision": 6,
+          "revision_digest": "cc3402b88a433f16cd5f132c667ca1a119061590bd27d192820fff7e2dfb1d3c",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-016",
+          "revision": 2,
+          "revision_digest": "51b5f006674d4e18ae0931cb38890c93082a30fa93800ab01aabaae76fc1b7dd",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ARTIFACT-017",
+          "revision": 2,
+          "revision_digest": "3845e3158375d8feb928da73c228460f75407a1052759c360c8c1f9990d4f6fb",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "audit.pipeline-release-summary",
+      "name": "Audit 流水线与发布汇总",
+      "review_family": "audit-methods",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-AUDITMETHOD-003",
+          "revision": 2,
+          "revision_digest": "039e69a7e6558fa376c43bbd56694ca57ebff37e61df4eaee978ac3b1072d372",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-009",
+          "revision": 3,
+          "revision_digest": "f2e23f24a87aba48bb8428ddae16f4e57ff079c776fe7a257098d8c236d536e7",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-010",
+          "revision": 2,
+          "revision_digest": "733689107932e261c602249d8929a028854681b91b5a0553a34552a83d570296",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-011",
+          "revision": 2,
+          "revision_digest": "9839b5a35febb8e6714bd62bb486fc5f8a4e5f806b82ba235700bdfd5bf7646e",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "audit.public-methods",
+      "name": "Audit 产品身份与公开方法",
+      "review_family": "audit-methods",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-AUDITMETHOD-001",
+          "revision": 3,
+          "revision_digest": "3d84db464899e00a9a22df42b84ca2e1c7deba01dc5bf36e65a0f67d75b93e10",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-002",
+          "revision": 2,
+          "revision_digest": "ab86b0dfb99d1bf8668eb1888f61f2d8a5b82aaf078807b65f7f8a838deb549b",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-012",
+          "revision": 2,
+          "revision_digest": "b2877ef76276b6eaf403252eceb3ca02adfe9cb872efc4965749d72059982942",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-013",
+          "revision": 2,
+          "revision_digest": "c8a8d8a17b7c8fbaaaae1c93ba0ab4f56475805cfad8d2e7b0e8485748527125",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-AUDITPRODUCT-001",
+          "revision": 2,
+          "revision_digest": "ed59dee34f6174f20e9bd4d7a0afdc8c4297dff0b2d5514513df616f78be776e",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "audit.readonly-control",
+      "name": "Audit 只读审阅与控制面隔离",
+      "review_family": "audit-methods",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-AUDITMETHOD-004",
+          "revision": 3,
+          "revision_digest": "c3a1840d3378a0b6cdcd50c9566e87790d2a1a462c2894279f632ebea7beb373",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-005",
+          "revision": 3,
+          "revision_digest": "531e6bd0efb2667629c6377fbff8d4d9ffa5fd8f1e081950992ec77ed54dfb5f",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-006",
+          "revision": 3,
+          "revision_digest": "86c2f4e74998f4ca18e20847657036643b6120df10d615be30960e38cf67ff62",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-007",
+          "revision": 3,
+          "revision_digest": "c0d6342b56c64bd91baad58d8bb6557e90a29e17e9773ba02390e06e7deeb07c",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-AUDITMETHOD-008",
+          "revision": 3,
+          "revision_digest": "de8fb064ecdf68348cf36c59202f31451faac56d5a12814f6e1edda7810b62a9",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-CONTROL-001",
+          "revision": 2,
+          "revision_digest": "77a0e3c7578fb57b6c086ec2f36786ffe67f14b5db3a4b7e393acbc17da2ed61",
+          "scan_packs": [
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-CONTROL-002",
+          "revision": 2,
+          "revision_digest": "d6a54dc3cbf060e8c736c7225309910897dd5732325ef37e9439effc86d76e63",
+          "scan_packs": [
+            "execution_record",
+            "platform"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "compatibility.adoption-state",
+      "name": "运行外层采用状态",
+      "review_family": "compatibility",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-COMPAT-001",
+          "revision": 2,
+          "revision_digest": "e206ba9ac1d266b6808c79ffdcf078870caaac8959596cc640334f70a0b232cc",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-COMPAT-002",
+          "revision": 2,
+          "revision_digest": "f7f67b69d8b4eb4a32a1ac76dcccfca5287f77248468171bd28022139e329df2",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-COMPAT-003",
+          "revision": 2,
+          "revision_digest": "062681ba544ff63dcb9c541152c72ce01e8f05c6508a8b376c5e73b8c704de46",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-COMPAT-004",
+          "revision": 2,
+          "revision_digest": "c14d518ca7add9cec8505e334eb1d83904649e05e69c3b3eed3592acfa13b5c6",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        }
+      ]
+    },
+    {
+      "group_id": "compatibility.strong-composition",
+      "name": "旧资源与强组合保证",
+      "review_family": "compatibility",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-COMPAT-006",
+          "revision": 2,
+          "revision_digest": "aa937ab581330e89a144e5c153ecec0b28456b845dada9c7ece5505133282970",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-COMPAT-007",
+          "revision": 2,
+          "revision_digest": "b3a0cff217dd2a4d36461451ddd8cf994b3b92971654be8443d6bbd47485f291",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPAT-008",
+          "revision": 2,
+          "revision_digest": "b504094118c0f042eabaa7705ebafd36dde6fe9a7211e86287231f5d308916fd",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        }
+      ]
+    },
+    {
+      "group_id": "compose.ordering-parallelism",
+      "name": "换序、并行与资源安全",
+      "review_family": "method-composition",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-COMPOSE-005",
+          "revision": 2,
+          "revision_digest": "baadb3b118fb7765dad5ae3ff40f96d708c3ac19ac39e52f902e520e794bb24d",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-006",
+          "revision": 2,
+          "revision_digest": "b0c4cf8299ce1c20ea9182a951685e832fafa59c02ec359ab5006db5f866c2e2",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-007",
+          "revision": 2,
+          "revision_digest": "a76052758eed68fd008701717c5c525d0577b9df849eacbace1fd771217cbe21",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-008",
+          "revision": 2,
+          "revision_digest": "de958e540374436ff6951b08db4b89eac389ea6d82b2718ebb4fca68386bbc4c",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-009",
+          "revision": 2,
+          "revision_digest": "81d464fb4f728b48e5f32deb565f91ecd354b001061e1877d6928c6eb5fd5283",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-010",
+          "revision": 2,
+          "revision_digest": "d9ff967c5639292341913ef9122a58d7426953d60087594eda779c42f3d0f473",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-011",
+          "revision": 2,
+          "revision_digest": "6c3368a88db9db1d4c75c786588f4c5fd6846df4fb442c8474293db83870dc5d",
+          "scan_packs": [
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-012",
+          "revision": 2,
+          "revision_digest": "5373907412a9b71663928c2f5fbc70cf0df52925946fdc419a62487252c9f7e3",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-017",
+          "revision": 2,
+          "revision_digest": "4623b79cdcb7ad0c98d16ce86c30daedaf2d71257211dad3877df43c47f1f853",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "compose.public-boundaries",
+      "name": "可组合公共契约与跨族交接",
+      "review_family": "method-composition",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-COMPOSE-001",
+          "revision": 2,
+          "revision_digest": "3f28702ab86f5c12fc90bc3fe1574de5729aea0b6ebe5cf25df0cba001e6dfae",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-002",
+          "revision": 2,
+          "revision_digest": "c7e4a9517e3715ef99ed9fe29ab9b1e7c97d2b406f0db107983db485567ec3ad",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-003",
+          "revision": 2,
+          "revision_digest": "9931d630918ca3a149669ff7aae6ef199fa7bb3487fe6364759ab150c45a1318",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-004",
+          "revision": 2,
+          "revision_digest": "a28d262293eed166f452e60f623ba03b8da51c9f2fcca010110afbb53841c5dd",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-015",
+          "revision": 2,
+          "revision_digest": "8e34fc7e0b873615249decdc93020424da336b2af8e8c4e6f5ce62c70209ecc8",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-016",
+          "revision": 2,
+          "revision_digest": "4b5220b390544dd8f228d93b354fce5c53686af0d542f5a244ea1f4feb9a949e",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "compose.repair-loop",
+      "name": "审阅修复循环",
+      "review_family": "method-composition",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-COMPOSE-013",
+          "revision": 2,
+          "revision_digest": "4ea547d4cb85cc6841e15079423ff5c4d2c3a5f9a19b73e2dd4b8134ba806026",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-COMPOSE-014",
+          "revision": 2,
+          "revision_digest": "bc3f598ffe301bebe010986bb98b42fc4820de9d50142735f3ffa5ebb8cb4874",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "dependency.consumer-compatibility",
+      "name": "兼容范围与失败关闭",
+      "review_family": "dependency-supply",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-DEPEND-011",
+          "revision": 2,
+          "revision_digest": "28163f3989a5ab182741e42b801dc1f72d64f78ec053eefa0bbbab3bcd7f8f74",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-014",
+          "revision": 2,
+          "revision_digest": "fbfb6b9f0041d344ce622b005e918f09f6873e5eca7205ea5546f9c2b74940e9",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "dependency.product-direction",
+      "name": "产品分层与依赖方向",
+      "review_family": "dependency-supply",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-DEPEND-002",
+          "revision": 2,
+          "revision_digest": "da5ed1f1f23f26e4a90d809cd61b60ae9fbdd0934ca3f741a7b30412e7768ea5",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-003",
+          "revision": 2,
+          "revision_digest": "8fefbcb2245879489d6c7ce668b6c066f76d90084a8a2740bb65239a03af6c1c",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-004",
+          "revision": 2,
+          "revision_digest": "74f4e431a9528c5f6aaac4b008e510bc6d053cd3a246760aade6a999f4983227",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-005",
+          "revision": 2,
+          "revision_digest": "f9b54a6cd1a4185090c004bf79ea7abe701c69aa3c7431df82989b34c08fcc47",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-006",
+          "revision": 2,
+          "revision_digest": "c209168d2173644c85ad27404c82c37ba5085da6ebd576632b71ffe03e9c6b7d",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-007",
+          "revision": 2,
+          "revision_digest": "e234cfa4a0b0f89f1d648aca4313c7b1754651a6029c5740e09decfc778ce5b2",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-008",
+          "revision": 2,
+          "revision_digest": "3b0707c20fbf8f9f0bc59b9ad0e40ff285f63c4df24d2dac43f0846e1006fb70",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-009",
+          "revision": 2,
+          "revision_digest": "a22e3234346559e935593d99bd3de86a7b94ec21799f5937849ed788498057cc",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-DEPEND-010",
+          "revision": 2,
+          "revision_digest": "4f1f1132eca1a8b7e53aa789f2b3605eab45045c44e9a905251c16b20fe0a60f",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "ecosystem.bridge-lifecycle",
+      "name": "跨领域桥接生命周期",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-BRIDGE-001",
+          "revision": 2,
+          "revision_digest": "5fed02307360bd4fb491a50354951715d85f0604ad45b2f7ba1a52682bdaab3a",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-BRIDGE-002",
+          "revision": 2,
+          "revision_digest": "fa316485f0101da94c84a30649e2aade0dadcce0f1d0be59c2a9e760bada6b06",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-BRIDGE-003",
+          "revision": 2,
+          "revision_digest": "df3cba606e0f7134a150c16a405e104272cc68a0169ca849011463a330099b3a",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-BRIDGE-004",
+          "revision": 2,
+          "revision_digest": "5fc8f47a13e3251820e02c9a91bc30c4ae7f6380a33f231f8f6fa44ac209dc77",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "ecosystem.extension-boundary",
+      "name": "生态扩展反复制",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ECOSYS-006",
+          "revision": 2,
+          "revision_digest": "81c7f352dae45b8f1bef73dcc4cb049fdd11afbb5fc17f67a71c6519720bb1a6",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ECOSYS-007",
+          "revision": 2,
+          "revision_digest": "7dc7e98d7842d1c3a1bdd16bd14b610bea84e196eaa19043a2b889aba8555781",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ECOSYS-008",
+          "revision": 2,
+          "revision_digest": "dd9950d61afc51e537eb859b46497beb63b70d959801221b55ce8af90ffbacf2",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "ecosystem.product-roles",
+      "name": "逻辑产品角色与责任边界",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ARTIFACT-031",
+          "revision": 2,
+          "revision_digest": "e53517f50d985783ec356df8363f0f0e5d2bf9bd32d09d35b8c7cf58e3055d62",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ECOSYS-002",
+          "revision": 2,
+          "revision_digest": "2918ece795a6d180fd252989612299d2bc48b4f6df19c1240db6cdf37c961748",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-ECOSYS-003",
+          "revision": 2,
+          "revision_digest": "cae0df74ce93488cbadd9c1c7e75b44ae88c1eda3ada30647635d9fc6f91f8e4",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ECOSYS-004",
+          "revision": 2,
+          "revision_digest": "d992cb7637cd7388ed5a20d59e1bb4775adeac7bf7955aa4ec6f1419d8383695",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-ECOSYS-005",
+          "revision": 2,
+          "revision_digest": "9e424efa1e5d91c20a911e3f33124f6b58faa3a1c86da93aaddec6a92f303cfa",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-ECOSYS-009",
+          "revision": 2,
+          "revision_digest": "095e495b4c0f54426f56c23c3a990b7d99c9155a86bb02ee4ff3be88275f20ff",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PRODUCT-001",
+          "revision": 2,
+          "revision_digest": "7b015cf68d6c2c9f628fe83cfba98d680fe018c89e30326b0dd6a9b252b86c7a",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PRODUCT-002",
+          "revision": 2,
+          "revision_digest": "87f0d8e29c0813897f3d63e16fb8b38a66a2a0187cbdf42beb6d9083c328d939",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PRODUCT-003",
+          "revision": 2,
+          "revision_digest": "c080924a7aa7b0beed26b303319d32346ca7e8e8685137cec9b4e1dba46206ff",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PRODUCT-004",
+          "revision": 2,
+          "revision_digest": "48141e0fe1933a86fe5c3856bf4e943536ae489fd3289b184366ce06fae0fc25",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PRODUCT-005",
+          "revision": 2,
+          "revision_digest": "42617104cd2eef2c3eeda50b8ab44fb7c286dbd15cfe60bab33788c860a25e7a",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PRODUCT-006",
+          "revision": 2,
+          "revision_digest": "63b3743434e02785d8f89fcdcae295203d0c1ea0a260813ffc32751a7d65928f",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PRODUCT-007",
+          "revision": 2,
+          "revision_digest": "2df1138f8616919e7bbb4d544f1538001bf9fe9debd8bf3169d720c5e63bf457",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "ecosystem.single-graph",
+      "name": "单图确定性组合",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-ECOSYS-001",
+          "revision": 2,
+          "revision_digest": "5956f48675003527ee03d0c251a7ba0842553db16a02a6184e12a78be7e1551b",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PROFILE-005",
+          "revision": 2,
+          "revision_digest": "c0efe4b1ffbe35f20b726f4e9608ddfc6e8527627dee9a8bfe7767c1aabadedf",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PROFILE-008",
+          "revision": 2,
+          "revision_digest": "9a72cb79ecab7f7fee7f0baba5794da8715f86899927823417d77944b1376547",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "family.identity-capability",
+      "name": "技能族身份、能力与资格",
+      "review_family": "family-method-surfaces",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-FAMILY-001",
+          "revision": 2,
+          "revision_digest": "64ad1ccd3b79e9cc6b3499b6cce53f08c01510f5df9c72930f1a57835e594be7",
+          "scan_packs": [
+            "declaration",
+            "platform",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-FAMILY-002",
+          "revision": 2,
+          "revision_digest": "6d66fc606c52f73dd321a222215b834551ce08efd12e4c352148a0959168dc88",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-FAMILY-003",
+          "revision": 2,
+          "revision_digest": "af0992b440bac55ec6f3a707992a783c8c42fc64b96e1ce0474f5897974d0f8f",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-FAMILY-004",
+          "revision": 2,
+          "revision_digest": "effc0cd7b394545a059050b2a61769efb3e20255d1bb29c993101d98ec82fdeb",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-INTERNAL-001",
+          "revision": 2,
+          "revision_digest": "8e0c2d46a3da9522a0e8d083cc169f050261d257256469e81b064610c1ba8a51",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-INTERNAL-002",
+          "revision": 2,
+          "revision_digest": "96496662fb2fcdd106add128bd39c9dcdb9aa2d51e6b8090667db896345e5fc4",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "foundation.engineering-kit",
+      "name": "Engineering Kit 公共命令",
+      "review_family": "foundation-governance-adoption",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-FOUNDATION-013",
+          "revision": 6,
+          "revision_digest": "752a9875640a0e0ec28cf4098b75f84b08f605ea6af04f33e14198239a32bb69",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-FOUNDATION-019",
+          "revision": 6,
+          "revision_digest": "4ea7b0a1de2b72043b090f64614703ad5b692f8481a8ea2f3d125a56ef79f15a",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "foundation.quickstart-exchange",
+      "name": "Quickstart Task/Result 交换",
+      "review_family": "foundation-governance-adoption",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-FOUNDATION-016",
+          "revision": 6,
+          "revision_digest": "4afa353ddb54c6d74b7f263b54a5359122023329b53d8d7636b0c13b0a355116",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "foundation.terminology",
+      "name": "Foundation 术语消歧",
+      "review_family": "foundation-governance-adoption",
+      "scan_packs": [
+        "declaration",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-FOUNDATION-009",
+          "revision": 3,
+          "revision_digest": "c9d33e4f8726b37c7113a4858fd558b5b0eb69eb1bd708468faeec6254e08a53",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "governance.machine-truth",
+      "name": "机器真源与文字指南",
+      "review_family": "foundation-governance-adoption",
+      "scan_packs": [
+        "declaration",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-GOVERNANCE-004",
+          "revision": 3,
+          "revision_digest": "2d3f7ecbdd9c2517b2a4a24fd95a8716e94cfbf0a3ddc70314ff12d29962ab86",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "install.deactivation",
+      "name": "功能卸载后的失活",
+      "review_family": "installation",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-INSTALL-005",
+          "revision": 2,
+          "revision_digest": "f4f7090b3b6bc1687107de12868599bc61a8b685c99c613b8fb3785781136169",
+          "scan_packs": [
+            "conversation",
+            "execution_record"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-006",
+          "revision": 2,
+          "revision_digest": "aa501f3ef6499f474de5edd009e4579f62df557a74e8b611b8a06f5349644ef6",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-007",
+          "revision": 2,
+          "revision_digest": "45a541231657688cb70a1ce2c9ddb6f46ba4402cc2f1e7618fc65296595839b1",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-008",
+          "revision": 2,
+          "revision_digest": "e25325b7cf84a660a50787230ba9809457c9a240597551b59caeb44c3f914484",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "heavy"
+        }
+      ]
+    },
+    {
+      "group_id": "install.physical-cleanup",
+      "name": "物理清理与共享缓存",
+      "review_family": "installation",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-INSTALL-009",
+          "revision": 2,
+          "revision_digest": "c4f6f7563f7f1f1afe21fe710065e3c7422289e2b5bfce46d62ed8f9b322f8eb",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-010",
+          "revision": 2,
+          "revision_digest": "f0ae8db2c8a064e3a713ece2558844ea0e85fc763b10ca7e2161a069051efca7",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-011",
+          "revision": 2,
+          "revision_digest": "e1c263999b64b3aba62196c3e85a69c52e8af8eead78352ef593a564f2944897",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-012",
+          "revision": 2,
+          "revision_digest": "9f980cea8adc64aea08e170f00c54be6aa6c2c9e787f51653de21ffc192987a9",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-013",
+          "revision": 2,
+          "revision_digest": "be9ef6ddf91d080f516b4ee7aee353ca9d3bf0a4839eeb4fa17b63b3eb5a8d51",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "install.recoverable-transaction",
+      "name": "可恢复安装事务",
+      "review_family": "installation",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-INSTALL-001",
+          "revision": 2,
+          "revision_digest": "3d000daf109457a5e9d799df047a47eb21c8230f73d015be69834dbb73ff99f3",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-002",
+          "revision": 2,
+          "revision_digest": "150c634a87687a1c5bd685b35a8cfd84d7a0d84081d654c46aefa5438d627abc",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-003",
+          "revision": 2,
+          "revision_digest": "aac47d43ee6d61523271f283d82b1417a78c243b1165aeecc760133bd63501b9",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INSTALL-004",
+          "revision": 2,
+          "revision_digest": "bafa9516e12f43079bb0f563b9e0425cc0bc123cf78da198c8e92caae816323f",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "method.public-surfaces",
+      "name": "命名工作流与双逻辑调用表面",
+      "review_family": "family-method-surfaces",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-METHOD-001",
+          "revision": 3,
+          "revision_digest": "3e9d7e4ae2bf6b4952f59ac7660c31888c9d9279520823827d3f6fe319449cca",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-METHOD-003",
+          "revision": 3,
+          "revision_digest": "55a2e81f9781b41697c321f271e8fcae3868a15f3694a8b1898c9022606f8e47",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-METHOD-004",
+          "revision": 3,
+          "revision_digest": "394416dbefe7a1cc0662d3fac32a96a9c06d7d40abad6bdcdde5ee48cf7932fa",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-METHOD-005",
+          "revision": 2,
+          "revision_digest": "72503780c4e78df807c20a7d0a60699238067f424d5dc03cb4a7d13acd8da35c",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-METHOD-006",
+          "revision": 2,
+          "revision_digest": "08b77d92a540062de2325b3564d264fcaafd6d1f264f20be88889e651625c072",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-METHOD-007",
+          "revision": 2,
+          "revision_digest": "5d4b8b39adcb5565c238755c47eab005b3a8b36af415656994467b64cb3b6b35",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-METHOD-011",
+          "revision": 2,
+          "revision_digest": "3c2e7794a6f1d45a23fdd1210732baad063cb6b1a4a95e1f0a9a5b6909271ddf",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-METHOD-012",
+          "revision": 2,
+          "revision_digest": "3cab1580aec94604d7330b006f0ed29805ece6a76a8c7a4a5752aecf4ac29da4",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-METHOD-013",
+          "revision": 2,
+          "revision_digest": "5f6918460524788308e635a7a00f87d43634ee8dff8c8e436075987e68777f0c",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "heavy"
+        }
+      ]
+    },
+    {
+      "group_id": "method.registration",
+      "name": "严格方法注册准入",
+      "review_family": "family-method-surfaces",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-METHOD-002",
+          "revision": 2,
+          "revision_digest": "6a358f9436c5817e3d265d4288f8a508fed4abc688295b9a5247b8803459a9a2",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-METHOD-008",
+          "revision": 2,
+          "revision_digest": "e967a9ee3fc4b3128f7b2f3aa2d3034a98cd30a89ed39c886e26d37c713b6173",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-METHOD-009",
+          "revision": 2,
+          "revision_digest": "a3f5c1661de85090c03b0f0dac110a49442cfe317da056b1ef47f7b2c4ef7a16",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-METHOD-010",
+          "revision": 2,
+          "revision_digest": "dec8454ac06f3395feec5f5d769359d62f6c35a830cb0d3dd575c9f36f078f7d",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "migration.contract-adaptation",
+      "name": "新旧运行合同适配",
+      "review_family": "migration",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-MIGRATE-003",
+          "revision": 2,
+          "revision_digest": "e0de6bcd53372dfe54ee17fbcad54cf172aa3ffe668a28b93c0ab33d356e2baa",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-009",
+          "revision": 2,
+          "revision_digest": "635bee549e1b2242da1dc19a7602acabffa090864174a67943fa7d825e11e8af",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-010",
+          "revision": 2,
+          "revision_digest": "a131b816ae2240d0baef75fb670814a98d9cee1e6d0522320c70e8006473d53f",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-011",
+          "revision": 2,
+          "revision_digest": "ac221886b86621486733a0efb8ab7fad2d528db0678d3512cd0d221609869d57",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-018",
+          "revision": 2,
+          "revision_digest": "b166f1acba56878b5f3b241f759f51baa727c4df49937229e3ea41b4512ec8a3",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-019",
+          "revision": 3,
+          "revision_digest": "94698ba4b7188ec77b40ecb718624f94255f68ec1249495c7b415fe507381597",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-020",
+          "revision": 2,
+          "revision_digest": "6344935472b015d47c0495bbd998a3965ec86f9af772d7ef6b48f62667975992",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "migration.decision",
+      "name": "迁移、拆仓与发布阻断决定",
+      "review_family": "migration",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-MIGRATE-002",
+          "revision": 2,
+          "revision_digest": "f7e258311aaac98b1044c7c37b47e7431d0cc489deeca1e5cb64ebf4847cc783",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-007",
+          "revision": 2,
+          "revision_digest": "a52714788393917bd882bd52101b1295b06a95a1e2537aea7dc17d11b7936dd3",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-008",
+          "revision": 2,
+          "revision_digest": "fd417495bd5f0ecf2fd7139e27ec57f71a11bd55036adda8b9f6d1bdd1ae394d",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-014",
+          "revision": 2,
+          "revision_digest": "ee0106b33f86bbc1826c725628c944e0087b3171e7cb50e7bcec05d822528bdd",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-022",
+          "revision": 2,
+          "revision_digest": "252cadc9d5e53141f1953b90fdf52772993aeb62c47f62a0868d6043ab841ebe",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-023",
+          "revision": 2,
+          "revision_digest": "45f9ef3bfc0a470552b6f5ba36654c7c0d7ceb78e5d607953282eff329d095e2",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "migration.lifecycle-boundaries",
+      "name": "迁移期产品边界与生命周期",
+      "review_family": "migration",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-MIGRATE-004",
+          "revision": 2,
+          "revision_digest": "78af8e999dadc8d7d263c7c47560e9927fc94f987287abbf8a2ae387972662c2",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-005",
+          "revision": 2,
+          "revision_digest": "33ed120d3fcf15ac51cb80c19ddb1dd1c7489bba0c0a1ade2eb2ce64f19eea7f",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "migration.truth-and-portability",
+      "name": "迁移真源与可移植性",
+      "review_family": "migration",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-MIGRATE-015",
+          "revision": 2,
+          "revision_digest": "d2d60620c1de43bce587d05a909feae0b20d455fee006cb5d5f39d0ed53a6a41",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-016",
+          "revision": 2,
+          "revision_digest": "75a0ff96a3dc411b95bcb77660c7d1289c361400e406f8c11d175192248a0e34",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIGRATE-017",
+          "revision": 2,
+          "revision_digest": "86bf8bc54ea79bf3da8aa1fb826cabcb7589512d8256904c07bf99fced7cf283",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "profile.authoring-generation",
+      "name": "手写选择与生成结果",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-PROFILE-010",
+          "revision": 2,
+          "revision_digest": "e0e08610fef761229599726f4f2cb8097563aa1c0ba36790ff25689ceb45ff5c",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PROFILE-011",
+          "revision": 2,
+          "revision_digest": "7c43e47a6a09567371ec4789dbfcc9f032a8a719ae7095005307ca4aee5c5987",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "profile.domain-selection",
+      "name": "领域选择适用性",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-PROFILE-001",
+          "revision": 2,
+          "revision_digest": "312aa7b0681395860bef7b2a788f37a208097769f7327fa9eca6a71331f93856",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PROFILE-002",
+          "revision": 2,
+          "revision_digest": "bc310d23031dfdeb28188ca24fb44eeac39c885a31b15921177c8a48f87b90e7",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PROFILE-003",
+          "revision": 2,
+          "revision_digest": "32c2bcb5b3398fcc6b4470b80af0bf50cb7c67c4b25267afab55a00e34de5dde",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PROFILE-004",
+          "revision": 2,
+          "revision_digest": "132c059bf247b47cec5b8858aa5e471cd7113d3325253c27bcbf5d54f1c5ecba",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "profile.logical-views",
+      "name": "逻辑子图与跨领域边",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-PROFILE-006",
+          "revision": 2,
+          "revision_digest": "758e9dc4f8d9bb9bcfb97aed70950bb4cc0713fb244756a5716f6d2bb4cfcd3e",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PROFILE-007",
+          "revision": 2,
+          "revision_digest": "986eb419acd9bc41916f8715d343f9ed217d1b706a29421d6758e632f1ca7c92",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "publish.byte-chain",
+      "name": "五层发布字节链",
+      "review_family": "release-publishing",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-PUBLISH-001",
+          "revision": 2,
+          "revision_digest": "cacd722941f5312199a642ac258f761ef2354957c629e0d0c846e5fc115932d1",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-PUBLISH-002",
+          "revision": 2,
+          "revision_digest": "344044e3b18b5121f77a53b23f0affab47eddd3065a25b26b12bce45d83c5881",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PUBLISH-003",
+          "revision": 2,
+          "revision_digest": "cbdb73ee4f5dc13af9c27c2ed46fae80b0a80b117628f7e5eecc70ef81452ccf",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "publish.candidate-authorization",
+      "name": "精确候选发布授权",
+      "review_family": "release-publishing",
+      "scan_packs": [
+        "declaration",
+        "execution_record"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-PUBLISH-004",
+          "revision": 2,
+          "revision_digest": "6798f6954cfcb6ab08dd4e38b6635d10bd66371622dbafb5a62e3b070e310fc7",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PUBLISH-005",
+          "revision": 2,
+          "revision_digest": "cb0a8e6f93ffed1cf2d3333efff9dba131137b7fbd0012e6794c1cdfdebbd981",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PUBLISH-009",
+          "revision": 2,
+          "revision_digest": "360c56b8103e16480bf4b4b6f0cdf6c3d74d2f7dbd337a8d371edaeb871e69ba",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PUBLISH-010",
+          "revision": 2,
+          "revision_digest": "16f7a0847a2bfb8fb6dbccd3f7386456ff422e0b59479c4cffe1056d394e76b0",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "publish.channel-qualification",
+      "name": "真实渠道发布后资格",
+      "review_family": "release-publishing",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-PUBLISH-006",
+          "revision": 2,
+          "revision_digest": "bb8e2622a881b3f08c369440422180ee3bc18b1d031879830efbd92051f0024c",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-PUBLISH-007",
+          "revision": 2,
+          "revision_digest": "dbff4f5a0242636da1f84588c023e6c13f991374eed18498ba159f84c6edf40f",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PUBLISH-008",
+          "revision": 2,
+          "revision_digest": "063e7737e34e371ded35c42b9e0927594e0ad7442d9b5b364ad1962e239cffd5",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "heavy"
+        }
+      ]
+    },
+    {
+      "group_id": "publish.licensing-authorship",
+      "name": "许可证、作者与版权发布真源",
+      "review_family": "release-publishing",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-PUBLISH-014",
+          "revision": 4,
+          "revision_digest": "039046642dd89875ca008a5d472369b6e2de40fa05ddd13d7c0fe4fc88693b34",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "reference.adjudication",
+      "name": "参考规则原子裁决",
+      "review_family": "reference-governance",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-REFERENCE-005",
+          "revision": 2,
+          "revision_digest": "1b23ef198d9be546f169c76e24a800678da2ab4c6799bdbc70fea33c50071f8b",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-006",
+          "revision": 2,
+          "revision_digest": "13dc1af50b72c5d5227b059bc86cda63690149848e963b32296d96c4707b19be",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-007",
+          "revision": 2,
+          "revision_digest": "a19321d767a7844689e9de76df72dd93e3508b5c364d82f419c189d813810f8f",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-008",
+          "revision": 2,
+          "revision_digest": "dd887ff40afc74a7ec5d474d5a3bcb34e663df7aa44de02dd2110ef71c8bd552",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-009",
+          "revision": 2,
+          "revision_digest": "d451f446d6147f62e2ae61930ba4fe5704b82cc63ba0a1476767fde0c30daad1",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-015",
+          "revision": 2,
+          "revision_digest": "68d337d85674d9629412a6b99e91a5591dd7db97fe003fe628e9f6197ebe5610",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-016",
+          "revision": 2,
+          "revision_digest": "c36f4c922ffdb74afb11b75d75136133147794908541fb1f6f347aaa0ba70184",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-017",
+          "revision": 2,
+          "revision_digest": "f5b7abcdc2c1c07fb12845d8cde55481fc0438720905124e24966688246ceaeb",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "reference.completion",
+      "name": "参考审阅完成声明",
+      "review_family": "reference-governance",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-REFERENCE-010",
+          "revision": 2,
+          "revision_digest": "491236205f80ac0a717eead67fca479498b3165ed43285afc44e2be4ffef10d4",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-011",
+          "revision": 2,
+          "revision_digest": "c5f87ac86df2f1acadc10e141ec31d799da9efbfc7cdcc226d6806ac4cefa3c1",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-012",
+          "revision": 2,
+          "revision_digest": "28366f33d3a6646786332dbd59d35d38c241f451ab318c1d59e7cc590daa9d8a",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-018",
+          "revision": 2,
+          "revision_digest": "5dd9a307995a1ee97deae090cb1d58f3861015f4a52889d04ec22e1ab9f8d6b6",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-019",
+          "revision": 2,
+          "revision_digest": "857dcaf2136d5b5024e5d164e2fbb2b37aae1ef572a0dbcf451f71fcbbc26cc6",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        }
+      ]
+    },
+    {
+      "group_id": "reference.lineage",
+      "name": "参考来源与谱系",
+      "review_family": "reference-governance",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-REFERENCE-001",
+          "revision": 2,
+          "revision_digest": "19ad0f13bbba0cc7786885875525c9f720348d71d08f80ca7279f689785fe6af",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-002",
+          "revision": 2,
+          "revision_digest": "281efcca38dbe35607dd960d75085218fbfe05bdddcbd72ba76f20e79112137e",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-003",
+          "revision": 2,
+          "revision_digest": "759a015dc2d58036ad0fb2e15a7e98a0b043259afec76703bc538b135048fc83",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-004",
+          "revision": 2,
+          "revision_digest": "a7a2beeaa67ebc541860361659ad9ce95913d397d88db4aa3c5eb6d9f5e27de4",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-013",
+          "revision": 2,
+          "revision_digest": "8d2bf2933f2cf2800150dcbe522ffa4a2fcb2be75ea8410734fbbf499d6c6b5d",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REFERENCE-014",
+          "revision": 2,
+          "revision_digest": "80c6c9930f652434b930b7e1d2927b03661d245106eceffde77d04299d12fc55",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "repair.audit-boundary",
+      "name": "Audit 修复能力边界",
+      "review_family": "repair-boundary",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-AUDITREPAIR-001",
+          "revision": 2,
+          "revision_digest": "505a784e1459d7d4bedee4f274773507af8ebf2db54272a02859fca89c76e8f3",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-AUDITREPAIR-002",
+          "revision": 2,
+          "revision_digest": "9840c1c7299bdc518d4bb08d9a1ce70fc981b30570046be25bc369abad94db99",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-AUDITREPAIR-003",
+          "revision": 2,
+          "revision_digest": "5c11c6ab4271b7295f0019c79cad4adbcdfb0c3c0102beb0f97cd64a5f02680b",
+          "scan_packs": [
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-AUDITREPAIR-004",
+          "revision": 2,
+          "revision_digest": "25225b4a3e9dfacabbe106a1462c663b9629a01ded4aa4abc73062942d3c1549",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-PERM-008",
+          "revision": 2,
+          "revision_digest": "4cc893589cc56e8b01c3de5182db31f21809e764f3eef2103908207777d4cb80",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        }
+      ]
+    },
+    {
+      "group_id": "repair.autofix",
+      "name": "具体自动修复准入",
+      "review_family": "repair-boundary",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-AUTOFIX-001",
+          "revision": 2,
+          "revision_digest": "486a72b092d817f4f25865def1ade715b8718b5afd59a143952fe94aa8755ef6",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-AUTOFIX-002",
+          "revision": 2,
+          "revision_digest": "2ab1eb6d31aad06712fdd992155a2824c70ce775ec0077c4f7b5d041aa7a5729",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-AUTOFIX-003",
+          "revision": 2,
+          "revision_digest": "2a476626a2c75a58166a99241b49590903e26b691554b83914d7d8494b2de9e8",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "repository.foundation-adoption",
+      "name": "新建与存量 Foundation 采用",
+      "review_family": "foundation-governance-adoption",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-REPO-007",
+          "revision": 6,
+          "revision_digest": "cc77ca7b739f4329fc8cb66b2f7151612766f5d24022a02a074986dd364a3e79",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "repository.initial-layout",
+      "name": "初始工作区与逻辑边界",
+      "review_family": "foundation-governance-adoption",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-REPO-001",
+          "revision": 2,
+          "revision_digest": "27b892de1a0d783cb0a27cf9106c9406925eccd05c0e2cd5f55bdb827606eca6",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REPO-002",
+          "revision": 2,
+          "revision_digest": "40cc83417111a40bd623377a5da6a016dcbd74295f90aa7721cbdefdbb82644b",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "repository.published-dependencies",
+      "name": "拆仓后的发布依赖",
+      "review_family": "foundation-governance-adoption",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-REPO-003",
+          "revision": 2,
+          "revision_digest": "feac54625e97a156fad77a86ab145d4701d4d664f2101c2c59b49ae28fec68f5",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-REPO-004",
+          "revision": 2,
+          "revision_digest": "17b817e9ad335aa5a966ecba10b0bc3ef7059a8b3d1ec07a3b9d4fb85ce5e212",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "runtime.mixed-boundary",
+      "name": "Node.js 与 Python 运行时交接",
+      "review_family": "runtime-packaging",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-MIXED-001",
+          "revision": 2,
+          "revision_digest": "6abd03ac0f60d9bc3df494165bd8f76811b1027c52abafe36147624b23db51c4",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-MIXED-002",
+          "revision": 2,
+          "revision_digest": "e25c433952094161bdbca09df1f9541fa15b6dc812dfdfb30a865a7d1f120309",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-MIXED-003",
+          "revision": 2,
+          "revision_digest": "212eb49a33ae8f49589ac047b71643babc94c3362e2a695867958fd1f104cbb6",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "runtime.node-package",
+      "name": "Node.js 包与发布边界",
+      "review_family": "runtime-packaging",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-NODE-001",
+          "revision": 2,
+          "revision_digest": "d0ddf4c285940e880650a8c6506ae7ae40bff23240f8f81829f086dcd4c0dfa5",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-NODE-002",
+          "revision": 2,
+          "revision_digest": "3f952bd66fc171cc1123054995877e61ea35ebfe99cbfc0487bb3853e538359c",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-NODE-003",
+          "revision": 2,
+          "revision_digest": "6315a762ef88b9e2d4054d5e0262ce1e6f6382a200b3eeeeca7e2b9fd96226a0",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-NODE-004",
+          "revision": 2,
+          "revision_digest": "2f3cfe4ee31e0e16156b1074891135ebd017a133ba48e336fdaf3dd1c4560f6b",
+          "scan_packs": [
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-NODE-005",
+          "revision": 2,
+          "revision_digest": "cd254b84568d06fd41eab5823c6b4bc721f83b965c6d063f2f987dd42fcaaced",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "runtime.python-package",
+      "name": "Python 构建与隔离安装",
+      "review_family": "runtime-packaging",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-PYTHON-001",
+          "revision": 2,
+          "revision_digest": "35b76d8a6effa035ff2695d10c4e059113aa9c1a9378e4a8ed60833f78cd859c",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PYTHON-002",
+          "revision": 2,
+          "revision_digest": "802b8ac47091944d6bf7ffe87c05e7c8757172ed4f5401cd33c6c49ddd571e8d",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PYTHON-003",
+          "revision": 2,
+          "revision_digest": "64ef1f9e11584d2e74ac579859d5f3d2b13b4b5206087f42a3945dd95e825788",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "platform",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PYTHON-004",
+          "revision": 2,
+          "revision_digest": "c75c1d9487ae5abf8fd54056ee31fd1601008f889041c58e78193563e7cce865",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PYTHON-005",
+          "revision": 2,
+          "revision_digest": "cdebc0840b4ae9f602073426a963882f57147536d91540f9e19cee93f34822cc",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PYTHON-006",
+          "revision": 2,
+          "revision_digest": "733a6368f72f54b0b05c29f65004c68107108183d5efeeffbc57dc8a5bf1347e",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "security.authorization",
+      "name": "方法、任务与用户授权交集",
+      "review_family": "security-execution-boundary",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-PERM-001",
+          "revision": 2,
+          "revision_digest": "a7bedcf046a6ff94abf873fbc335beac3a662584a49a34689b159c7d5314a57f",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PERM-002",
+          "revision": 2,
+          "revision_digest": "fb9e0360f37db5e839dd52c0b11703598ffdbf412ff0c7cd276877cafc6beba1",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PERM-003",
+          "revision": 2,
+          "revision_digest": "c587ff49858b75da82d04d970d098da64de8d50a53e545bb2fb2afae14838740",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PERM-006",
+          "revision": 2,
+          "revision_digest": "126d60567c9a3ff4feccb9aa29f1849ca30a3998750ecca1be35ac387a4f497f",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PERM-009",
+          "revision": 2,
+          "revision_digest": "04e3b67ada85c37797d5cdfd675659854218277a167834d0f457d8608867ef4e",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "security.crypto",
+      "name": "密码学用途与配置",
+      "review_family": "security-data-and-release",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-CRYPTOSEC-001",
+          "revision": 2,
+          "revision_digest": "bd882d00bd8cd7708a5f69beb75e4928757edb92333285fd31c46e55816683d1",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "security.filesystem-write",
+      "name": "文件写入与冲突",
+      "review_family": "security-execution-boundary",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-PERM-004",
+          "revision": 2,
+          "revision_digest": "b3efc7f4b83a3e8295e52d27912106f38c7b50ed8938157f8540e7de5d276cd0",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-PERM-005",
+          "revision": 2,
+          "revision_digest": "49f31cfb74b6c40fd2e26734a0a840f3c129995df3c5339ed0f5b432583c786f",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "security.release-payload",
+      "name": "发布载荷与安全解包",
+      "review_family": "security-data-and-release",
+      "scan_packs": [
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-RELEASESEC-001",
+          "revision": 2,
+          "revision_digest": "267ec64e158952c9e1135965181aeba1a61baa910445ca0f7aa1b9b8b4e72afd",
+          "scan_packs": [
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-UNPACK-001",
+          "revision": 2,
+          "revision_digest": "ca229c5147f12e8bfe8c481444d8a95449c5bd5e4ee2a383c2263a024802130d",
+          "scan_packs": [
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "security.sensitive-data",
+      "name": "敏感数据、密钥与证据投影",
+      "review_family": "security-data-and-release",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-DATASEC-001",
+          "revision": 2,
+          "revision_digest": "71046ced1a7ed9841cb009b77245ae7eed26aac430e6020fe29f07db491ba327",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-DATASEC-002",
+          "revision": 2,
+          "revision_digest": "abcef88682b4c08d72c08ef636d3765a3609733505db7af75c4bf7b8b72c92f4",
+          "scan_packs": [
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-EVIDENCESEC-001",
+          "revision": 2,
+          "revision_digest": "03455207be82a6bd43283301a8afbc4646e24b735d3cb0fb4c6e25dd963f7ba4",
+          "scan_packs": [
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-PERM-007",
+          "revision": 2,
+          "revision_digest": "0ed43b05d1d7f1c5a4d69e9bf107454d4a543a60388614c99be03d33ea428268",
+          "scan_packs": [
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-SECRET-001",
+          "revision": 2,
+          "revision_digest": "e796fd81b2d49a9d75d86491f0b89d05834ee7bca1dab1b427b10dd694e3365e",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-SECRET-002",
+          "revision": 2,
+          "revision_digest": "9e042a978e4e39eb28ff7fecea294fcd6c71bbeda78bc1292537c77803e21b3a",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-SECRET-003",
+          "revision": 2,
+          "revision_digest": "631f3dfd604bbaa2d42db2503c43c25aee11f9370dd7157d8f39dadad3641a18",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "security.tools-network",
+      "name": "广域工具、命令与网络",
+      "review_family": "security-execution-boundary",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-NETSEC-001",
+          "revision": 2,
+          "revision_digest": "80f221fc99a722b940e4fdfbc31dd071a5629b8e3b18e3f96386f0cd1c218106",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-NETSEC-002",
+          "revision": 2,
+          "revision_digest": "ca6e62aa3bd4e63133dd5d245b3af0813e5670c22cc078906d45733c97bf6b83",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-TOOLSEC-001",
+          "revision": 2,
+          "revision_digest": "612e0df071336c3c690fa18c84c38aa23ee4d766f0fae4ab8e355a1668722ffa",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-TOOLSEC-002",
+          "revision": 2,
+          "revision_digest": "12a3bf9530ab9e2160c492d9335e9e1247f37aa229b8153312ac205e696fdae9",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "security.untrusted-input",
+      "name": "不可信内容与注入边界",
+      "review_family": "security-execution-boundary",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-DESERSEC-001",
+          "revision": 2,
+          "revision_digest": "194c31fe1d0499ed4ac3e08849494f690ce71f7815ecf2f36882baf45a70e121",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INJECTSEC-001",
+          "revision": 2,
+          "revision_digest": "a0b5e6e8000df35ca80a556666ea54e448a3257a523588f31fbafb2febe171f2",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INPUTSEC-001",
+          "revision": 2,
+          "revision_digest": "7e95dd0d3e4fe09fcf0854797c9188126db322f1fc5e3aaae59ba33e95426546",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INPUTSEC-002",
+          "revision": 2,
+          "revision_digest": "3049e52447f88c76607a74574e0e5b606734af3f1a27d28bcc4ce307bac0bc36",
+          "scan_packs": [
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INPUTSEC-003",
+          "revision": 2,
+          "revision_digest": "0a91148405e5080545bf0568fb7a3cac405db4ba5b3d07787c8e27388b9bbb85",
+          "scan_packs": [
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-INPUTSEC-004",
+          "revision": 2,
+          "revision_digest": "eb29aec5f7caac26d8cdc1c05b0a88802ee23b6da8a2b8839766cca0992f97c6",
+          "scan_packs": [
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "specification.audit-consumption",
+      "name": "Audit 消费规范与机器契约",
+      "review_family": "specification-layers",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "compact",
+      "rules": [
+        {
+          "canonical_id": "SFA-SPECLAYER-003",
+          "revision": 2,
+          "revision_digest": "9714086d9c843ee1d21633db9dc88fd8a70d753d67331feebeead041fc521df8",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-SPECLAYER-004",
+          "revision": 2,
+          "revision_digest": "423b2a6aede99f0fd57ea8c55ca386f5e22b76a6988a4c300ed87a9936adb6cc",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "specification.authority-layers",
+      "name": "规范、机器契约与制品权威分层",
+      "review_family": "specification-layers",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-SPECLAYER-001",
+          "revision": 2,
+          "revision_digest": "7623fad79004c9055f2ab39ccfce102f876e3a46ebd7ca0c8db639e6db4d6b35",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-SPECLAYER-002",
+          "revision": 2,
+          "revision_digest": "5275a3758d33afe2d70de3266dd8e7faf50f983010d8a0f19cd525d04982cb04",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-SPECLAYER-005",
+          "revision": 2,
+          "revision_digest": "57671d41a6e891a7ff468c7f4d36635051ebc7b01405151f0529a1ebebfa19ea",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "supply.provenance",
+      "name": "依赖与下载制品来源",
+      "review_family": "dependency-supply",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-DEPENDENCY-001",
+          "revision": 2,
+          "revision_digest": "d2eb240557b7cdc7023394db5d541a58f1a63cc4d70e9fd5faf983c8230dc223",
+          "scan_packs": [
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-NODE-006",
+          "revision": 2,
+          "revision_digest": "d282325f28366fc74ec0bc21ec1c9c39cda1a4f9dfd3035a5c9beb8505944c23",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-SUPPLY-001",
+          "revision": 2,
+          "revision_digest": "ad637d5f8bfa0547e76937238099f82d40f5aa3f5bb294c63025a445b6bf3356",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-SUPPLY-002",
+          "revision": 2,
+          "revision_digest": "277a74a4d9e513879f5d13d901de14729fcd715a1d342cda59bd7a62f996c356",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "topology.assistant-routing",
+      "name": "Assistant 入口与调用方向",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-TOPOLOGY-004",
+          "revision": 3,
+          "revision_digest": "dbfbaf35d7448eb7be18adab80c69b12729d54d14dfbacfd0fd8560e9ca828f9",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-TOPOLOGY-005",
+          "revision": 3,
+          "revision_digest": "304c422ce643adc68ae7345c4eb8f98731e25b96d072fb57baadb0e1933f7f6b",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "platform",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-TOPOLOGY-006",
+          "revision": 3,
+          "revision_digest": "1d09a687dd12d28810860256914d675ab3c32de6604afaa8da012e3c3b5cf775",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        }
+      ]
+    },
+    {
+      "group_id": "topology.domain-release",
+      "name": "领域规范独立消费与联合发布",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "execution_record"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-TOPOLOGY-007",
+          "revision": 3,
+          "revision_digest": "58ad26ffc97e85fa0ef4a7a55635578ae58d9416be1daa8e18a5532f8d70556f",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-TOPOLOGY-008",
+          "revision": 3,
+          "revision_digest": "9c5c4fe4705993dfefc34d820372651d1e6b98301e552d9be1ab468dc25936d7",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "topology.kernel-composer",
+      "name": "Kernel 与 Composer 拓扑",
+      "review_family": "ecosystem-architecture",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-TOPOLOGY-001",
+          "revision": 3,
+          "revision_digest": "b23377da68d78a40b01710d4e187d70efd516e165a84189321e0b4a31a7c5b02",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-TOPOLOGY-002",
+          "revision": 3,
+          "revision_digest": "1ba5c17a984980c34ebb671f62d29cafd4920c5177b2f4f3ff7bafc38b94f133",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-TOPOLOGY-003",
+          "revision": 3,
+          "revision_digest": "3645c2dd91295cccfca4607708e00fddaa78c120bc05f6208f78bfda432fee37",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "upstream.consumer-compatibility",
+      "name": "Foundation 与 Registry 消费兼容",
+      "review_family": "foundation-governance-adoption",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-FOUNDATION-022",
+          "revision": 3,
+          "revision_digest": "f663f36924a31b4158788b2f649f283573d3e858ae78a5ce85a9c5b60d9ba305",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-REGISTRY-014",
+          "revision": 3,
+          "revision_digest": "d6e55887c7b6bd29f8f15516daadb5bff3d8bc8138120c34938110a957d5a6bb",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    },
+    {
+      "group_id": "worker.execution-isolation",
+      "name": "按需执行隔离",
+      "review_family": "worker-isolation",
+      "scan_packs": [
+        "conversation",
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "heavy",
+      "rules": [
+        {
+          "canonical_id": "SFA-WORKER-005",
+          "revision": 2,
+          "revision_digest": "d6d3d886abc973723c39572770aca93735dbbc670c4471a0a879519a3292ca17",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-006",
+          "revision": 2,
+          "revision_digest": "e05f1f4a4c061cf1c074acf97eec72710f29589363a96944e7e2b23772792b0d",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-WORKER-007",
+          "revision": 2,
+          "revision_digest": "5b3ce9b77fcdc4bb736f497808f672dd6b704beaa6cb53796e5e194693dcc910",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-008",
+          "revision": 2,
+          "revision_digest": "9e09aa0ece9f6e9ed9f360248b950ea3f04344e609a0096e4c6ff58150719721",
+          "scan_packs": [
+            "conversation",
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "heavy"
+        },
+        {
+          "canonical_id": "SFA-WORKER-012",
+          "revision": 2,
+          "revision_digest": "8b0bf80d7c97f8b9f8969cf95e87f69cc9218e9160e02c0dc4a68d199df0a440",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-013",
+          "revision": 2,
+          "revision_digest": "58a93e3b16e9b29b0e4fc68623f09cf23597f0e78eea5075127d48df4f0fd46e",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-WORKER-014",
+          "revision": 2,
+          "revision_digest": "e5706f9a353ce9c98d15b4c21708913b5121ce2719935db02b359235ef0f86e2",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-017",
+          "revision": 3,
+          "revision_digest": "e47644a81a7892264a4cafd31d3df7bd1102ffd92995d3e32bcbdbc9f8ad0a66",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "platform"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-019",
+          "revision": 2,
+          "revision_digest": "67f7d27a6bc6fddb9f0796d53ff86dc87eb6ab6002892c10c5633acafba0317e",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "worker.executor-topology",
+      "name": "执行职责复用与实现组合",
+      "review_family": "worker-isolation",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "platform",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-AUDITINTERNAL-002",
+          "revision": 2,
+          "revision_digest": "345e471d4608dc6df1794f86f4b4bf0a1389114a04aee687c47e056d6e82e8a2",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-HARNESS-001",
+          "revision": 2,
+          "revision_digest": "1ca3b3a47fdf7cd51505a9a6096424ac98bf6ec5bb1deebc270b7a7b4bb43ef9",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-WORKER-009",
+          "revision": 2,
+          "revision_digest": "dc55746cc2a668474a3ed40a7f432aa5686e24d854b467a0c03b260e2f3b5f30",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-WORKER-010",
+          "revision": 3,
+          "revision_digest": "ccdc4625aa10eb0cffb80cdc2df73b28ac8af793f9b1a526947456b76f5bd225",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-011",
+          "revision": 3,
+          "revision_digest": "1d78aeab471671d08782b3daf0487f762b4e981eb0a084662b7ef698908d4bf5",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-WORKER-015",
+          "revision": 2,
+          "revision_digest": "1273f0c352a6dffca3f2cf7d075f2b8cc181a504b8d3c63b4eed18a748ad1e9a",
+          "scan_packs": [
+            "declaration",
+            "execution_record"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-016",
+          "revision": 2,
+          "revision_digest": "705e2b74ff0115b203d911278976bfa89694793848515dc4ec6ff06381f7798d",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-WORKER-020",
+          "revision": 2,
+          "revision_digest": "e0db1d2565c50cf5eb874d1a7aa3b6367ff7dd4b7d61591b3dba13c1baca3e64",
+          "scan_packs": [
+            "declaration",
+            "platform",
+            "source"
+          ],
+          "packing_cost": "compact"
+        }
+      ]
+    },
+    {
+      "group_id": "worker.semantic-stage-responsibility",
+      "name": "语义工序与确定性职责",
+      "review_family": "worker-isolation",
+      "scan_packs": [
+        "declaration",
+        "execution_record",
+        "source"
+      ],
+      "packing_cost_ceiling": "standard",
+      "rules": [
+        {
+          "canonical_id": "SFA-AUDITINTERNAL-001",
+          "revision": 3,
+          "revision_digest": "f3da31cd34938b62991eebe9f4d623e60de638b20d27a0b6dc3944885a70f025",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-INTERNAL-003",
+          "revision": 2,
+          "revision_digest": "7c266246190711c0ae4de1cfa8e603ccc4e6f0734444a20679713f5853e14d7b",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-INTERNAL-004",
+          "revision": 2,
+          "revision_digest": "f2ff1342e083b0d756ab1e06f31ab1363f53fb12ee97b2434a7fd5336d3be97e",
+          "scan_packs": [
+            "declaration",
+            "execution_record",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-001",
+          "revision": 3,
+          "revision_digest": "46ffc2ab2d82ff3884350eeaa540f5ff4a1ea50a2eed9f16b99c88b471065166",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-WORKER-002",
+          "revision": 2,
+          "revision_digest": "2d03d7039cdcbb023fd5bc6ffb52e07dcdf94cfe0aaf5ce81eaf2502d4686ce0",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-003",
+          "revision": 2,
+          "revision_digest": "8925db90b865f1d5f0662a80ad163fe63ba2c8166820076c2e9af4fa61709d33",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        },
+        {
+          "canonical_id": "SFA-WORKER-004",
+          "revision": 2,
+          "revision_digest": "a10f4109a69583a7e39827b693f70794ad29ecf2f08f556187b72b7faf65b90f",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "compact"
+        },
+        {
+          "canonical_id": "SFA-WORKER-018",
+          "revision": 2,
+          "revision_digest": "63e72ff1ac1cfd2069d86977acd7e33d01eb518b94605c2c4e87fbe5d118f9fe",
+          "scan_packs": [
+            "declaration",
+            "source"
+          ],
+          "packing_cost": "standard"
+        }
+      ]
+    }
+  ]
+}

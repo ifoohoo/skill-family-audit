@@ -2,12 +2,59 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/parameters.json",
   "title": "Skill Family Audit conformance-audit parameters",
-  "description": "规范符合性检查方法的领域参数合同。",
+  "description": "规范符合性检查方法的领域参数合同。evidence_set 为必填闭合证据输入；target_project_path 仅为可选源码根提示，不得成为唯一输入。",
   "type": "object",
   "properties": {
+    "evidence_set": {
+      "type": "array",
+      "minItems": 1,
+      "description": "调用方提供的只读证据集合。每项证据带稳定 ID、种类、绝对规范路径和 SHA-256；摘要不符、符号链接、额外字段和未知类型由方法层失败关闭。",
+      "items": {
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "kind",
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "证据稳定 ID；同一次请求内不得重复。"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "source_tree",
+              "source_file",
+              "jsonl_conversation",
+              "log",
+              "manifest",
+              "receipt",
+              "policy",
+              "exception",
+              "platform_support"
+            ],
+            "description": "证据种类：源码树、源码文件、JSONL 对话、日志、manifest、receipt、policy、exception、platform support。"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "绝对规范路径；符号链接不被接受。"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "证据字节 SHA-256；源码树为规范树摘要。"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "target_project_path": {
       "type": "string",
-      "description": "方法级输入参数 target_project_path"
+      "description": "可选源码根提示；不得成为唯一输入。"
     },
     "scope_selector": {
       "type": "string",
@@ -17,11 +64,168 @@
         "release"
       ],
       "description": "受检对象范围"
+    },
+    "execution_profile": {
+      "type": "string",
+      "enum": [
+        "mechanical",
+        "economy",
+        "targeted",
+        "full"
+      ],
+      "description": "执行分支；缺省按 full 处理，保持直接调用合同。面向人入口必须显式传入。"
+    },
+    "semantic_group_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "artifact.identity-granularity",
+          "artifact.spec-rule-lifecycle",
+          "artifact.capability-contract",
+          "artifact.method-contract-registry",
+          "artifact.internal-skill-binding",
+          "artifact.assessment-layering",
+          "artifact.release-facts",
+          "artifact.derived-projections",
+          "ecosystem.product-roles",
+          "topology.kernel-composer",
+          "topology.assistant-routing",
+          "topology.domain-release",
+          "ecosystem.bridge-lifecycle",
+          "ecosystem.single-graph",
+          "ecosystem.extension-boundary",
+          "profile.domain-selection",
+          "profile.logical-views",
+          "profile.authoring-generation",
+          "foundation.terminology",
+          "foundation.engineering-kit",
+          "foundation.quickstart-exchange",
+          "upstream.consumer-compatibility",
+          "governance.machine-truth",
+          "repository.initial-layout",
+          "repository.published-dependencies",
+          "repository.foundation-adoption",
+          "dependency.product-direction",
+          "dependency.consumer-compatibility",
+          "supply.provenance",
+          "publish.byte-chain",
+          "publish.candidate-authorization",
+          "publish.channel-qualification",
+          "publish.licensing-authorship",
+          "install.recoverable-transaction",
+          "install.deactivation",
+          "install.physical-cleanup",
+          "reference.lineage",
+          "reference.adjudication",
+          "reference.completion",
+          "migration.decision",
+          "migration.lifecycle-boundaries",
+          "migration.contract-adaptation",
+          "migration.truth-and-portability",
+          "security.authorization",
+          "security.filesystem-write",
+          "security.untrusted-input",
+          "security.tools-network",
+          "security.sensitive-data",
+          "security.crypto",
+          "security.release-payload",
+          "repair.audit-boundary",
+          "repair.autofix",
+          "runtime.node-package",
+          "runtime.python-package",
+          "family.identity-capability",
+          "method.public-surfaces",
+          "method.registration",
+          "audit.public-methods",
+          "audit.readonly-control",
+          "audit.pipeline-release-summary",
+          "worker.semantic-stage-responsibility",
+          "worker.execution-isolation",
+          "worker.executor-topology",
+          "compose.public-boundaries",
+          "compose.ordering-parallelism",
+          "compose.repair-loop",
+          "compatibility.adoption-state",
+          "compatibility.strong-composition",
+          "runtime.mixed-boundary",
+          "specification.authority-layers",
+          "specification.audit-consumption"
+        ]
+      },
+      "description": "仅 targeted 允许的非空、唯一、已登记语义组 ID 数组；其他 profile 或缺省（按 full 处理）传入失败。"
     }
   },
   "required": [
-    "target_project_path",
+    "evidence_set",
     "scope_selector"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "execution_profile": {
+            "const": "targeted"
+          }
+        },
+        "required": [
+          "execution_profile"
+        ]
+      },
+      "then": {
+        "properties": {
+          "semantic_group_ids": {}
+        },
+        "required": [
+          "semantic_group_ids"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "execution_profile": {
+            "not": {
+              "const": "targeted"
+            }
+          }
+        },
+        "required": [
+          "execution_profile"
+        ]
+      },
+      "then": {
+        "not": {
+          "properties": {
+            "semantic_group_ids": {}
+          },
+          "required": [
+            "semantic_group_ids"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "required": [
+            "execution_profile"
+          ]
+        }
+      },
+      "then": {
+        "not": {
+          "properties": {
+            "semantic_group_ids": {}
+          },
+          "required": [
+            "semantic_group_ids"
+          ]
+        }
+      }
+    }
+  ]
 }

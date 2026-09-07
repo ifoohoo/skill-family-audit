@@ -1,0 +1,28 @@
+{
+  "fixtureId": "plugin-verification-request/negative-01-crossed-cli-fields",
+  "class": "negative",
+  "contract": "plugin-verification-request",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/plugin-verification-request.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.plugin-verification-request",
+    "operation": "plugin-verification",
+    "verificationSetId": "set-3",
+    "goal": "install-only",
+    "source": {
+      "type": "local-staged",
+      "candidateRef": "candidate-3",
+      "sourceManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "membersDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "host": {
+      "hostId": "claude",
+      "descriptorSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "driverId": "claude-code-print-v1",
+      "driverVersion": "1.0.0",
+      "cliVersion": "2.1.233 (Claude Code)"
+    },
+    "install": { "mode": "fresh-tree" }
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

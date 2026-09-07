@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/foundation-mechanisms/v1/schema-validation-batch-request.json",
+  "title": "Candidate ordered schema validation batch request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation", "params"],
+  "properties": {
+    "operation": { "const": "validate-many-by-schema-id" },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requests"],
+      "properties": {
+        "requests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["schemaId", "document"],
+            "properties": {
+              "schemaId": { "type": "string", "minLength": 1 },
+              "document": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "fixtureId": "plugin-verification-result/negative-04-probe-limit",
+  "class": "negative",
+  "contract": "plugin-verification-result",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/plugin-verification-result.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.plugin-verification-result",
+    "operation": "plugin-verification",
+    "status": "observed",
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "goal": "install-and-invoke",
+    "source": {
+      "type": "local-staged",
+      "candidateRef": "candidate-1",
+      "sourceManifestSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "membersDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "host": {
+      "hostId": "claude",
+      "descriptorSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "driverId": "claude-code-print-v1",
+      "driverVersion": "1.0.0",
+      "cliVersion": "2.1.233",
+      "executableSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "facts": {
+      "input": {
+        "sourceClosureDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "membersDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "runtimeIdentities": {
+          "cliVersion": "2.1.233"
+        },
+        "probe": {
+          "step": "version-probe",
+          "execution": {
+            "spawned": true,
+            "exitStatus": 0,
+            "processStatus": "EXITED",
+            "terminationReason": null,
+            "watchdogReason": null,
+            "runnerModelOverrideAbsent": true
+          },
+          "streams": {
+            "stdout": {
+              "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+              "bytes": 1,
+              "sensitivity": "private"
+            },
+            "stderr": {
+              "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+              "bytes": 0,
+              "sensitivity": "private"
+            }
+          },
+          "outputByteLimits": {
+            "stdout": 10
+          },
+          "outputLimitExceeded": null
+        }
+      },
+      "install": {
+        "installedClosureDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "payloadMatches": true,
+        "observationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "sourceMode": "local-staged",
+        "commands": [
+          {
+            "step": "plugin-install",
+            "execution": {
+              "spawned": true,
+              "exitStatus": 0,
+              "processStatus": "EXITED",
+              "terminationReason": null,
+              "watchdogReason": null,
+              "runnerModelOverrideAbsent": true
+            },
+            "streams": {
+              "stdout": {
+                "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+                "bytes": 1,
+                "sensitivity": "private"
+              },
+              "stderr": {
+                "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+                "bytes": 0,
+                "sensitivity": "private"
+              }
+            },
+            "outputByteLimits": {
+              "stdout": 10
+            },
+            "outputLimitExceeded": null
+          }
+        ],
+        "retained": true
+      },
+      "discovery": {
+        "status": "not-performed",
+        "basis": "none",
+        "pluginId": null
+      },
+      "invocation": {
+        "execution": {
+          "spawned": true,
+          "exitStatus": 0,
+          "processStatus": "EXITED",
+          "terminationReason": null,
+          "watchdogReason": null,
+          "runnerModelOverrideAbsent": true
+        },
+        "streams": {
+          "stdout": {
+            "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "bytes": 1,
+            "sensitivity": "private"
+          },
+          "stderr": {
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "bytes": 0,
+            "sensitivity": "private"
+          }
+        },
+        "snapshots": {
+          "installedPlugin": {
+            "preClosureDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+            "postClosureDigest": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          "fixture": {
+            "preClosureDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+            "postClosureDigest": "5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          "protectedWorkspace": {
+            "preClosureDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+            "postClosureDigest": "6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        },
+        "snapshotsMatch": true
+      }
+    },
+    "reason": null,
+    "requiredActions": []
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1001"
+  }
+}

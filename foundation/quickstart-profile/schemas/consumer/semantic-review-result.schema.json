@@ -1,60 +1,202 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "skill-family-audit:semantic-review-result",
-  "type": "object",
-  "required": [
-    "schema_version",
-    "task_digest",
-    "reviews"
-  ],
-  "properties": {
-    "schema_version": {
-      "const": "1.0.0"
+  "title": "Skill Family Audit semantic review result",
+  "description": "v1 外部审阅只作为待审证据；v2 仅承载本次 conformance-audit Skill 内部形成、与 Foundation Task 和冻结证据绑定的审阅结果。身份绑定不证明认知独立。",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/externalReviewV1"
     },
-    "task_digest": {
+    {
+      "$ref": "#/$defs/internalReviewV2"
+    }
+  ],
+  "$defs": {
+    "digest": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "reviews": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "rule_id",
-          "rule_revision_digest",
-          "status",
-          "reason",
-          "evidence"
-        ],
-        "properties": {
-          "rule_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "rule_revision_digest": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
-          },
-          "status": {
-            "enum": [
-              "PASS",
-              "FAIL",
-              "EVIDENCE_MISSING"
-            ]
-          },
-          "reason": {
-            "type": "string"
-          },
-          "evidence": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
+    "externalReviewV1": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "task_digest",
+        "reviews"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
         },
-        "additionalProperties": false
-      }
+        "task_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/externalRuleReview"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "externalRuleReview": {
+      "type": "object",
+      "required": [
+        "rule_id",
+        "rule_revision_digest",
+        "status",
+        "reason",
+        "evidence"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rule_revision_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "EVIDENCE_MISSING"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "internalReviewV2": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "kind",
+        "producer_method_id",
+        "cognitive_independence",
+        "foundation_task_digest",
+        "review_request_digest",
+        "evidence_set_digest",
+        "reviewed_rule_set_digest",
+        "reviews"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "2.0.0"
+        },
+        "kind": {
+          "const": "skill-family-audit.semantic-review-result"
+        },
+        "producer_method_id": {
+          "const": "skill-family-audit:conformance-audit"
+        },
+        "cognitive_independence": {
+          "const": "not_attested"
+        },
+        "foundation_task_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "review_request_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "evidence_set_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "reviewed_rule_set_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/internalRuleReview"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "internalRuleReview": {
+      "type": "object",
+      "required": [
+        "binding_id",
+        "canonical_id",
+        "rule_revision_digest",
+        "status",
+        "reason_code",
+        "rationale",
+        "evidence_refs"
+      ],
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^SFA-[A-Z0-9]+-[0-9]{3}$"
+        },
+        "rule_revision_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "EVIDENCE_MISSING",
+            "NOT_APPLICABLE",
+            "REVIEW_REQUIRED"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidenceRef": {
+      "type": "object",
+      "required": [
+        "evidence_id",
+        "sha256",
+        "locator",
+        "role"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
     }
-  },
-  "additionalProperties": false
+  }
 }

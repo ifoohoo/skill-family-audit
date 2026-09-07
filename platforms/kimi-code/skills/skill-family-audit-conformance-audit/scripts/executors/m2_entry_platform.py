@@ -55,6 +55,25 @@ def _entry_local_id(value: Any) -> str | None:
     return value.rsplit(":", 1)[-1]
 
 
+def _entry_kind_of(value: Any) -> str | None:
+    """把入口身份归一化到固定人类入口种类（缺口 7）。
+
+    观察投影与注册候选中的入口身份有两种合法形态：
+    - ``<family>:help`` 逻辑名冒号形式 → 取冒号后本地部分；
+    - ``skill-family-docs-help`` 带族前缀的物理名 → 以 ``-<entry>`` 结尾即命中。
+    其余形态（如 ``my-plugin-helper``）不归一化，返回 None。
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    local = value.rsplit(":", 1)[-1]
+    if local in FIXED_HUMAN_ENTRIES:
+        return local
+    for kind in FIXED_HUMAN_ENTRIES:
+        if local.endswith(f"-{kind}"):
+            return kind
+    return None
+
+
 def _observed_entry_ids(ctx: dict[str, Any]) -> set[str]:
     obs = observation(ctx)
     skills = obs.get("skills")
@@ -77,10 +96,12 @@ def _observed_entry_ids(ctx: dict[str, Any]) -> set[str]:
 def check_entry_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """每个完整技能族必须提供 help/setup/quickstart 三个固定人类入口。
 
-    机械断言：观察投影的逻辑技能身份必须覆盖三个固定入口本地名。
+    机械断言：观察投影的技能身份按 _entry_kind_of 归一化后必须覆盖三个
+    固定入口种类（带族前缀的物理名如 ``skill-family-docs-help`` 视为 help）。
     """
     local_ids = _observed_entry_ids(ctx)
-    missing = [name for name in FIXED_HUMAN_ENTRIES if name not in local_ids]
+    observed_kinds = {kind for value in local_ids if (kind := _entry_kind_of(value))}
+    missing = [name for name in FIXED_HUMAN_ENTRIES if name not in observed_kinds]
     if missing:
         return result(
             "FAIL",
@@ -96,7 +117,8 @@ def check_entry_003(ctx: dict[str, Any]) -> dict[str, Any]:
 def check_entry_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """help/setup/quickstart 不得登记到方法注册表或作为自动规划候选。
 
-    机械断言：已声明注册候选不得引用固定人类入口身份。
+    机械断言：已声明注册候选不得引用固定人类入口身份（含带族前缀物理名，
+    按 _entry_kind_of 归一化判定）。
     """
     document = load_governance_document(ctx, "method-registry-candidates")
     if document is None:
@@ -104,11 +126,9 @@ def check_entry_005(ctx: dict[str, Any]) -> dict[str, Any]:
     rows = rows_of(document, "candidates", "method-registry-candidates")
     violations = []
     for index, row in enumerate(rows):
-        identity = _entry_local_id(row.get("method_id")) or row.get("method_id")
-        if identity in FIXED_HUMAN_ENTRIES or row.get("planning_candidate") is True and (
-            _entry_local_id(row.get("method_id")) in FIXED_HUMAN_ENTRIES
-        ):
-            violations.append({"index": index, "method_id": row.get("method_id")})
+        method_id = row.get("method_id")
+        if _entry_kind_of(method_id) is not None:
+            violations.append({"index": index, "method_id": method_id})
     if violations:
         return result(
             "FAIL", registered_human_entries=violations, mechanical_half=True
@@ -159,10 +179,12 @@ def check_entry_007(ctx: dict[str, Any]) -> dict[str, Any]:
 def check_entry_009(ctx: dict[str, Any]) -> dict[str, Any]:
     """setup 必须作为固定入口存在。
 
-    机械断言：观察投影必须含 setup 入口；已声明者还必须在边界声明中登记。
+    机械断言：观察投影必须含 setup 入口（含带族前缀物理名，按 _entry_kind_of
+    归一化判定）；已声明者还必须在边界声明中登记。
     """
     local_ids = _observed_entry_ids(ctx)
-    if "setup" not in local_ids:
+    observed_kinds = {kind for value in local_ids if (kind := _entry_kind_of(value))}
+    if "setup" not in observed_kinds:
         return result("FAIL", missing_entry="setup", observed=sorted(local_ids), mechanical_half=True)
     rows = _entry_boundaries(ctx)
     if rows is not None and _entry_row(rows, "setup") is None:

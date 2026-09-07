@@ -6,10 +6,12 @@
 """
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from .contracts import (
     ExecutorEvidenceError,
+    governance_dir,
     is_hex64,
     load_governance_document,
     result,
@@ -24,6 +26,78 @@ def _registry_rows(ctx: dict[str, Any]) -> list[dict[str, Any]] | None:
     return rows_of(document, "entries", "method-registry-projection")
 
 
+# ---------------------------------------------------------------------------
+# 逐方法子结果（受管机械方法 digest_verification + schema_validation）
+# ---------------------------------------------------------------------------
+
+
+def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[str, Any]:
+    return {
+        "check_method": method,
+        "status": status,
+        "observation_source": source,
+        "evidence": evidence or {"reason": status.lower()},
+    }
+
+
+def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    """从逐方法行确定性推导聚合状态，与 contracts.validate_method_subresults 一致。"""
+    statuses = {row["status"] for row in rows}
+    if "FAIL" in statuses:
+        status = "FAIL"
+    elif "EVIDENCE_MISSING" in statuses or "NOT_RUN" in statuses:
+        status = "EVIDENCE_MISSING"
+    elif statuses == {"NOT_APPLICABLE"}:
+        status = "NOT_APPLICABLE"
+    elif statuses == {"PASS"}:
+        status = "PASS"
+    else:
+        raise ExecutorEvidenceError(
+            "METHOD_RESULT_COMBINATION_INVALID", repr(sorted(statuses))
+        )
+    return {
+        "status": status,
+        "evidence": dict(evidence),
+        "check_method_subresults": rows,
+    }
+
+
+def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "schema_validation", status, "executor_schema_validation_observation", **evidence
+    )
+
+
+def _digest_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "digest_verification", status, "executor_digest_verification_observation", **evidence
+    )
+
+
+def _documents_observed(
+    ctx: dict[str, Any], names: tuple[str, ...]
+) -> list[dict[str, Any]]:
+    """字节级完整性观察：本次执行真实读取的治理声明文档（存在性与 sha256）。"""
+    observations = []
+    for name in names:
+        path = governance_dir(ctx) / f"{name}.json"
+        if path.is_file() and not path.is_symlink():
+            observations.append({
+                "document": name,
+                "present": True,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            })
+        else:
+            observations.append({"document": name, "present": False})
+    return observations
+
+
+def _doc_digest_row(
+    ctx: dict[str, Any], names: tuple[str, ...], status: str = "PASS", **evidence: Any
+) -> dict[str, Any]:
+    return _digest_row(status, documents=_documents_observed(ctx, names), **evidence)
+
+
 def check_registry_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """未发布的注册协议草案不得作为规范事实或稳定依赖。
 
@@ -32,7 +106,13 @@ def check_registry_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     rows = _registry_rows(ctx)
     if rows is None:
-        return result("PASS", registry_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_registry"),
+                _doc_digest_row(ctx, ("method-registry-projection",)),
+            ],
+            registry_declared=False,
+        )
     violations = [
         {"entry": row.get("method_id")}
         for row in rows
@@ -40,8 +120,20 @@ def check_registry_002(ctx: dict[str, Any]) -> dict[str, Any]:
         and (row.get("normative") is True or row.get("stability") == "stable")
     ]
     if violations:
-        return result("FAIL", draft_protocol_used_as_normative=violations)
-    return result("PASS", entries_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("method-registry-projection",)),
+            ],
+            draft_protocol_used_as_normative=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", entries_checked=len(rows)),
+            _doc_digest_row(ctx, ("method-registry-projection",)),
+        ],
+        entries_checked=len(rows),
+    )
 
 
 def check_registry_004(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -52,7 +144,15 @@ def check_registry_004(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     rows = _registry_rows(ctx)
     if rows is None:
-        return result("PASS", registry_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_registry"),
+                _doc_digest_row(
+                    ctx, ("method-registry-projection", "authority-contracts")
+                ),
+            ],
+            registry_declared=False,
+        )
     contracts_document = load_governance_document(ctx, "authority-contracts")
     contracts = {}
     if contracts_document is not None:
@@ -85,8 +185,30 @@ def check_registry_004(ctx: dict[str, Any]) -> dict[str, Any]:
                     {"entry": row.get("method_id"), "field": field, "missing": missing}
                 )
     if violations:
-        return result("FAIL", projection_underreports_contract=violations)
-    return result("PASS", entries_checked=len(rows), contracts_bound=len(contracts))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(
+                    ctx, ("method-registry-projection", "authority-contracts")
+                ),
+            ],
+            projection_underreports_contract=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS",
+                reason="schema_checks_passed",
+                entries_checked=len(rows),
+                contracts_bound=len(contracts),
+            ),
+            _doc_digest_row(
+                ctx, ("method-registry-projection", "authority-contracts")
+            ),
+        ],
+        entries_checked=len(rows),
+        contracts_bound=len(contracts),
+    )
 
 
 def check_registry_007(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -97,7 +219,13 @@ def check_registry_007(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     rows = _registry_rows(ctx)
     if rows is None:
-        return result("PASS", registry_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_registry"),
+                _doc_digest_row(ctx, ("method-registry-projection",)),
+            ],
+            registry_declared=False,
+        )
     violations = [
         {"entry": row.get("method_id"), "status": row.get("status")}
         for row in rows
@@ -105,8 +233,20 @@ def check_registry_007(ctx: dict[str, Any]) -> dict[str, Any]:
         and row.get("status") not in {"unregistered", "experimental"}
     ]
     if violations:
-        return result("FAIL", inexpressible_methods_registered=violations)
-    return result("PASS", entries_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("method-registry-projection",)),
+            ],
+            inexpressible_methods_registered=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", entries_checked=len(rows)),
+            _doc_digest_row(ctx, ("method-registry-projection",)),
+        ],
+        entries_checked=len(rows),
+    )
 
 
 def check_registry_010(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -117,21 +257,57 @@ def check_registry_010(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = load_governance_document(ctx, "method-registry-projection")
     if document is None:
-        return result("PASS", registry_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_registry"),
+                _doc_digest_row(ctx, ("method-registry-projection",)),
+            ],
+            registry_declared=False,
+        )
     registry_digest = document.get("consumed_contract_digest")
     graph_digest = document.get("artifact_graph_consumed_contract_digest")
-    violations = []
+    digest_violations = []
     if not is_hex64(registry_digest):
-        violations.append("registry_contract_digest_invalid")
+        digest_violations.append("registry_contract_digest_invalid")
     if not is_hex64(graph_digest):
-        violations.append("artifact_graph_contract_digest_invalid")
-    if not violations and registry_digest != graph_digest:
-        violations.append("contract_digests_diverge")
+        digest_violations.append("artifact_graph_contract_digest_invalid")
+    if not digest_violations and registry_digest != graph_digest:
+        digest_violations.append("contract_digests_diverge")
+    schema_violations = []
     if document.get("manual_second_source") is True:
-        violations.append("manual_second_source")
-    if violations:
-        return result("FAIL", dual_source_contract_violations=violations)
-    return result("PASS", consumed_contract_digest=registry_digest)
+        schema_violations.append("manual_second_source")
+    if digest_violations or schema_violations:
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL" if schema_violations else "PASS",
+                    reason=(
+                        "schema_violations" if schema_violations else "schema_checks_passed"
+                    ),
+                    violations=schema_violations,
+                ),
+                _digest_row(
+                    "FAIL" if digest_violations else "PASS",
+                    reason=(
+                        "digest_violations" if digest_violations else "digest_checks_passed"
+                    ),
+                    violations=digest_violations,
+                ),
+            ],
+            dual_source_contract_violations=digest_violations + schema_violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed"),
+            _digest_row(
+                "PASS",
+                reason="digest_checks_passed",
+                consumed_contract_digest=registry_digest,
+                documents=_documents_observed(ctx, ("method-registry-projection",)),
+            ),
+        ],
+        consumed_contract_digest=registry_digest,
+    )
 
 
 CHECKS = {

@@ -1,0 +1,8 @@
+{
+  "fixtureId": "executable-identity-observation/dialect-01-unsupported",
+  "class": "dialect-boundary",
+  "contract": "executable-identity-observation",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/executable-identity-observation.json", "dialect": "draft-99", "policy": "strict" },
+  "data": {},
+  "expect": { "valid": false, "errorCode": "SFC1006" }
+}

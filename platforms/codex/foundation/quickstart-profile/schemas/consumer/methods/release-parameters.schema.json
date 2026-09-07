@@ -2,26 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/parameters.json",
   "title": "Skill Family Audit release-audit parameters",
-  "description": "发布门禁检查方法的领域参数合同。",
+  "description": "发布门禁检查方法的领域参数合同。方法只绑定一个冻结的 release-audit-input Resource；候选身份、发布评估引用与 Release Skill 公开验证器输出全部冻结在该文档内。",
   "type": "object",
   "properties": {
-    "target_project_path": {
+    "release_audit_input": {
       "type": "string",
-      "description": "方法级输入参数 target_project_path"
-    },
-    "candidate_release_ref": {
-      "type": "string",
-      "description": "方法级输入参数 candidate_release_ref"
-    },
-    "assessments_ref": {
-      "type": "string",
-      "description": "方法级输入参数 assessments_ref"
+      "description": "方法级输入参数 release_audit_input（冻结的 release-audit-input Resource 绝对路径）"
     }
   },
   "required": [
-    "target_project_path",
-    "candidate_release_ref",
-    "assessments_ref"
+    "release_audit_input"
   ],
   "additionalProperties": false
 }

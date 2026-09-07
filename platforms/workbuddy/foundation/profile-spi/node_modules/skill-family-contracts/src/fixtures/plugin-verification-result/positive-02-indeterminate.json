@@ -1,0 +1,42 @@
+{
+  "fixtureId": "plugin-verification-result/positive-02-indeterminate",
+  "class": "positive",
+  "contract": "plugin-verification-result",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/plugin-verification-result.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.plugin-verification-result",
+    "operation": "plugin-verification",
+    "status": "indeterminate",
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "goal": "install-and-invoke",
+    "source": {
+      "type": "local-staged",
+      "candidateRef": "candidate-2",
+      "sourceManifestSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "membersDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "host": {
+      "hostId": "claude",
+      "descriptorSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "driverId": "claude-code-print-v1",
+      "driverVersion": "1.0.0",
+      "cliVersion": "2.1.233 (Claude Code)",
+      "executableSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "facts": {
+      "input": {
+        "sourceClosureDigest": null,
+        "membersDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "runtimeIdentities": null,
+        "probe": null
+      },
+      "install": null,
+      "discovery": { "status": "unknown", "basis": "none", "pluginId": null },
+      "invocation": null
+    },
+    "reason": "boundary-state-indeterminate",
+    "requiredActions": ["manual-temporary-root-inspection-required"]
+  },
+  "expect": { "valid": true }
+}

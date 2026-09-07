@@ -1,0 +1,18 @@
+{
+  "fixtureId": "source-authority-receipt.positive.fictional",
+  "contract": "source-authority-receipt",
+  "class": "positive",
+  "description": "A fictional external receipt with deterministic package ordering.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/source-authority-receipt.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.source-authority-receipt",
+    "sourceRepository": "https://example.com/fictional/source.git",
+    "sourceBaseCommit": "0123456789abcdef0123456789abcdef01234567",
+    "subjects": [
+      { "packageName": "fictional-contracts", "version": "1.2.3", "filename": "fictional-contracts-1.2.3.tgz", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      { "packageName": "fictional-harness", "version": "1.2.3", "filename": "fictional-harness-1.2.3.tgz", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+    ]
+  }
+}

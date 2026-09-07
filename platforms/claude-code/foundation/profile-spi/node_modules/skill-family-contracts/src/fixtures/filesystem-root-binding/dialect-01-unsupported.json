@@ -1,0 +1,21 @@
+{
+  "fixtureId": "filesystem-root-binding.dialect-boundary.unsupported",
+  "contract": "filesystem-root-binding",
+  "class": "dialect-boundary",
+  "description": "Unsupported schema dialect fails before validation.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/filesystem-root-binding.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1006"
+  },
+  "data": {
+    "kind": "trusted-filesystem-root-binding",
+    "digestAlgorithm": "sha256",
+    "basis": "canonical-realpath-device-inode-type-mode-v1",
+    "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

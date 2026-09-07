@@ -32,6 +32,13 @@ import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";
 const WINDOWS_DRIVE_PATTERN = /^[A-Za-z]:/;
 const WINDOWS_UNC_PATTERN = /^\\\\/;
 const POSIX_UNC_PATTERN = /^\/\//;
+const ANCHOR_REALPATH_ATTEMPTS = 2;
+
+let testHooks = null;
+
+async function runTestHook(name, context) {
+  if (typeof testHooks?.[name] === "function") await testHooks[name](context);
+}
 
 /**
  * Classifies one candidate relative path without touching the filesystem.
@@ -143,7 +150,13 @@ async function deepestExistingAncestor(rootReal, absPath) {
     try {
       await lstat(current);
       return { anchor: current, missing };
-    } catch {
+    } catch (cause) {
+      if (cause?.code !== "ENOENT" && cause?.code !== "ENOTDIR") {
+        throw mechanismError(
+          HARNESS_ERROR_KINDS.READ_FAILED,
+          `path ancestor cannot be inspected: ${cause?.code ?? "unknown"}`,
+        );
+      }
       missing.unshift(path.basename(current));
       const parent = path.dirname(current);
       if (parent === current) break;
@@ -155,6 +168,31 @@ async function deepestExistingAncestor(rootReal, absPath) {
   throw mechanismError(
     HARNESS_ERROR_KINDS.INVALID_ROOT,
     "workspace root disappeared during containment resolution",
+  );
+}
+
+async function canonicalAnchor(rootReal, resolved, relPath) {
+  for (let attempt = 0; attempt < ANCHOR_REALPATH_ATTEMPTS; attempt += 1) {
+    const { anchor, missing } = await deepestExistingAncestor(rootReal, resolved);
+    await runTestHook("beforeAnchorRealpath", { anchor, attempt });
+    try {
+      return { anchorReal: await realpath(anchor), missing };
+    } catch (cause) {
+      // An existing lock or staging file can be removed by its owner between
+      // lstat() and realpath(). Recompute the ancestor once for that exact
+      // disappearance race; every other error remains fail-closed.
+      if (cause?.code === "ENOENT" && attempt + 1 < ANCHOR_REALPATH_ATTEMPTS) continue;
+      throw mechanismError(
+        HARNESS_ERROR_KINDS.REALPATH_ESCAPE,
+        "anchor directory vanished during canonical resolution",
+        { input: relPath, code: cause?.code },
+      );
+    }
+  }
+  throw mechanismError(
+    HARNESS_ERROR_KINDS.REALPATH_ESCAPE,
+    "anchor directory vanished during canonical resolution",
+    { input: relPath },
   );
 }
 
@@ -221,17 +259,7 @@ export async function resolveContained(root, relPath) {
 
   // Escape class 3: canonical resolution (any intermediate symlink chain)
   // must stay inside the canonical root.
-  const { anchor, missing } = await deepestExistingAncestor(rootReal, resolved);
-  let anchorReal;
-  try {
-    anchorReal = await realpath(anchor);
-  } catch {
-    throw mechanismError(
-      HARNESS_ERROR_KINDS.REALPATH_ESCAPE,
-      "anchor directory vanished during canonical resolution",
-      { input: relPath },
-    );
-  }
+  const { anchorReal, missing } = await canonicalAnchor(rootReal, resolved, relPath);
   if (!insideOrEqualRoot(rootReal, anchorReal)) {
     throw mechanismError(
       HARNESS_ERROR_KINDS.REALPATH_ESCAPE,
@@ -248,6 +276,14 @@ export async function resolveContained(root, relPath) {
     );
   }
   return resolved;
+}
+
+/** Test-only hooks. Deliberately not re-exported from the package index. */
+export function __setPathsTestHooks(hooks) {
+  if (hooks !== null && (!hooks || typeof hooks !== "object" || Array.isArray(hooks))) {
+    throw new TypeError("paths test hooks must be an object or null");
+  }
+  testHooks = hooks;
 }
 
 /**

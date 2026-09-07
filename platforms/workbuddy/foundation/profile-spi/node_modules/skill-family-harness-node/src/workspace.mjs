@@ -1,10 +1,50 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import fsPromises from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { materializeBaseline } from "./baseline.mjs";
 import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";
 import { readFileContained, resolveContained } from "./paths.mjs";
 import { writeFileAtomic } from "./atomic.mjs";
+
+const CLEANUP_OPTIONS = { recursive: true, force: true, maxRetries: 3 };
+
+async function canonicalizeCreatedRoot(root, label) {
+  try {
+    return await fsPromises.realpath(root);
+  } catch (cause) {
+    // The root was created/materialized before canonicalization failed. Keep
+    // the existing create-failed contract while reporting cleanup failure as
+    // part of the same mechanism error instead of hiding it.
+    let cleanupCode;
+    try {
+      await fsPromises.rm(root, CLEANUP_OPTIONS);
+    } catch (cleanupCause) {
+      cleanupCode = cleanupCause && cleanupCause.code ? cleanupCause.code : "unknown";
+    }
+    const code = cause && cause.code ? cause.code : "unknown";
+    throw mechanismError(
+      HARNESS_ERROR_KINDS.WORKSPACE_CREATE_FAILED,
+      `cannot canonicalize ${label}: ${code}`,
+      {
+        code,
+        ...(cleanupCode ? { cleanup: { code: cleanupCode } } : {}),
+      },
+    );
+  }
+}
+
+async function createCanonicalTemporaryRoot(prefix, label) {
+  let root;
+  try {
+    root = await fsPromises.mkdtemp(path.join(os.tmpdir(), prefix));
+  } catch (cause) {
+    throw mechanismError(
+      HARNESS_ERROR_KINDS.WORKSPACE_CREATE_FAILED,
+      `cannot create ${label}: ${cause && cause.code ? cause.code : "unknown"}`,
+    );
+  }
+  return canonicalizeCreatedRoot(root, label);
+}
 
 /**
  * Auto-cleaning temporary workspaces.
@@ -28,15 +68,8 @@ export class TemporaryWorkspace {
     if (typeof prefix !== "string" || prefix.length === 0 || prefix.includes("/") || prefix.includes("\0")) {
       throw new TypeError("TemporaryWorkspace.create: prefix must be a non-empty, separator-free string");
     }
-    try {
-      const root = await mkdtemp(path.join(os.tmpdir(), prefix));
-      return new TemporaryWorkspace(root);
-    } catch (cause) {
-      throw mechanismError(
-        HARNESS_ERROR_KINDS.WORKSPACE_CREATE_FAILED,
-        `cannot create temporary workspace: ${cause && cause.code ? cause.code : "unknown"}`,
-      );
-    }
+    const root = await createCanonicalTemporaryRoot(prefix, "temporary workspace");
+    return new TemporaryWorkspace(root);
   }
 
   /**
@@ -58,7 +91,8 @@ export class TemporaryWorkspace {
     if (contentGuard !== undefined && typeof contentGuard !== "function") {
       throw new TypeError("TemporaryWorkspace.fromBaseline: contentGuard must be a function or undefined");
     }
-    const root = await materializeBaseline({ baselineDir, baselineDigest, prefix });
+    const materializedRoot = await materializeBaseline({ baselineDir, baselineDigest, prefix });
+    const root = await canonicalizeCreatedRoot(materializedRoot, "baseline workspace");
     const workspace = new TemporaryWorkspace(root);
     if (contentGuard === undefined) return workspace;
     try {
@@ -119,7 +153,7 @@ export class TemporaryWorkspace {
     if (this.#disposed) return;
     this.#disposed = true;
     try {
-      await rm(this.#root, { recursive: true, force: true, maxRetries: 3 });
+      await fsPromises.rm(this.#root, { recursive: true, force: true, maxRetries: 3 });
     } catch (cause) {
       throw mechanismError(
         HARNESS_ERROR_KINDS.WORKSPACE_DISPOSE_FAILED,

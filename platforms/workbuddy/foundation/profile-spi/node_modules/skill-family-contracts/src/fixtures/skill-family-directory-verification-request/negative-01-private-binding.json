@@ -1,0 +1,22 @@
+{
+  "fixtureId": "skill-family-directory-verification-request/negative-01-private-binding",
+  "class": "negative",
+  "contract": "skill-family-directory-verification-request",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/skill-family-directory-verification-request.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.skill-family-directory-verification-request",
+    "operation": "skill-family-directory-verification",
+    "verificationSetId": "kimi-set",
+    "host": { "hostId": "kimi-code", "descriptorSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "driverId": "kimi-code-print-v1", "driverVersion": "1.0.0", "cliVersion": "0.39.1" },
+    "expectedSkills": [
+      { "name": "alpha", "sourceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+      { "name": "beta", "sourceSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
+    ],
+    "familyTree": { "sourceManifestSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "membersDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+    "workload": { "effectivePromptSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "fixtureClosureDigest": "1111111111111111111111111111111111111111111111111111111111111111", "protectedWorkspaceClosureDigest": "2222222222222222222222222222222222222222222222222222222222222222", "timeoutPolicy": { "schemaVersion": 1, "kind": "skill-family.timeout-policy", "maxSeconds": 30, "killGraceSeconds": 2 }, "modelOverridePolicy": "forbidden", "restrictions": {} },
+    "auth": { "strategy": "existing-user-state", "credentialMutation": "host-managed" },
+    "familyRoot": "/private/not-public"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

@@ -1,0 +1,58 @@
+{
+  "fixtureId": "plugin-verification-request/negative-02-native-public-channel",
+  "class": "negative",
+  "contract": "plugin-verification-request",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/plugin-verification-request.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.plugin-verification-request",
+    "operation": "plugin-verification",
+    "verificationSetId": "set-2",
+    "goal": "native-lifecycle",
+    "source": {
+      "type": "public-channel",
+      "candidateRef": "candidate-2",
+      "sourceManifestSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "membersDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "channel": {
+        "marketplaceId": "example-marketplace",
+        "pluginId": "example-plugin",
+        "version": "1.2.3",
+        "sourceRef": "frozen-sha-or-ref",
+        "locatorSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    },
+    "host": {
+      "hostId": "codex",
+      "descriptorSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "driverId": "codex-exec-v1",
+      "driverVersion": "1.0.0",
+      "cliVersion": "codex-cli 0.145.0",
+      "executableSha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "install": {
+      "mode": "fresh-tree",
+      "timeoutPolicy": { "schemaVersion": 1, "kind": "skill-family.timeout-policy", "maxSeconds": 30, "killGraceSeconds": 2 },
+      "outputByteLimits": { "stdout": 1048576, "stderr": 1048576 }
+    },
+    "auth": { "strategy": "existing-user-state", "credentialMutation": "host-managed" },
+    "invocation": {
+      "effectivePromptSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "fixtureClosureDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "protectedWorkspaceClosureDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "timeoutPolicy": { "schemaVersion": 1, "kind": "skill-family.timeout-policy", "maxSeconds": 60, "killGraceSeconds": 2 },
+      "modelOverridePolicy": "forbidden",
+      "restrictions": {
+        "approvalPolicy": "deny-unattended",
+        "tools": "skill-only",
+        "mcp": "disabled",
+        "settingsSources": "empty",
+        "sessionPersistence": "disabled",
+        "browserIntegration": "disabled",
+        "maxTurns": 2,
+        "maxBudgetUsd": 0.08
+      }
+    }
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

@@ -1,0 +1,52 @@
+{
+  "fixtureId": "migration-manifest.positive.capability-adoption",
+  "contract": "migration-manifest",
+  "class": "positive",
+  "description": "A 0.14.0 fictional manifest carrying capability use context, uses, decisions, and nullable legacy replacement relations.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "manifestVersion": 4,
+    "capabilityUseContext": { "scope": "harness", "locale": "en" },
+    "capabilityUses": [
+      {
+        "useId": "safe-output-write",
+        "problemStatement": "Write output without leaving a partial file",
+        "constraints": ["Tests must not write a real project directory"],
+        "retainedGuarantees": ["The consumer still chooses the output artifact"],
+        "catalogFilters": ["atomic write"]
+      }
+    ],
+    "capabilityDecisions": [
+      {
+        "useId": "safe-output-write",
+        "disposition": "direct-adoption",
+        "targetCapability": "foundation.harness.atomic-write",
+        "reason": "The neutral atomic-write mechanism covers the need while artifact selection remains consumer-owned"
+      }
+    ],
+    "legacyInfra": [
+      {
+        "path": "scripts/legacy-writer.mjs",
+        "replacedBy": null,
+        "useId": "safe-output-write",
+        "recoveryRef": "docs/recovery/legacy-writer.md"
+      }
+    ],
+    "legacyReferences": [
+      {
+        "path": "src/index.mjs",
+        "text": "legacyWrite()",
+        "replacedBy": "foundation.harness.atomic-write",
+        "useId": "safe-output-write"
+      }
+    ],
+    "exceptions": []
+  }
+}

@@ -21,10 +21,12 @@ behavior_verification_also_required=false、semantic_review_also_required=false�
 """
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from .contracts import (
     ExecutorEvidenceError,
+    governance_dir,
     load_governance_document,
     result,
     rows_of,
@@ -57,6 +59,72 @@ def _nonempty_str(value: Any) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# 逐方法子结果（受管机械方法 digest_verification + schema_validation）
+# ---------------------------------------------------------------------------
+
+
+def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[str, Any]:
+    return {
+        "check_method": method,
+        "status": status,
+        "observation_source": source,
+        "evidence": evidence or {"reason": status.lower()},
+    }
+
+
+def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    """从逐方法行确定性推导聚合状态，与 contracts.validate_method_subresults 一致。"""
+    statuses = {row["status"] for row in rows}
+    if "FAIL" in statuses:
+        status = "FAIL"
+    elif "EVIDENCE_MISSING" in statuses or "NOT_RUN" in statuses:
+        status = "EVIDENCE_MISSING"
+    elif statuses == {"NOT_APPLICABLE"}:
+        status = "NOT_APPLICABLE"
+    elif statuses == {"PASS"}:
+        status = "PASS"
+    else:
+        raise ExecutorEvidenceError(
+            "METHOD_RESULT_COMBINATION_INVALID", repr(sorted(statuses))
+        )
+    return {
+        "status": status,
+        "evidence": dict(evidence),
+        "check_method_subresults": rows,
+    }
+
+
+def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "schema_validation", status, "executor_schema_validation_observation", **evidence
+    )
+
+
+def _digest_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "digest_verification", status, "executor_digest_verification_observation", **evidence
+    )
+
+
+def _doc_digest_row(
+    ctx: dict[str, Any], names: tuple[str, ...], status: str = "PASS", **evidence: Any
+) -> dict[str, Any]:
+    """字节级完整性观察：本次执行真实读取的治理声明文档（存在性与 sha256）。"""
+    observations = []
+    for name in names:
+        path = governance_dir(ctx) / f"{name}.json"
+        if path.is_file() and not path.is_symlink():
+            observations.append({
+                "document": name,
+                "present": True,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            })
+        else:
+            observations.append({"document": name, "present": False})
+    return _digest_row(status, documents=observations, **evidence)
+
+
+# ---------------------------------------------------------------------------
 # ARTMETHOD：非正式制品能力不强制接图（artifact-method-runs）
 # ---------------------------------------------------------------------------
 
@@ -69,7 +137,13 @@ def check_artmethod_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = load_governance_document(ctx, "artifact-method-runs")
     if document is None:
-        return result("PASS", informal_capabilities_declared=0)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_informal_capabilities"),
+                _doc_digest_row(ctx, ("artifact-method-runs",)),
+            ],
+            informal_capabilities_declared=0,
+        )
     rows = rows_of(document, "informal_capabilities", "artifact-method-runs")
     violations = []
     for index, row in enumerate(rows):
@@ -92,8 +166,20 @@ def check_artmethod_003(ctx: dict[str, Any]) -> dict[str, Any]:
                 {"index": index, "capability": row.get("capability_id"), "problems": problems}
             )
     if violations:
-        return result("FAIL", informal_capabilities_forced_into_graph=violations)
-    return result("PASS", informal_capabilities=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("artifact-method-runs",)),
+            ],
+            informal_capabilities_forced_into_graph=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", informal_capabilities=len(rows)),
+            _doc_digest_row(ctx, ("artifact-method-runs",)),
+        ],
+        informal_capabilities=len(rows),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +195,13 @@ def check_registry_006(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = load_governance_document(ctx, "method-registry-projection")
     if document is None:
-        return result("PASS", business_objects_declared=0)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_business_objects"),
+                _doc_digest_row(ctx, ("method-registry-projection",)),
+            ],
+            business_objects_declared=0,
+        )
     rows = rows_of(document, "business_objects", "method-registry-projection")
     violations = []
     for index, row in enumerate(rows):
@@ -128,8 +220,20 @@ def check_registry_006(ctx: dict[str, Any]) -> dict[str, Any]:
                 {"index": index, "object": row.get("object_id"), "problems": problems}
             )
     if violations:
-        return result("FAIL", business_objects_without_semantics_or_evidence=violations)
-    return result("PASS", business_objects=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("method-registry-projection",)),
+            ],
+            business_objects_without_semantics_or_evidence=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", business_objects=len(rows)),
+            _doc_digest_row(ctx, ("method-registry-projection",)),
+        ],
+        business_objects=len(rows),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +249,13 @@ def check_template_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = load_governance_document(ctx, "template-overrides")
     if document is None:
-        return result("PASS", base_templates_declared=0)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_base_templates"),
+                _doc_digest_row(ctx, ("template-overrides",)),
+            ],
+            base_templates_declared=0,
+        )
     rows = rows_of(document, "base_templates", "template-overrides")
     violations = []
     for index, row in enumerate(rows):
@@ -161,8 +271,20 @@ def check_template_001(ctx: dict[str, Any]) -> dict[str, Any]:
                 {"index": index, "template": row.get("template_id"), "problems": problems}
             )
     if violations:
-        return result("FAIL", base_templates_claiming_structure_authority=violations)
-    return result("PASS", base_templates=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("template-overrides",)),
+            ],
+            base_templates_claiming_structure_authority=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", base_templates=len(rows)),
+            _doc_digest_row(ctx, ("template-overrides",)),
+        ],
+        base_templates=len(rows),
+    )
 
 
 def check_template_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -173,7 +295,13 @@ def check_template_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = load_governance_document(ctx, "template-overrides")
     if document is None:
-        return result("PASS", template_overrides_declared=0)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_template_overrides"),
+                _doc_digest_row(ctx, ("template-overrides",)),
+            ],
+            template_overrides_declared=0,
+        )
     rows = rows_of(document, "overrides", "template-overrides")
     violations = []
     for index, row in enumerate(rows):
@@ -196,8 +324,20 @@ def check_template_002(ctx: dict[str, Any]) -> dict[str, Any]:
                 {"index": index, "override": row.get("override_id"), "problems": problems}
             )
     if violations:
-        return result("FAIL", template_overrides_missing_required_facts=violations)
-    return result("PASS", overrides=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("template-overrides",)),
+            ],
+            template_overrides_missing_required_facts=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", overrides=len(rows)),
+            _doc_digest_row(ctx, ("template-overrides",)),
+        ],
+        overrides=len(rows),
+    )
 
 
 CHECKS = {

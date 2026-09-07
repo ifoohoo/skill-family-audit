@@ -11,7 +11,7 @@ argument-hint: "[额外检查选项]"
 
 ## 目的
 
-检查运行环境、规范包完整性和静态平台投影。默认只读诊断；诊断发现需要安装或配置变更时，形成精确计划并取得用户授权后执行，执行后复验。
+检查当前 Python、规范索引、候选批准状态、平台客户端环境和静态投影是否可见。默认只读诊断；诊断发现需要安装或配置变更时，形成精确计划并取得用户授权后执行，执行后复验。
 
 ## 输入
 
@@ -19,11 +19,19 @@ argument-hint: "[额外检查选项]"
 
 ## 固定流程
 
-1. **检查（只读）**：验证 Python 版本、spec/ 目录完整性、authority-index.json 可解析性；检查规范发布状态、方法注册表、平台能力档案；检查四平台 manifest、Skill 映射与资源闭包
+1. **检查（只读）**：运行本入口自带的确定性诊断程序。程序读取当前 Python 进程、规范索引、候选摘要和批准收据，并从当前进程环境与可执行文件搜索路径探测四个平台客户端。静态平台 manifest 只作为投影存在性事实，不冒充客户端安装、发现或调用成功
 2. **形成精确计划**：诊断发现需要安装或配置变更时，输出精确命令、目标路径、写入与联网影响面和预期结果；无待处理项时明确报告"无需修改"
 3. **展示并取得授权**：向用户展示完整计划并等待明确确认；检查或展示计划本身不构成执行授权
 4. **执行已批准计划**：仅在用户明确确认后执行，且只执行已批准的机械步骤（依赖安装、hook 或配置写入类）；计划变化后原授权不得继续使用
 5. **复验**：执行后重新运行只读检查确认目标状态达成，以结构化 JSON 返回检查结果、执行结果与人工验证建议
+
+从本 `SKILL.md` 所在目录解析脚本绝对路径，再运行：
+
+```text
+python3 /absolute/path/to/setup/scripts/setup_diagnostics.py --project-root /absolute/path/to/skill-family-audit
+```
+
+该程序只读文件、进程环境和可执行文件搜索路径。退出码 0 表示完成诊断且 Python、规范索引、候选批准摘要和平台支持矩阵均可读取；退出码 1 表示至少一项关键事实无法取得。平台客户端未检测到只进入 `warnings`，不会被静态投影替代为成功。
 
 ## 写入边界
 
@@ -48,27 +56,7 @@ argument-hint: "[额外检查选项]"
 ```
 <!-- END GENERATED PLATFORM SUPPORT -->
 
-```json
-{
-  "environment": {
-    "python_version": "3.x.y",
-    "spec_directory": true,
-    "authority_index": true,
-    "approval_status": "no_active_approval_receipt"
-  },
-  "platforms": [
-    {
-      "platform_id": "claude-code",
-      "client_detected": false,
-      "status": "blocked_candidate",
-      "observed_capabilities": [],
-      "unverified_capabilities": ["manual_install", "manual_invoke"]
-    }
-  ],
-  "actions_required": [],
-  "warnings": []
-}
-```
+诊断结果的 `environment` 保留实际 Python、规范、批准与平台环境事实。`actions_required` 只列关键事实缺失；`warnings` 列出客户端未检测到、旧批准收据与当前候选不匹配等非阻断事实。结果不包含生成时间，便于同一环境重复核对。
 
 ## 边界
 

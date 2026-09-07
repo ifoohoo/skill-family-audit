@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "1.0.0-candidate",
+  "boundaryId": "skill-family-audit-method-registration-boundary",
+  "description": "方法注册边界：人类正式入口不注册；严格业务方法注册并绑定严格输入输出；内部能力不注册、不向用户暴露",
+  "basis": "2026-07-23 用户决定（不可变决定 4/5/6）：help、setup、quickstart 是面向人类的正式入口，不进入 agent-method-registry；需要机器发现、组合和长任务编排的严格业务入口才注册并使用更严格的参数契约；内部 worker + skill 及其确定性程序不面向用户暴露",
+  "humanEntries": [
+    {
+      "entryId": "help",
+      "kind": "human_formal_entry",
+      "registered": false,
+      "uniqueOwner": "human_entry_owner",
+      "note": "面向人类的正式入口；至少说明能力与不支持范围、适用场景、依赖和当前状态、最小正式示例、下一步以及诊断入口"
+    },
+    {
+      "entryId": "setup",
+      "kind": "human_formal_entry",
+      "registered": false,
+      "uniqueOwner": "human_entry_owner",
+      "note": "面向人类的正式入口；负责初始化与配置引导"
+    },
+    {
+      "entryId": "quickstart",
+      "kind": "human_formal_entry",
+      "registered": false,
+      "uniqueOwner": "human_entry_owner",
+      "note": "降低使用门槛的正式入口，不是演示或试用入口"
+    }
+  ],
+  "strictMethods": {
+    "registryImplementation": "spec/methods/registry-implementation.json",
+    "registrationRule": "需要机器发现和组合的只读审计业务入口才进入 agent-method-registry，并使用严格参数契约",
+    "strictIOAuthority": "spec/methods/{method}.json#/strictIOBinding",
+    "methods": [
+      "skill-family-audit:conformance-audit",
+      "skill-family-audit:release-audit"
+    ],
+    "v2ServiceMappings": [
+      {
+        "logicalMethodId": "skill-family-audit:conformance-audit",
+        "serviceId": "io.github.mzdbxqh.skill-family-audit.conformance-audit"
+      },
+      {
+        "logicalMethodId": "skill-family-audit:release-audit",
+        "serviceId": "io.github.mzdbxqh.skill-family-audit.release-audit"
+      }
+    ],
+    "uniqueOwner": "method_contract_registry"
+  },
+  "internalCapabilities": {
+    "registered": false,
+    "userExposed": false,
+    "uniqueOwner": "internal_implementation_owner",
+    "kinds": [
+      "internal_skill",
+      "dedicated_worker",
+      "deterministic_program"
+    ],
+    "rules": [
+      "内部 worker + skill（专属执行单元与内部技能）及其确定性程序不面向用户暴露",
+      "确定性 sh、py 等程序必须隶属于某个技能并位于该技能的 scripts/ 等受管目录",
+      "内部能力通过统一任务、结果、资源、权限、副作用、取消和证据契约交接",
+      "跨技能族编排不得读取其他技能族的内部提示、内部技能或私有脚本"
+    ]
+  }
+}

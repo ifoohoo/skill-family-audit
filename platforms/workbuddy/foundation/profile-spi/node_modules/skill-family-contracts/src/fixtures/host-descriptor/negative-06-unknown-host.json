@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.negative.unknown-host", "contract": "host-descriptor", "class": "negative",
+  "description": "A host outside the five admitted combinations cannot carry a verification tuple.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "fixture-other-host", "displayName": "Fixture Other Host", "support": "manual", "maturity": "manual", "sourceAliases": [], "verification": { "driverId": "kimi-code-print-v1", "authStrategy": "existing-user-state", "credentialMutation": "host-managed" }, "pathCategories": [], "probeCapabilities": ["cli", "version", "payload", "registry", "discover", "enabled", "reload", "smoke", "uninstall"] }
+}

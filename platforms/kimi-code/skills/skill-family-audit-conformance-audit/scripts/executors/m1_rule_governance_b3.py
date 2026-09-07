@@ -19,10 +19,12 @@ behavior_verification_also_required=false、semantic_review_also_required=false�
 """
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from .contracts import (
     ExecutorEvidenceError,
+    governance_dir,
     load_governance_document,
     result,
     rows_of,
@@ -69,6 +71,72 @@ def _rule_field_violations(
     ]
 
 
+# ---------------------------------------------------------------------------
+# 逐方法子结果（受管机械方法 digest_verification + schema_validation）
+# ---------------------------------------------------------------------------
+
+
+def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[str, Any]:
+    return {
+        "check_method": method,
+        "status": status,
+        "observation_source": source,
+        "evidence": evidence or {"reason": status.lower()},
+    }
+
+
+def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    """从逐方法行确定性推导聚合状态，与 contracts.validate_method_subresults 一致。"""
+    statuses = {row["status"] for row in rows}
+    if "FAIL" in statuses:
+        status = "FAIL"
+    elif "EVIDENCE_MISSING" in statuses or "NOT_RUN" in statuses:
+        status = "EVIDENCE_MISSING"
+    elif statuses == {"NOT_APPLICABLE"}:
+        status = "NOT_APPLICABLE"
+    elif statuses == {"PASS"}:
+        status = "PASS"
+    else:
+        raise ExecutorEvidenceError(
+            "METHOD_RESULT_COMBINATION_INVALID", repr(sorted(statuses))
+        )
+    return {
+        "status": status,
+        "evidence": dict(evidence),
+        "check_method_subresults": rows,
+    }
+
+
+def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "schema_validation", status, "executor_schema_validation_observation", **evidence
+    )
+
+
+def _digest_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "digest_verification", status, "executor_digest_verification_observation", **evidence
+    )
+
+
+def _doc_digest_row(
+    ctx: dict[str, Any], names: tuple[str, ...], status: str = "PASS", **evidence: Any
+) -> dict[str, Any]:
+    """字节级完整性观察：本次执行真实读取的治理声明文档（存在性与 sha256）。"""
+    observations = []
+    for name in names:
+        path = governance_dir(ctx) / f"{name}.json"
+        if path.is_file() and not path.is_symlink():
+            observations.append({
+                "document": name,
+                "present": True,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            })
+        else:
+            observations.append({"document": name, "present": False})
+    return _digest_row(status, documents=observations, **evidence)
+
+
 def check_rule_017(ctx: dict[str, Any]) -> dict[str, Any]:
     """正式规则声明整改和复验。
 
@@ -77,7 +145,13 @@ def check_rule_017(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     rules = _rules(ctx)
     if rules is None:
-        return result("PASS", declared_rules=0)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_rules"),
+                _doc_digest_row(ctx, ("rule-definitions",)),
+            ],
+            declared_rules=0,
+        )
 
     def declared(row: dict[str, Any]) -> bool:
         remediation = row.get("remediation_direction")
@@ -96,8 +170,20 @@ def check_rule_017(ctx: dict[str, Any]) -> dict[str, Any]:
         rules, declared, "remediation_or_revalidation_undeclared"
     )
     if violations:
-        return result("FAIL", violations=violations)
-    return result("PASS", declared_rules=len(rules))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("rule-definitions",)),
+            ],
+            violations=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", declared_rules=len(rules)),
+            _doc_digest_row(ctx, ("rule-definitions",)),
+        ],
+        declared_rules=len(rules),
+    )
 
 
 def check_rule_040(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -108,7 +194,13 @@ def check_rule_040(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "rule-definitions")
     if document is None:
-        return result("PASS", external_component_rules_declared=0)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_external_component_rules"),
+                _doc_digest_row(ctx, ("rule-definitions",)),
+            ],
+            external_component_rules_declared=0,
+        )
     rows = rows_of(document, "external_component_rules", "rule-definitions")
     violations = []
     for index, row in enumerate(rows):
@@ -132,8 +224,20 @@ def check_rule_040(ctx: dict[str, Any]) -> dict[str, Any]:
                 {"index": index, "component": row.get("component_id"), "problems": problems}
             )
     if violations:
-        return result("FAIL", violations=violations)
-    return result("PASS", external_component_rules=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("rule-definitions",)),
+            ],
+            violations=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", external_component_rules=len(rows)),
+            _doc_digest_row(ctx, ("rule-definitions",)),
+        ],
+        external_component_rules=len(rows),
+    )
 
 
 CHECKS = {

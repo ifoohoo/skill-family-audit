@@ -1,0 +1,34 @@
+{
+  "closed_roots": [
+    "skills/skill-family-audit-conformance-audit/scripts/executors"
+  ],
+  "kind": "skill-family-audit.method-assurance-authority-resources",
+  "resources": [
+    "skills/skill-family-audit-conformance-audit/refs/canonical-rule-projection.json",
+    "skills/skill-family-audit-conformance-audit/refs/first-tier-execution-routing.json",
+    "skills/skill-family-audit-conformance-audit/refs/method-assurance-authority-resources.json",
+    "skills/skill-family-audit-conformance-audit/scripts/conformance_workflow.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/__init__.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/contracts.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m1_rule_governance.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m1_rule_governance_b2.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m1_rule_governance_b3.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m1_rule_governance_gap.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m2_entry_platform.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m2_entry_platform_b2.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m2_entry_platform_b3.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m3_path_program.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m3_path_program_b2.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m3_path_program_b3.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m4_eval_evidence.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m4_eval_evidence_b2.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m5_context_isolation.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m5_context_isolation_b2.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m5_context_isolation_b3.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m7_registry.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m7_registry_b2.py",
+    "skills/skill-family-audit-conformance-audit/scripts/executors/m7_registry_b3.py",
+    "skills/skill-family-audit-conformance-audit/scripts/rule_method_assurance.py"
+  ],
+  "schema_version": "1.0.0"
+}

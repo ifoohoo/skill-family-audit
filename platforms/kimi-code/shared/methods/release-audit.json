@@ -2,16 +2,14 @@
   "schemaVersion": "1.0.0-candidate",
   "methodId": "skill-family-audit:release-audit",
   "name": "发布门禁检查",
-  "description": "汇总前三类审计结果，检查候选复现、公开允许列表、泄漏与就绪语义；不声明远端发布状态，也不重新执行前三项。",
+  "description": "汇总已审证据（发布评估结论与 Release Skill 公开验证器的结构化输出），检查候选复现、公开允许列表、泄漏与就绪语义；不声明远端发布状态，也不重新执行符合性审计、行为验证、运行评估或 Release Skill 的计划/运行/批准判定。方法只绑定一个 release-audit-input Resource；上游公开验证器尚未发布时确定性 BLOCKED/UPSTREAM_RELEASE_VERIFIER_UNAVAILABLE。",
   "capability": {
     "capabilityRef": "cap:skill-family-audit.family",
-    "capabilityDigest": "sha256:54c90ac1376e46fd6e1244e8932bd0893ab98d9cf40d11de180e98dad1b7548d",
+    "capabilityDigest": "sha256:9000a6775fe0bc7d04c2c516e265aff33486d7d4f020ae6e199ba563a2e8acbb",
     "methodSlice": "判断技能族版本是否满足稳定发布的全部门禁条件"
   },
   "accepts": [
-    "target_project_path",
-    "candidate_release_ref",
-    "assessments_ref"
+    "release_audit_input"
   ],
   "produces": [
     "release_result",
@@ -32,8 +30,9 @@
   "maturity": "experimental",
   "status": "candidate",
   "acceptanceCriteria": [
-    "汇总前三类审计结论",
-    "不重新执行已有审计",
+    "只汇总已审证据：发布评估结论与 Release Skill 公开验证器结构化输出",
+    "不重新执行符合性审计、行为验证、运行评估或 Release Skill 的计划/运行/批准判定",
+    "上游公开验证器尚未发布时确定性 BLOCKED/UPSTREAM_RELEASE_VERIFIER_UNAVAILABLE",
     "门禁条件逐项判定",
     "阻断条件精确到规则"
   ],
@@ -47,8 +46,8 @@
     "foundationProfile": {
       "id": "quickstart-profile",
       "version": 2,
-      "taskContract": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/task.json",
-      "resultContract": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/result.json"
+      "taskContract": "https://contracts.skill-family.example/quickstart-profile/v2/task.json",
+      "resultContract": "https://contracts.skill-family.example/quickstart-profile/v2/result.json"
     },
     "note": "方法只声明领域参数和领域输出；Task、Result、Resource 及其摘要绑定由 Foundation quickstart-profile 提供。",
     "parameterSchema": {

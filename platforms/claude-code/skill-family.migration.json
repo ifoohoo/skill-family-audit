@@ -2,19 +2,19 @@
   "exceptions": [],
   "foundationPackages": [
     {
-      "digest": "sha256:7fe83174a942805acd4e6f7fa01ab25ff0be0749e48b3ac92c600dab911b8acb",
+      "digest": "sha256:7b4edcc5d94bdbfb36fbdb216f586a9c42b341a1228d017ed453766b84a75341",
       "name": "skill-family-contracts",
-      "version": "0.8.1"
+      "version": "0.15.0"
     },
     {
-      "digest": "sha256:a3f4a7a2c8878da71f39548da366e149df4e1fcc4bc5a404ed21460e2d79faa3",
+      "digest": "sha256:a0d6cbd65e753e4f69fd47277d7ab22053ebae170aca55f5fcf11730171a269d",
       "name": "skill-family-engineering-kit",
-      "version": "0.8.1"
+      "version": "0.15.0"
     },
     {
-      "digest": "sha256:f4f01aff2375f35c499faea026df3874a63a871e589287d11736c289595157e0",
+      "digest": "sha256:be878b27903ecfb015c0f1963f4507698df6bf34957cdaac71856f73a4cb8cf5",
       "name": "skill-family-harness-node",
-      "version": "0.8.1"
+      "version": "0.15.0"
     }
   ],
   "kind": "skill-family.migration-manifest",

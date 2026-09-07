@@ -1,0 +1,51 @@
+{
+  "fixtureId": "watchdog-termination-envelope/positive-04-output-limit-exceeded",
+  "class": "positive",
+  "contract": "watchdog-termination-envelope",
+  "description": "A determined per-stream byte-limit termination: closed enums (TERMINATED / output_limit_exceeded), exit status 124, and the closed outputByteLimits / outputLimitExceeded evidence facts (FND-DES-014 section 6.2).",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/watchdog-termination-envelope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.watchdog-termination-envelope",
+    "ok": false,
+    "exitStatus": 124,
+    "processStatus": "TERMINATED",
+    "terminationReason": "output_limit_exceeded",
+    "watchdogReason": "output_limit_exceeded",
+    "evidence": {
+      "command": "node",
+      "args": ["-e", "process.stdout.write(Buffer.alloc(2048, 65).toString()); setTimeout(() => {}, 3600_000)"],
+      "cwd": "/tmp/fictitious-cwd",
+      "startedAt": "2026-08-26T00:00:00.000Z",
+      "finishedAt": "2026-08-26T00:00:02.000Z",
+      "checkIntervalSeconds": 1,
+      "pid": 4243,
+      "processGroupId": 4243,
+      "signalSequence": [
+        { "signal": "SIGTERM", "requestedMode": "process_group", "successfulMode": "process_group" }
+      ],
+      "forcedKill": false,
+      "startupProgressPaths": [],
+      "terminalProgressPaths": [],
+      "timeoutPolicy": {
+        "maxSeconds": 3600,
+        "killGraceSeconds": 10
+      },
+      "outputByteLimits": { "stdout": 1024, "stderr": 1024 },
+      "outputLimitExceeded": "stdout",
+      "guarantees": [
+        "closed-enum-evidence",
+        "fail-closed",
+        "no-auto-restart",
+        "no-liveness-guessing",
+        "process-group-termination",
+        "mechanism-holds-no-timeout-values"
+      ]
+    }
+  }
+}

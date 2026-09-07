@@ -1,0 +1,36 @@
+{
+  "fixtureId": "host-verification-request/negative-02-retired-auth-values",
+  "class": "negative",
+  "contract": "host-verification-request",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-verification-request.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.host-verification-request",
+    "operation": "host-verification",
+    "common": {
+      "verificationSetId": "set-1",
+      "candidateRef": "candidate-1",
+      "candidateManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workloadDocumentSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "fixtureClosureDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "protectedWorkspaceClosureDigest": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "host": {
+      "hostId": "kimi-code",
+      "descriptorSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "driverId": "kimi-code-print-v1",
+      "driverVersion": "1.0.0",
+      "platformManifestSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "adapterClosureDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "installedSkillClosureDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "effectivePromptSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "executableSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "auth": { "strategy": "dedicated-persistent", "credentialMutation": "may-refresh" },
+    "execution": {
+      "timeoutPolicy": { "schemaVersion": 1, "kind": "skill-family.timeout-policy", "maxSeconds": 10, "killGraceSeconds": 1 },
+      "modelOverridePolicy": "forbidden"
+    }
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

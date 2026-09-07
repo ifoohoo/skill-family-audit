@@ -1,0 +1,8 @@
+{
+  "fixtureId": "filesystem-tree-observation/negative-02-symlink-target-field",
+  "class": "negative",
+  "contract": "filesystem-tree-observation",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/filesystem-tree-observation.json", "dialect": "2020-12", "policy": "strict" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.filesystem-tree-observation", "rootBinding": { "kind": "trusted-filesystem-root-binding", "digestAlgorithm": "sha256", "basis": "canonical-realpath-device-inode-type-mode-v1", "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "members": [{ "path": "alias", "type": "symlink", "targetBase64": "Li4vcmVhZA==", "bytes": 7, "statMode": 41471, "target": "../read" }], "membersDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.negative.unknown-driver", "contract": "host-descriptor", "class": "negative",
+  "description": "An unknown verification driver is rejected by the closed driver enum.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "codex", "displayName": "Codex", "support": "supported", "maturity": "stable", "sourceAliases": ["openai-codex"], "driverId": "codex-version-v1", "adapterFormat": "skill-directory-v1", "verification": { "driverId": "unknown-driver-v9", "authStrategy": "existing-user-state", "credentialMutation": "host-managed" }, "pathCategories": [ { "id": "codex-user-skills", "role": "skill-root", "scope": "user", "anchor": "user-home", "relPath": ".agents/skills" }, { "id": "codex-project-skills", "role": "skill-root", "scope": "project", "anchor": "project-root", "relPath": ".agents/skills" } ], "probeCapabilities": ["cli", "version", "payload", "registry", "discover", "enabled", "reload", "smoke", "uninstall"] }
+}

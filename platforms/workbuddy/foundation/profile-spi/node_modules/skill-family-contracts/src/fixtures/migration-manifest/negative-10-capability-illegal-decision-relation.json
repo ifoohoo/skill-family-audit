@@ -1,0 +1,33 @@
+{
+  "fixtureId": "migration-manifest.negative.capability-illegal-decision-relation",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "A keep-business decision cannot manufacture a target capability.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "capabilityUseContext": { "scope": "contracts", "locale": "zh-CN" },
+    "capabilityUses": [
+      {
+        "useId": "business-rule",
+        "problemStatement": "Keep domain policy in the consumer",
+        "constraints": [],
+        "retainedGuarantees": ["The consumer owns the domain rule"]
+      }
+    ],
+    "capabilityDecisions": [
+      {
+        "useId": "business-rule",
+        "disposition": "keep-business",
+        "targetCapability": "foundation.contracts.object-validation",
+        "reason": "The domain rule remains in the consumer"
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "fixtureId": "migration-manifest.negative.capability-missing-context",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "Capability uses cannot be declared without their required scope and locale context.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "capabilityUses": [
+      {
+        "useId": "safe-output-write",
+        "problemStatement": "Write output safely",
+        "constraints": [],
+        "retainedGuarantees": ["The consumer owns artifact selection"]
+      }
+    ]
+  }
+}

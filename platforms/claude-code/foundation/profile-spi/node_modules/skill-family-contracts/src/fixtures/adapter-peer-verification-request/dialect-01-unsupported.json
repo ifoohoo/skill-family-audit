@@ -1,0 +1,9 @@
+{
+  "fixtureId": "adapter-peer-verification-request.dialect.unsupported",
+  "contract": "adapter-peer-verification-request",
+  "class": "dialect-boundary",
+  "description": "An unsupported dialect fails before request validation.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/adapter-peer-verification-request.json", "dialect": "draft-04", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.adapter-peer-verification-request" }
+}

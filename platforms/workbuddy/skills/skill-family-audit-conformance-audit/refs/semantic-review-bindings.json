@@ -1,0 +1,6168 @@
+{
+  "kind": "skill-family-audit.semantic-review-bindings",
+  "schema_version": "1.0.0",
+  "method_id": "skill-family-audit:conformance-audit",
+  "cognitive_independence": "not_attested",
+  "bindings": [
+    {
+      "canonical_id": "SFA-ARTIFACT-001",
+      "revision_digest": "adb825347c2d8343a871e14b7195708ce1fc0dd56aa3066a15a9d01fa8b93bf5",
+      "required_evidence_roles": {
+        "artifact_identity_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "granularity_rationale": [
+          "policy",
+          "source_file"
+        ],
+        "lifecycle_lock_evidence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-002",
+      "revision_digest": "e047e0bfb32c6619b7c4670d7a883fe0f8513b868528f154a467bef07a21c742",
+      "required_evidence_roles": {
+        "family_root_artifact": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "method_rule_artifact_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "release_exception_artifact_boundary": [
+          "exception",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-003",
+      "revision_digest": "918164efd2b90711f2d4f733c25ebe77ec29b1b6b4995d6d58aabc26303ccafe",
+      "required_evidence_roles": {
+        "artifact_classification_claim": [
+          "manifest",
+          "source_file"
+        ],
+        "implementation_inventory": [
+          "source_file",
+          "source_tree"
+        ],
+        "promotion_authority_reference": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-004",
+      "revision_digest": "21f7710852c59402a67085e8fa9fa9f64ca48c15fc006515a62fe9b1c33eb206",
+      "required_evidence_roles": {
+        "promotion_decision": [
+          "exception",
+          "policy",
+          "source_file"
+        ],
+        "promotion_subject": [
+          "manifest",
+          "source_tree"
+        ],
+        "promotion_trigger": [
+          "manifest",
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-005",
+      "revision_digest": "7179d451afadb19da0aada334cc0ce34ddb372dbcdb0eefd653afb2a415a390a",
+      "required_evidence_roles": {
+        "dual_maintenance_guard": [
+          "source_file",
+          "source_tree"
+        ],
+        "method_contract_authority": [
+          "manifest",
+          "source_file"
+        ],
+        "registry_projection_trace": [
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-006",
+      "revision_digest": "438b0be0ed6d7357d5bd42eb9c701c5b25a18ab985b7aec7a7a884a37bdeed9c",
+      "required_evidence_roles": {
+        "family_capability_map": [
+          "source_file",
+          "source_tree"
+        ],
+        "family_identity_claim": [
+          "manifest",
+          "source_file"
+        ],
+        "family_maturity_ownership": [
+          "policy",
+          "source_file"
+        ],
+        "family_version_adoption": [
+          "policy",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-007",
+      "revision_digest": "36911e23a7f3328b58ec0e16878a1a4124841090b6e67f33753e110aa0421d3c",
+      "required_evidence_roles": {
+        "capability_definition": [
+          "manifest",
+          "source_file"
+        ],
+        "coverage_basis_reference": [
+          "receipt",
+          "source_file"
+        ],
+        "platform_independence_boundary": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-008",
+      "revision_digest": "bd39b6ebdd35f84e7d73f9d2561eed01a98ab0b23e312a29f044bdc92d9fb5f9",
+      "required_evidence_roles": {
+        "method_contract_attributes": [
+          "policy",
+          "source_file"
+        ],
+        "method_identity_claim": [
+          "manifest",
+          "source_file"
+        ],
+        "registration_relation": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-009",
+      "revision_digest": "4d742ad726f7a07f1d3c0b389e370f4c5013c2c963dbbd87af2ffd8ed262909b",
+      "required_evidence_roles": {
+        "assessment_layer_separation": [
+          "manifest",
+          "source_file"
+        ],
+        "behavior_run_observation": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "static_semantic_review_records": [
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-010",
+      "revision_digest": "7be2297787961ca086bba4019e64d50fa9fc0921010cdec22c832edf14f2de86",
+      "required_evidence_roles": {
+        "assessment_flattening_guard": [
+          "policy",
+          "source_file"
+        ],
+        "domain_result_reference": [
+          "receipt",
+          "source_file",
+          "source_tree"
+        ],
+        "evidence_provenance": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-011",
+      "revision_digest": "07c943c2293b09d74c702674e55b4b2bc9ab20e2f30ca38d134de58b10fe465f",
+      "required_evidence_roles": {
+        "release_lifecycle_state": [
+          "manifest",
+          "receipt"
+        ],
+        "release_plan_record": [
+          "policy",
+          "receipt"
+        ],
+        "release_withdrawal_trace": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-012",
+      "revision_digest": "4886a95429381cd98acfc1c8749ee0516510e5901a8750f275ca893a8e0d541b",
+      "required_evidence_roles": {
+        "content_digest_lock": [
+          "manifest",
+          "receipt"
+        ],
+        "contract_evidence_lock": [
+          "receipt",
+          "source_file"
+        ],
+        "frozen_release_inputs": [
+          "manifest",
+          "receipt"
+        ],
+        "platform_package_lock": [
+          "manifest",
+          "platform_support",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-013",
+      "revision_digest": "3cc31f0c817a0a322f7c7285afee4f09c2d072d7d208ce2fabb132e57d5f8256",
+      "required_evidence_roles": {
+        "gate_authority_provenance": [
+          "manifest",
+          "receipt"
+        ],
+        "gate_conclusion_reference": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "release_recomputation_guard": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-014",
+      "revision_digest": "7121af80672aa2655c501f574cd55492c4a83601691d976512d613522263771b",
+      "required_evidence_roles": {
+        "rule_set_entry": [
+          "manifest",
+          "source_tree"
+        ],
+        "spec_scope_version_policy": [
+          "policy",
+          "source_file"
+        ],
+        "specification_identity_claim": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-015",
+      "revision_digest": "cc3402b88a433f16cd5f132c667ca1a119061590bd27d192820fff7e2dfb1d3c",
+      "required_evidence_roles": {
+        "project_override_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "rule_identity_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "verify_profile_result": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-016",
+      "revision_digest": "51b5f006674d4e18ae0931cb38890c93082a30fa93800ab01aabaae76fc1b7dd",
+      "required_evidence_roles": {
+        "precise_rule_set_lock": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ],
+        "rule_revision_pin": [
+          "receipt",
+          "source_file"
+        ],
+        "spec_release_identity": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-017",
+      "revision_digest": "3845e3158375d8feb928da73c228460f75407a1052759c360c8c1f9990d4f6fb",
+      "required_evidence_roles": {
+        "approval_evidence": [
+          "exception",
+          "manifest",
+          "receipt"
+        ],
+        "exception_rule_revision_pin": [
+          "exception",
+          "source_file"
+        ],
+        "exception_scope_terms": [
+          "exception",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-018",
+      "revision_digest": "2f6e6ef1f13db18b7cc123992563c7816b2985388a1403a1365b88a03d93cad6",
+      "required_evidence_roles": {
+        "capability_result_semantics": [
+          "manifest",
+          "source_file"
+        ],
+        "ownership_boundary_declaration": [
+          "policy",
+          "source_file"
+        ],
+        "platform_projection_non_ownership": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-019",
+      "revision_digest": "ee474597c1417ed18eeef7faaaa930a56051233bfbe5ffa00c02c1eab8e0e7c7",
+      "required_evidence_roles": {
+        "boundary_field_non_ownership": [
+          "source_file",
+          "source_tree"
+        ],
+        "capability_applicability_scope": [
+          "manifest",
+          "source_file"
+        ],
+        "ownership_declaration": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-020",
+      "revision_digest": "1f7b86c42ab1d4693e5946a18733a78eacc24d932d349b491e5a1774b22978f3",
+      "required_evidence_roles": {
+        "acceptance_cross_platform_claim": [
+          "platform_support",
+          "source_file"
+        ],
+        "capability_acceptance_definition": [
+          "manifest",
+          "source_file"
+        ],
+        "method_contract_acceptance_reference": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-021",
+      "revision_digest": "d297b7fe50bbbda14cf62d71e788d3083e0a076fcc64677f12f5848ad6aaefad",
+      "required_evidence_roles": {
+        "execution_attribute_ownership": [
+          "source_file",
+          "source_tree"
+        ],
+        "method_call_signature": [
+          "manifest",
+          "source_file"
+        ],
+        "method_side_effect_permission": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-022",
+      "revision_digest": "4cf4f09353fa455af97b002584e07612a89ddfeaeca26ef03974003ab8cc0755",
+      "required_evidence_roles": {
+        "acceptance_duplication_guard": [
+          "policy",
+          "source_file"
+        ],
+        "acceptance_reference_link": [
+          "manifest",
+          "source_file"
+        ],
+        "capability_acceptance_source": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-023",
+      "revision_digest": "1939a4f41b372289a182acaefc668457645736713e0a195238a4d76ff2cea6f0",
+      "required_evidence_roles": {
+        "capability_method_reference": [
+          "source_file",
+          "source_tree"
+        ],
+        "internal_skill_protocol": [
+          "source_file",
+          "source_tree"
+        ],
+        "public_artifact_non_ownership": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-024",
+      "revision_digest": "a6c8557f97ed6fde04077ef1ff1c0f8326a2f552995e5fe2fbe33ed89697cd82",
+      "required_evidence_roles": {
+        "capability_identity_pin": [
+          "manifest",
+          "source_file"
+        ],
+        "method_contract_identity_pin": [
+          "manifest",
+          "source_file"
+        ],
+        "reference_digest_chain": [
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-025",
+      "revision_digest": "a6912cc2b1f929b94d738086f2b57b335632a51e81b5385407c872efd4897d1b",
+      "required_evidence_roles": {
+        "catalog_generation_evidence": [
+          "receipt",
+          "source_file"
+        ],
+        "example_provenance": [
+          "receipt",
+          "source_file",
+          "source_tree"
+        ],
+        "help_catalog_source": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-026",
+      "revision_digest": "38e70a03f20bba564514dfd079b5eac03e636f292043d47bb55f80e0c924b593",
+      "required_evidence_roles": {
+        "generation_digest_chain": [
+          "manifest",
+          "receipt"
+        ],
+        "method_registry_authority": [
+          "manifest",
+          "source_file"
+        ],
+        "registry_projection_generation": [
+          "receipt",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-027",
+      "revision_digest": "81848e1553e5554fd37b7e74fc79a722fe2338035cdcd66ffac5ad815c661c58",
+      "required_evidence_roles": {
+        "common_entry_source": [
+          "source_file",
+          "source_tree"
+        ],
+        "entry_generation_evidence": [
+          "receipt",
+          "source_file"
+        ],
+        "platform_entry_inventory": [
+          "manifest",
+          "platform_support",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-028",
+      "revision_digest": "c06c2ea76e7ed45e69234efe46b21d931e1593c6b52d40a6c5ab6ec662dbeb42",
+      "required_evidence_roles": {
+        "diagnostic_program_declaration": [
+          "source_file",
+          "source_tree"
+        ],
+        "environment_state_injection": [
+          "log",
+          "receipt"
+        ],
+        "static_fact_prohibition": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-029",
+      "revision_digest": "1dce8f0981cebee62ded7ea5a2d1cbe87c4200ab25958c98f9b69620ddd2eedd",
+      "required_evidence_roles": {
+        "contract_immutability_guard": [
+          "receipt",
+          "source_file",
+          "source_tree"
+        ],
+        "drift_check_declaration": [
+          "policy",
+          "source_file"
+        ],
+        "generated_projection_identity": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-030",
+      "revision_digest": "4f33bf677ffe7f868e25bbb129d745e5feb67120697ab018ae938aa3951e3b49",
+      "required_evidence_roles": {
+        "contract_source_authority": [
+          "policy"
+        ],
+        "platform_projection_boundary": [
+          "manifest",
+          "platform_support",
+          "source_tree"
+        ],
+        "reverse_modification_guard": [
+          "log",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-031",
+      "revision_digest": "e53517f50d985783ec356df8363f0f0e5d2bf9bd32d09d35b8c7cf58e3055d62",
+      "required_evidence_roles": {
+        "domain_duplication_guard": [
+          "source_file",
+          "source_tree"
+        ],
+        "governance_artifact_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "shared_governance_package_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-032",
+      "revision_digest": "de339442793327859205426a304ee687f05f7dd43fde9ae4d6908252ac807c3c",
+      "required_evidence_roles": {
+        "domain_artifact_impersonation_guard": [
+          "policy",
+          "source_file"
+        ],
+        "implementation_resource_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "resource_linkage_claim": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTIFACT-033",
+      "revision_digest": "84f8a0adebe478a60eb8c5f6914082aaa9d72503fe1fb4fbd20e45d3c2a1c873",
+      "required_evidence_roles": {
+        "method_contract_authority_input": [
+          "manifest",
+          "source_file"
+        ],
+        "registry_authority_consumption": [
+          "receipt",
+          "source_file",
+          "source_tree"
+        ],
+        "shared_authority_file": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITINTERNAL-001",
+      "revision_digest": "f3da31cd34938b62991eebe9f4d623e60de638b20d27a0b6dc3944885a70f025",
+      "required_evidence_roles": {
+        "capability_ownership_declaration": [
+          "manifest",
+          "policy",
+          "source_tree"
+        ],
+        "deterministic_execution_path": [
+          "source_file",
+          "source_tree"
+        ],
+        "runtime_evidence_interface": [
+          "manifest",
+          "source_file"
+        ],
+        "semantic_responsibility_path": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITINTERNAL-002",
+      "revision_digest": "345e471d4608dc6df1794f86f4b4bf0a1389114a04aee687c47e056d6e82e8a2",
+      "required_evidence_roles": {
+        "context_budget_evidence": [
+          "log",
+          "receipt"
+        ],
+        "internal_capability_visibility": [
+          "manifest",
+          "policy"
+        ],
+        "projection_completeness_evidence": [
+          "manifest",
+          "receipt"
+        ],
+        "public_contract_freeze_absence": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-001",
+      "revision_digest": "3d84db464899e00a9a22df42b84ca2e1c7deba01dc5bf36e65a0f67d75b93e10",
+      "required_evidence_roles": {
+        "method_registry_entry": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "public_method_surface": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "release_boundary_receipt": [
+          "policy",
+          "receipt"
+        ],
+        "retired_method_absence": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "strict_contract_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-002",
+      "revision_digest": "ab86b0dfb99d1bf8668eb1888f61f2d8a5b82aaf078807b65f7f8a838deb549b",
+      "required_evidence_roles": {
+        "capability_invocation_evidence": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "method_capability_declaration": [
+          "source_file",
+          "source_tree"
+        ],
+        "object_scope_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-003",
+      "revision_digest": "039e69a7e6558fa376c43bbd56694ca57ebff37e61df4eaee978ac3b1072d372",
+      "required_evidence_roles": {
+        "execution_ordering_contract": [
+          "policy",
+          "source_file"
+        ],
+        "rule_route_inventory": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "run_ordering_observation": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-004",
+      "revision_digest": "c3a1840d3378a0b6cdcd50c9566e87790d2a1a462c2894279f632ebea7beb373",
+      "required_evidence_roles": {
+        "evidence_readonly_consumption": [
+          "log",
+          "receipt"
+        ],
+        "execution_boundary_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "target_tree_zero_write_trace": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-005",
+      "revision_digest": "531e6bd0efb2667629c6377fbff8d4d9ffa5fd8f1e081950992ec77ed54dfb5f",
+      "required_evidence_roles": {
+        "execution_contract_absence": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "executor_side_contract_evidence": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "permission_surface_inventory": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-006",
+      "revision_digest": "86c2f4e74998f4ca18e20847657036643b6120df10d615be30960e38cf67ff62",
+      "required_evidence_roles": {
+        "runtime_capability_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "runtime_evidence_set": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "tier3_claim_review_record": [
+          "log",
+          "receipt"
+        ],
+        "unproven_claim_disposition": [
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-007",
+      "revision_digest": "c0d6342b56c64bd91baad58d8bb6557e90a29e17e9773ba02390e06e7deeb07c",
+      "required_evidence_roles": {
+        "run_intervention_absence": [
+          "log",
+          "receipt"
+        ],
+        "runtime_evidence_binding": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "unified_protocol_authority": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-008",
+      "revision_digest": "de8fb064ecdf68348cf36c59202f31451faac56d5a12814f6e1edda7810b62a9",
+      "required_evidence_roles": {
+        "audit_source_inventory": [
+          "source_file",
+          "source_tree"
+        ],
+        "control_algorithm_absence": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "dependency_closure_boundary": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-009",
+      "revision_digest": "f2e23f24a87aba48bb8428ddae16f4e57ff079c776fe7a257098d8c236d536e7",
+      "required_evidence_roles": {
+        "aggregation_input_closure": [
+          "log",
+          "receipt"
+        ],
+        "exception_inventory": [
+          "exception",
+          "policy",
+          "receipt"
+        ],
+        "no_reexecution_observation": [
+          "log",
+          "receipt"
+        ],
+        "receipt_module_independent_verification": [
+          "log",
+          "receipt"
+        ],
+        "release_receipt_set": [
+          "manifest",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-010",
+      "revision_digest": "733689107932e261c602249d8929a028854681b91b5a0553a34552a83d570296",
+      "required_evidence_roles": {
+        "gap_disposition_record": [
+          "policy",
+          "receipt"
+        ],
+        "prior_check_evidence": [
+          "log",
+          "receipt"
+        ],
+        "rerun_task_creation_trace": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-011",
+      "revision_digest": "9839b5a35febb8e6714bd62bb486fc5f8a4e5f806b82ba235700bdfd5bf7646e",
+      "required_evidence_roles": {
+        "no_blended_score_report": [
+          "receipt"
+        ],
+        "per_item_status_report": [
+          "log",
+          "receipt"
+        ],
+        "required_input_inventory": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-012",
+      "revision_digest": "b2877ef76276b6eaf403252eceb3ca02adfe9cb872efc4965749d72059982942",
+      "required_evidence_roles": {
+        "method_contract_isolation": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "method_result_isolation": [
+          "log",
+          "receipt"
+        ],
+        "permission_and_cost_isolation": [
+          "manifest",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITMETHOD-013",
+      "revision_digest": "c8a8d8a17b7c8fbaaaae1c93ba0ab4f56475805cfad8d2e7b0e8485748527125",
+      "required_evidence_roles": {
+        "per_authorization_record": [
+          "log",
+          "policy",
+          "receipt"
+        ],
+        "quickstart_route_trace": [
+          "jsonl_conversation",
+          "log"
+        ],
+        "quickstart_scope_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITPRODUCT-001",
+      "revision_digest": "ed59dee34f6174f20e9bd4d7a0afdc8c4297dff0b2d5514513df616f78be776e",
+      "required_evidence_roles": {
+        "entry_conformance_evidence": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "human_entry_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "method_protocol_absence": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "plugin_identity_manifest": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITREPAIR-001",
+      "revision_digest": "505a784e1459d7d4bedee4f274773507af8ebf2db54272a02859fca89c76e8f3",
+      "required_evidence_roles": {
+        "method_registry_snapshot": [
+          "manifest",
+          "receipt"
+        ],
+        "public_surface_inventory": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "remediation_only_output": [
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITREPAIR-002",
+      "revision_digest": "9840c1c7299bdc518d4bb08d9a1ce70fc981b30570046be25bc369abad94db99",
+      "required_evidence_roles": {
+        "isolated_write_boundary": [
+          "policy",
+          "receipt",
+          "source_file"
+        ],
+        "method_readonly_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "target_readonly_observation": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITREPAIR-003",
+      "revision_digest": "5c11c6ab4271b7295f0019c79cad4adbcdfb0c3c0102beb0f97cd64a5f02680b",
+      "required_evidence_roles": {
+        "finding_linkage_record": [
+          "log",
+          "receipt"
+        ],
+        "remediation_output_inventory": [
+          "receipt",
+          "source_tree"
+        ],
+        "unapplied_material_marking": [
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUDITREPAIR-004",
+      "revision_digest": "25225b4a3e9dfacabbe106a1462c663b9629a01ded4aa4abc73062942d3c1549",
+      "required_evidence_roles": {
+        "admission_and_confirmation_record": [
+          "policy",
+          "receipt"
+        ],
+        "prerequisite_behavior_evidence": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "repair_prerequisite_declaration": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUTOFIX-001",
+      "revision_digest": "486a72b092d817f4f25865def1ade715b8718b5afd59a143952fe94aa8755ef6",
+      "required_evidence_roles": {
+        "autofix_preview_record": [
+          "log",
+          "receipt"
+        ],
+        "autofix_recovery_record": [
+          "log",
+          "receipt"
+        ],
+        "autofix_rule_declaration": [
+          "policy",
+          "source_file"
+        ],
+        "per_authorization_record": [
+          "log",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUTOFIX-002",
+      "revision_digest": "2ab1eb6d31aad06712fdd992155a2824c70ce775ec0077c4f7b5d041aa7a5729",
+      "required_evidence_roles": {
+        "autofix_mechanical_change_declaration": [
+          "policy",
+          "source_file"
+        ],
+        "before_after_behavior": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "semantic_change_absence_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-AUTOFIX-003",
+      "revision_digest": "2a476626a2c75a58166a99241b49590903e26b691554b83914d7d8494b2de9e8",
+      "required_evidence_roles": {
+        "audit_input_integrity": [
+          "receipt",
+          "source_file"
+        ],
+        "exception_validity_record": [
+          "exception",
+          "policy",
+          "receipt"
+        ],
+        "rule_status_record": [
+          "policy",
+          "receipt"
+        ],
+        "violation_evidence_retention": [
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-BRIDGE-001",
+      "revision_digest": "5fed02307360bd4fb491a50354951715d85f0604ad45b2f7ba1a52682bdaab3a",
+      "required_evidence_roles": {
+        "bridge_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "bridge_identity_version": [
+          "manifest",
+          "receipt"
+        ],
+        "cross_domain_relation_evidence": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-BRIDGE-002",
+      "revision_digest": "fa316485f0101da94c84a30649e2aade0dadcce0f1d0be59c2a9e760bada6b06",
+      "required_evidence_roles": {
+        "bridge_localization_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "generic_spec_impersonation_absence": [
+          "manifest",
+          "policy"
+        ],
+        "monotonic_tightening_lock_evidence": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-BRIDGE-003",
+      "revision_digest": "df3cba606e0f7134a150c16a405e104272cc68a0169ca849011463a330099b3a",
+      "required_evidence_roles": {
+        "bridge_package_release_evidence": [
+          "manifest",
+          "receipt"
+        ],
+        "compatibility_scope_declaration": [
+          "policy",
+          "source_file"
+        ],
+        "reuse_consumer_records": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-BRIDGE-004",
+      "revision_digest": "5fc8f47a13e3251820e02c9a91bc30c4ae7f6380a33f231f8f6fa44ac209dc77",
+      "required_evidence_roles": {
+        "explicit_adoption_evidence": [
+          "manifest",
+          "policy"
+        ],
+        "no_implicit_merge_absence": [
+          "manifest",
+          "policy"
+        ],
+        "relationship_lock_entry": [
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPAT-001",
+      "revision_digest": "e206ba9ac1d266b6808c79ffdcf078870caaac8959596cc640334f70a0b232cc",
+      "required_evidence_roles": {
+        "legacy_contract_adaptable_state": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "legacy_execution_path_observation": [
+          "jsonl_conversation",
+          "log"
+        ],
+        "lossless_projection_verification": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPAT-002",
+      "revision_digest": "f7f67b69d8b4eb4a32a1ac76dcccfca5287f77248468171bd28022139e329df2",
+      "required_evidence_roles": {
+        "adapter_outer_generation_trace": [
+          "log",
+          "receipt"
+        ],
+        "common_outer_projection_state": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "internal_projection_consumption_observation": [
+          "jsonl_conversation",
+          "log"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPAT-003",
+      "revision_digest": "062681ba544ff63dcb9c541152c72ce01e8f05c6508a8b376c5e73b8c704de46",
+      "required_evidence_roles": {
+        "common_outer_native_state": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "domain_protocol_formal_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "native_consumption_production_observation": [
+          "jsonl_conversation",
+          "log"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPAT-004",
+      "revision_digest": "c14d518ca7add9cec8505e334eb1d83904649e05e69c3b3eed3592acfa13b5c6",
+      "required_evidence_roles": {
+        "actual_data_path_observation": [
+          "jsonl_conversation",
+          "log"
+        ],
+        "compatibility_state_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "state_mutual_exclusion_check": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPAT-006",
+      "revision_digest": "aa937ab581330e89a144e5c153ecec0b28456b845dada9c7ece5505133282970",
+      "required_evidence_roles": {
+        "auto_composition_claim": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "composition_run_observation": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "strong_contract_fields": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPAT-007",
+      "revision_digest": "b3a0cff217dd2a4d36461451ddd8cf994b3b92971654be8443d6bbd47485f291",
+      "required_evidence_roles": {
+        "invented_field_guard": [
+          "policy",
+          "source_file"
+        ],
+        "legacy_path_elevation_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "path_fact_verification": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPAT-008",
+      "revision_digest": "b504094118c0f042eabaa7705ebafd36dde6fe9a7211e86287231f5d308916fd",
+      "required_evidence_roles": {
+        "composition_boundary_declaration": [
+          "policy",
+          "source_file"
+        ],
+        "deterministic_order_observation": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "untyped_legacy_resource_inventory": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-001",
+      "revision_digest": "3f28702ab86f5c12fc90bc3fe1574de5729aea0b6ebe5cf25df0cba001e6dfae",
+      "required_evidence_roles": {
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "execution_ordering_contract": [
+          "manifest",
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "public_method_surface": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-002",
+      "revision_digest": "c7e4a9517e3715ef99ed9fe29ab9b1e7c97d2b406f0db107983db485567ec3ad",
+      "required_evidence_roles": {
+        "composer_authority": [
+          "manifest",
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "method_contract_attributes": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "method_registry_entry": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-003",
+      "revision_digest": "9931d630918ca3a149669ff7aae6ef199fa7bb3487fe6364759ab150c45a1318",
+      "required_evidence_roles": {
+        "internal_skill_protocol": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "public_surface_inventory": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-004",
+      "revision_digest": "a28d262293eed166f452e60f623ba03b8da51c9f2fcca010110afbb53841c5dd",
+      "required_evidence_roles": {
+        "authorization_policy": [
+          "manifest",
+          "policy"
+        ],
+        "method_contract_identity_pin": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "prerequisite_behavior_evidence": [
+          "log",
+          "receipt"
+        ],
+        "required_input_inventory": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-005",
+      "revision_digest": "baadb3b118fb7765dad5ae3ff40f96d708c3ac19ac39e52f902e520e794bb24d",
+      "required_evidence_roles": {
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "execution_ordering_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "run_ordering_observation": [
+          "log"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-006",
+      "revision_digest": "b0c4cf8299ce1c20ea9182a951685e832fafa59c02ec359ab5006db5f866c2e2",
+      "required_evidence_roles": {
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "execution_ordering_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-007",
+      "revision_digest": "a76052758eed68fd008701717c5c525d0577b9df849eacbace1fd771217cbe21",
+      "required_evidence_roles": {
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "dependency_and_authority_flow": [
+          "manifest",
+          "source_file"
+        ],
+        "run_ordering_observation": [
+          "log"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-008",
+      "revision_digest": "de958e540374436ff6951b08db4b89eac389ea6d82b2718ebb4fca68386bbc4c",
+      "required_evidence_roles": {
+        "isolated_write_boundary": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "managed_write_observation": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-009",
+      "revision_digest": "81d464fb4f728b48e5f32deb565f91ecd354b001061e1877d6928c6eb5fd5283",
+      "required_evidence_roles": {
+        "conflict_vectors": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "permission_surface_inventory": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "run_intervention_absence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-010",
+      "revision_digest": "d9ff967c5639292341913ef9122a58d7426953d60087594eda779c42f3d0f473",
+      "required_evidence_roles": {
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "domain_selection": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-011",
+      "revision_digest": "6c3368a88db9db1d4c75c786588f4c5fd6846df4fb442c8474293db83870dc5d",
+      "required_evidence_roles": {
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "token_estimate_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-012",
+      "revision_digest": "5373907412a9b71663928c2f5fbc70cf0df52925946fdc419a62487252c9f7e3",
+      "required_evidence_roles": {
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "domain_result_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-013",
+      "revision_digest": "4ea547d4cb85cc6841e15079423ff5c4d2c3a5f9a19b73e2dd4b8134ba806026",
+      "required_evidence_roles": {
+        "remediation_output_inventory": [
+          "manifest",
+          "source_file"
+        ],
+        "rerun_task_creation_trace": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-014",
+      "revision_digest": "bc3f598ffe301bebe010986bb98b42fc4820de9d50142735f3ffa5ebb8cb4874",
+      "required_evidence_roles": {
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "repair_prerequisite_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "run_intervention_absence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-015",
+      "revision_digest": "8e34fc7e0b873615249decdc93020424da336b2af8e8c4e6f5ce62c70209ecc8",
+      "required_evidence_roles": {
+        "delegation_trace": [
+          "log",
+          "receipt"
+        ],
+        "exchange_verification_and_closure": [
+          "log",
+          "receipt"
+        ],
+        "public_surface_inventory": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-016",
+      "revision_digest": "4b5220b390544dd8f228d93b354fce5c53686af0d542f5a244ea1f4feb9a949e",
+      "required_evidence_roles": {
+        "delegation_trace": [
+          "log",
+          "receipt"
+        ],
+        "internal_skill_protocol": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPOSE-017",
+      "revision_digest": "4623b79cdcb7ad0c98d16ce86c30daedaf2d71257211dad3877df43c47f1f853",
+      "required_evidence_roles": {
+        "conflict_vectors": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "execution_attribute_ownership": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "run_intervention_absence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-CONTROL-001",
+      "revision_digest": "77a0e3c7578fb57b6c086ec2f36786ffe67f14b5db3a4b7e393acbc17da2ed61",
+      "required_evidence_roles": {
+        "control_plane_immutability_evidence": [
+          "log",
+          "receipt"
+        ],
+        "instruction_no_execution_evidence": [
+          "log",
+          "receipt"
+        ],
+        "untrusted_input_marking": [
+          "log",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-CONTROL-002",
+      "revision_digest": "d6a54dc3cbf060e8c736c7225309910897dd5732325ef37e9439effc86d76e63",
+      "required_evidence_roles": {
+        "execution_observation_evidence": [
+          "log",
+          "receipt"
+        ],
+        "execution_plane_separation_evidence": [
+          "platform_support",
+          "receipt"
+        ],
+        "gate_control_plane_evidence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-CRYPTOSEC-001",
+      "revision_digest": "bd882d00bd8cd7708a5f69beb75e4928757edb92333285fd31c46e55816683d1",
+      "required_evidence_roles": {
+        "algorithm_usage_adjudication": [
+          "log",
+          "receipt"
+        ],
+        "crypto_config_binding": [
+          "manifest",
+          "policy"
+        ],
+        "crypto_purpose_declaration": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DATASEC-001",
+      "revision_digest": "71046ced1a7ed9841cb009b77245ae7eed26aac430e6020fe29f07db491ba327",
+      "required_evidence_roles": {
+        "data_boundary_evidence": [
+          "policy",
+          "source_file"
+        ],
+        "sensitive_data_declaration": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DATASEC-002",
+      "revision_digest": "abcef88682b4c08d72c08ef636d3765a3609733505db7af75c4bf7b8b72c92f4",
+      "required_evidence_roles": {
+        "materials_scan_record": [
+          "log",
+          "receipt"
+        ],
+        "placeholder_synthetic_usage": [
+          "source_file",
+          "source_tree"
+        ],
+        "real_sensitive_value_absence": [
+          "log",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-002",
+      "revision_digest": "da5ed1f1f23f26e4a90d809cd61b60ae9fbdd0934ca3f741a7b30412e7768ea5",
+      "required_evidence_roles": {
+        "foundation_registry_product_roles": [
+          "manifest",
+          "source_tree"
+        ],
+        "public_interface_boundary": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "release_payload_inspection": [
+          "log",
+          "receipt"
+        ],
+        "source_import_reference_scan": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-003",
+      "revision_digest": "8fefbcb2245879489d6c7ce668b6c066f76d90084a8a2740bb65239a03af6c1c",
+      "required_evidence_roles": {
+        "assistant_product_declaration": [
+          "manifest",
+          "source_tree"
+        ],
+        "consumption_scan_result": [
+          "log",
+          "receipt"
+        ],
+        "foundation_public_contract_refs": [
+          "manifest",
+          "source_file"
+        ],
+        "logic_copy_guard": [
+          "log",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-004",
+      "revision_digest": "74f4e431a9528c5f6aaac4b008e510bc6d053cd3a246760aade6a999f4983227",
+      "required_evidence_roles": {
+        "assistant_dependency_forbidden_scan": [
+          "log",
+          "receipt"
+        ],
+        "governance_dependency_scan": [
+          "manifest",
+          "source_file"
+        ],
+        "governance_product_declaration": [
+          "manifest",
+          "source_tree"
+        ],
+        "graph_domain_contract_reference": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-005",
+      "revision_digest": "f9b54a6cd1a4185090c004bf79ea7abe701c69aa3c7431df82989b34c08fcc47",
+      "required_evidence_roles": {
+        "adjacent_source_read_trace": [
+          "log",
+          "receipt"
+        ],
+        "domain_spec_declaration": [
+          "manifest",
+          "source_tree"
+        ],
+        "domain_spec_dependency_scan": [
+          "manifest",
+          "source_file"
+        ],
+        "governance_version_lock": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-006",
+      "revision_digest": "c209168d2173644c85ad27404c82c37ba5085da6ebd576632b71ffe03e9c6b7d",
+      "required_evidence_roles": {
+        "business_source_duplication_guard": [
+          "log",
+          "source_file"
+        ],
+        "domain_assistant_declaration": [
+          "manifest",
+          "source_tree"
+        ],
+        "domain_assistant_dependency_scan": [
+          "manifest",
+          "source_file"
+        ],
+        "three_dependency_bindings": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-007",
+      "revision_digest": "e234cfa4a0b0f89f1d648aca4313c7b1754651a6029c5740e09decfc778ce5b2",
+      "required_evidence_roles": {
+        "compatibility_layer_injection": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "foundation_dependency_scan": [
+          "manifest",
+          "source_file"
+        ],
+        "foundation_product_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "reverse_reference_guard_scan": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-008",
+      "revision_digest": "3b0707c20fbf8f9f0bc59b9ad0e40ff285f63c4df24d2dac43f0846e1006fb70",
+      "required_evidence_roles": {
+        "cross_domain_dependency_graph": [
+          "manifest",
+          "source_file"
+        ],
+        "cycle_detection_result": [
+          "log",
+          "receipt"
+        ],
+        "domain_product_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "handover_artifact_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-009",
+      "revision_digest": "a22e3234346559e935593d99bd3de86a7b94ec21799f5937849ed788498057cc",
+      "required_evidence_roles": {
+        "domain_governance_ownership_scan": [
+          "source_file",
+          "source_tree"
+        ],
+        "governance_consumption_lock": [
+          "manifest",
+          "receipt"
+        ],
+        "governance_copy_duplication_guard": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-010",
+      "revision_digest": "4f1f1132eca1a8b7e53aa789f2b3605eab45045c44e9a905251c16b20fe0a60f",
+      "required_evidence_roles": {
+        "platform_adapter_scan": [
+          "manifest",
+          "source_file"
+        ],
+        "runtime_package_declaration": [
+          "manifest",
+          "source_tree"
+        ],
+        "runtime_public_machine_api": [
+          "manifest",
+          "source_file"
+        ],
+        "runtime_release_payload_inspection": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-011",
+      "revision_digest": "28163f3989a5ab182741e42b801dc1f72d64f78ec053eefa0bbbab3bcd7f8f74",
+      "required_evidence_roles": {
+        "adopted_version_lock": [
+          "manifest",
+          "receipt"
+        ],
+        "compatibility_range_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "resolution_eligibility_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-013",
+      "revision_digest": "039601236a229da46b801bac92d1b3ad9dbf733a0ecbf282b7f1f352d36237bf",
+      "required_evidence_roles": {
+        "adapter_registration": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "adjudication_record": [
+          "exception",
+          "policy",
+          "receipt"
+        ],
+        "compatibility_fact_check": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-014",
+      "revision_digest": "fbfb6b9f0041d344ce622b005e918f09f6873e5eca7205ea5546f9c2b74940e9",
+      "required_evidence_roles": {
+        "failure_disposition_trace": [
+          "exception",
+          "log",
+          "receipt"
+        ],
+        "provider_verification_chain": [
+          "log",
+          "receipt"
+        ],
+        "run_lock_record": [
+          "log",
+          "receipt"
+        ],
+        "v1_discovery_compat_scope": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "v2_surface_pin": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPEND-015",
+      "revision_digest": "5d824a478bd73a8a7fc43d0f69f20c7b6790cb12548dcfd99018613d678d3fea",
+      "required_evidence_roles": {
+        "dependency_declaration": [
+          "manifest",
+          "source_tree"
+        ],
+        "governance_declaration": [
+          "exception",
+          "policy",
+          "source_tree"
+        ],
+        "release_payload_boundary": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DEPENDENCY-001",
+      "revision_digest": "d2eb240557b7cdc7023394db5d541a58f1a63cc4d70e9fd5faf983c8230dc223",
+      "required_evidence_roles": {
+        "auto_download_receipt": [
+          "receipt"
+        ],
+        "download_fact_append_only": [
+          "log",
+          "receipt"
+        ],
+        "download_operation_log": [
+          "log"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-DESERSEC-001",
+      "revision_digest": "194c31fe1d0499ed4ac3e08849494f690ce71f7815ecf2f36882baf45a70e121",
+      "required_evidence_roles": {
+        "deserialization_surface_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "safe_deserialization_evidence": [
+          "policy",
+          "source_file"
+        ],
+        "untrusted_input_flow_evidence": [
+          "log",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-001",
+      "revision_digest": "5956f48675003527ee03d0c251a7ba0842553db16a02a6184e12a78be7e1551b",
+      "required_evidence_roles": {
+        "kernel_spec_assistant_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "single_project_graph_evidence": [
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-002",
+      "revision_digest": "2918ece795a6d180fd252989612299d2bc48b4f6df19c1240db6cdf37c961748",
+      "required_evidence_roles": {
+        "logical_role_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "role_scoped_ruleset_evidence": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-003",
+      "revision_digest": "cae0df74ce93488cbadd9c1c7e75b44ae88c1eda3ada30647635d9fc6f91f8e4",
+      "required_evidence_roles": {
+        "cross_object_proof_absence": [
+          "manifest",
+          "receipt"
+        ],
+        "object_identity_distinction": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-004",
+      "revision_digest": "d992cb7637cd7388ed5a20d59e1bb4775adeac7bf7955aa4ec6f1419d8383695",
+      "required_evidence_roles": {
+        "boundary_independence_evidence": [
+          "manifest",
+          "receipt"
+        ],
+        "repository_boundary_non_substitute": [
+          "policy",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-005",
+      "revision_digest": "9e424efa1e5d91c20a911e3f33124f6b58faa3a1c86da93aaddec6a92f303cfa",
+      "required_evidence_roles": {
+        "path_equivalence_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "role_responsibility_unchanged": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-006",
+      "revision_digest": "81c7f352dae45b8f1bef73dcc4cb049fdd11afbb5fc17f67a71c6519720bb1a6",
+      "required_evidence_roles": {
+        "assistant_domain_scope_evidence": [
+          "manifest",
+          "source_tree"
+        ],
+        "no_domain_absorption_absence": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-007",
+      "revision_digest": "7dc7e98d7842d1c3a1bdd16bd14b610bea84e196eaa19043a2b889aba8555781",
+      "required_evidence_roles": {
+        "copy_creation_absence": [
+          "source_file",
+          "source_tree"
+        ],
+        "new_domain_creation_evidence": [
+          "manifest",
+          "source_tree"
+        ],
+        "shared_interface_reuse_evidence": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-008",
+      "revision_digest": "dd9950d61afc51e537eb859b46497beb63b70d959801221b55ce8af90ffbacf2",
+      "required_evidence_roles": {
+        "domain_spec_extension_evidence": [
+          "manifest",
+          "policy"
+        ],
+        "kernel_singleton_absence": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ECOSYS-009",
+      "revision_digest": "095e495b4c0f54426f56c23c3a990b7d99c9155a86bb02ee4ff3be88275f20ff",
+      "required_evidence_roles": {
+        "internal_structure_exemption_evidence": [
+          "manifest",
+          "source_tree"
+        ],
+        "role_absence_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "role_consumption_lock_evidence": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-EVIDENCESEC-001",
+      "revision_digest": "03455207be82a6bd43283301a8afbc4646e24b735d3cb0fb4c6e25dd963f7ba4",
+      "required_evidence_roles": {
+        "existence_proof_preserved": [
+          "log",
+          "receipt"
+        ],
+        "finding_traceability_record": [
+          "log",
+          "source_file"
+        ],
+        "finding_volume_limit_evidence": [
+          "log",
+          "receipt"
+        ],
+        "redaction_applied_mark": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FAMILY-001",
+      "revision_digest": "64ad1ccd3b79e9cc6b3499b6cce53f08c01510f5df9c72930f1a57835e594be7",
+      "required_evidence_roles": {
+        "family_identity_claim": [
+          "manifest",
+          "source_file"
+        ],
+        "family_root_artifact": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "platform_projection_boundary": [
+          "manifest",
+          "platform_support",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FAMILY-002",
+      "revision_digest": "6d66fc606c52f73dd321a222215b834551ce08efd12e4c352148a0959168dc88",
+      "required_evidence_roles": {
+        "capability_acceptance_definition": [
+          "manifest",
+          "source_file"
+        ],
+        "capability_definition": [
+          "manifest",
+          "source_file"
+        ],
+        "platform_independence_boundary": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FAMILY-003",
+      "revision_digest": "af0992b440bac55ec6f3a707992a783c8c42fc64b96e1ce0474f5897974d0f8f",
+      "required_evidence_roles": {
+        "business_object_evidence": [
+          "receipt",
+          "source_file"
+        ],
+        "capability_invocation_evidence": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "method_contract_attributes": [
+          "policy",
+          "source_file"
+        ],
+        "method_identity_claim": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FAMILY-004",
+      "revision_digest": "effc0cd7b394545a059050b2a61769efb3e20255d1bb29c993101d98ec82fdeb",
+      "required_evidence_roles": {
+        "capability_registration_record": [
+          "manifest",
+          "receipt"
+        ],
+        "discovery_orchestration_claim_scan": [
+          "policy",
+          "source_file"
+        ],
+        "human_entry_inventory": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-001",
+      "revision_digest": "02eebf2f0875dd6ec687331326adbffc7824138e4c1d85f8291c866d36f6fc22",
+      "required_evidence_roles": {
+        "adoption_declaration": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "exemption_record": [
+          "exception",
+          "manifest",
+          "receipt"
+        ],
+        "self_built_stack_observation": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-004",
+      "revision_digest": "5dd8cf61ec25be437f3151aaf9a147d74942b8849b92d51946732ba4046167ac",
+      "required_evidence_roles": {
+        "approval_and_term": [
+          "exception",
+          "manifest",
+          "receipt"
+        ],
+        "boundary_evidence": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "exemption_record": [
+          "exception",
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-005",
+      "revision_digest": "f6eaaca8acdf07b03bac656df75a25cb764b1eb77d9248cfde1fd5f4f631b141",
+      "required_evidence_roles": {
+        "adoption_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "drift_policy_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "pin_update_fact": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-006",
+      "revision_digest": "97e4771c99ea82f3ff62488b5bf748b0b4d81f455fc11ff200e64a30c1e0a922",
+      "required_evidence_roles": {
+        "adoption_obligation_reexposure": [
+          "log",
+          "receipt"
+        ],
+        "current_exemption": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "exemption_history": [
+          "log",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-007",
+      "revision_digest": "802a35c9f060390707701965cff5992e8226ae4a1f7c95581ec87105544c6eab",
+      "required_evidence_roles": {
+        "adoption_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "decision_record": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "risk_note": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-008",
+      "revision_digest": "8fc50944b211e0799b3cf6dc0a505dcd958943a91ca1d22929e6ab3b73087010",
+      "required_evidence_roles": {
+        "foundation_authority": [
+          "manifest",
+          "receipt"
+        ],
+        "profile_source_and_usage": [
+          "source_file",
+          "source_tree"
+        ],
+        "profile_verification": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-009",
+      "revision_digest": "c9d33e4f8726b37c7113a4858fd558b5b0eb69eb1bd708468faeec6254e08a53",
+      "required_evidence_roles": {
+        "governed_text": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "terminology_authority": [
+          "manifest",
+          "policy",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-010",
+      "revision_digest": "67aa188273213abe25b3b35cf8d414b88f87a089fe7acf30504dde6c70a6c8a4",
+      "required_evidence_roles": {
+        "negative_vector_result": [
+          "log",
+          "receipt"
+        ],
+        "profile_carrier": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "selected_spi_result": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-011",
+      "revision_digest": "668fcc066bafee2c42553c74d318fd864d23627195312f5f76a1703ac36ac806",
+      "required_evidence_roles": {
+        "current_target_and_profile": [
+          "manifest",
+          "source_tree"
+        ],
+        "non_coverage_behavior": [
+          "log",
+          "receipt"
+        ],
+        "public_api_call_source": [
+          "log",
+          "receipt",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-012",
+      "revision_digest": "5b62f9284d73004068a1169069e9ed4fc50eaca02e657861f8eaacb89f502f52",
+      "required_evidence_roles": {
+        "foundation_authority": [
+          "manifest",
+          "receipt"
+        ],
+        "harness_consumer_source": [
+          "source_file",
+          "source_tree"
+        ],
+        "token_estimate_record": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-013",
+      "revision_digest": "752a9875640a0e0ec28cf4098b75f84b08f605ea6af04f33e14198239a32bb69",
+      "required_evidence_roles": {
+        "consumer_execution_or_equivalence": [
+          "exception",
+          "log",
+          "manifest",
+          "policy",
+          "receipt",
+          "source_tree"
+        ],
+        "kit_authority": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-014",
+      "revision_digest": "0f4da063a3f41dc5d1814b51d90c1e50eb192ddc997aacc78defbf6d2181499d",
+      "required_evidence_roles": {
+        "consumer_parameters_and_mapping": [
+          "manifest",
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "contracts_authority": [
+          "manifest",
+          "receipt"
+        ],
+        "registry_check_output": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-015",
+      "revision_digest": "3d3e10810fc515c1035273d947aee7622d64cea1328a8e3bd67b3380c82766db",
+      "required_evidence_roles": {
+        "audit_surface_output": [
+          "manifest",
+          "receipt"
+        ],
+        "baseline_pin_source": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "baseline_verification": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-016",
+      "revision_digest": "4afa353ddb54c6d74b7f263b54a5359122023329b53d8d7636b0c13b0a355116",
+      "required_evidence_roles": {
+        "exchange_inputs": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "exchange_result": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "exchange_verification_and_closure": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-017",
+      "revision_digest": "53fa96fd38cc9f4d9967662ff54372ce18417d4a08f25c6c93fcb2d03a2cee9a",
+      "required_evidence_roles": {
+        "audit_rule_text": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "foundation_machine_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "target_command_observation": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-018",
+      "revision_digest": "f6eefb8ddc16a7fbf2ef533c3ab45b5b5d805d2f3c8d7046ef6030bff29adcdc",
+      "required_evidence_roles": {
+        "foundation_machine_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "restatement_text": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-019",
+      "revision_digest": "4ea7b0a1de2b72043b090f64614703ad5b692f8481a8ea2f3d125a56ef79f15a",
+      "required_evidence_roles": {
+        "managed_write_observation": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "relock_execution_outcome": [
+          "log",
+          "receipt"
+        ],
+        "relock_trigger_and_precheck": [
+          "log",
+          "manifest",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-021",
+      "revision_digest": "153814c3d676f5c62a37e963185d9f2ecedf680f7e89c3f7d8f846358bd98073",
+      "required_evidence_roles": {
+        "compatibility_conclusion": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "compatibility_rule_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "consumption_coordinates": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-022",
+      "revision_digest": "f663f36924a31b4158788b2f649f283573d3e858ae78a5ce85a9c5b60d9ba305",
+      "required_evidence_roles": {
+        "baseline_compatibility": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "current_adoption": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ],
+        "upgrade_decision": [
+          "exception",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-023",
+      "revision_digest": "0521a574c713f5dd5dce41e7ac60b94164cdc74ee500744a9b9ce6b315bc1b28",
+      "required_evidence_roles": {
+        "bundled_upgrade_fact": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "deprecated_reference_cleanup": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "pin_consistency": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-024",
+      "revision_digest": "e0effddad13f62f011b64b33690f5c7ec0890ed8f147189738304f70b2d40706",
+      "required_evidence_roles": {
+        "baseline_consumption_decision": [
+          "policy",
+          "receipt",
+          "source_file"
+        ],
+        "baseline_history_operations": [
+          "log",
+          "receipt",
+          "source_file"
+        ],
+        "baseline_pin_objects": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-GOVERNANCE-002",
+      "revision_digest": "ee45e85c99dffe504e19234a88cc5316ca10df04d9ee5d5d1f76b922a5c92c40",
+      "required_evidence_roles": {
+        "exception_register": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "self_tightening_declaration": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-GOVERNANCE-003",
+      "revision_digest": "6fa58e0737c57b1fd22832b1e4fb8c915997e74df84764ed3d93da341520aeab",
+      "required_evidence_roles": {
+        "exception_records": [
+          "exception",
+          "manifest",
+          "source_file"
+        ],
+        "exception_register": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-GOVERNANCE-004",
+      "revision_digest": "2d3f7ecbdd9c2517b2a4a24fd95a8716e94cfbf0a3ddc70314ff12d29962ab86",
+      "required_evidence_roles": {
+        "governance_declarations": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "machine_readable_authority": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-HARNESS-001",
+      "revision_digest": "1ca3b3a47fdf7cd51505a9a6096424ac98bf6ec5bb1deebc270b7a7b4bb43ef9",
+      "required_evidence_roles": {
+        "harness_behavior": [
+          "log",
+          "receipt"
+        ],
+        "harness_surface": [
+          "manifest",
+          "source_tree"
+        ],
+        "responsibility_boundary": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INJECTSEC-001",
+      "revision_digest": "a0b5e6e8000df35ca80a556666ea54e448a3257a523588f31fbafb2febe171f2",
+      "required_evidence_roles": {
+        "db_permission_minimal_evidence": [
+          "manifest",
+          "policy"
+        ],
+        "parameterized_query_evidence": [
+          "source_file"
+        ],
+        "query_concat_absence": [
+          "log",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INPUTSEC-001",
+      "revision_digest": "7e95dd0d3e4fe09fcf0854797c9188126db322f1fc5e3aaae59ba33e95426546",
+      "required_evidence_roles": {
+        "instruction_region_separation": [
+          "log",
+          "source_file"
+        ],
+        "model_input_surface_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "untrusted_data_marking": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INPUTSEC-002",
+      "revision_digest": "3049e52447f88c76607a74574e0e5b606734af3f1a27d28bcc4ce307bac0bc36",
+      "required_evidence_roles": {
+        "control_fact_immutability_evidence": [
+          "log",
+          "receipt"
+        ],
+        "injection_attempt_records": [
+          "log"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INPUTSEC-003",
+      "revision_digest": "0a91148405e5080545bf0568fb7a3cac405db4ba5b3d07787c8e27388b9bbb85",
+      "required_evidence_roles": {
+        "decode_as_data_evidence": [
+          "log",
+          "source_file"
+        ],
+        "decode_no_execution_absence": [
+          "log",
+          "receipt"
+        ],
+        "isolated_decode_environment": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INPUTSEC-004",
+      "revision_digest": "eb29aec5f7caac26d8cdc1c05b0a88802ee23b6da8a2b8839766cca0992f97c6",
+      "required_evidence_roles": {
+        "confirmation_review_evidence": [
+          "log",
+          "receipt"
+        ],
+        "keyword_alone_absence": [
+          "log"
+        ],
+        "pattern_hit_record": [
+          "log"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-001",
+      "revision_digest": "3d000daf109457a5e9d799df047a47eb21c8230f73d015be69834dbb73ff99f3",
+      "required_evidence_roles": {
+        "install_execution_receipt": [
+          "log",
+          "receipt"
+        ],
+        "install_state_machine_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "rollback_evidence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-002",
+      "revision_digest": "150c634a87687a1c5bd685b35a8cfd84d7a0d84081d654c46aefa5438d627abc",
+      "required_evidence_roles": {
+        "installation_receipt_artifact": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "receipt_field_completeness": [
+          "manifest",
+          "receipt"
+        ],
+        "receipt_provenance": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-003",
+      "revision_digest": "aac47d43ee6d61523271f283d82b1417a78c243b1165aeecc760133bd63501b9",
+      "required_evidence_roles": {
+        "combo_version_selection": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ],
+        "coordinated_rollback_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-004",
+      "revision_digest": "bafa9516e12f43079bb0f563b9e0425cc0bc123cf78da198c8e92caae816323f",
+      "required_evidence_roles": {
+        "receipt_authority_origin": [
+          "manifest",
+          "receipt"
+        ],
+        "single_receipt_consumption": [
+          "log",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-005",
+      "revision_digest": "f4f7090b3b6bc1687107de12868599bc61a8b685c99c613b8fb3785781136169",
+      "required_evidence_roles": {
+        "post_uninstall_discoverability_probe": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "post_uninstall_invocation_probe": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "uninstall_completion_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-006",
+      "revision_digest": "aa501f3ef6499f474de5edd009e4579f62df557a74e8b611b8a06f5349644ef6",
+      "required_evidence_roles": {
+        "integration_inventory_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "integration_stop_record": [
+          "log",
+          "receipt"
+        ],
+        "post_uninstall_integration_probe": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-007",
+      "revision_digest": "45a541231657688cb70a1ce2c9ddb6f46ba4402cc2f1e7618fc65296595839b1",
+      "required_evidence_roles": {
+        "residual_nonactivation_evidence": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "residual_retention_boundary": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-008",
+      "revision_digest": "e25325b7cf84a660a50787230ba9809457c9a240597551b59caeb44c3f914484",
+      "required_evidence_roles": {
+        "residual_inactivity_proof": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "residual_inventory": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-009",
+      "revision_digest": "c4f6f7563f7f1f1afe21fe710065e3c7422289e2b5bfce46d62ed8f9b322f8eb",
+      "required_evidence_roles": {
+        "cleanup_execution_record": [
+          "log",
+          "receipt"
+        ],
+        "cleanup_operation_separation": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-010",
+      "revision_digest": "f0ae8db2c8a064e3a713ece2558844ea0e85fc763b10ca7e2161a069051efca7",
+      "required_evidence_roles": {
+        "cleanup_preview_artifact": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "preview_scope_accuracy": [
+          "receipt",
+          "source_file",
+          "source_tree"
+        ],
+        "shared_impact_analysis": [
+          "manifest",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-011",
+      "revision_digest": "e1c263999b64b3aba62196c3e85a69c52e8af8eead78352ef593a564f2944897",
+      "required_evidence_roles": {
+        "authorization_scope_match": [
+          "log",
+          "receipt"
+        ],
+        "cleanup_authorization_record": [
+          "log",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-012",
+      "revision_digest": "9f980cea8adc64aea08e170f00c54be6aa6c2c9e787f51653de21ffc192987a9",
+      "required_evidence_roles": {
+        "cache_reclamation_policy": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "cache_usage_proof": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "conservative_deletion_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INSTALL-013",
+      "revision_digest": "be9ef6ddf91d080f516b4ee7aee353ca9d3bf0a4839eeb4fa17b63b3eb5a8d51",
+      "required_evidence_roles": {
+        "cross_user_cache_guard": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "surviving_user_verification": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INTERNAL-001",
+      "revision_digest": "8e0c2d46a3da9522a0e8d083cc169f050261d257256469e81b064610c1ba8a51",
+      "required_evidence_roles": {
+        "family_capability_map": [
+          "source_file",
+          "source_tree"
+        ],
+        "family_identity_claim": [
+          "manifest",
+          "source_file"
+        ],
+        "platform_projection_ownership": [
+          "manifest",
+          "source_tree"
+        ],
+        "release_responsibility_record": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INTERNAL-002",
+      "revision_digest": "96496662fb2fcdd106add128bd39c9dcdb9aa2d51e6b8090667db896345e5fc4",
+      "required_evidence_roles": {
+        "capability_definition": [
+          "manifest",
+          "source_file"
+        ],
+        "cross_platform_equivalence_claim": [
+          "policy",
+          "receipt"
+        ],
+        "platform_independence_boundary": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INTERNAL-003",
+      "revision_digest": "7c266246190711c0ae4de1cfa8e603ccc4e6f0734444a20679713f5853e14d7b",
+      "required_evidence_roles": {
+        "bounded_stage_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "internal_skill_inventory": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-INTERNAL-004",
+      "revision_digest": "f2ff1342e083b0d756ab1e06f31ab1363f53fb12ee97b2434a7fd5336d3be97e",
+      "required_evidence_roles": {
+        "executor_isolation_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "executor_side_contract_evidence": [
+          "manifest",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-001",
+      "revision_digest": "3e9d7e4ae2bf6b4952f59ac7660c31888c9d9279520823827d3f6fe319449cca",
+      "required_evidence_roles": {
+        "human_call_surface": [
+          "manifest",
+          "source_file"
+        ],
+        "single_workflow_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "strict_call_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-002",
+      "revision_digest": "6a358f9436c5817e3d265d4288f8a508fed4abc688295b9a5247b8803459a9a2",
+      "required_evidence_roles": {
+        "method_registry_snapshot": [
+          "manifest",
+          "receipt"
+        ],
+        "nonregistered_internal_surface": [
+          "manifest",
+          "source_file"
+        ],
+        "registry_eligibility_declaration": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-003",
+      "revision_digest": "55a2e81f9781b41697c321f271e8fcae3868a15f3694a8b1898c9022606f8e47",
+      "required_evidence_roles": {
+        "physical_structure_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "shared_business_implementation": [
+          "manifest",
+          "source_tree"
+        ],
+        "single_normalized_task_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "unified_validation_result_protocol": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-004",
+      "revision_digest": "394416dbefe7a1cc0662d3fac32a96a9c06d7d40abad6bdcdde5ee48cf7932fa",
+      "required_evidence_roles": {
+        "named_workflow_presence": [
+          "manifest",
+          "source_file"
+        ],
+        "quickstart_workflow_route": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "stable_value_flow_inventory": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-005",
+      "revision_digest": "72503780c4e78df807c20a7d0a60699238067f424d5dc03cb4a7d13acd8da35c",
+      "required_evidence_roles": {
+        "independent_goal_evidence": [
+          "policy",
+          "receipt"
+        ],
+        "new_entry_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "non_expressible_guard": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-006",
+      "revision_digest": "08b77d92a540062de2325b3564d264fcaafd6d1f264f20be88889e651625c072",
+      "required_evidence_roles": {
+        "entry_count_policy": [
+          "policy",
+          "source_file"
+        ],
+        "goal_contract_driven_claim": [
+          "policy",
+          "receipt"
+        ],
+        "public_entry_inventory": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-007",
+      "revision_digest": "5d4b8b39adcb5565c238755c47eab005b3a8b36af415656994467b64cb3b6b35",
+      "required_evidence_roles": {
+        "entry_route_map": [
+          "manifest",
+          "source_file"
+        ],
+        "route_no_implementation_copy": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-008",
+      "revision_digest": "e967a9ee3fc4b3128f7b2f3aa2d3034a98cd30a89ed39c886e26d37c713b6173",
+      "required_evidence_roles": {
+        "direct_registration_absence": [
+          "manifest",
+          "source_tree"
+        ],
+        "promotion_boundary_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "promotion_decision": [
+          "exception",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-009",
+      "revision_digest": "a3f5c1661de85090c03b0f0dac110a49442cfe317da056b1ef47f7b2c4ef7a16",
+      "required_evidence_roles": {
+        "internal_implementation_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "normal_surface_absence": [
+          "manifest",
+          "source_file"
+        ],
+        "technical_visibility_exception": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-010",
+      "revision_digest": "dec8454ac06f3395feec5f5d769359d62f6c35a830cb0d3dd575c9f36f078f7d",
+      "required_evidence_roles": {
+        "no_fake_label_guard": [
+          "manifest",
+          "policy"
+        ],
+        "real_business_object_evidence": [
+          "manifest",
+          "receipt"
+        ],
+        "registry_entry_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-011",
+      "revision_digest": "3c2e7794a6f1d45a23fdd1210732baad063cb6b1a4a95e1f0a9a5b6909271ddf",
+      "required_evidence_roles": {
+        "duplicate_entry_inventory": [
+          "manifest",
+          "source_file"
+        ],
+        "merge_or_rationale_record": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-012",
+      "revision_digest": "3cab1580aec94604d7330b006f0ed29805ece6a76a8c7a4a5752aecf4ac29da4",
+      "required_evidence_roles": {
+        "human_entry_method_map": [
+          "manifest",
+          "source_file"
+        ],
+        "single_contract_guard": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-013",
+      "revision_digest": "5f6918460524788308e635a7a00f87d43634ee8dff8c8e436075987e68777f0c",
+      "required_evidence_roles": {
+        "result_responsibility_declaration": [
+          "policy",
+          "receipt"
+        ],
+        "route_audit_trail": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-002",
+      "revision_digest": "f7e258311aaac98b1044c7c37b47e7431d0cc489deeca1e5cb64ebf4847cc783",
+      "required_evidence_roles": {
+        "migration_disposition": [
+          "exception",
+          "manifest",
+          "policy"
+        ],
+        "release_gate_evidence": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "release_plan_record": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-003",
+      "revision_digest": "e0de6bcd53372dfe54ee17fbcad54cf172aa3ffe668a28b93c0ab33d356e2baa",
+      "required_evidence_roles": {
+        "facade_behavior": [
+          "log",
+          "receipt"
+        ],
+        "migration_disposition": [
+          "exception",
+          "manifest",
+          "policy"
+        ],
+        "public_surface_inventory": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-004",
+      "revision_digest": "78af8e999dadc8d7d263c7c47560e9927fc94f987287abbf8a2ae387972662c2",
+      "required_evidence_roles": {
+        "public_surface_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "release_receipt_set": [
+          "manifest",
+          "receipt"
+        ],
+        "version_line_declaration": [
+          "manifest",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-005",
+      "revision_digest": "33ed120d3fcf15ac51cb80c19ddb1dd1c7489bba0c0a1ade2eb2ce64f19eea7f",
+      "required_evidence_roles": {
+        "domain_duplication_guard": [
+          "manifest",
+          "source_file"
+        ],
+        "kernel_dependency_boundary": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "unapplied_material_marking": [
+          "exception",
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-007",
+      "revision_digest": "a52714788393917bd882bd52101b1295b06a95a1e2537aea7dc17d11b7936dd3",
+      "required_evidence_roles": {
+        "before_after_behavior": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "contract_immutability_guard": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "evidence_provenance": [
+          "log",
+          "receipt"
+        ],
+        "independent_load_validation": [
+          "log",
+          "receipt"
+        ],
+        "release_payload_boundary": [
+          "manifest",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-008",
+      "revision_digest": "fd417495bd5f0ecf2fd7139e27ec57f71a11bd55036adda8b9f6d1bdd1ae394d",
+      "required_evidence_roles": {
+        "coverage_basis_reference": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "migration_disposition": [
+          "exception",
+          "manifest",
+          "policy"
+        ],
+        "truth_source_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-009",
+      "revision_digest": "635bee549e1b2242da1dc19a7602acabffa090864174a67943fa7d825e11e8af",
+      "required_evidence_roles": {
+        "compatibility_fact_check": [
+          "log",
+          "receipt"
+        ],
+        "migration_disposition": [
+          "exception",
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-010",
+      "revision_digest": "a131b816ae2240d0baef75fb670814a98d9cee1e6d0522320c70e8006473d53f",
+      "required_evidence_roles": {
+        "adapter_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "compatibility_comparison": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-011",
+      "revision_digest": "ac221886b86621486733a0efb8ab7fad2d528db0678d3512cd0d221609869d57",
+      "required_evidence_roles": {
+        "adapter_registration": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "common_entry_source": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "public_entry_projection": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-014",
+      "revision_digest": "ee0106b33f86bbc1826c725628c944e0087b3171e7cb50e7bcec05d822528bdd",
+      "required_evidence_roles": {
+        "protocol_reference_scope": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "version_authority_convergence": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-015",
+      "revision_digest": "d2d60620c1de43bce587d05a909feae0b20d455fee006cb5d5f39d0ed53a6a41",
+      "required_evidence_roles": {
+        "generation_digest_chain": [
+          "manifest",
+          "receipt"
+        ],
+        "generation_lineage": [
+          "log",
+          "receipt"
+        ],
+        "truth_source_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-016",
+      "revision_digest": "75a0ff96a3dc411b95bcb77660c7d1289c361400e406f8c11d175192248a0e34",
+      "required_evidence_roles": {
+        "dual_maintenance_guard": [
+          "manifest",
+          "source_file"
+        ],
+        "generated_projection_identity": [
+          "manifest",
+          "receipt"
+        ],
+        "truth_source_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-017",
+      "revision_digest": "86bf8bc54ea79bf3da8aa1fb826cabcb7589512d8256904c07bf99fced7cf283",
+      "required_evidence_roles": {
+        "release_payload_boundary": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "runtime_directory_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "static_fact_prohibition": [
+          "exception",
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-018",
+      "revision_digest": "b166f1acba56878b5f3b241f759f51baa727c4df49937229e3ea41b4512ec8a3",
+      "required_evidence_roles": {
+        "admission_and_confirmation_record": [
+          "log",
+          "receipt"
+        ],
+        "entry_conformance_evidence": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "facade_behavior": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-019",
+      "revision_digest": "94698ba4b7188ec77b40ecb718624f94255f68ec1249495c7b415fe507381597",
+      "required_evidence_roles": {
+        "adaptation_outcome": [
+          "exception",
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "before_after_behavior": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "current_contract_adaptation": [
+          "manifest",
+          "policy",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-020",
+      "revision_digest": "6344935472b015d47c0495bbd998a3965ec86f9af772d7ef6b48f62667975992",
+      "required_evidence_roles": {
+        "reverse_modification_guard": [
+          "manifest",
+          "policy"
+        ],
+        "run_intervention_absence": [
+          "log",
+          "receipt"
+        ],
+        "token_estimate_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-022",
+      "revision_digest": "252cadc9d5e53141f1953b90fdf52772993aeb62c47f62a0868d6043ab841ebe",
+      "required_evidence_roles": {
+        "before_after_behavior": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "decision_record": [
+          "log",
+          "receipt"
+        ],
+        "unproven_claim_disposition": [
+          "exception",
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-023",
+      "revision_digest": "45f9ef3bfc0a470552b6f5ba36654c7c0d7ceb78e5d607953282eff329d095e2",
+      "required_evidence_roles": {
+        "adoption_declaration": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "baseline_compatibility": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "coverage_basis_reference": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIXED-001",
+      "revision_digest": "6abd03ac0f60d9bc3df494165bd8f76811b1027c52abafe36147624b23db51c4",
+      "required_evidence_roles": {
+        "handoff_contract_compliance": [
+          "receipt",
+          "source_file"
+        ],
+        "machine_interface_handoff": [
+          "manifest",
+          "source_file"
+        ],
+        "non_interface_handoff_absence": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIXED-002",
+      "revision_digest": "e25c433952094161bdbca09df1f9541fa15b6dc812dfdfb30a865a7d1f120309",
+      "required_evidence_roles": {
+        "cross_ecosystem_lock_imposture_absence": [
+          "manifest",
+          "receipt"
+        ],
+        "ecosystem_dependency_lock": [
+          "manifest",
+          "receipt"
+        ],
+        "runtime_version_lock": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIXED-003",
+      "revision_digest": "212eb49a33ae8f49589ac047b71643babc94c3362e2a695867958fd1f104cbb6",
+      "required_evidence_roles": {
+        "documented_handoff_channel": [
+          "policy",
+          "source_file"
+        ],
+        "interpreter_coupling_absence": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NAM-022",
+      "revision_digest": "7bab7167038f3704c00bdd0ba3b1d7f0a92c2d20459a958d924a04b1ae5066ed",
+      "required_evidence_roles": {
+        "identity_mapping_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "registry_projection": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NAM-023",
+      "revision_digest": "efbfebe9be67a42a7a959946ea9c1f255191da44ee7905765759e7c8f5423857",
+      "required_evidence_roles": {
+        "per_version_fact_check": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "v1_ref_usage": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NAM-024",
+      "revision_digest": "e5c9b7d6e5f44a45b8886ecd011cdf45d985474959a66ea0bdbf6f89de7b562d",
+      "required_evidence_roles": {
+        "adapter_declaration": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "migration_mechanism_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "v2_upgrade_unit_consumption": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NETSEC-001",
+      "revision_digest": "80f221fc99a722b940e4fdfbc31dd071a5629b8e3b18e3f96386f0cd1c218106",
+      "required_evidence_roles": {
+        "network_authorization_evidence": [
+          "policy",
+          "receipt"
+        ],
+        "network_behavior_declaration": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NETSEC-002",
+      "revision_digest": "ca6e62aa3bd4e63133dd5d245b3af0813e5670c22cc078906d45733c97bf6b83",
+      "required_evidence_roles": {
+        "egress_policy_block_evidence": [
+          "policy",
+          "receipt"
+        ],
+        "post_resolution_validation_evidence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NODE-001",
+      "revision_digest": "d0ddf4c285940e880650a8c6506ae7ae40bff23240f8f81829f086dcd4c0dfa5",
+      "required_evidence_roles": {
+        "lockfile_presence": [
+          "manifest",
+          "source_file"
+        ],
+        "node_workspace_layout": [
+          "manifest",
+          "source_tree"
+        ],
+        "package_manager_lock_alignment": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NODE-002",
+      "revision_digest": "3f952bd66fc171cc1123054995877e61ea35ebfe99cbfc0487bb3853e538359c",
+      "required_evidence_roles": {
+        "publish_unit_boundary": [
+          "log",
+          "receipt"
+        ],
+        "release_manifest_whitelist": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "root_package_private_flag": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NODE-003",
+      "revision_digest": "6315a762ef88b9e2d4054d5e0262ce1e6f6382a200b3eeeeca7e2b9fd96226a0",
+      "required_evidence_roles": {
+        "non_applicable_field_statement": [
+          "policy",
+          "source_file"
+        ],
+        "published_package_manifest": [
+          "manifest",
+          "receipt"
+        ],
+        "release_payload_manifest": [
+          "receipt"
+        ],
+        "required_field_declaration": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NODE-004",
+      "revision_digest": "2f3cfe4ee31e0e16156b1074891135ebd017a133ba48e336fdaf3dd1c4560f6b",
+      "required_evidence_roles": {
+        "actual_package_inspection": [
+          "log",
+          "receipt"
+        ],
+        "pre_release_check_evidence": [
+          "log",
+          "receipt"
+        ],
+        "source_vs_package_equivalence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NODE-005",
+      "revision_digest": "cd254b84568d06fd41eab5823c6b4bc721f83b965c6d063f2f987dd42fcaaced",
+      "required_evidence_roles": {
+        "declared_dependency_baseline": [
+          "manifest",
+          "source_file"
+        ],
+        "forbidden_content_scan": [
+          "log",
+          "receipt"
+        ],
+        "release_payload_inventory": [
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-NODE-006",
+      "revision_digest": "d282325f28366fc74ec0bc21ec1c9c39cda1a4f9dfd3035a5c9beb8505944c23",
+      "required_evidence_roles": {
+        "cross_repo_dependency_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "local_workspace_usage_guard": [
+          "log",
+          "receipt"
+        ],
+        "lock_and_digest_pin": [
+          "manifest",
+          "receipt"
+        ],
+        "published_version_resolution": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-001",
+      "revision_digest": "a7bedcf046a6ff94abf873fbc335beac3a662584a49a34689b159c7d5314a57f",
+      "required_evidence_roles": {
+        "method_side_effect_permission": [
+          "policy",
+          "source_file"
+        ],
+        "permission_surface_inventory": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-002",
+      "revision_digest": "fb9e0360f37db5e839dd52c0b11703598ffdbf412ff0c7cd276877cafc6beba1",
+      "required_evidence_roles": {
+        "executed_action_log": [
+          "log",
+          "receipt"
+        ],
+        "method_side_effect_permission": [
+          "policy",
+          "source_file"
+        ],
+        "per_authorization_record": [
+          "log",
+          "policy",
+          "receipt"
+        ],
+        "task_request_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-003",
+      "revision_digest": "c587ff49858b75da82d04d970d098da64de8d50a53e545bb2fb2afae14838740",
+      "required_evidence_roles": {
+        "executed_action_log": [
+          "log",
+          "receipt"
+        ],
+        "internal_capability_permission_scope": [
+          "policy",
+          "source_file"
+        ],
+        "permission_surface_inventory": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-004",
+      "revision_digest": "b3efc7f4b83a3e8295e52d27912106f38c7b50ed8938157f8540e7de5d276cd0",
+      "required_evidence_roles": {
+        "destructive_action_log": [
+          "log",
+          "receipt"
+        ],
+        "per_authorization_record": [
+          "log",
+          "policy",
+          "receipt"
+        ],
+        "permission_surface_inventory": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-005",
+      "revision_digest": "49f31cfb74b6c40fd2e26734a0a840f3c129995df3c5339ed0f5b432583c786f",
+      "required_evidence_roles": {
+        "managed_write_observation": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "path_canonicalization_evidence": [
+          "log",
+          "source_file"
+        ],
+        "prewrite_check_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-006",
+      "revision_digest": "126d60567c9a3ff4feccb9aa29f1849ca30a3998750ecca1be35ac387a4f497f",
+      "required_evidence_roles": {
+        "dependency_install_log": [
+          "log",
+          "receipt"
+        ],
+        "network_action_log": [
+          "log",
+          "receipt"
+        ],
+        "per_authorization_record": [
+          "log",
+          "policy",
+          "receipt"
+        ],
+        "publish_action_log": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-007",
+      "revision_digest": "0ed43b05d1d7f1c5a4d69e9bf107454d4a543a60388614c99be03d33ea428268",
+      "required_evidence_roles": {
+        "secret_reference_record": [
+          "log",
+          "source_file"
+        ],
+        "secret_value_absence_scan": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-008",
+      "revision_digest": "4cc893589cc56e8b01c3de5182db31f21809e764f3eef2103908207777d4cb80",
+      "required_evidence_roles": {
+        "method_readonly_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "per_authorization_record": [
+          "log",
+          "policy",
+          "receipt"
+        ],
+        "remediation_only_output": [
+          "receipt",
+          "source_tree"
+        ],
+        "target_tree_zero_write_trace": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PERM-009",
+      "revision_digest": "04e3b67ada85c37797d5cdfd675659854218277a167834d0f457d8608867ef4e",
+      "required_evidence_roles": {
+        "authorization_non_implication_record": [
+          "policy",
+          "receipt"
+        ],
+        "high_risk_effect_itemization": [
+          "policy",
+          "receipt"
+        ],
+        "per_authorization_record": [
+          "log",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PRODUCT-001",
+      "revision_digest": "7b015cf68d6c2c9f628fe83cfba98d680fe018c89e30326b0dd6a9b252b86c7a",
+      "required_evidence_roles": {
+        "domain_duplication_guard": [
+          "source_file",
+          "source_tree"
+        ],
+        "kernel_dependency_boundary": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "kernel_subject": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PRODUCT-002",
+      "revision_digest": "87f0d8e29c0813897f3d63e16fb8b38a66a2a0187cbdf42beb6d9083c328d939",
+      "required_evidence_roles": {
+        "boundary_field_non_ownership": [
+          "source_file",
+          "source_tree"
+        ],
+        "method_registry_authority": [
+          "manifest",
+          "source_file"
+        ],
+        "method_registry_entry": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PRODUCT-003",
+      "revision_digest": "c080924a7aa7b0beed26b303319d32346ca7e8e8685137cec9b4e1dba46206ff",
+      "required_evidence_roles": {
+        "assistant_topology_subject": [
+          "manifest",
+          "source_tree"
+        ],
+        "diagnostic_program_declaration": [
+          "source_file",
+          "source_tree"
+        ],
+        "public_artifact_non_ownership": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PRODUCT-004",
+      "revision_digest": "48141e0fe1933a86fe5c3856bf4e943536ae489fd3289b184366ce06fae0fc25",
+      "required_evidence_roles": {
+        "domain_artifact_impersonation_guard": [
+          "policy",
+          "source_file"
+        ],
+        "governance_artifact_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "spec_release_identity": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PRODUCT-005",
+      "revision_digest": "42617104cd2eef2c3eeda50b8ab44fb7c286dbd15cfe60bab33788c860a25e7a",
+      "required_evidence_roles": {
+        "domain_selection": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "kernel_dependency_boundary": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "method_registry_entry": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PRODUCT-006",
+      "revision_digest": "63b3743434e02785d8f89fcdcae295203d0c1ea0a260813ffc32751a7d65928f",
+      "required_evidence_roles": {
+        "conformance_check_declaration": [
+          "policy",
+          "source_file"
+        ],
+        "domain_duplication_guard": [
+          "source_file",
+          "source_tree"
+        ],
+        "domain_selection": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "kernel_dependency_boundary": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PRODUCT-007",
+      "revision_digest": "2df1138f8616919e7bbb4d544f1538001bf9fe9debd8bf3169d720c5e63bf457",
+      "required_evidence_roles": {
+        "assistant_topology_subject": [
+          "manifest",
+          "source_tree"
+        ],
+        "domain_artifact_impersonation_guard": [
+          "policy",
+          "source_file"
+        ],
+        "public_method_surface": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "registration_relation": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-001",
+      "revision_digest": "312aa7b0681395860bef7b2a788f37a208097769f7327fa9eca6a71331f93856",
+      "required_evidence_roles": {
+        "domain_selection_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "scanner_guess_guard": [
+          "log",
+          "receipt"
+        ],
+        "selection_business_basis": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-002",
+      "revision_digest": "bc310d23031dfdeb28188ca24fb44eeac39c885a31b15921177c8a48f87b90e7",
+      "required_evidence_roles": {
+        "extra_domain_evidence": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "project_artifact_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "software_domain_selection": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-003",
+      "revision_digest": "32c2bcb5b3398fcc6b4470b80af0bf50cb7c67c4b25267afab55a00e34de5dde",
+      "required_evidence_roles": {
+        "artifact_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "domain_selection": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "selection_rationale": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-004",
+      "revision_digest": "132c059bf247b47cec5b8858aa5e471cd7113d3325253c27bcbf5d54f1c5ecba",
+      "required_evidence_roles": {
+        "runtime_code_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "skill_plugin_artifact_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "software_domain_addition_evidence": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-005",
+      "revision_digest": "c0efe4b1ffbe35f20b726f4e9608ddfc6e8527627dee9a8bfe7767c1aabadedf",
+      "required_evidence_roles": {
+        "composition_inputs": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "deterministic_generation_evidence": [
+          "log",
+          "receipt"
+        ],
+        "effective_config_output": [
+          "manifest",
+          "receipt"
+        ],
+        "effective_graph_output": [
+          "manifest",
+          "receipt"
+        ],
+        "relation_lock_traceability": [
+          "log",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-006",
+      "revision_digest": "758e9dc4f8d9bb9bcfb97aed70950bb4cc0713fb244756a5716f6d2bb4cfcd3e",
+      "required_evidence_roles": {
+        "authority_graph_reference": [
+          "manifest",
+          "source_tree"
+        ],
+        "isolated_truth_source_guard": [
+          "log",
+          "receipt"
+        ],
+        "logical_view_declaration": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-007",
+      "revision_digest": "986eb419acd9bc41916f8715d343f9ed217d1b706a29421d6758e632f1ca7c92",
+      "required_evidence_roles": {
+        "cross_domain_edge_preservation": [
+          "receipt",
+          "source_file"
+        ],
+        "filter_definition": [
+          "manifest",
+          "source_file"
+        ],
+        "freshness_impact_analysis_evidence": [
+          "log",
+          "receipt"
+        ],
+        "hidden_endpoint_traceability": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-008",
+      "revision_digest": "9a72cb79ecab7f7fee7f0baba5794da8715f86899927823417d77944b1376547",
+      "required_evidence_roles": {
+        "duplicate_authority_graph_guard": [
+          "log",
+          "receipt",
+          "source_file"
+        ],
+        "effective_config_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "federation_substitute_guard": [
+          "log",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-010",
+      "revision_digest": "e0e08610fef761229599726f4f2cb8097563aa1c0ba36790ff25689ceb45ff5c",
+      "required_evidence_roles": {
+        "allowed_declaration_scope": [
+          "policy",
+          "source_file"
+        ],
+        "composed_content_duplication_guard": [
+          "log",
+          "receipt",
+          "source_file"
+        ],
+        "human_config_declaration": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-011",
+      "revision_digest": "7c43e47a6a09567371ec4789dbfcc9f032a8a719ae7095005307ca4aee5c5987",
+      "required_evidence_roles": {
+        "generation_determinism_evidence": [
+          "log",
+          "receipt"
+        ],
+        "human_second_source_guard": [
+          "log",
+          "receipt",
+          "source_file"
+        ],
+        "tool_generated_artifacts": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-001",
+      "revision_digest": "cacd722941f5312199a642ac258f761ef2354957c629e0d0c846e5fc115932d1",
+      "required_evidence_roles": {
+        "digest_generation_record": [
+          "log",
+          "receipt"
+        ],
+        "download_layer_digest": [
+          "manifest",
+          "receipt"
+        ],
+        "envelope_layer_digest": [
+          "manifest",
+          "receipt"
+        ],
+        "install_tree_layer_digest": [
+          "manifest",
+          "receipt"
+        ],
+        "layered_digest_record": [
+          "manifest",
+          "receipt"
+        ],
+        "payload_layer_digest": [
+          "manifest",
+          "receipt"
+        ],
+        "projection_layer_digest": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-002",
+      "revision_digest": "344044e3b18b5121f77a53b23f0affab47eddd3065a25b26b12bce45d83c5881",
+      "required_evidence_roles": {
+        "digest_provenance_relations": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "legal_change_explanation": [
+          "policy",
+          "receipt"
+        ],
+        "provenance_verification": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-003",
+      "revision_digest": "cbdb73ee4f5dc13af9c27c2ed46fae80b0a80b117628f7e5eecc70ef81452ccf",
+      "required_evidence_roles": {
+        "envelope_change_documented": [
+          "policy",
+          "receipt",
+          "source_file"
+        ],
+        "payload_integrity_after_wrap": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-004",
+      "revision_digest": "6798f6954cfcb6ab08dd4e38b6635d10bd66371622dbafb5a62e3b070e310fc7",
+      "required_evidence_roles": {
+        "audit_origin_record": [
+          "log",
+          "receipt"
+        ],
+        "gate_token_artifact": [
+          "manifest",
+          "receipt"
+        ],
+        "token_binding_fields": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-005",
+      "revision_digest": "cb0a8e6f93ffed1cf2d3333efff9dba131137b7fbd0012e6794c1cdfdebbd981",
+      "required_evidence_roles": {
+        "token_scope_enforcement": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "upload_authorization_trace": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-006",
+      "revision_digest": "bb8e2622a881b3f08c369440422180ee3bc18b1d031879830efbd92051f0024c",
+      "required_evidence_roles": {
+        "readback_authenticity": [
+          "manifest",
+          "receipt"
+        ],
+        "real_channel_readback_record": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-007",
+      "revision_digest": "dbff4f5a0242636da1f84588c023e6c13f991374eed18498ba159f84c6edf40f",
+      "required_evidence_roles": {
+        "full_chain_verification_record": [
+          "log",
+          "receipt"
+        ],
+        "readback_digest_relation_check": [
+          "log",
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-008",
+      "revision_digest": "063e7737e34e371ded35c42b9e0927594e0ad7442d9b5b364ad1962e239cffd5",
+      "required_evidence_roles": {
+        "install_discovery_call_chain": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "minimal_invocation_result": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "stable_release_fact_record": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-009",
+      "revision_digest": "360c56b8103e16480bf4b4b6f0cdf6c3d74d2f7dbd337a8d371edaeb871e69ba",
+      "required_evidence_roles": {
+        "token_lifecycle_record": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "token_reuse_probe": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-010",
+      "revision_digest": "16f7a0847a2bfb8fb6dbccd3f7386456ff422e0b59479c4cffe1056d394e76b0",
+      "required_evidence_roles": {
+        "new_token_generation": [
+          "manifest",
+          "receipt"
+        ],
+        "old_token_invalidation": [
+          "log",
+          "receipt"
+        ],
+        "reaudit_execution": [
+          "log",
+          "receipt"
+        ],
+        "reaudit_trigger_record": [
+          "log",
+          "manifest"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-011",
+      "revision_digest": "788782467f0aa31698ccadb3f7572d93258ab2b15c1ee44571c8f50b86a14ff7",
+      "required_evidence_roles": {
+        "package_manifest": [
+          "manifest",
+          "source_file"
+        ],
+        "version_authority_convergence": [
+          "manifest",
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-013",
+      "revision_digest": "e1cd90954bb1f8b1c6032ccf21339aa7d59b679609a9522768977ed3a7120d9b",
+      "required_evidence_roles": {
+        "metadata_surfaces": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "ownership_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "package_manifest": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-014",
+      "revision_digest": "039046642dd89875ca008a5d472369b6e2de40fa05ddd13d7c0fe4fc88693b34",
+      "required_evidence_roles": {
+        "authorization_policy": [
+          "exception",
+          "policy",
+          "receipt"
+        ],
+        "frozen_release": [
+          "manifest",
+          "receipt"
+        ],
+        "license_artifact": [
+          "source_file",
+          "source_tree"
+        ],
+        "package_metadata": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "public_metadata_surfaces": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-016",
+      "revision_digest": "2992fe16adaaa876c2ecacbcfbd3e77bbf734490f8b924872001d7dc87589647",
+      "required_evidence_roles": {
+        "release_gate_evidence": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "trunk_version_fact": [
+          "manifest",
+          "source_file"
+        ],
+        "version_line_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-017",
+      "revision_digest": "b7f12d1b8472ef23d59181762a3660a60d77efce6cd22b2c55634b4e25f3c3a9",
+      "required_evidence_roles": {
+        "release_process_declaration": [
+          "manifest",
+          "policy",
+          "source_tree"
+        ],
+        "release_skill_reference": [
+          "manifest",
+          "policy",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PUBLISH-018",
+      "revision_digest": "6f353428f31faaad15b6bb29b126a5569a17155f5de80f7b148c38daf1fa1bea",
+      "required_evidence_roles": {
+        "governance_decision": [
+          "exception",
+          "policy",
+          "receipt"
+        ],
+        "release_process_inventory": [
+          "manifest",
+          "policy",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PYTHON-001",
+      "revision_digest": "35b76d8a6effa035ff2695d10c4e059113aa9c1a9378e4a8ed60833f78cd859c",
+      "required_evidence_roles": {
+        "dependency_declaration": [
+          "manifest",
+          "source_tree"
+        ],
+        "entry_point_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "package_metadata": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "source_tree_layout": [
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PYTHON-002",
+      "revision_digest": "802b8ac47091944d6bf7ffe87c05e7c8757172ed4f5401cd33c6c49ddd571e8d",
+      "required_evidence_roles": {
+        "build_artifact_evidence": [
+          "log",
+          "receipt"
+        ],
+        "install_verification_evidence": [
+          "log",
+          "receipt"
+        ],
+        "release_exception_record": [
+          "exception",
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PYTHON-003",
+      "revision_digest": "64ef1f9e11584d2e74ac579859d5f3d2b13b4b5206087f42a3945dd95e825788",
+      "required_evidence_roles": {
+        "dependency_declaration": [
+          "manifest",
+          "source_tree"
+        ],
+        "lock_resolution_consistency_evidence": [
+          "log",
+          "receipt"
+        ],
+        "platform_package_lock": [
+          "manifest",
+          "platform_support",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PYTHON-004",
+      "revision_digest": "c75c1d9487ae5abf8fd54056ee31fd1601008f889041c58e78193563e7cce865",
+      "required_evidence_roles": {
+        "environment_identity_evidence": [
+          "log",
+          "receipt"
+        ],
+        "isolated_env_observation": [
+          "log",
+          "receipt"
+        ],
+        "runtime_directory_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PYTHON-005",
+      "revision_digest": "cdebc0840b4ae9f602073426a963882f57147536d91540f9e19cee93f34822cc",
+      "required_evidence_roles": {
+        "system_env_write_scan": [
+          "log",
+          "receipt"
+        ],
+        "user_precondition_record": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PYTHON-006",
+      "revision_digest": "733a6368f72f54b0b05c29f65004c68107108183d5efeeffbc57dc8a5bf1347e",
+      "required_evidence_roles": {
+        "package_metadata": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "release_proof_evidence": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-001",
+      "revision_digest": "19ad0f13bbba0cc7786885875525c9f720348d71d08f80ca7279f689785fe6af",
+      "required_evidence_roles": {
+        "applicability_analysis_record": [
+          "policy",
+          "receipt"
+        ],
+        "candidate_source_registry": [
+          "manifest",
+          "source_file"
+        ],
+        "formal_admission_guard": [
+          "manifest",
+          "policy"
+        ],
+        "per_rule_adjudication_record": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-002",
+      "revision_digest": "281efcca38dbe35607dd960d75085218fbfe05bdddcbd72ba76f20e79112137e",
+      "required_evidence_roles": {
+        "adjudication_evidence_set": [
+          "policy",
+          "receipt"
+        ],
+        "lineage_weight_justification": [
+          "policy",
+          "receipt"
+        ],
+        "reference_lineage_record": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-003",
+      "revision_digest": "759a015dc2d58036ad0fb2e15a7e98a0b043259afec76703bc538b135048fc83",
+      "required_evidence_roles": {
+        "duplicate_copy_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "shared_lineage_mapping": [
+          "policy",
+          "source_file"
+        ],
+        "single_source_vote_evidence": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-004",
+      "revision_digest": "a7a2beeaa67ebc541860361659ad9ce95913d397d88db4aa3c5eb6d9f5e27de4",
+      "required_evidence_roles": {
+        "common_source_identity_record": [
+          "policy",
+          "source_file"
+        ],
+        "new_validation_evidence": [
+          "log",
+          "receipt"
+        ],
+        "semantic_difference_record": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-005",
+      "revision_digest": "1b23ef198d9be546f169c76e24a800678da2ab4c6799bdbc70fea33c50071f8b",
+      "required_evidence_roles": {
+        "coverage_mapping_record": [
+          "policy",
+          "source_file"
+        ],
+        "no_new_identity_guard": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-006",
+      "revision_digest": "13dc1af50b72c5d5227b059bc86cda63690149848e963b32296d96c4707b19be",
+      "required_evidence_roles": {
+        "conflict_comparison_record": [
+          "policy",
+          "source_file"
+        ],
+        "conflict_type_distinction": [
+          "policy",
+          "receipt"
+        ],
+        "conflict_verdict_record": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-007",
+      "revision_digest": "a19321d767a7844689e9de76df72dd93e3508b5c364d82f419c189d813810f8f",
+      "required_evidence_roles": {
+        "generalized_rule_fields": [
+          "policy",
+          "source_file"
+        ],
+        "project_specific_copy_guard": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-008",
+      "revision_digest": "dd887ff40afc74a7ec5d474d5a3bcb34e663df7aa44de02dd2110ef71c8bd552",
+      "required_evidence_roles": {
+        "discard_criteria_evaluation": [
+          "policy",
+          "receipt"
+        ],
+        "discard_reason_record": [
+          "policy",
+          "source_file"
+        ],
+        "discarded_rule_disposition": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-009",
+      "revision_digest": "d451f446d6147f62e2ae61930ba4fe5704b82cc63ba0a1476767fde0c30daad1",
+      "required_evidence_roles": {
+        "deferral_record": [
+          "policy",
+          "receipt"
+        ],
+        "release_gate_absence_evidence": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-010",
+      "revision_digest": "491236205f80ac0a717eead67fca479498b3165ed43285afc44e2be4ffef10d4",
+      "required_evidence_roles": {
+        "reference_audit_deliverables": [
+          "policy",
+          "receipt",
+          "source_file"
+        ],
+        "user_decision_backlog": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-011",
+      "revision_digest": "c5f87ac86df2f1acadc10e141ec31d799da9efbfc7cdcc226d6806ac4cefa3c1",
+      "required_evidence_roles": {
+        "inventory_only_marker": [
+          "policy",
+          "receipt"
+        ],
+        "product_boundary_prerequisite": [
+          "manifest",
+          "policy"
+        ],
+        "take_or_leave_decision": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-012",
+      "revision_digest": "28366f33d3a6646786332dbd59d35d38c241f451ab318c1d59e7cc590daa9d8a",
+      "required_evidence_roles": {
+        "cross_review_record": [
+          "log",
+          "receipt"
+        ],
+        "full_inventory_closure": [
+          "manifest",
+          "receipt"
+        ],
+        "known_omission_check": [
+          "policy",
+          "receipt"
+        ],
+        "per_rule_adjudication_closure": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-013",
+      "revision_digest": "8d2bf2933f2cf2800150dcbe522ffa4a2fcb2be75ea8410734fbbf499d6c6b5d",
+      "required_evidence_roles": {
+        "input_digest_record": [
+          "manifest",
+          "receipt"
+        ],
+        "inventory_generation_evidence": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "manual_table_absence_guard": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-014",
+      "revision_digest": "80c6c9930f652434b930b7e1d2927b03661d245106eceffde77d04299d12fc55",
+      "required_evidence_roles": {
+        "revision_content_digest": [
+          "manifest",
+          "receipt"
+        ],
+        "revision_independent_identity": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-015",
+      "revision_digest": "68d337d85674d9629412a6b99e91a5591dd7db97fe003fe628e9f6197ebe5610",
+      "required_evidence_roles": {
+        "atomic_verdict_record": [
+          "policy",
+          "receipt"
+        ],
+        "verdict_mutual_exclusion": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-016",
+      "revision_digest": "c36f4c922ffdb74afb11b75d75136133147794908541fb1f6f347aaa0ba70184",
+      "required_evidence_roles": {
+        "equivalence_proof_record": [
+          "policy",
+          "source_file"
+        ],
+        "shared_rationale_reference": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-017",
+      "revision_digest": "f5b7abcdc2c1c07fb12845d8cde55481fc0438720905124e24966688246ceaeb",
+      "required_evidence_roles": {
+        "independent_evidence_record": [
+          "log",
+          "receipt"
+        ],
+        "independent_governance_record": [
+          "manifest",
+          "policy"
+        ],
+        "no_cross_proof_guard": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-018",
+      "revision_digest": "5dd9a307995a1ee97deae090cb1d58f3861015f4a52889d04ec22e1ab9f8d6b6",
+      "required_evidence_roles": {
+        "asset_drift_report": [
+          "policy",
+          "receipt"
+        ],
+        "authority_claim_guard": [
+          "manifest",
+          "policy"
+        ],
+        "per_fact_disposition": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REFERENCE-019",
+      "revision_digest": "857dcaf2136d5b5024e5d164e2fbb2b37aae1ef572a0dbcf451f71fcbbc26cc6",
+      "required_evidence_roles": {
+        "execution_invocation_evidence": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "execution_result_evidence": [
+          "log",
+          "receipt"
+        ],
+        "placeholder_marking": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-011",
+      "revision_digest": "9ad6abb285838ea21869fe66a67c7b81a905c99ef44a621d85146dca9f56c24f",
+      "required_evidence_roles": {
+        "registration_boundary_authority": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "registration_entries": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "registry_projection": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-012",
+      "revision_digest": "344f15252e123d2e5914cdcf27097534c573934224f598bfce7ae07ff83c707b",
+      "required_evidence_roles": {
+        "identity_convention_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "upgrade_adjudication": [
+          "exception",
+          "policy",
+          "receipt"
+        ],
+        "v2_projection_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-013",
+      "revision_digest": "a04f57203211cc3162e272753dd7886185d3369b4a4be3743c51ddaed065ce70",
+      "required_evidence_roles": {
+        "adapter_registration": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "protocol_reference_scope": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "published_fact_binding": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-014",
+      "revision_digest": "d6e55887c7b6bd29f8f15516daadb5bff3d8bc8138120c34938110a957d5a6bb",
+      "required_evidence_roles": {
+        "audit_revision_policy": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "compatibility_comparison": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "registry_consumption": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-015",
+      "revision_digest": "2b1e05bd63fb586d7c406cdf6db28f3953651ca221f1be4e383be6172b86864f",
+      "required_evidence_roles": {
+        "bundled_projection": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "human_entry_boundary": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "registry_validation_result": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-RELEASESEC-001",
+      "revision_digest": "267ec64e158952c9e1135965181aeba1a61baa910445ca0f7aa1b9b8b4e72afd",
+      "required_evidence_roles": {
+        "blocker_clearance_evidence": [
+          "log",
+          "receipt"
+        ],
+        "contextual_finding_record": [
+          "log",
+          "receipt"
+        ],
+        "release_blocker_finding": [
+          "log",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REPO-001",
+      "revision_digest": "27b892de1a0d783cb0a27cf9106c9406925eccd05c0e2cd5f55bdb827606eca6",
+      "required_evidence_roles": {
+        "closure_verification_record": [
+          "log",
+          "receipt"
+        ],
+        "colocation_layout_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "single_version_boundary_evidence": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REPO-002",
+      "revision_digest": "40cc83417111a40bd623377a5da6a016dcbd74295f90aa7721cbdefdbb82644b",
+      "required_evidence_roles": {
+        "compliance_criteria_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "split_layout_acceptance": [
+          "manifest",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REPO-003",
+      "revision_digest": "feac54625e97a156fad77a86ab145d4701d4d664f2101c2c59b49ae28fec68f5",
+      "required_evidence_roles": {
+        "consumer_lock_traceability": [
+          "manifest",
+          "receipt"
+        ],
+        "cross_repo_dependency_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "published_protocol_link": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REPO-004",
+      "revision_digest": "17b817e9ad335aa5a966ecba10b0bc3ef7059a8b3d1ec07a3b9d4fb85ce5e212",
+      "required_evidence_roles": {
+        "dev_workspace_link_usage": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "no_abs_path_dependency_proof": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "release_dependency_resolution": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "release_evidence_purity": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REPO-005",
+      "revision_digest": "e22fbde73dd280d2d7ad55777599bf40b527713d3826d89f7348adb4c4a7436f",
+      "required_evidence_roles": {
+        "exclusion_baseline": [
+          "source_file",
+          "source_tree"
+        ],
+        "runtime_directory_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "source_tree_layout": [
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REPO-007",
+      "revision_digest": "cc77ca7b739f4329fc8cb66b2f7151612766f5d24022a02a074986dd364a3e79",
+      "required_evidence_roles": {
+        "foundation_authority": [
+          "manifest",
+          "receipt"
+        ],
+        "project_lifecycle": [
+          "manifest",
+          "policy",
+          "receipt",
+          "source_tree"
+        ],
+        "route_alignment": [
+          "manifest",
+          "policy",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SECRET-001",
+      "revision_digest": "e796fd81b2d49a9d75d86491f0b89d05834ee7bca1dab1b427b10dd694e3365e",
+      "required_evidence_roles": {
+        "secret_reference_only_evidence": [
+          "manifest",
+          "source_file"
+        ],
+        "secret_value_absence": [
+          "log",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SECRET-002",
+      "revision_digest": "9e042a978e4e39eb28ff7fecea294fcd6c71bbeda78bc1292537c77803e21b3a",
+      "required_evidence_roles": {
+        "artifact_surface_inventory": [
+          "manifest",
+          "receipt"
+        ],
+        "secret_value_absence_artifacts": [
+          "log",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SECRET-003",
+      "revision_digest": "631f3dfd604bbaa2d42db2503c43c25aee11f9370dd7157d8f39dadad3641a18",
+      "required_evidence_roles": {
+        "non_sensitive_fact_preserved": [
+          "log",
+          "receipt"
+        ],
+        "redaction_mark_evidence": [
+          "log",
+          "receipt"
+        ],
+        "redaction_rule_version": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SOURCE-019",
+      "revision_digest": "4609aaee12466a0ee0fb1eba4214997a372ff66f83f81cb4d09f223fa9aab1ae",
+      "required_evidence_roles": {
+        "generation_lineage": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "truth_source_declaration": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SPECLAYER-001",
+      "revision_digest": "7623fad79004c9055f2ab39ccfce102f876e3a46ebd7ca0c8db639e6db4d6b35",
+      "required_evidence_roles": {
+        "required_content_coverage": [
+          "policy",
+          "source_file"
+        ],
+        "specification_product_manifest": [
+          "manifest",
+          "policy"
+        ],
+        "specification_release_evidence": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SPECLAYER-002",
+      "revision_digest": "5275a3758d33afe2d70de3266dd8e7faf50f983010d8a0f19cd525d04982cb04",
+      "required_evidence_roles": {
+        "machine_contract_artifact": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "minimal_test_suite": [
+          "source_file",
+          "source_tree"
+        ],
+        "spec_release_lock": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SPECLAYER-003",
+      "revision_digest": "9714086d9c843ee1d21633db9dc88fd8a70d753d67331feebeead041fc521df8",
+      "required_evidence_roles": {
+        "check_composition_evidence": [
+          "log",
+          "receipt"
+        ],
+        "machine_contract_consumption": [
+          "manifest",
+          "receipt"
+        ],
+        "spec_release_consumption": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SPECLAYER-004",
+      "revision_digest": "423b2a6aede99f0fd57ea8c55ca386f5e22b76a6988a4c300ed87a9936adb6cc",
+      "required_evidence_roles": {
+        "check_skill_surface_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "no_rule_redefinition_guard": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SPECLAYER-005",
+      "revision_digest": "57671d41a6e891a7ff468c7f4d36635051ebc7b01405151f0529a1ebebfa19ea",
+      "required_evidence_roles": {
+        "artifact_contract_reference_only": [
+          "manifest",
+          "policy"
+        ],
+        "authority_ownership_mapping": [
+          "manifest",
+          "policy"
+        ],
+        "no_schema_copy_guard": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SUPPLY-001",
+      "revision_digest": "ad637d5f8bfa0547e76937238099f82d40f5aa3f5bb294c63025a445b6bf3356",
+      "required_evidence_roles": {
+        "dependency_provenance_record": [
+          "manifest",
+          "receipt"
+        ],
+        "missing_field_report": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SUPPLY-002",
+      "revision_digest": "277a74a4d9e513879f5d13d901de14729fcd715a1d342cda59bd7a62f996c356",
+      "required_evidence_roles": {
+        "approved_exception_flow": [
+          "exception",
+          "policy",
+          "receipt"
+        ],
+        "blocked_operation_report": [
+          "log",
+          "receipt"
+        ],
+        "provenance_verification_record": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOOLSEC-001",
+      "revision_digest": "612e0df071336c3c690fa18c84c38aa23ee4d766f0fae4ab8e355a1668722ffa",
+      "required_evidence_roles": {
+        "capability_necessity_binding": [
+          "policy",
+          "source_file"
+        ],
+        "threshold_absence_evidence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOOLSEC-002",
+      "revision_digest": "12a3bf9530ab9e2160c492d9335e9e1247f37aa229b8153312ac205e696fdae9",
+      "required_evidence_roles": {
+        "program_whitelist_evidence": [
+          "manifest",
+          "policy"
+        ],
+        "shell_concat_absence": [
+          "log",
+          "source_file"
+        ],
+        "structured_argument_evidence": [
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOPOLOGY-001",
+      "revision_digest": "b23377da68d78a40b01710d4e187d70efd516e165a84189321e0b4a31a7c5b02",
+      "required_evidence_roles": {
+        "delegation_behavior": [
+          "log",
+          "receipt"
+        ],
+        "responsibility_boundary": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "topology_subject": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOPOLOGY-002",
+      "revision_digest": "1ba5c17a984980c34ebb671f62d29cafd4920c5177b2f4f3ff7bafc38b94f133",
+      "required_evidence_roles": {
+        "domain_free_execution": [
+          "log",
+          "receipt"
+        ],
+        "forbidden_default_probe": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "kernel_dependency_boundary": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "kernel_subject": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOPOLOGY-003",
+      "revision_digest": "3645c2dd91295cccfca4607708e00fddaa78c120bc05f6208f78bfda432fee37",
+      "required_evidence_roles": {
+        "alternate_entry_decisions": [
+          "log",
+          "receipt"
+        ],
+        "composer_authority": [
+          "manifest",
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "composer_decisions": [
+          "log",
+          "receipt"
+        ],
+        "conflict_vectors": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOPOLOGY-004",
+      "revision_digest": "dbfbaf35d7448eb7be18adab80c69b12729d54d14dfbacfd0fd8560e9ca828f9",
+      "required_evidence_roles": {
+        "assistant_topology_subject": [
+          "manifest",
+          "source_tree"
+        ],
+        "delegation_trace": [
+          "log",
+          "receipt"
+        ],
+        "dependency_and_authority_flow": [
+          "manifest",
+          "policy",
+          "receipt",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOPOLOGY-005",
+      "revision_digest": "304c422ce643adc68ae7345c4eb8f98731e25b96d072fb57baadb0e1933f7f6b",
+      "required_evidence_roles": {
+        "entry_delegation": [
+          "log",
+          "receipt",
+          "source_tree"
+        ],
+        "installed_entry_observation": [
+          "log",
+          "platform_support",
+          "receipt"
+        ],
+        "internal_library_identity": [
+          "manifest",
+          "source_tree"
+        ],
+        "public_entry_projection": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOPOLOGY-006",
+      "revision_digest": "1d09a687dd12d28810860256914d675ab3c32de6604afaa8da012e3c3b5cf775",
+      "required_evidence_roles": {
+        "authorization_and_side_effects": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "triage_contract": [
+          "manifest",
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "triage_run": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOPOLOGY-007",
+      "revision_digest": "58ad26ffc97e85fa0ef4a7a55635578ae58d9416be1daa8e18a5532f8d70556f",
+      "required_evidence_roles": {
+        "assistant_absence_environment": [
+          "manifest",
+          "receipt"
+        ],
+        "domain_spec_release": [
+          "manifest",
+          "receipt"
+        ],
+        "implementation_reference_scan": [
+          "log",
+          "manifest",
+          "receipt"
+        ],
+        "independent_load_validation": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TOPOLOGY-008",
+      "revision_digest": "9c5c4fe4705993dfefc34d820372651d1e6b98301e552d9be1ab468dc25936d7",
+      "required_evidence_roles": {
+        "domain_spec_release": [
+          "manifest",
+          "receipt"
+        ],
+        "joint_validation_or_release_result": [
+          "log",
+          "receipt"
+        ],
+        "method_contract_release": [
+          "manifest",
+          "receipt"
+        ],
+        "platform_projection_release": [
+          "manifest",
+          "receipt"
+        ],
+        "shared_runtime_release": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-UNPACK-001",
+      "revision_digest": "ca229c5147f12e8bfe8c481444d8a95449c5bd5e4ee2a383c2263a024802130d",
+      "required_evidence_roles": {
+        "controlled_install_commit_evidence": [
+          "log",
+          "receipt"
+        ],
+        "unpack_validation_evidence": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-001",
+      "revision_digest": "46ffc2ab2d82ff3884350eeaa540f5ff4a1ea50a2eed9f16b99c88b471065166",
+      "required_evidence_roles": {
+        "semantic_executor_realization": [
+          "manifest",
+          "source_file"
+        ],
+        "semantic_worker_responsibility": [
+          "manifest",
+          "policy"
+        ],
+        "workflow_stage_binding": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-002",
+      "revision_digest": "2d03d7039cdcbb023fd5bc6ffb52e07dcdf94cfe0aaf5ce81eaf2502d4686ce0",
+      "required_evidence_roles": {
+        "entry_orchestration_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "orchestration_responsibility_map": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-003",
+      "revision_digest": "8925db90b865f1d5f0662a80ad163fe63ba2c8166820076c2e9af4fa61709d33",
+      "required_evidence_roles": {
+        "body_copy_absence_guard": [
+          "manifest",
+          "source_tree"
+        ],
+        "domain_stage_absence_guard": [
+          "manifest",
+          "source_tree"
+        ],
+        "entry_scope_declaration": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-004",
+      "revision_digest": "a10f4109a69583a7e39827b693f70794ad29ecf2f08f556187b72b7faf65b90f",
+      "required_evidence_roles": {
+        "contract_field_completeness": [
+          "manifest",
+          "policy"
+        ],
+        "stage_contract_declaration": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-005",
+      "revision_digest": "d6d3d886abc973723c39572770aca93735dbbc670c4471a0a879519a3292ca17",
+      "required_evidence_roles": {
+        "next_stage_selection_absence": [
+          "manifest",
+          "source_file"
+        ],
+        "routing_authority_declaration": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-006",
+      "revision_digest": "e05f1f4a4c061cf1c074acf97eec72710f29589363a96944e7e2b23772792b0d",
+      "required_evidence_roles": {
+        "cross_skill_call_absence": [
+          "manifest",
+          "source_tree"
+        ],
+        "single_skill_scope_declaration": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-007",
+      "revision_digest": "5b3ce9b77fcdc4bb736f497808f672dd6b704beaa6cb53796e5e194693dcc910",
+      "required_evidence_roles": {
+        "child_executor_absence": [
+          "manifest",
+          "source_file"
+        ],
+        "flat_execution_scope_declaration": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-008",
+      "revision_digest": "9e09aa0ece9f6e9ed9f360248b950ea3f04344e609a0096e4c6ff58150719721",
+      "required_evidence_roles": {
+        "structured_handback_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "user_question_absence": [
+          "jsonl_conversation",
+          "manifest"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-009",
+      "revision_digest": "dc55746cc2a668474a3ed40a7f432aa5686e24d854b467a0c03b260e2f3b5f30",
+      "required_evidence_roles": {
+        "executor_preload_pin": [
+          "manifest",
+          "source_file"
+        ],
+        "preload_inventory": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-010",
+      "revision_digest": "ccdc4625aa10eb0cffb80cdc2df73b28ac8af793f9b1a526947456b76f5bd225",
+      "required_evidence_roles": {
+        "agent_skill_script_composition": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ],
+        "executor_choice_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "worker_wrapper_boundary_basis": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-011",
+      "revision_digest": "1d78aeab471671d08782b3daf0487f762b4e981eb0a084662b7ef698908d4bf5",
+      "required_evidence_roles": {
+        "business_source_non_duplication_guard": [
+          "manifest",
+          "source_tree"
+        ],
+        "shared_executor_reuse_map": [
+          "manifest",
+          "source_file"
+        ],
+        "shared_validation_result_contract": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-012",
+      "revision_digest": "8b0bf80d7c97f8b9f8969cf95e87f69cc9218e9160e02c0dc4a68d199df0a440",
+      "required_evidence_roles": {
+        "minimal_toolset_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "toolset_necessity_record": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-013",
+      "revision_digest": "58a93e3b16e9b29b0e4fc68623f09cf23597f0e78eea5075127d48df4f0fd46e",
+      "required_evidence_roles": {
+        "runtime_scope_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "second_skill_discovery_absence": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-014",
+      "revision_digest": "e5706f9a353ce9c98d15b4c21708913b5121ce2719935db02b359235ef0f86e2",
+      "required_evidence_roles": {
+        "child_executor_creation_absence": [
+          "manifest",
+          "source_file"
+        ],
+        "flat_runtime_declaration": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-015",
+      "revision_digest": "1273f0c352a6dffca3f2cf7d075f2b8cc181a504b8d3c63b4eed18a748ad1e9a",
+      "required_evidence_roles": {
+        "orchestrator_boundary_declaration": [
+          "manifest",
+          "policy"
+        ],
+        "secondary_orchestrator_registration": [
+          "manifest",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-016",
+      "revision_digest": "705e2b74ff0115b203d911278976bfa89694793848515dc4ec6ff06381f7798d",
+      "required_evidence_roles": {
+        "default_structure_absence": [
+          "manifest",
+          "source_tree"
+        ],
+        "orchestrator_exception_justification": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-017",
+      "revision_digest": "e47644a81a7892264a4cafd31d3df7bd1102ffd92995d3e32bcbdbc9f8ad0a66",
+      "required_evidence_roles": {
+        "equivalent_isolation_mechanism": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "isolation_outcome_record": [
+          "log",
+          "receipt"
+        ],
+        "platform_capability_and_required_boundary": [
+          "manifest",
+          "platform_support",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-018",
+      "revision_digest": "63e72ff1ac1cfd2069d86977acd7e33d01eb518b94605c2c4e87fbe5d118f9fe",
+      "required_evidence_roles": {
+        "deterministic_program_declaration": [
+          "manifest",
+          "source_file"
+        ],
+        "semantic_unit_absence_guard": [
+          "manifest",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-019",
+      "revision_digest": "67f7d27a6bc6fddb9f0796d53ff86dc87eb6ab6002892c10c5633acafba0317e",
+      "required_evidence_roles": {
+        "internal_body_placement": [
+          "manifest",
+          "source_file"
+        ],
+        "main_session_metadata_scope": [
+          "manifest",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-020",
+      "revision_digest": "e0db1d2565c50cf5eb874d1a7aa3b6367ff7dd4b7d61591b3dba13c1baca3e64",
+      "required_evidence_roles": {
+        "business_surface_non_exposure": [
+          "manifest",
+          "source_file"
+        ],
+        "technical_visibility_fact": [
+          "manifest",
+          "platform_support"
+        ]
+      }
+    }
+  ]
+}

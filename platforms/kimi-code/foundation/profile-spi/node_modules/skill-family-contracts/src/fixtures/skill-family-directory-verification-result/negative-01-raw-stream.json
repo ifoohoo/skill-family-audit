@@ -1,0 +1,8 @@
+{
+  "fixtureId": "skill-family-directory-verification-result/negative-01-raw-stream",
+  "class": "negative",
+  "contract": "skill-family-directory-verification-result",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/skill-family-directory-verification-result.json", "dialect": "2020-12", "policy": "strict" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.skill-family-directory-verification-result", "operation": "skill-family-directory-verification", "status": "rejected", "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "host": { "hostId": "kimi-code", "descriptorSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "driverId": "kimi-code-print-v1", "driverVersion": "1.0.0", "cliVersion": "0.39.1" }, "facts": { "familyTree": { "sourceManifestSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "membersDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }, "skills": [{ "name": "alpha", "sourceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "discovery": "unknown", "load": "unknown", "callId": null, "resultId": null }, { "name": "beta", "sourceSha256": "5555555555555555555555555555555555555555555555555555555555555555", "discovery": "unknown", "load": "unknown", "callId": null, "resultId": null }], "workload": null, "rawStdout": "private" }, "reason": "preflight-rejected", "requiredActions": [] },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

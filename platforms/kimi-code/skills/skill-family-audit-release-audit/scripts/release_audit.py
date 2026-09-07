@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""Thin release-audit CLI over the receipt, public, and publish modules."""
+"""只读 release-audit CLI；领域结果只经 stdout 或宿主 Result 返回。
+
+方法合同只绑定一个 ``release-audit-input`` Resource：候选身份、发布评估
+引用与 Release Skill 公开验证器输出全部冻结在该文档内。``provider_root``、
+``plan``、``run`` 等未进入方法合同的旁路参数不再存在；Audit 不复制
+Release Skill 的判定逻辑。上游公开验证器尚未发布：输入文档携带的
+``release_verifier_output`` 对象不解释为上游权威输出，确定性返回
+BLOCKED/UPSTREAM_RELEASE_VERIFIER_UNAVAILABLE。
+"""
 from __future__ import annotations
 
 import argparse
-import copy
 import hashlib
 import json
 import os
@@ -12,7 +19,6 @@ from pathlib import Path
 from typing import Any
 
 import release_public
-import release_publish
 import release_receipts
 import release_assessments
 
@@ -20,9 +26,10 @@ IMPLEMENTATION_FILES = (
     "release_audit.py",
     "release_assessments.py",
     "release_public.py",
-    "release_publish.py",
     "release_receipts.py",
 )
+
+RELEASE_AUDIT_INPUT_KIND = "skill-family-audit.release-audit-input"
 
 
 class ReleaseCliError(Exception):
@@ -64,11 +71,6 @@ def implementation_digest() -> str:
         digest.update(filename.encode("utf-8"))
         digest.update(b"\0")
         digest.update(hashlib.sha256(raw).digest())
-    shared_relative = "shared/scripts/atomic_publish.py"
-    shared_raw = (scripts_dir.parents[2] / shared_relative).read_bytes()
-    digest.update(shared_relative.encode("utf-8"))
-    digest.update(b"\0")
-    digest.update(hashlib.sha256(shared_raw).digest())
     return digest.hexdigest()
 
 
@@ -89,111 +91,92 @@ def _existing_real_directory(value: str, label: str) -> str:
     return str(resolved)
 
 
-def _load_context(value: str) -> dict[str, Any]:
-    path = Path(_absolute_normalized(value, "runtime context"))
+def _load_release_audit_input(value: str) -> dict[str, Any]:
+    path = Path(_absolute_normalized(value, "release-audit input"))
     try:
         resolved = path.resolve(strict=True)
     except OSError as exc:
-        raise ReleaseCliError(f"runtime context is unavailable: {exc}") from exc
+        raise ReleaseCliError(f"release-audit input is unavailable: {exc}") from exc
     if resolved != path or not resolved.is_file():
-        raise ReleaseCliError("runtime context must be a real regular file")
+        raise ReleaseCliError(
+            "release-audit input must be a real file without symlinks"
+        )
     try:
-        context = json.loads(resolved.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ReleaseCliError(f"runtime context is not valid JSON: {exc}") from exc
-    if not isinstance(context, dict):
-        raise ReleaseCliError("runtime context must contain an object")
-    return context
-
-
-def _foundation(request: dict[str, Any]) -> dict[str, Any]:
-    host = sys.modules.get("conformance_check")
-    if host is None:
-        raise RuntimeError("FOUNDATION_TRANSPORT_MISSING")
-    return host.foundation_host_for(__file__)._foundation(request)
-
-
-def _is_within(path: str, boundary: str) -> bool:
-    """收容判定委托 Foundation resolve-contained（等根视为收容）。"""
-    if path == boundary:
-        return True
-    try:
-        _foundation({
-            "operation": "resolve-contained",
-            "root": boundary,
-            "path": os.path.relpath(path, boundary),
-        })
-    except (ValueError, RuntimeError):
-        return False
-    return True
-
-
-def _preflight_context(context: dict[str, Any], target_project: str) -> str:
-    if context.get("target_project_path") != target_project:
-        raise ReleaseCliError("runtime context target_project_path does not match CLI")
-    output = _absolute_normalized(context.get("output_dir"), "output_dir")
-    if _is_within(output, target_project):
-        raise ReleaseCliError("output_dir must be outside target_project")
-    return output
+        document = json.loads(resolved.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ReleaseCliError(f"release-audit input is not valid JSON: {exc}") from exc
+    if not isinstance(document, dict):
+        raise ReleaseCliError("release-audit input top level must be an object")
+    if set(document) != {
+        "schema_version",
+        "kind",
+        "candidate",
+        "assessments_ref",
+        "release_verifier_output",
+    }:
+        raise ReleaseCliError("release-audit input field set must be exactly closed")
+    if (
+        document.get("schema_version") != "1.0.0"
+        or document.get("kind") != RELEASE_AUDIT_INPUT_KIND
+    ):
+        raise ReleaseCliError("release-audit input identity is invalid")
+    candidate = document.get("candidate")
+    if not isinstance(candidate, dict) or set(candidate) != {
+        "unit_id",
+        "target_version",
+    }:
+        raise ReleaseCliError("release-audit input candidate shape is invalid")
+    if (
+        not isinstance(candidate.get("unit_id"), str)
+        or not candidate["unit_id"]
+        or not isinstance(candidate.get("target_version"), str)
+        or not candidate["target_version"]
+    ):
+        raise ReleaseCliError("release-audit input candidate identity is invalid")
+    verifier_output = document.get("release_verifier_output")
+    # 字段合同只接受对象或 null：null 表示未提供；提供对象时也不解释为
+    # 上游权威输出（上游公开验证器尚未发布），稳定返回
+    # BLOCKED/UPSTREAM_RELEASE_VERIFIER_UNAVAILABLE，不接受文件引用或符号链接旁路。
+    if verifier_output is not None and not isinstance(verifier_output, dict):
+        raise ReleaseCliError(
+            "release_verifier_output must be an object or null; upstream "
+            "verifier output may not be a file reference or a symlink"
+        )
+    assessments_ref = document.get("assessments_ref")
+    if not isinstance(assessments_ref, str) or not os.path.isabs(assessments_ref):
+        raise ReleaseCliError("assessments_ref must be an absolute path")
+    return document
 
 
 def run(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
-    target_project = _existing_real_directory(args.target_project, "target project")
-    provider_root = _absolute_normalized(args.provider_root, "provider root")
-    plan_path = (
-        None
-        if args.plan is None
-        else _absolute_normalized(args.plan, "release plan")
-    )
-    run_path = (
-        None if args.run is None else _absolute_normalized(args.run, "release run")
-    )
-    context = _load_context(args.runtime_context)
-    output_dir = _preflight_context(context, target_project)
+    document = _load_release_audit_input(args.release_audit_input)
+    candidate = document["candidate"]
     digest_before = implementation_digest()
 
-    audit = release_receipts.audit_release_receipts(
-        provider_root=provider_root,
-        plan_path=plan_path,
-        run_path=run_path,
-        expected_unit_id=args.unit_id,
-        expected_target_version=args.target_version,
+    audit = release_receipts.audit_release_verifier_output(
+        document.get("release_verifier_output"),
+        expected_unit_id=candidate["unit_id"],
+        expected_target_version=candidate["target_version"],
     )
     assessment_result = release_assessments.assess(
         release_assessments.load(
             Path(
                 _absolute_normalized(
-                    args.assessments_ref, "release assessments"
+                    document["assessments_ref"], "release assessments"
                 )
             ).resolve(strict=True)
         ),
-        expected_candidate_id=f"{args.unit_id}:{args.target_version}",
+        expected_candidate_id=f"{candidate['unit_id']}:{candidate['target_version']}",
     )
     if implementation_digest() != digest_before:
         raise ReleaseCliError("release-audit implementation changed during execution")
-    bound_context = copy.deepcopy(context)
-    bound_context["implementation_digest"] = digest_before
-    bound_context["executor_id"] = (
-        f"{release_receipts.PROVIDER_NAME}@{release_receipts.PROVIDER_VERSION}"
-    )
-    bundle = release_public.build_public_bundle(
-        provider_root=provider_root,
-        plan_path=plan_path,
-        run_path=run_path,
-        expected_unit_id=args.unit_id,
-        expected_target_version=args.target_version,
-        claimed_audit=audit,
-        runtime_context=bound_context,
+    response = release_public._compose_domain_result(
+        expected_unit_id=candidate["unit_id"],
+        expected_target_version=candidate["target_version"],
+        verifier_audit=audit,
         assessment_result=assessment_result,
-        assessments_path=_absolute_normalized(
-            args.assessments_ref, "release assessments"
-        ),
+        assessments_path=document["assessments_ref"],
     )
-    release_publish.publish_artifacts(
-        output_dir=output_dir,
-        artifact_bytes=bundle["artifact_bytes"],
-    )
-    response = bundle["domain_result"]
     status = response["release_result"]["status"]
     return (0 if status == "SUCCEEDED" else 1 if status == "BLOCKED" else 2), response
 
@@ -202,14 +185,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = _JsonArgumentParser(
         description="Audit one immutable Release Skill receipt chain"
     )
-    parser.add_argument("--target-project", required=True)
-    parser.add_argument("--provider-root", required=True)
-    parser.add_argument("--plan")
-    parser.add_argument("--run")
-    parser.add_argument("--unit-id", required=True)
-    parser.add_argument("--target-version", required=True)
-    parser.add_argument("--runtime-context", required=True)
-    parser.add_argument("--assessments-ref", required=True)
+    parser.add_argument("--release-audit-input", required=True)
     return parser
 
 

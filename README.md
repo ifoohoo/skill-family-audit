@@ -1,24 +1,24 @@
 # Skill Family Audit
 
-技能族规范、四个严格审计方法和四平台投影的唯一公开发布源。
+技能族规范、两个严格审计方法和四平台投影的唯一公开发布源。
 
-当前版本 `1.1.2` 是尚未批准的本地修订候选，
+当前版本 `1.1.3` 是尚未批准的本地修订候选，
 不声明为稳定发布。候选批准不等于 Release Skill 计划批准、生产发布确认
 或任何远端写入授权。
 
 ## 当前能力
 
-该候选提供 `help`、`setup` 和 `quickstart` 入口，并包含一致性、行为、
-运行时与发布四类严格审计方法。Claude Code、Codex、Kimi Code 和
+该候选提供 `help`、`setup` 和 `quickstart` 入口，并包含一致性与发布
+两类严格审计方法。Claude Code、Codex、Kimi Code 和
 WorkBuddy 使用各自的静态平台投影。平台清单与资源闭包通过构建检查，
 宿主安装和调用由消费者人工验证。
 
-本版本泛化了受检对象侧的目标身份绑定：一致性、行为、运行时和发布审计
-方法现在原生支持任意 PluginProject 的 1..N 个 logicalSkills（N=1 是
+本版本泛化了受检对象侧的目标身份绑定：一致性与发布审计方法现在原生支持
+任意 PluginProject 的 1..N 个 logicalSkills（N=1 是
 正常路径，不是兼容模式）。marketplace 名、plugin selector 和入口路径
 从目标观察结果读取，不再硬编码为 Audit 自身身份。
 
-四个方法通过受管 Foundation 0.3.0 Quickstart Profile v2 Bundle 创建 Task、
+两个方法通过受管 Foundation 0.3.0 Quickstart Profile v2 Bundle 创建 Task、
 包装 Result 并校验消费者 Schema；领域语义仍由 Audit 拥有，Foundation 只
 处理结构合同与绑定。运行时只使用随包投影的 Bundle，不依赖 Foundation
 工作区、npm cache、store 或网络。候选不含旧 `mechanisms-cli.mjs` 或
@@ -29,20 +29,19 @@ Bundle 内 `node_modules`。
 <!-- release-skill:capability:safe-first-command -->
 
 该项目是插件技能族，不是 npm 库；`npm install` 不是受支持的安装入口。
-只有在公开仓库出现与版本匹配的 Git 标签和 GitHub Release 后，Codex
-用户才应以冻结标签作为第一条安全安装路径：
+只有在公开仓库出现与版本匹配的 Git 标签和 GitHub Release，且 Skill
+Family Hub 已收录该版本后，Codex 用户才应从 Hub 安装：
 
 ```sh
-codex plugin marketplace add ifoohoo/skill-family-audit \
-  --ref skill-family-audit-v1.1.2 --json
-codex plugin add skill-family-audit@skill-family-audit --json
+codex plugin marketplace add ifoohoo/skill-family-hub --json
+codex plugin add skill-family-audit@skill-family-hub --json
 # 安装后先在 Codex 中调用 skill-family-audit 的 help 技能。
 ```
 
 在正式发布完成前，只能从本仓库冻结的候选目录进行隔离验证：
 
 ```text
-dist/candidate/1.1.2/platforms/<platform>
+dist/candidate/1.1.3/platforms/<platform>
 ```
 
 四个平台目录都是静态、自包含投影。Kimi 只支持人工安装或会话级

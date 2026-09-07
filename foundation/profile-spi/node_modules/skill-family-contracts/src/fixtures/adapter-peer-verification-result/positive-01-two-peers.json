@@ -1,0 +1,20 @@
+{
+  "fixtureId": "adapter-peer-verification-result.positive.two-peers",
+  "contract": "adapter-peer-verification-result",
+  "class": "positive",
+  "description": "A virtual verified result carries a common closure and two standard peer manifests.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/adapter-peer-verification-result.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.adapter-peer-verification-result",
+    "status": "verified",
+    "decision": "peer-verification",
+    "skillFamilyId": "fixture-family",
+    "commonSourceClosure": { "digest": "0000000000000000000000000000000000000000000000000000000000000000", "members": [{ "sourcePath": "demo-skill/SKILL.md", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "bytes": 8 }] },
+    "peers": [
+      { "peerId": "peer-alpha", "hostId": "host-alpha", "pathCategory": { "id": "project-skills", "scope": "project", "anchor": "project-root", "relPath": "skills" }, "manifest": { "schemaVersion": 1, "kind": "skill-family.adapter-build-manifest", "hostId": "host-alpha", "pathCategory": { "id": "project-skills", "scope": "project", "anchor": "project-root", "relPath": "skills" }, "sourceClosure": { "digest": "0000000000000000000000000000000000000000000000000000000000000000", "members": [{ "sourcePath": "demo-skill/SKILL.md", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "bytes": 8 }] }, "members": [{ "sourcePath": "demo-skill/SKILL.md", "target": "skills/demo-skill/SKILL.md", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "bytes": 8 }], "digest": "2222222222222222222222222222222222222222222222222222222222222222" }, "logicalMappings": [{ "logicalId": "demo-skill", "skillId": "demo-skill", "sourcePath": "demo-skill/SKILL.md", "target": "skills/demo-skill/SKILL.md", "entryType": "skill", "userInvocable": true }] },
+      { "peerId": "peer-beta", "hostId": "host-beta", "pathCategory": { "id": "project-skills", "scope": "project", "anchor": "project-root", "relPath": "skills" }, "manifest": { "schemaVersion": 1, "kind": "skill-family.adapter-build-manifest", "hostId": "host-beta", "pathCategory": { "id": "project-skills", "scope": "project", "anchor": "project-root", "relPath": "skills" }, "sourceClosure": { "digest": "0000000000000000000000000000000000000000000000000000000000000000", "members": [{ "sourcePath": "demo-skill/SKILL.md", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "bytes": 8 }] }, "members": [{ "sourcePath": "demo-skill/SKILL.md", "target": "skills/demo-skill/SKILL.md", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "bytes": 8 }], "digest": "3333333333333333333333333333333333333333333333333333333333333333" }, "logicalMappings": [{ "logicalId": "demo-skill", "skillId": "demo-skill", "sourcePath": "demo-skill/SKILL.md", "target": "skills/demo-skill/SKILL.md", "entryType": "skill", "userInvocable": true }] }
+    ]
+  }
+}

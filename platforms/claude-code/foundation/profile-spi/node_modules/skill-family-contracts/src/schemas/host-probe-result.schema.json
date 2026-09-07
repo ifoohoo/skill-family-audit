@@ -9,7 +9,7 @@
     "schemaVersion": { "const": 1 },
     "kind": { "const": "skill-family.host-probe-result" },
     "hostId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
-    "support": { "enum": ["supported", "unsupported"] },
+    "support": { "enum": ["supported", "manual", "unsupported"] },
     "reason": { "type": "string", "minLength": 1 },
     "facts": {
       "type": "array",
@@ -20,7 +20,11 @@
     {
       "if": { "properties": { "support": { "const": "supported" } }, "required": ["support"] },
       "then": { "properties": { "reason": false, "facts": { "type": "array", "minItems": 9, "maxItems": 9 } } },
-      "else": { "required": ["reason"], "properties": { "reason": true, "facts": { "type": "array", "maxItems": 0 } } }
+      "else": {
+        "if": { "properties": { "support": { "const": "manual" } }, "required": ["support"] },
+        "then": { "required": ["reason"], "properties": { "reason": true, "facts": { "type": "array", "minItems": 9, "maxItems": 9 } } },
+        "else": { "required": ["reason"], "properties": { "reason": true, "facts": { "type": "array", "maxItems": 0 } } }
+      }
     }
   ]
 }

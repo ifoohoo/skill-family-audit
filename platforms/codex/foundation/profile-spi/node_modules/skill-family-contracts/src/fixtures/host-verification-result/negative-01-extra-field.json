@@ -1,0 +1,8 @@
+{
+  "fixtureId": "host-verification-result/negative-01-extra-field",
+  "class": "negative",
+  "contract": "host-verification-result",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-verification-result.json", "dialect": "2020-12", "policy": "strict" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-verification-result", "operation": "host-verification", "status": "rejected", "requestDigest": "request-1", "common": {}, "host": {}, "runtimeIdentities": null, "execution": { "spawned": false, "exitStatus": null, "processStatus": null, "terminationReason": null, "watchdogReason": null, "runnerModelOverrideAbsent": true }, "snapshots": null, "streams": null, "reason": "preflight-rejected", "requiredActions": [], "evidenceSetDigest": "legacy" },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

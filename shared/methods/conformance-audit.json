@@ -2,15 +2,18 @@
   "schemaVersion": "1.0.0-candidate",
   "methodId": "skill-family-audit:conformance-audit",
   "name": "规范符合性检查",
-  "description": "覆盖单个技能轻量检查、技能族源码完整检查、发行包检查和目标项目采用检查；组合确定性扫描与必要语义审阅",
+  "description": "覆盖单个技能轻量检查、技能族源码完整检查、发行包检查和目标项目采用检查；只读消费调用方提供的证据集合（含可按 governance-gate-run-evidence.schema.json 解释的三项治理门禁原始收据），组合确定性扫描与必要语义审阅（证据不足时逐规则保持未获证）",
   "capability": {
     "capabilityRef": "cap:skill-family-audit.family",
-    "capabilityDigest": "sha256:54c90ac1376e46fd6e1244e8932bd0893ab98d9cf40d11de180e98dad1b7548d",
+    "capabilityDigest": "sha256:9000a6775fe0bc7d04c2c516e265aff33486d7d4f020ae6e199ba563a2e8acbb",
     "methodSlice": "根据版本化正式规则和证据判断技能族规范符合性"
   },
   "accepts": [
+    "evidence_set",
     "target_project_path",
-    "scope_selector"
+    "scope_selector",
+    "execution_profile",
+    "semantic_group_ids"
   ],
   "produces": [
     "conformance_result",
@@ -31,7 +34,9 @@
   "maturity": "experimental",
   "status": "candidate",
   "acceptanceCriteria": [
-    "扫描覆盖全部适用规则",
+    "每次结果逐条保留全部 in-scope 规则，未选择规则为 NOT_RUN",
+    "只有 full 的 SUCCEEDED 要求全部 in-scope 规则已尝试且结论完整",
+    "部分 profile 按合同完成时为 PARTIAL，已执行规则的验收标准不降低",
     "每条规则有独立结论",
     "证据引用可追溯",
     "不得遗漏强制规则",
@@ -47,8 +52,8 @@
     "foundationProfile": {
       "id": "quickstart-profile",
       "version": 2,
-      "taskContract": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/task.json",
-      "resultContract": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/result.json"
+      "taskContract": "https://contracts.skill-family.example/quickstart-profile/v2/task.json",
+      "resultContract": "https://contracts.skill-family.example/quickstart-profile/v2/result.json"
     },
     "note": "方法只声明领域参数和领域输出；Task、Result、Resource 及其摘要绑定由 Foundation quickstart-profile 提供。",
     "parameterSchema": {

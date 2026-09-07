@@ -18,11 +18,13 @@ verification-levels（档位声明轴），故由该文档承载。
 """
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from .contracts import (
     REQUIRED_PLATFORMS,
     ExecutorEvidenceError,
+    governance_dir,
     is_hex64,
     load_governance_document,
     result,
@@ -115,6 +117,90 @@ def _nonempty_str(value: Any) -> bool:
     return isinstance(value, str) and bool(value)
 
 
+# ---------------------------------------------------------------------------
+# 逐方法子结果（受管机械方法 digest_verification + schema_validation）
+# ---------------------------------------------------------------------------
+
+
+def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[str, Any]:
+    return {
+        "check_method": method,
+        "status": status,
+        "observation_source": source,
+        "evidence": evidence or {"reason": status.lower()},
+    }
+
+
+def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    """从逐方法行确定性推导聚合状态，与 contracts.validate_method_subresults 一致。"""
+    statuses = {row["status"] for row in rows}
+    if "FAIL" in statuses:
+        status = "FAIL"
+    elif "EVIDENCE_MISSING" in statuses or "NOT_RUN" in statuses:
+        status = "EVIDENCE_MISSING"
+    elif statuses == {"NOT_APPLICABLE"}:
+        status = "NOT_APPLICABLE"
+    elif statuses == {"PASS"}:
+        status = "PASS"
+    else:
+        raise ExecutorEvidenceError(
+            "METHOD_RESULT_COMBINATION_INVALID", repr(sorted(statuses))
+        )
+    return {
+        "status": status,
+        "evidence": dict(evidence),
+        "check_method_subresults": rows,
+    }
+
+
+def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "schema_validation", status, "executor_schema_validation_observation", **evidence
+    )
+
+
+def _digest_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "digest_verification", status, "executor_digest_verification_observation", **evidence
+    )
+
+
+def _doc_digest_row(
+    ctx: dict[str, Any], names: tuple[str, ...], status: str = "PASS", **evidence: Any
+) -> dict[str, Any]:
+    """字节级完整性观察：本次执行真实读取的治理声明文档（存在性与 sha256）。"""
+    observations = []
+    for name in names:
+        path = governance_dir(ctx) / f"{name}.json"
+        if path.is_file() and not path.is_symlink():
+            observations.append({
+                "document": name,
+                "present": True,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            })
+        else:
+            observations.append({"document": name, "present": False})
+    return _digest_row(status, documents=observations, **evidence)
+
+
+def _split_violations(
+    violations: list[dict[str, Any]], digest_reasons: tuple[str, ...]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """把 violations（每行含 reasons 列表）按原因归属拆分为 schema 侧与 digest 侧。
+
+    一行同时含两类原因时两侧都计入；任一侧为空时对应方法行取 PASS。
+    """
+    schema_side: list[dict[str, Any]] = []
+    digest_side: list[dict[str, Any]] = []
+    for row in violations:
+        reasons = row.get("reasons", [])
+        if any(reason in digest_reasons for reason in reasons):
+            digest_side.append(row)
+        if not all(reason in digest_reasons for reason in reasons):
+            schema_side.append(row)
+    return schema_side, digest_side
+
+
 def _report_document(ctx: dict[str, Any]) -> dict[str, Any] | None:
     return load_governance_document(ctx, "evaluation-report")
 
@@ -135,18 +221,63 @@ def check_assessment_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _report_document(ctx)
     if document is None:
-        return result("PASS", report_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_report"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            report_declared=False,
+        )
     section = _section(document, "deterministic_conformance")
     if section is None:
-        return result("FAIL", reason="deterministic_conformance_section_missing")
-    violations = []
+        return _finish(
+            [
+                _schema_row("FAIL", reason="deterministic_conformance_section_missing"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            reason="deterministic_conformance_section_missing",
+        )
+    schema_reasons = []
+    digest_reasons = []
     if section.get("reports_independently") is not True:
-        violations.append("not_independent")
+        schema_reasons.append("not_independent")
     if not is_hex64(section.get("conclusion_digest")):
-        violations.append("conclusion_digest_invalid")
-    if violations:
-        return result("FAIL", deterministic_conformance_section_violations=violations)
-    return result("PASS", section="deterministic_conformance")
+        digest_reasons.append("conclusion_digest_invalid")
+    if schema_reasons or digest_reasons:
+        violations = [{"reasons": schema_reasons + digest_reasons}]
+        schema_side, digest_side = _split_violations(
+            violations, ("conclusion_digest_invalid",)
+        )
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL" if schema_side else "PASS",
+                    reason=(
+                        "schema_violations" if schema_side else "schema_checks_passed"
+                    ),
+                    violations=schema_side,
+                ),
+                _digest_row(
+                    "FAIL" if digest_side else "PASS",
+                    reason=(
+                        "digest_violations" if digest_side else "digest_checks_passed"
+                    ),
+                    violations=digest_side,
+                ),
+            ],
+            deterministic_conformance_section_violations=schema_reasons + digest_reasons,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", section="deterministic_conformance"),
+            _digest_row(
+                "PASS",
+                reason="digest_checks_passed",
+                consumed_conclusion_digest=section.get("conclusion_digest"),
+            ),
+        ],
+        section="deterministic_conformance",
+    )
 
 
 def check_assessment_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -157,18 +288,31 @@ def check_assessment_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _report_document(ctx)
     if document is None:
-        return result("PASS", report_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_report"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            report_declared=False,
+        )
     section = _section(document, "behavior_verification")
     if section is None:
-        return result("FAIL", reason="behavior_verification_section_missing")
-    violations = []
+        return _finish(
+            [
+                _schema_row("FAIL", reason="behavior_verification_section_missing"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            reason="behavior_verification_section_missing",
+        )
+    schema_reasons = []
+    digest_reasons = []
     if section.get("reports_independently") is not True:
-        violations.append("not_independent")
+        schema_reasons.append("not_independent")
     if not is_hex64(section.get("conclusion_digest")):
-        violations.append("conclusion_digest_invalid")
+        digest_reasons.append("conclusion_digest_invalid")
     locked = section.get("locked_conditions")
     if not isinstance(locked, dict):
-        violations.append("locked_conditions_missing")
+        schema_reasons.append("locked_conditions_missing")
     else:
         missing = [
             field
@@ -176,10 +320,42 @@ def check_assessment_002(ctx: dict[str, Any]) -> dict[str, Any]:
             if not _nonempty_str(locked.get(field)) and not isinstance(locked.get(field), list)
         ]
         if missing:
-            violations.append(f"locked_conditions_missing:{','.join(missing)}")
-    if violations:
-        return result("FAIL", behavior_verification_section_violations=violations)
-    return result("PASS", section="behavior_verification")
+            schema_reasons.append(f"locked_conditions_missing:{','.join(missing)}")
+    if schema_reasons or digest_reasons:
+        violations = [{"reasons": schema_reasons + digest_reasons}]
+        schema_side, digest_side = _split_violations(
+            violations, ("conclusion_digest_invalid",)
+        )
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL" if schema_side else "PASS",
+                    reason=(
+                        "schema_violations" if schema_side else "schema_checks_passed"
+                    ),
+                    violations=schema_side,
+                ),
+                _digest_row(
+                    "FAIL" if digest_side else "PASS",
+                    reason=(
+                        "digest_violations" if digest_side else "digest_checks_passed"
+                    ),
+                    violations=digest_side,
+                ),
+            ],
+            behavior_verification_section_violations=schema_reasons + digest_reasons,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", section="behavior_verification"),
+            _digest_row(
+                "PASS",
+                reason="digest_checks_passed",
+                consumed_conclusion_digest=section.get("conclusion_digest"),
+            ),
+        ],
+        section="behavior_verification",
+    )
 
 
 def check_assessment_003(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -190,18 +366,31 @@ def check_assessment_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _report_document(ctx)
     if document is None:
-        return result("PASS", report_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_report"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            report_declared=False,
+        )
     section = _section(document, "run_governance")
     if section is None:
-        return result("FAIL", reason="run_governance_section_missing")
-    violations = []
+        return _finish(
+            [
+                _schema_row("FAIL", reason="run_governance_section_missing"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            reason="run_governance_section_missing",
+        )
+    schema_reasons = []
+    digest_reasons = []
     if section.get("reports_independently") is not True:
-        violations.append("not_independent")
+        schema_reasons.append("not_independent")
     if not is_hex64(section.get("conclusion_digest")):
-        violations.append("conclusion_digest_invalid")
+        digest_reasons.append("conclusion_digest_invalid")
     coverage = section.get("capability_coverage")
     if not isinstance(coverage, dict):
-        violations.append("capability_coverage_missing")
+        schema_reasons.append("capability_coverage_missing")
     else:
         missing = [
             capability
@@ -213,10 +402,42 @@ def check_assessment_003(ctx: dict[str, Any]) -> dict[str, Any]:
             if coverage.get(capability) is not True
         ]
         if missing:
-            violations.append(f"capabilities_uncovered:{','.join(missing)}")
-    if violations:
-        return result("FAIL", run_governance_section_violations=violations)
-    return result("PASS", section="run_governance")
+            schema_reasons.append(f"capabilities_uncovered:{','.join(missing)}")
+    if schema_reasons or digest_reasons:
+        violations = [{"reasons": schema_reasons + digest_reasons}]
+        schema_side, digest_side = _split_violations(
+            violations, ("conclusion_digest_invalid",)
+        )
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL" if schema_side else "PASS",
+                    reason=(
+                        "schema_violations" if schema_side else "schema_checks_passed"
+                    ),
+                    violations=schema_side,
+                ),
+                _digest_row(
+                    "FAIL" if digest_side else "PASS",
+                    reason=(
+                        "digest_violations" if digest_side else "digest_checks_passed"
+                    ),
+                    violations=digest_side,
+                ),
+            ],
+            run_governance_section_violations=schema_reasons + digest_reasons,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", section="run_governance"),
+            _digest_row(
+                "PASS",
+                reason="digest_checks_passed",
+                consumed_conclusion_digest=section.get("conclusion_digest"),
+            ),
+        ],
+        section="run_governance",
+    )
 
 
 def check_assessment_005(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -227,10 +448,22 @@ def check_assessment_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _report_document(ctx)
     if document is None:
-        return result("PASS", report_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_report"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            report_declared=False,
+        )
     section = _section(document, "deterministic_conformance")
     if section is None:
-        return result("FAIL", reason="deterministic_conformance_section_missing")
+        return _finish(
+            [
+                _schema_row("FAIL", reason="deterministic_conformance_section_missing"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            reason="deterministic_conformance_section_missing",
+        )
     violations = []
     extrapolates = section.get("extrapolates_to")
     if extrapolates is None:
@@ -246,8 +479,20 @@ def check_assessment_005(ctx: dict[str, Any]) -> dict[str, Any]:
     if document.get("static_conformance_extrapolated_to_behavior_quality") is True:
         violations.append("report_level_extrapolation")
     if violations:
-        return result("FAIL", static_conformance_extrapolations=violations)
-    return result("PASS", extrapolation_targets=0)
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            static_conformance_extrapolations=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", extrapolation_targets=0),
+            _doc_digest_row(ctx, ("evaluation-report",)),
+        ],
+        extrapolation_targets=0,
+    )
 
 
 def check_eval_001(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -258,7 +503,13 @@ def check_eval_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _report_document(ctx)
     if document is None:
-        return result("PASS", report_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_report"),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            report_declared=False,
+        )
     rows = rows_of(document, "rows", "evaluation-report")
     violations = []
     for row in rows:
@@ -275,8 +526,20 @@ def check_eval_001(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"rule_id": row.get("rule_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", evaluation_rows_collapsed=violations)
-    return result("PASS", rows_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("evaluation-report",)),
+            ],
+            evaluation_rows_collapsed=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", rows_checked=len(rows)),
+            _doc_digest_row(ctx, ("evaluation-report",)),
+        ],
+        rows_checked=len(rows),
+    )
 
 
 def _rule_cases(ctx: dict[str, Any]) -> dict[str, Any] | None:
@@ -291,7 +554,13 @@ def check_case_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _rule_cases(ctx)
     if document is None:
-        return result("PASS", rule_cases_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_rule_cases"),
+                _doc_digest_row(ctx, ("rule-cases",)),
+            ],
+            rule_cases_declared=False,
+        )
     rows = rows_of(document, "mandatory_rule_cases", "rule-cases")
     violations = []
     for row in rows:
@@ -319,8 +588,22 @@ def check_case_001(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"rule_id": row.get("rule_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", mandatory_cases_incomplete=violations)
-    return result("PASS", mandatory_rules_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("rule-cases",)),
+            ],
+            mandatory_cases_incomplete=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", mandatory_rules_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("rule-cases",)),
+        ],
+        mandatory_rules_checked=len(rows),
+    )
 
 
 def check_case_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -332,7 +615,13 @@ def check_case_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _rule_cases(ctx)
     if document is None:
-        return result("PASS", rule_cases_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_rule_cases"),
+                _doc_digest_row(ctx, ("rule-cases",)),
+            ],
+            rule_cases_declared=False,
+        )
     rows = rows_of(document, "held_out_sets", "rule-cases")
     covered: set[str] = set()
     violations = []
@@ -349,8 +638,22 @@ def check_case_002(ctx: dict[str, Any]) -> dict[str, Any]:
     if missing:
         violations.append({"reason": f"kinds_uncovered:{','.join(missing)}"})
     if violations:
-        return result("FAIL", held_out_sets_invalid=violations)
-    return result("PASS", held_out_kinds_covered=sorted(covered))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("rule-cases",)),
+            ],
+            held_out_sets_invalid=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", held_out_kinds_covered=sorted(covered)
+            ),
+            _doc_digest_row(ctx, ("rule-cases",)),
+        ],
+        held_out_kinds_covered=sorted(covered),
+    )
 
 
 def check_case_003(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -361,31 +664,72 @@ def check_case_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _rule_cases(ctx)
     if document is None:
-        return result("PASS", rule_cases_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_rule_cases"),
+                _doc_digest_row(ctx, ("rule-cases",)),
+            ],
+            rule_cases_declared=False,
+        )
     rows = rows_of(document, "semantic_reviews", "rule-cases")
     violations = []
     for row in rows:
-        reasons = []
+        schema_reasons = []
+        digest_reasons = []
         reviewer = row.get("reviewer_identity")
         if not _nonempty_str(reviewer) or reviewer == row.get("executor_identity"):
-            reasons.append("reviewer_not_independent")
+            schema_reasons.append("reviewer_not_independent")
         if row.get("clean_context") is not True:
-            reasons.append("context_not_clean")
+            schema_reasons.append("context_not_clean")
         if not _nonempty_str(row.get("locked_target_input")):
-            reasons.append("target_input_not_locked")
+            schema_reasons.append("target_input_not_locked")
         if not is_hex64(row.get("locked_rule_revision")):
-            reasons.append("rule_revision_not_locked")
+            digest_reasons.append("rule_revision_not_locked")
         if not _nonempty_str(row.get("locked_cases")) and not isinstance(row.get("locked_cases"), list):
-            reasons.append("cases_not_locked")
+            schema_reasons.append("cases_not_locked")
         if row.get("reviewer_modifies_implementation") is True:
-            reasons.append("reviewer_modifies_implementation")
+            schema_reasons.append("reviewer_modifies_implementation")
         if row.get("reviewer_modifies_acceptance") is True:
-            reasons.append("reviewer_modifies_acceptance")
-        if reasons:
-            violations.append({"review_id": row.get("review_id"), "reasons": reasons})
+            schema_reasons.append("reviewer_modifies_acceptance")
+        if schema_reasons or digest_reasons:
+            violations.append(
+                {
+                    "review_id": row.get("review_id"),
+                    "reasons": schema_reasons + digest_reasons,
+                }
+            )
     if violations:
-        return result("FAIL", semantic_reviews_invalid=violations)
-    return result("PASS", semantic_reviews_checked=len(rows))
+        schema_side, digest_side = _split_violations(
+            violations, ("rule_revision_not_locked",)
+        )
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL" if schema_side else "PASS",
+                    reason=(
+                        "schema_violations" if schema_side else "schema_checks_passed"
+                    ),
+                    violations=schema_side,
+                ),
+                _digest_row(
+                    "FAIL" if digest_side else "PASS",
+                    reason=(
+                        "digest_violations" if digest_side else "digest_checks_passed"
+                    ),
+                    violations=digest_side,
+                ),
+            ],
+            semantic_reviews_invalid=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", semantic_reviews_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("rule-cases",)),
+        ],
+        semantic_reviews_checked=len(rows),
+    )
 
 
 def check_case_005(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -396,7 +740,13 @@ def check_case_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _rule_cases(ctx)
     if document is None:
-        return result("PASS", rule_cases_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_rule_cases"),
+                _doc_digest_row(ctx, ("rule-cases",)),
+            ],
+            rule_cases_declared=False,
+        )
     rows = rows_of(document, "revalidation_triggers", "rule-cases")
     covered: set[str] = set()
     violations = []
@@ -420,8 +770,22 @@ def check_case_005(ctx: dict[str, Any]) -> dict[str, Any]:
     if missing:
         violations.append({"reason": f"triggers_uncovered:{','.join(missing)}"})
     if violations:
-        return result("FAIL", revalidation_policy_invalid=violations)
-    return result("PASS", triggers_covered=len(covered))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("rule-cases",)),
+            ],
+            revalidation_policy_invalid=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", triggers_covered=len(covered)
+            ),
+            _doc_digest_row(ctx, ("rule-cases",)),
+        ],
+        triggers_covered=len(covered),
+    )
 
 
 def _evidence_cache(ctx: dict[str, Any]) -> dict[str, Any] | None:
@@ -436,27 +800,66 @@ def check_evcache_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _evidence_cache(ctx)
     if document is None:
-        return result("PASS", evidence_cache_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_evidence_cache"),
+                _doc_digest_row(ctx, ("evidence-cache",)),
+            ],
+            evidence_cache_declared=False,
+        )
     rows = rows_of(document, "entries", "evidence-cache")
     violations = []
     for row in rows:
         if row.get("result_state") in _FAILED_CACHE_STATES:
             continue
-        reasons = []
+        schema_reasons = []
+        digest_reasons = []
         bindings = row.get("key_bindings")
         if not isinstance(bindings, dict):
-            reasons.append("key_bindings_missing")
+            schema_reasons.append("key_bindings_missing")
         else:
             missing = [axis for axis in _CACHE_INPUT_AXES if not _nonempty_str(bindings.get(axis))]
             if missing:
-                reasons.append(f"axes_missing:{','.join(missing)}")
+                schema_reasons.append(f"axes_missing:{','.join(missing)}")
         if not is_hex64(row.get("value_digest")):
-            reasons.append("value_digest_invalid")
-        if reasons:
-            violations.append({"cache_id": row.get("cache_id"), "reasons": reasons})
+            digest_reasons.append("value_digest_invalid")
+        if schema_reasons or digest_reasons:
+            violations.append(
+                {
+                    "cache_id": row.get("cache_id"),
+                    "reasons": schema_reasons + digest_reasons,
+                }
+            )
     if violations:
-        return result("FAIL", cache_input_bindings_incomplete=violations)
-    return result("PASS", entries_checked=len(rows))
+        schema_side, digest_side = _split_violations(
+            violations, ("value_digest_invalid",)
+        )
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL" if schema_side else "PASS",
+                    reason=(
+                        "schema_violations" if schema_side else "schema_checks_passed"
+                    ),
+                    violations=schema_side,
+                ),
+                _digest_row(
+                    "FAIL" if digest_side else "PASS",
+                    reason=(
+                        "digest_violations" if digest_side else "digest_checks_passed"
+                    ),
+                    violations=digest_side,
+                ),
+            ],
+            cache_input_bindings_incomplete=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", entries_checked=len(rows)),
+            _doc_digest_row(ctx, ("evidence-cache",)),
+        ],
+        entries_checked=len(rows),
+    )
 
 
 def check_evcache_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -467,7 +870,13 @@ def check_evcache_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _evidence_cache(ctx)
     if document is None:
-        return result("PASS", evidence_cache_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_evidence_cache"),
+                _doc_digest_row(ctx, ("evidence-cache",)),
+            ],
+            evidence_cache_declared=False,
+        )
     rows = rows_of(document, "entries", "evidence-cache")
     violations = []
     for row in rows:
@@ -483,8 +892,20 @@ def check_evcache_002(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"cache_id": row.get("cache_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", failed_attempts_cached_as_findings=violations)
-    return result("PASS", entries_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("evidence-cache",)),
+            ],
+            failed_attempts_cached_as_findings=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", entries_checked=len(rows)),
+            _doc_digest_row(ctx, ("evidence-cache",)),
+        ],
+        entries_checked=len(rows),
+    )
 
 
 def _external_evidence(ctx: dict[str, Any]) -> dict[str, Any] | None:
@@ -499,22 +920,61 @@ def check_evidence_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _external_evidence(ctx)
     if document is None:
-        return result("PASS", external_evidence_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_external_evidence"),
+                _doc_digest_row(ctx, ("external-evidence",)),
+            ],
+            external_evidence_declared=False,
+        )
     rows = rows_of(document, "items", "external-evidence")
     violations = []
     for row in rows:
-        reasons = [
+        schema_reasons = [
             f"{field}_missing"
             for field in _SOURCE_FACT_FIELDS
             if not _nonempty_str(row.get(field))
         ]
+        digest_reasons = []
         if not is_hex64(row.get("content_digest")):
-            reasons.append("content_digest_invalid")
-        if reasons:
-            violations.append({"evidence_id": row.get("evidence_id"), "reasons": reasons})
+            digest_reasons.append("content_digest_invalid")
+        if schema_reasons or digest_reasons:
+            violations.append(
+                {
+                    "evidence_id": row.get("evidence_id"),
+                    "reasons": schema_reasons + digest_reasons,
+                }
+            )
     if violations:
-        return result("FAIL", source_facts_incomplete=violations)
-    return result("PASS", items_checked=len(rows))
+        schema_side, digest_side = _split_violations(
+            violations, ("content_digest_invalid",)
+        )
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL" if schema_side else "PASS",
+                    reason=(
+                        "schema_violations" if schema_side else "schema_checks_passed"
+                    ),
+                    violations=schema_side,
+                ),
+                _digest_row(
+                    "FAIL" if digest_side else "PASS",
+                    reason=(
+                        "digest_violations" if digest_side else "digest_checks_passed"
+                    ),
+                    violations=digest_side,
+                ),
+            ],
+            source_facts_incomplete=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", items_checked=len(rows)),
+            _doc_digest_row(ctx, ("external-evidence",)),
+        ],
+        items_checked=len(rows),
+    )
 
 
 def check_evidence_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -525,7 +985,13 @@ def check_evidence_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _external_evidence(ctx)
     if document is None:
-        return result("PASS", external_evidence_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_external_evidence"),
+                _doc_digest_row(ctx, ("external-evidence",)),
+            ],
+            external_evidence_declared=False,
+        )
     violations = []
     if document.get("trust_score_replaces_source_facts") is True:
         violations.append("trust_score_replaces_source_facts")
@@ -535,8 +1001,20 @@ def check_evidence_002(ctx: dict[str, Any]) -> dict[str, Any]:
         if row.get("single_score_replaces_source_facts") is True:
             violations.append(f"item:{row.get('evidence_id')}")
     if violations:
-        return result("FAIL", score_substitutions=violations)
-    return result("PASS", score_substitution=False)
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("external-evidence",)),
+            ],
+            score_substitutions=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", score_substitution=False),
+            _doc_digest_row(ctx, ("external-evidence",)),
+        ],
+        score_substitution=False,
+    )
 
 
 def _gate_policy(ctx: dict[str, Any]) -> dict[str, Any] | None:
@@ -551,7 +1029,13 @@ def check_gate_004(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     policy = _gate_policy(ctx)
     if policy is None:
-        return result("PASS", gate_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_gate_policy"),
+                _doc_digest_row(ctx, ("gate-policy",)),
+            ],
+            gate_declared=False,
+        )
     rows = rows_of(policy, "retries", "gate-policy")
     violations = []
     for row in rows:
@@ -574,8 +1058,20 @@ def check_gate_004(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"retry_id": row.get("retry_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", retries_not_fully_retained=violations)
-    return result("PASS", retries_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("gate-policy",)),
+            ],
+            retries_not_fully_retained=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", retries_checked=len(rows)),
+            _doc_digest_row(ctx, ("gate-policy",)),
+        ],
+        retries_checked=len(rows),
+    )
 
 
 def check_gate_005(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -586,7 +1082,13 @@ def check_gate_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     policy = _gate_policy(ctx)
     if policy is None:
-        return result("PASS", gate_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_gate_policy"),
+                _doc_digest_row(ctx, ("gate-policy",)),
+            ],
+            gate_declared=False,
+        )
     rows = rows_of(policy, "gate_consumers", "gate-policy")
     violations = []
     identities: set[tuple] = set()
@@ -611,8 +1113,20 @@ def check_gate_005(ctx: dict[str, Any]) -> dict[str, Any]:
     if len(identities) > 1:
         violations.append({"reason": "consumers_use_distinct_adjudicators"})
     if violations:
-        return result("FAIL", gate_consumers_diverged=violations)
-    return result("PASS", consumers_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("gate-policy",)),
+            ],
+            gate_consumers_diverged=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", consumers_checked=len(rows)),
+            _doc_digest_row(ctx, ("gate-policy",)),
+        ],
+        consumers_checked=len(rows),
+    )
 
 
 def check_gate_006(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -623,7 +1137,13 @@ def check_gate_006(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     policy = _gate_policy(ctx)
     if policy is None:
-        return result("PASS", gate_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_gate_policy"),
+                _doc_digest_row(ctx, ("gate-policy",)),
+            ],
+            gate_declared=False,
+        )
     rows = rows_of(policy, "gate_outputs", "gate-policy")
     violations = []
     for row in rows:
@@ -644,26 +1164,40 @@ def check_gate_006(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"output_id": row.get("output_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", gate_outputs_beyond_rule_level=violations)
-    return result("PASS", outputs_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("gate-policy",)),
+            ],
+            gate_outputs_beyond_rule_level=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", outputs_checked=len(rows)),
+            _doc_digest_row(ctx, ("gate-policy",)),
+        ],
+        outputs_checked=len(rows),
+    )
 
 
 def _evaluation_history(ctx: dict[str, Any]) -> dict[str, Any] | None:
     return load_governance_document(ctx, "evaluation-history")
 
 
-def _record_side_violations(side: Any) -> list[str]:
+def _record_side_violations(side: Any) -> tuple[list[str], list[str]]:
+    """返回 (schema 侧原因, digest 侧原因)；摘要类缺陷归 digest 方法。"""
     if not isinstance(side, dict):
-        return ["record_missing"]
-    reasons = []
+        return ["record_missing"], []
+    schema_reasons = []
+    digest_reasons = []
     if side.get("immutable") is not True:
-        reasons.append("record_mutable")
+        schema_reasons.append("record_mutable")
     if not _nonempty_str(side.get("record_ref")):
-        reasons.append("record_ref_missing")
+        schema_reasons.append("record_ref_missing")
     missing = [field for field in _RECORD_SUMMARY_FIELDS if not is_hex64(side.get(field))]
     if missing:
-        reasons.append(f"summaries_invalid:{','.join(missing)}")
-    return reasons
+        digest_reasons.append(f"summaries_invalid:{','.join(missing)}")
+    return schema_reasons, digest_reasons
 
 
 def check_history_001(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -674,19 +1208,61 @@ def check_history_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _evaluation_history(ctx)
     if document is None:
-        return result("PASS", evaluation_history_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_evaluation_history"),
+                _doc_digest_row(ctx, ("evaluation-history",)),
+            ],
+            evaluation_history_declared=False,
+        )
     rows = rows_of(document, "diffs", "evaluation-history")
     violations = []
     for row in rows:
-        reasons = [f"left:{reason}" for reason in _record_side_violations(row.get("left"))]
-        reasons += [f"right:{reason}" for reason in _record_side_violations(row.get("right"))]
+        left_schema, left_digest = _record_side_violations(row.get("left"))
+        right_schema, right_digest = _record_side_violations(row.get("right"))
+        schema_reasons = [f"left:{reason}" for reason in left_schema]
+        schema_reasons += [f"right:{reason}" for reason in right_schema]
+        digest_reasons = [f"left:{reason}" for reason in left_digest]
+        digest_reasons += [f"right:{reason}" for reason in right_digest]
         if row.get("compatible") is False and row.get("marked_not_comparable") is not True:
-            reasons.append("incompatible_not_marked")
-        if reasons:
-            violations.append({"diff_id": row.get("diff_id"), "reasons": reasons})
+            schema_reasons.append("incompatible_not_marked")
+        if schema_reasons or digest_reasons:
+            violations.append(
+                {
+                    "diff_id": row.get("diff_id"),
+                    "reasons": schema_reasons + digest_reasons,
+                }
+            )
     if violations:
-        return result("FAIL", diffs_not_reconstructable=violations)
-    return result("PASS", diffs_checked=len(rows))
+        schema_side, digest_side = _split_violations(
+            violations, ("left:summaries_invalid", "right:summaries_invalid")
+        )
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL" if schema_side else "PASS",
+                    reason=(
+                        "schema_violations" if schema_side else "schema_checks_passed"
+                    ),
+                    violations=schema_side,
+                ),
+                _digest_row(
+                    "FAIL" if digest_side else "PASS",
+                    reason=(
+                        "digest_violations" if digest_side else "digest_checks_passed"
+                    ),
+                    violations=digest_side,
+                ),
+            ],
+            diffs_not_reconstructable=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", diffs_checked=len(rows)),
+            _doc_digest_row(ctx, ("evaluation-history",)),
+        ],
+        diffs_checked=len(rows),
+    )
 
 
 def check_history_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -697,10 +1273,22 @@ def check_history_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _evaluation_history(ctx)
     if document is None:
-        return result("PASS", evaluation_history_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_evaluation_history"),
+                _doc_digest_row(ctx, ("evaluation-history",)),
+            ],
+            evaluation_history_declared=False,
+        )
     latest = document.get("latest_index")
     if latest is None:
-        return result("PASS", latest_index_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="latest_index_not_declared"),
+                _doc_digest_row(ctx, ("evaluation-history",)),
+            ],
+            latest_index_declared=False,
+        )
     if not isinstance(latest, dict):
         raise ExecutorEvidenceError(
             "GOVERNANCE_DOCUMENT_INVALID", "evaluation-history.latest_index 必须是对象"
@@ -713,8 +1301,20 @@ def check_history_002(ctx: dict[str, Any]) -> dict[str, Any]:
     if not _nonempty_str(latest.get("record_ref")):
         violations.append("record_ref_missing")
     if violations:
-        return result("FAIL", latest_index_violations=violations)
-    return result("PASS", latest_index="reconstructable")
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("evaluation-history",)),
+            ],
+            latest_index_violations=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", latest_index="reconstructable"),
+            _doc_digest_row(ctx, ("evaluation-history",)),
+        ],
+        latest_index="reconstructable",
+    )
 
 
 def _verification_levels(ctx: dict[str, Any]) -> dict[str, Any] | None:
@@ -729,7 +1329,13 @@ def check_level_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _verification_levels(ctx)
     if document is None:
-        return result("PASS", verification_levels_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_verification_levels"),
+                _doc_digest_row(ctx, ("verification-levels",)),
+            ],
+            verification_levels_declared=False,
+        )
     rows = rows_of(document, "axes", "verification-levels")
     violations = []
     for row in rows:
@@ -744,8 +1350,20 @@ def check_level_001(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"subject": row.get("subject"), "reasons": reasons})
     if violations:
-        return result("FAIL", axes_not_separated=violations)
-    return result("PASS", axes_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("verification-levels",)),
+            ],
+            axes_not_separated=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", axes_checked=len(rows)),
+            _doc_digest_row(ctx, ("verification-levels",)),
+        ],
+        axes_checked=len(rows),
+    )
 
 
 def check_level_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -756,7 +1374,13 @@ def check_level_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _verification_levels(ctx)
     if document is None:
-        return result("PASS", verification_levels_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_verification_levels"),
+                _doc_digest_row(ctx, ("verification-levels",)),
+            ],
+            verification_levels_declared=False,
+        )
     rows = rows_of(document, "level_inheritance", "verification-levels")
     violations = []
     for row in rows:
@@ -774,8 +1398,22 @@ def check_level_002(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"subject": row.get("subject"), "reasons": reasons})
     if violations:
-        return result("FAIL", level_inheritance_broken=violations)
-    return result("PASS", inheritance_rows_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("verification-levels",)),
+            ],
+            level_inheritance_broken=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", inheritance_rows_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("verification-levels",)),
+        ],
+        inheritance_rows_checked=len(rows),
+    )
 
 
 def check_level_003(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -786,7 +1424,13 @@ def check_level_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _verification_levels(ctx)
     if document is None:
-        return result("PASS", verification_levels_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_verification_levels"),
+                _doc_digest_row(ctx, ("verification-levels",)),
+            ],
+            verification_levels_declared=False,
+        )
     rows = rows_of(document, "level_claims", "verification-levels")
     violations = []
     for row in rows:
@@ -806,8 +1450,20 @@ def check_level_003(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"claim_id": row.get("claim_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", level_claims_unbound=violations)
-    return result("PASS", claims_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("verification-levels",)),
+            ],
+            level_claims_unbound=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", claims_checked=len(rows)),
+            _doc_digest_row(ctx, ("verification-levels",)),
+        ],
+        claims_checked=len(rows),
+    )
 
 
 def check_proof_009(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -818,7 +1474,13 @@ def check_proof_009(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _verification_levels(ctx)
     if document is None:
-        return result("PASS", verification_levels_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_verification_levels"),
+                _doc_digest_row(ctx, ("verification-levels",)),
+            ],
+            verification_levels_declared=False,
+        )
     rows = rows_of(document, "external_mappings", "verification-levels")
     violations = []
     for row in rows:
@@ -830,8 +1492,20 @@ def check_proof_009(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"source": row.get("source"), "reasons": reasons})
     if violations:
-        return result("FAIL", external_tiers_mapped_to_levels=violations)
-    return result("PASS", mappings_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("verification-levels",)),
+            ],
+            external_tiers_mapped_to_levels=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", mappings_checked=len(rows)),
+            _doc_digest_row(ctx, ("verification-levels",)),
+        ],
+        mappings_checked=len(rows),
+    )
 
 
 def _run_record(ctx: dict[str, Any]) -> dict[str, Any] | None:
@@ -846,7 +1520,13 @@ def check_observe_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     record = _run_record(ctx)
     if record is None:
-        return result("PASS", run_record_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_run_record"),
+                _doc_digest_row(ctx, ("run-record",)),
+            ],
+            run_record_declared=False,
+        )
     events = rows_of(record, "observation_events", "run-record")
     violations = []
     last_sequence = None
@@ -866,8 +1546,20 @@ def check_observe_003(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"event_id": event.get("event_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", observation_events_unbound=violations)
-    return result("PASS", events_checked=len(events))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("run-record",)),
+            ],
+            observation_events_unbound=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", events_checked=len(events)),
+            _doc_digest_row(ctx, ("run-record",)),
+        ],
+        events_checked=len(events),
+    )
 
 
 def check_observe_005(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -878,7 +1570,13 @@ def check_observe_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     record = _run_record(ctx)
     if record is None:
-        return result("PASS", run_record_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_run_record"),
+                _doc_digest_row(ctx, ("run-record",)),
+            ],
+            run_record_declared=False,
+        )
     rows = rows_of(record, "target_claims", "run-record")
     violations = []
     for row in rows:
@@ -890,8 +1588,20 @@ def check_observe_005(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"claim_id": row.get("claim_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", target_claims_overstated=violations)
-    return result("PASS", claims_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("run-record",)),
+            ],
+            target_claims_overstated=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", claims_checked=len(rows)),
+            _doc_digest_row(ctx, ("run-record",)),
+        ],
+        claims_checked=len(rows),
+    )
 
 
 def check_observe_006(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -902,18 +1612,46 @@ def check_observe_006(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     record = _run_record(ctx)
     if record is None:
-        return result("PASS", run_record_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_run_record"),
+                _doc_digest_row(ctx, ("run-record",)),
+            ],
+            run_record_declared=False,
+        )
     observer_records = record.get("observer_records")
     if observer_records is None:
-        return result("PASS", observer_records_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="observer_records_not_declared"),
+                _doc_digest_row(ctx, ("run-record",)),
+            ],
+            observer_records_declared=False,
+        )
     if not isinstance(observer_records, dict):
         raise ExecutorEvidenceError(
             "GOVERNANCE_DOCUMENT_INVALID", "run-record.observer_records 必须是对象"
         )
     missing = [kind for kind in _OBSERVER_FACT_KINDS if observer_records.get(kind) is not True]
     if missing:
-        return result("FAIL", observer_fact_kinds_missing=missing)
-    return result("PASS", fact_kinds_covered=list(_OBSERVER_FACT_KINDS))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=missing),
+                _doc_digest_row(ctx, ("run-record",)),
+            ],
+            observer_fact_kinds_missing=missing,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS",
+                reason="schema_checks_passed",
+                fact_kinds_covered=list(_OBSERVER_FACT_KINDS),
+            ),
+            _doc_digest_row(ctx, ("run-record",)),
+        ],
+        fact_kinds_covered=list(_OBSERVER_FACT_KINDS),
+    )
 
 
 def _proof_policy(ctx: dict[str, Any]) -> dict[str, Any] | None:
@@ -928,7 +1666,13 @@ def check_proof_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     policy = _proof_policy(ctx)
     if policy is None:
-        return result("PASS", proof_policy_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_proof_policy"),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            proof_policy_declared=False,
+        )
     rows = rows_of(policy, "expression_preference_proofs", "proof-policy")
     violations = []
     for row in rows:
@@ -947,8 +1691,22 @@ def check_proof_001(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"proof_id": row.get("proof_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", preference_proofs_overstated=violations)
-    return result("PASS", preference_proofs_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            preference_proofs_overstated=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", preference_proofs_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("proof-policy",)),
+        ],
+        preference_proofs_checked=len(rows),
+    )
 
 
 def check_proof_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -959,7 +1717,13 @@ def check_proof_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     policy = _proof_policy(ctx)
     if policy is None:
-        return result("PASS", proof_policy_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_proof_policy"),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            proof_policy_declared=False,
+        )
     rows = rows_of(policy, "numeric_metric_proofs", "proof-policy")
     violations = []
     for row in rows:
@@ -978,8 +1742,20 @@ def check_proof_002(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"metric": row.get("metric"), "reasons": reasons})
     if violations:
-        return result("FAIL", numeric_metrics_as_quality_proof=violations)
-    return result("PASS", metrics_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            numeric_metrics_as_quality_proof=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", metrics_checked=len(rows)),
+            _doc_digest_row(ctx, ("proof-policy",)),
+        ],
+        metrics_checked=len(rows),
+    )
 
 
 def check_proof_003(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -990,7 +1766,13 @@ def check_proof_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     policy = _proof_policy(ctx)
     if policy is None:
-        return result("PASS", proof_policy_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_proof_policy"),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            proof_policy_declared=False,
+        )
     rows = rows_of(policy, "model_topology_proofs", "proof-policy")
     violations = []
     for row in rows:
@@ -1003,8 +1785,22 @@ def check_proof_003(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"claim_id": row.get("claim_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", model_topology_as_quality_proof=violations)
-    return result("PASS", topology_claims_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            model_topology_as_quality_proof=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", topology_claims_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("proof-policy",)),
+        ],
+        topology_claims_checked=len(rows),
+    )
 
 
 def check_proof_004(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1015,7 +1811,13 @@ def check_proof_004(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     policy = _proof_policy(ctx)
     if policy is None:
-        return result("PASS", proof_policy_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_proof_policy"),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            proof_policy_declared=False,
+        )
     rows = rows_of(policy, "existence_facts", "proof-policy")
     violations = []
     for row in rows:
@@ -1033,8 +1835,22 @@ def check_proof_004(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"fact_id": row.get("fact_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", existence_derives_pass=violations)
-    return result("PASS", existence_facts_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            existence_derives_pass=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", existence_facts_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("proof-policy",)),
+        ],
+        existence_facts_checked=len(rows),
+    )
 
 
 def check_proof_006(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1045,7 +1861,13 @@ def check_proof_006(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     policy = _proof_policy(ctx)
     if policy is None:
-        return result("PASS", proof_policy_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_proof_policy"),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            proof_policy_declared=False,
+        )
     rows = rows_of(policy, "platform_requirements", "proof-policy")
     violations = []
     for row in rows:
@@ -1061,8 +1883,22 @@ def check_proof_006(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"requirement_id": row.get("requirement_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", platform_requirements_unversioned=violations)
-    return result("PASS", requirements_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("proof-policy",)),
+            ],
+            platform_requirements_unversioned=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", requirements_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("proof-policy",)),
+        ],
+        requirements_checked=len(rows),
+    )
 
 
 def _qualification(ctx: dict[str, Any]) -> dict[str, Any] | None:
@@ -1077,7 +1913,13 @@ def check_qualify_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     claims = _qualification(ctx)
     if claims is None:
-        return result("PASS", qualification_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_qualification"),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            qualification_declared=False,
+        )
     rows = rows_of(claims, "release_claims", "qualification-claims")
     violations = []
     for row in rows:
@@ -1088,8 +1930,22 @@ def check_qualify_001(ctx: dict[str, Any]) -> dict[str, Any]:
         if level <= 1 and row.get("claims_stable_support") is True:
             violations.append({"family_version": row.get("family_version"), "level": level})
     if violations:
-        return result("FAIL", tier1_claims_stable_support=violations)
-    return result("PASS", release_claims_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            tier1_claims_stable_support=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", release_claims_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("qualification-claims",)),
+        ],
+        release_claims_checked=len(rows),
+    )
 
 
 def check_qualify_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1100,8 +1956,16 @@ def check_qualify_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     claims = _qualification(ctx)
     if claims is None:
-        return result("PASS", qualification_declared=False)
+        raise ExecutorEvidenceError(
+            "QUALIFICATION_CLAIMS_MISSING",
+            "稳定联合发布资格无法在 qualification-claims 缺失时判定",
+        )
     rows = rows_of(claims, "stable_joint_releases", "qualification-claims")
+    if not rows:
+        raise ExecutorEvidenceError(
+            "STABLE_JOINT_RELEASES_MISSING",
+            "稳定联合发布资格至少需要一条 stable_joint_releases 证据",
+        )
     violations = []
     for row in rows:
         reasons = []
@@ -1127,8 +1991,20 @@ def check_qualify_002(ctx: dict[str, Any]) -> dict[str, Any]:
         if reasons:
             violations.append({"release_id": row.get("release_id"), "reasons": reasons})
     if violations:
-        return result("FAIL", stable_joint_releases_unqualified=violations)
-    return result("PASS", releases_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            stable_joint_releases_unqualified=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", releases_checked=len(rows)),
+            _doc_digest_row(ctx, ("qualification-claims",)),
+        ],
+        releases_checked=len(rows),
+    )
 
 
 def check_qualify_003(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1139,7 +2015,13 @@ def check_qualify_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     claims = _qualification(ctx)
     if claims is None:
-        return result("PASS", qualification_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_qualification"),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            qualification_declared=False,
+        )
     rows = rows_of(claims, "capability_commitments", "qualification-claims")
     violations = []
     resilience_flags = (
@@ -1160,8 +2042,22 @@ def check_qualify_003(ctx: dict[str, Any]) -> dict[str, Any]:
                 "level": level,
             })
     if violations:
-        return result("FAIL", resilience_commitments_below_tier3=violations)
-    return result("PASS", commitments_checked=len(rows))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            resilience_commitments_below_tier3=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", commitments_checked=len(rows)
+            ),
+            _doc_digest_row(ctx, ("qualification-claims",)),
+        ],
+        commitments_checked=len(rows),
+    )
 
 
 def check_qualify_004(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1172,7 +2068,13 @@ def check_qualify_004(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     claims = _qualification(ctx)
     if claims is None:
-        return result("PASS", qualification_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_qualification"),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            qualification_declared=False,
+        )
     scopes = rows_of(claims, "scopes", "qualification-claims")
     violations = []
     denominator_levels: list[int] = []
@@ -1205,8 +2107,22 @@ def check_qualify_004(ctx: dict[str, Any]) -> dict[str, Any]:
                 "min_scope_level": min(denominator_levels),
             })
     if violations:
-        return result("FAIL", overall_level_denominator_invalid=violations)
-    return result("PASS", denominator_scopes=len(denominator_levels))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            overall_level_denominator_invalid=violations,
+        )
+    return _finish(
+        [
+            _schema_row(
+                "PASS", reason="schema_checks_passed", denominator_scopes=len(denominator_levels)
+            ),
+            _doc_digest_row(ctx, ("qualification-claims",)),
+        ],
+        denominator_scopes=len(denominator_levels),
+    )
 
 
 def check_qualify_006(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1217,7 +2133,13 @@ def check_qualify_006(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     claims = _qualification(ctx)
     if claims is None:
-        return result("PASS", qualification_declared=False)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_qualification"),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            qualification_declared=False,
+        )
     threshold = claims.get("stable_threshold", 2)
     if not isinstance(threshold, int):
         raise ExecutorEvidenceError(
@@ -1237,8 +2159,20 @@ def check_qualify_006(ctx: dict[str, Any]) -> dict[str, Any]:
         if row.get("silently_included_in_stable") is True:
             violations.append({"scope_id": row.get("scope_id"), "reason": "silently_included_in_stable"})
     if violations:
-        return result("FAIL", below_threshold_scopes_not_excluded=violations)
-    return result("PASS", scopes_checked=len(scopes))
+        return _finish(
+            [
+                _schema_row("FAIL", reason="schema_violations", violations=violations),
+                _doc_digest_row(ctx, ("qualification-claims",)),
+            ],
+            below_threshold_scopes_not_excluded=violations,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="schema_checks_passed", scopes_checked=len(scopes)),
+            _doc_digest_row(ctx, ("qualification-claims",)),
+        ],
+        scopes_checked=len(scopes),
+    )
 
 
 CHECKS = {

@@ -1,0 +1,9 @@
+{
+  "fixtureId": "adapter-peer-verification-result.negative.unknown-field",
+  "contract": "adapter-peer-verification-result",
+  "class": "negative",
+  "description": "The closed result envelope rejects an unknown field.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/adapter-peer-verification-result.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.adapter-peer-verification-result", "status": "verified", "decision": "peer-verification", "skillFamilyId": "fixture-family", "commonSourceClosure": {}, "peers": [], "unknownField": true }
+}

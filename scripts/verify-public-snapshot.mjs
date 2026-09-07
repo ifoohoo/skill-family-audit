@@ -59,7 +59,7 @@ async function verifyFoundation(root, platformRoot, findings) {
   if (provenance.kind !== "skill-family.foundation-projection"
       || profile.id !== "quickstart-profile"
       || profile.version !== 2
-      || source.repository !== "skill-family-foundation-workspace"
+      || source.repository !== "ifoohoo/skill-family-foundation-workspace"
       || !HEX40.test(source.baseCommit ?? "")) {
     findings.push("FOUNDATION_PROVENANCE_INVALID");
     return api;
@@ -181,8 +181,8 @@ export async function verify(root) {
   if (runnerApi && HEX64.test(summary.candidatePayloadDigest ?? "")) {
     // candidatePayloadDigest is owned by the candidate builder and covers
     // only the candidate payload roots.  README, LICENSE, package metadata,
-    // marketplace mirrors and this verifier are release-wrapper files; they
-    // must not silently redefine the candidate approval subject.
+    // and this verifier are release-wrapper files; they must not silently
+    // redefine the candidate approval subject.
     // 1.1.0 起候选根级含 claude 双重映射（.claude-plugin/** 与 skills/**，
     // A1 裁决），与生成器 _populate_candidate 的闭包集合对齐。
     const payloadFiles = allFiles.filter(

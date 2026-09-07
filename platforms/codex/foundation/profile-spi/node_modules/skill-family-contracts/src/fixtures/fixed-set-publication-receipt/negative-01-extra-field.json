@@ -1,0 +1,36 @@
+{
+  "fixtureId": "fixed-set-publication-receipt.negative.extra-field",
+  "contract": "fixed-set-publication-receipt",
+  "class": "negative",
+  "description": "Extra receipt fields are rejected.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/fixed-set-publication-receipt.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1001"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-publication-receipt",
+    "manifestDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "targetRootBinding": {
+      "kind": "trusted-filesystem-root-binding",
+      "digestAlgorithm": "sha256",
+      "basis": "canonical-realpath-device-inode-type-mode-v1",
+      "digest": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "platform": "linux",
+    "primitive": "linux-renameat2-noreplace-v1",
+    "status": "succeeded",
+    "targetState": "published",
+    "commitState": "rename-committed",
+    "verification": "verified",
+    "durability": "synced",
+    "publishedClosureDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+    "memberCount": 2,
+    "extra": "rejected"
+  }
+}

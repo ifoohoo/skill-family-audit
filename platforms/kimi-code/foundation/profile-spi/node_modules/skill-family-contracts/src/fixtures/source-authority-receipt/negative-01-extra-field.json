@@ -1,0 +1,18 @@
+{
+  "fixtureId": "source-authority-receipt.negative.extra-field",
+  "contract": "source-authority-receipt",
+  "class": "negative",
+  "description": "Private plan and self-digest fields are outside the closed receipt shape.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/source-authority-receipt.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.source-authority-receipt",
+    "sourceRepository": "https://example.com/fictional/source.git",
+    "sourceBaseCommit": "0123456789abcdef0123456789abcdef01234567",
+    "subjects": [
+      { "packageName": "fictional-contracts", "version": "1.2.3", "filename": "fictional-contracts-1.2.3.tgz", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+    ],
+    "planDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  }
+}

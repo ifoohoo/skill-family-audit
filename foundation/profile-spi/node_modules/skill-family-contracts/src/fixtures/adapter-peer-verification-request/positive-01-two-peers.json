@@ -1,0 +1,17 @@
+{
+  "fixtureId": "adapter-peer-verification-request.positive.two-peers",
+  "contract": "adapter-peer-verification-request",
+  "class": "positive",
+  "description": "Two explicit peers carry closed path and complete logical mapping inputs.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/adapter-peer-verification-request.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.adapter-peer-verification-request",
+    "skillFamilyId": "fixture-family",
+    "peers": [
+      { "peerId": "peer-alpha", "hostId": "host-alpha", "pathCategory": { "id": "project-skills", "scope": "project", "anchor": "project-root", "relPath": "skills" }, "logicalMappings": [{ "logicalId": "demo-skill", "skillId": "demo-skill", "sourcePath": "demo-skill/SKILL.md", "entryType": "skill", "userInvocable": true }] },
+      { "peerId": "peer-beta", "hostId": "host-beta", "pathCategory": { "id": "project-skills", "scope": "project", "anchor": "project-root", "relPath": "skills" }, "logicalMappings": [{ "logicalId": "demo-skill", "skillId": "demo-skill", "sourcePath": "demo-skill/SKILL.md", "entryType": "skill", "userInvocable": true }] }
+    ]
+  }
+}

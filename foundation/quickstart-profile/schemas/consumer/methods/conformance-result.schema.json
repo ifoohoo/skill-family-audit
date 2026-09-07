@@ -2,12 +2,1052 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/result.json",
   "title": "Skill Family Audit conformance-audit domain result",
-  "description": "规范符合性检查方法的领域结果合同。",
+  "$defs": {
+    "semanticGroupId": {
+      "type": "string",
+      "enum": [
+        "artifact.identity-granularity",
+        "artifact.spec-rule-lifecycle",
+        "artifact.capability-contract",
+        "artifact.method-contract-registry",
+        "artifact.internal-skill-binding",
+        "artifact.assessment-layering",
+        "artifact.release-facts",
+        "artifact.derived-projections",
+        "ecosystem.product-roles",
+        "topology.kernel-composer",
+        "topology.assistant-routing",
+        "topology.domain-release",
+        "ecosystem.bridge-lifecycle",
+        "ecosystem.single-graph",
+        "ecosystem.extension-boundary",
+        "profile.domain-selection",
+        "profile.logical-views",
+        "profile.authoring-generation",
+        "foundation.terminology",
+        "foundation.engineering-kit",
+        "foundation.quickstart-exchange",
+        "upstream.consumer-compatibility",
+        "governance.machine-truth",
+        "repository.initial-layout",
+        "repository.published-dependencies",
+        "repository.foundation-adoption",
+        "dependency.product-direction",
+        "dependency.consumer-compatibility",
+        "supply.provenance",
+        "publish.byte-chain",
+        "publish.candidate-authorization",
+        "publish.channel-qualification",
+        "publish.licensing-authorship",
+        "install.recoverable-transaction",
+        "install.deactivation",
+        "install.physical-cleanup",
+        "reference.lineage",
+        "reference.adjudication",
+        "reference.completion",
+        "migration.decision",
+        "migration.lifecycle-boundaries",
+        "migration.contract-adaptation",
+        "migration.truth-and-portability",
+        "security.authorization",
+        "security.filesystem-write",
+        "security.untrusted-input",
+        "security.tools-network",
+        "security.sensitive-data",
+        "security.crypto",
+        "security.release-payload",
+        "repair.audit-boundary",
+        "repair.autofix",
+        "runtime.node-package",
+        "runtime.python-package",
+        "family.identity-capability",
+        "method.public-surfaces",
+        "method.registration",
+        "audit.public-methods",
+        "audit.readonly-control",
+        "audit.pipeline-release-summary",
+        "worker.semantic-stage-responsibility",
+        "worker.execution-isolation",
+        "worker.executor-topology",
+        "compose.public-boundaries",
+        "compose.ordering-parallelism",
+        "compose.repair-loop",
+        "compatibility.adoption-state",
+        "compatibility.strong-composition",
+        "runtime.mixed-boundary",
+        "specification.authority-layers",
+        "specification.audit-consumption"
+      ]
+    }
+  },
+  "description": "规范符合性检查方法的领域结果合同。逐规则结果以 EVIDENCE_MISSING/REVIEW_REQUIRED 表示未获证；外部语义审阅仅作为待审证据，其中任何状态（含 PASS）不直接改变顶层结论。",
   "type": "object",
   "properties": {
     "conformance_result": {
       "type": "object",
-      "description": "符合性审计领域结论"
+      "description": "符合性审计领域结论",
+      "required": [
+        "status",
+        "execution_profile",
+        "coverage",
+        "semantic_preflight",
+        "execution_metrics"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "target_type": {
+          "enum": [
+            "single_skill",
+            "family_source",
+            "release_artifact",
+            "project_adoption"
+          ]
+        },
+        "platform": {
+          "enum": [
+            "all",
+            "claude-code",
+            "codex",
+            "kimi-code",
+            "workbuddy"
+          ]
+        },
+        "rule_set_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "semantic_request_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "enum": [
+            "SUCCEEDED",
+            "FAILED",
+            "BLOCKED",
+            "PARTIAL"
+          ]
+        },
+        "execution_profile": {
+          "type": "string",
+          "enum": [
+            "mechanical",
+            "economy",
+            "targeted",
+            "full"
+          ],
+          "description": "本次执行的 profile；决定选择范围与 PARTIAL/SUCCEEDED 语义。"
+        },
+        "coverage": {
+          "type": "object",
+          "description": "可从逐规则结果与选择输入重新计算的覆盖摘要；rule_results 必须恰好包含每条 in-scope 规则一次，未选规则为 NOT_RUN。",
+          "required": [
+            "in_scope_rule_set_digest",
+            "in_scope_count",
+            "selected_rule_set_digest",
+            "selected_count",
+            "attempted_rule_set_digest",
+            "attempted_count",
+            "not_run_count",
+            "coverage_complete",
+            "conclusion_complete",
+            "requested_semantic_group_ids",
+            "selected_semantic_group_ids",
+            "selected_deterministic_rule_count",
+            "semantic_group_registry_digest"
+          ],
+          "properties": {
+            "in_scope_rule_set_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "in_scope_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "selected_rule_set_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "selected_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attempted_rule_set_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "attempted_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "not_run_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "coverage_complete": {
+              "type": "boolean"
+            },
+            "conclusion_complete": {
+              "type": "boolean"
+            },
+            "requested_semantic_group_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/semanticGroupId"
+              },
+              "description": "调用方明确请求的语义组；非 targeted 时为空。"
+            },
+            "selected_semantic_group_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/semanticGroupId"
+              }
+            },
+            "selected_deterministic_rule_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "semantic_group_registry_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "semantic_preflight": {
+          "type": "object",
+          "description": "由当前运行在内存中完成逐规则预筛后投影出的组级摘要；不能产生语义 PASS/FAIL，也不重复 Task、证据集、规则集或 Registry 摘要。",
+          "required": [
+            "performed",
+            "groups"
+          ],
+          "properties": {
+            "performed": {
+              "type": "boolean"
+            },
+            "groups": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "required": [
+                  "group_id",
+                  "rule_count",
+                  "applicable_rule_count",
+                  "not_applicable_rule_count",
+                  "undetermined_rule_count",
+                  "ready_rule_count",
+                  "missing_rule_count",
+                  "review_required_rule_count",
+                  "missing_evidence_roles"
+                ],
+                "properties": {
+                  "group_id": {
+                    "$ref": "#/$defs/semanticGroupId"
+                  },
+                  "rule_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "applicable_rule_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "not_applicable_rule_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "undetermined_rule_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "ready_rule_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "missing_rule_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "missing_evidence_roles": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "review_required_rule_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution_metrics": {
+          "type": "object",
+          "description": "本次运行实际观测到的语义执行成本，不是运行前估计值；mechanical 与 economy 的前四个语义执行计数必须为 0。",
+          "required": [
+            "semantic_model_call_count",
+            "semantic_context_count",
+            "estimated_input_tokens",
+            "semantic_rules_sent_to_model_count",
+            "semantic_rules_skipped_missing_evidence_count"
+          ],
+          "properties": {
+            "semantic_model_call_count": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "本次运行实际发起的语义模型调用数；宿主实际观测未绑定时为 null，不得用 0 代替未知。"
+            },
+            "semantic_context_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "本次运行实际消费的语义上下文数。"
+            },
+            "estimated_input_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "本次运行实际消费上下文所对应的估算输入 token 数；字段名为既有合同名称。"
+            },
+            "semantic_rules_sent_to_model_count": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "本次运行实际发送给语义模型的规则数；宿主实际观测未绑定时为 null，不得从上下文结果数反推。"
+            },
+            "semantic_rules_skipped_missing_evidence_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "本次运行因缺少证据而实际跳过的语义规则数。"
+            }
+          },
+          "additionalProperties": false
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "rule_results": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "逐规则审阅结果。未获证规则必须保持 EVIDENCE_MISSING 或 REVIEW_REQUIRED，不得合成 PASS。",
+          "items": {
+            "type": "object",
+            "required": [
+              "rule_id",
+              "rule_revision_digest",
+              "status"
+            ],
+            "properties": {
+              "rule_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rule_revision_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "status": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "EVIDENCE_MISSING",
+                  "REVIEW_REQUIRED",
+                  "NOT_APPLICABLE",
+                  "NOT_RUN"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "external_semantic_reviews": {
+          "type": "array",
+          "description": "调用方提交的外部语义审阅结果，仅作为待审证据记录；不构成可信来源证明。",
+          "items": {
+            "type": "object",
+            "required": [
+              "rule_id",
+              "rule_revision_digest",
+              "status",
+              "reason",
+              "evidence"
+            ],
+            "properties": {
+              "rule_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rule_revision_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "status": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "EVIDENCE_MISSING"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "semantic_review_binding": {
+          "description": "本次 conformance Skill 内部审阅与 Foundation Task 的摘要绑定；null 表示没有内部审阅产物。身份绑定不证明认知独立。",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "producer_method_id": {
+              "const": "skill-family-audit:conformance-audit"
+            },
+            "cognitive_independence": {
+              "const": "not_attested"
+            },
+            "foundation_task_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "review_request_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "evidence_set_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "reviewed_rule_set_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "semantic_review_result_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "producer_method_id",
+            "cognitive_independence",
+            "foundation_task_digest",
+            "review_request_digest",
+            "evidence_set_digest",
+            "reviewed_rule_set_digest",
+            "semantic_review_result_digest"
+          ],
+          "additionalProperties": false
+        },
+        "canonical_rule_summary": {
+          "type": "object"
+        },
+        "canonical_rule_applicability": {
+          "type": "object"
+        },
+        "baseline_rule_set": {
+          "type": "object"
+        },
+        "canonical_executable_coverage": {
+          "type": "object"
+        },
+        "canonical_guidance": {
+          "type": "object"
+        },
+        "method_assurance": {
+          "type": "object",
+          "required": [
+            "total",
+            "receipt_succeeded",
+            "proven",
+            "not_proven",
+            "complete",
+            "trusted_observation",
+            "trusted_observed",
+            "trusted_unavailable",
+            "records"
+          ],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "receipt_succeeded": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "proven": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "not_proven": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "complete": {
+              "const": false
+            },
+            "trusted_observation": {
+              "type": "object",
+              "required": [
+                "kind",
+                "schema_version",
+                "run_id",
+                "target_digest",
+                "target_type",
+                "platform",
+                "rule_set_digest",
+                "semantic_request_digest",
+                "trust_projection_digest",
+                "rule_results"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "skill-family-audit.conformance-method-observation"
+                },
+                "schema_version": {
+                  "const": "1.0.0"
+                },
+                "run_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "target_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "target_type": {
+                  "enum": [
+                    "single_skill",
+                    "family_source",
+                    "release_artifact",
+                    "project_adoption"
+                  ]
+                },
+                "platform": {
+                  "enum": [
+                    "all",
+                    "claude-code",
+                    "codex",
+                    "kimi-code",
+                    "workbuddy"
+                  ]
+                },
+                "rule_set_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "semantic_request_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "trust_projection_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "rule_results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "trusted_observed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "trusted_unavailable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "SUCCEEDED",
+                  "FAILED",
+                  "PARTIAL"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "schema_version": {},
+              "run_id": {},
+              "target_digest": {},
+              "target_type": {},
+              "platform": {},
+              "rule_set_digest": {},
+              "semantic_request_digest": {},
+              "rule_results": {},
+              "method_assurance": {},
+              "execution_profile": {},
+              "coverage": {},
+              "semantic_preflight": {},
+              "execution_metrics": {}
+            },
+            "required": [
+              "schema_version",
+              "run_id",
+              "target_digest",
+              "target_type",
+              "platform",
+              "rule_set_digest",
+              "semantic_request_digest",
+              "rule_results",
+              "method_assurance",
+              "execution_profile",
+              "coverage",
+              "semantic_preflight",
+              "execution_metrics"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "BLOCKED"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "rule_results": {}
+            },
+            "required": [
+              "rule_results"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "execution_profile": {
+                "enum": [
+                  "mechanical",
+                  "economy"
+                ]
+              }
+            },
+            "required": [
+              "execution_profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "selected_semantic_group_ids": {
+                    "type": "array",
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rule_results": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "FAIL"
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "rule_results"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "FAILED"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "SUCCEEDED"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "execution_profile": {
+                "const": "full"
+              },
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "coverage_complete": {
+                    "const": true
+                  },
+                  "conclusion_complete": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "FAILED"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "rule_results": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "FAIL"
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "rule_results"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "execution_profile": {
+                "const": "targeted"
+              }
+            },
+            "required": [
+              "execution_profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "requested_semantic_group_ids": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "execution_profile": {
+                "enum": [
+                  "mechanical",
+                  "economy",
+                  "full"
+                ]
+              }
+            },
+            "required": [
+              "execution_profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "requested_semantic_group_ids": {
+                    "type": "array",
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "not": {
+                  "const": "PARTIAL"
+                }
+              },
+              "rule_results": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "FAIL",
+                        "EVIDENCE_MISSING",
+                        "REVIEW_REQUIRED",
+                        "NOT_RUN"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "status",
+              "rule_results"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "FAILED",
+                  "BLOCKED"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "PARTIAL"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "rule_results": {
+                "type": "array",
+                "not": {
+                  "contains": {
+                    "type": "object",
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          "FAIL",
+                          "EVIDENCE_MISSING",
+                          "REVIEW_REQUIRED"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "execution_profile": {
+                "not": {
+                  "const": "full"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "execution_profile": {
+                "const": "mechanical"
+              }
+            },
+            "required": [
+              "execution_profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_preflight": {
+                "type": "object",
+                "properties": {
+                  "performed": {
+                    "const": false
+                  },
+                  "groups": {
+                    "type": "array",
+                    "maxItems": 0
+                  }
+                }
+              },
+              "execution_metrics": {
+                "type": "object",
+                "properties": {
+                  "semantic_model_call_count": {
+                    "const": 0
+                  },
+                  "semantic_context_count": {
+                    "const": 0
+                  },
+                  "estimated_input_tokens": {
+                    "const": 0
+                  },
+                  "semantic_rules_sent_to_model_count": {
+                    "const": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "execution_profile": {
+                "enum": [
+                  "economy",
+                  "targeted",
+                  "full"
+                ]
+              }
+            },
+            "required": [
+              "execution_profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "semantic_preflight": {
+                "type": "object",
+                "properties": {
+                  "performed": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "execution_profile": {
+                "const": "economy"
+              }
+            },
+            "required": [
+              "execution_profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "execution_metrics": {
+                "type": "object",
+                "properties": {
+                  "semantic_model_call_count": {
+                    "const": 0
+                  },
+                  "semantic_context_count": {
+                    "const": 0
+                  },
+                  "estimated_input_tokens": {
+                    "const": 0
+                  },
+                  "semantic_rules_sent_to_model_count": {
+                    "const": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
     },
     "rule_findings": {
       "type": "array",

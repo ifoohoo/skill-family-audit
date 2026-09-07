@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.negative.extra-field", "contract": "host-descriptor", "class": "negative",
+  "description": "An extra field inside the verification tuple is rejected by the closed object shape.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "qoder", "displayName": "Qoder", "support": "manual", "maturity": "manual", "sourceAliases": [], "verification": { "driverId": "qodercli-print-v1", "authStrategy": "existing-user-state", "credentialMutation": "host-managed", "authRoot": "opaque" }, "pathCategories": [], "probeCapabilities": ["cli", "version", "payload", "registry", "discover", "enabled", "reload", "smoke", "uninstall"] }
+}

@@ -1,0 +1,20 @@
+{
+  "fixtureId": "filesystem-tree-observation/negative-01-extra-field",
+  "class": "negative",
+  "contract": "filesystem-tree-observation",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/filesystem-tree-observation.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.filesystem-tree-observation",
+    "rootBinding": {
+      "kind": "trusted-filesystem-root-binding",
+      "digestAlgorithm": "sha256",
+      "basis": "canonical-realpath-device-inode-type-mode-v1",
+      "digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "members": [],
+    "membersDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "unexpected": "smuggled"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

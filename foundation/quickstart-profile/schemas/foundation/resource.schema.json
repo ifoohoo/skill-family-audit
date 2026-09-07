@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/resource.json",
+  "$id": "https://contracts.skill-family.example/quickstart-profile/v2/resource.json",
   "title": "QuickstartResource",
   "description": "Candidate Resource profile (v2) for one content-addressed observation, output, or evidence item. location.path and location.uri are mutually exclusive; URIs are only structurally checked and never fetched.",
   "type": "object",

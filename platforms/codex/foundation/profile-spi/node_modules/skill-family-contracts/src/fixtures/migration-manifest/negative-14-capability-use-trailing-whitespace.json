@@ -1,0 +1,25 @@
+{
+  "fixtureId": "migration-manifest.negative.capability-use-trailing-whitespace",
+  "contract": "migration-manifest",
+  "class": "negative",
+  "description": "A capability use constraint cannot end with whitespace.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/migration-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.migration-manifest",
+    "capabilityUseContext": { "scope": "harness", "locale": "en" },
+    "capabilityUses": [
+      {
+        "useId": "safe-output-write",
+        "problemStatement": "Write output without leaving a partial file",
+        "constraints": ["Tests must not write a real project directory "],
+        "retainedGuarantees": ["The consumer still chooses the output artifact"]
+      }
+    ]
+  }
+}

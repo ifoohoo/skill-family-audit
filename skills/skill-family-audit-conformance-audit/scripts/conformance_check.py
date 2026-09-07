@@ -1,14 +1,28 @@
 #!/usr/bin/env python3
-"""第一档静态符合性检查器：8 条规则全覆盖。"""
+"""第一档静态符合性检查器：8 条规则全覆盖。
+
+Foundation 机制传输层（C04 perf-worker 前置批，2026-09-07）：从"每请求 spawn
+一个 CLI 进程"改为"一个常驻 Node worker 进程内反复调用冻结 bundle 官方导出的
+``runMechanismCli``"。语义等价论证与频率摊薄裁决见 EV
+``c04-perf-worker-prerequisite-20260907/design-adjudication.md`` §3（用户 D1–D4
+逐字授权在档）。本模块只承载传输层；校验链（路径链/符号链接/文件/provenance/
+receipt/import-closure 全量 sha256/版本区间）一字不弱化，频率按授权摊薄：
+node 运行时与 bundle 每 checker 进程校验一次（内容级缓存，见各函数 docstring），
+self-check 由"每请求一次独立 spawn"改为"worker 启动时一次 + fail-closed"。
+"""
 from __future__ import annotations
 
 import argparse
+import atexit
+import base64
 import hashlib
 import json
 import os
 import re
+import select
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 CHECKER_METHOD_ID = "skill-family-audit:conformance-audit"
@@ -18,11 +32,7 @@ HEX64 = re.compile(r"^[0-9a-f]{64}$")
 FAMILY_NAME_RE = re.compile(r"^[a-z][a-z0-9-]+$")
 FRONTMATTER_BOUNDARY = re.compile(r"^---\s*$")
 FOUNDATION_PROFILE_EXPECTED = {"id": "quickstart-profile", "version": 2}
-FOUNDATION_RECEIPT_KINDS = {
-    "skill-family.foundation-local-tarball-receipt",
-    "foundation-local-three-package-receipt",
-    "skill-family.release-artifacts-manifest",
-}
+FOUNDATION_RECEIPT_KIND = "skill-family.source-authority-receipt"
 NODE_VERSION_MIN = (22, 22, 2)
 NODE_VERSION_EXCLUSIVE_MAX = (23, 0, 0)
 NODE_VERSION_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)")
@@ -42,8 +52,210 @@ class FoundationNodeRuntimeError(RuntimeError):
         self.code = code
 
 
+# ---------------------------------------------------------------------------
+# C04 常驻 worker 传输层（实现规格：delegation-perf-worker.md §3.1）
+#
+# 启动命令形态（argv 索引经实测修正，见代码下方说明与终报）：
+#   node --input-type=module -e '<worker 源码>' <node 自身路径> <cli 绝对路径>
+# process.argv = [node, node-自身路径(argv[1]), cli 路径(argv[2])]。argv[1] 必须是
+# 一个真实存在的、不等于 cli realpath 的文件：mechanisms-cli.mjs 底部 main guard
+# 比较 realpathSync(import.meta.url) 与 realpathSync(process.argv[1])——若 argv[1]
+# 恰好是 cli 自身，导入该模块会触发 main guard（顶层 await 并发消费真实 stdin，
+# 造成死锁与帧损坏）；argv[1] 若不存在则 guard 内 realpathSync 抛 ENOENT 使模块
+# 求值失败。此处取 node 自身路径作 argv[1]（spawn 时刻必然存在且恒不等于 cli）。
+# 传入路径一律经 Popen argv 传递，不经 shell，无引号注入面。
+#
+# worker 协议（纯传输内握手，非新观察合同）：
+#   1. 启动即导入 cli（路径来自 argv[2]，worker 不自行选路），随后以注入流执行
+#      一次 {"operation":"self-check","params":{}}（与移除的每请求 self-check
+#      请求字节逐字节相同）；valid!==true 或返回码非 0 → stderr 记因后退非零
+#      （fail-closed），不进入帧循环。
+#   2. self-check 通过后向 stdout 回写一行 {"ready":true}（启动握手；使 Python
+#      侧能把"启动失败"与旧的 FOUNDATION_CLI_SELF_CHECK_FAILED 语义对应）。
+#   3. 之后按行读 stdin 帧：每帧 = base64(精确请求字节)；解码后以注入流调用
+#      runMechanismCli，回写一行 {"code":<0|2>,"out_b64":…,"err_b64":…}，out/err
+#      为 CLI 形态下 stdout/stderr 的精确字节（逐字节与旧 subprocess 形态相同）。
+#   4. 帧内未捕获异常 → 回写错误帧（code=2 + worker_error 封套）后退非零。
+# ---------------------------------------------------------------------------
+
+_FOUNDATION_WORKER_STARTUP_TIMEOUT = 120.0
+_FOUNDATION_WORKER_REQUEST_TIMEOUT = 300.0
+_WORKER_READY_PREFIX = '{"ready":true}'
+
+_FOUNDATION_WORKER_SOURCE = r"""
+const { pathToFileURL } = await import("node:url");
+const { Readable, Writable } = await import("node:stream");
+const { createHash } = await import("node:crypto");
+const { appendFileSync, writeSync } = await import("node:fs");
+
+const TRACE_PATH = process.env.SFA_AUDIT_MECHANISM_TRACE || "";
+const cliPath = process.argv[2];
+if (!cliPath) {
+  writeSync(2, JSON.stringify({ worker_error: "missing cli path argv" }) + "\n");
+  process.exit(3);
+}
+function stdoutLine(text) {
+  // 帧输出一律走 process.stdout.write（node 内部处理非阻塞 pipe fd 的
+  // 背压/部分写/EAGAIN）；fs.writeSync 对 stdout pipe 是单次非阻塞写，
+  // 大帧（>pipe 容量）会部分写截断或抛 EAGAIN（见 c04 传输修复记录）。
+  return new Promise((resolve, reject) => {
+    process.stdout.write(text, (err) => (err ? reject(err) : resolve()));
+  });
+}
+function traceLine(reqBuf, code, outBuf, errBuf) {
+  if (!TRACE_PATH) return;
+  try {
+    const line =
+      JSON.stringify({
+        req_b64: reqBuf.toString("base64"),
+        code: code,
+        out_sha256: createHash("sha256").update(outBuf).digest("hex"),
+        out_len: outBuf.length,
+        err_sha256: createHash("sha256").update(errBuf).digest("hex"),
+      }) + "\n";
+    appendFileSync(TRACE_PATH, line, "utf8");
+  } catch (_err) {
+    /* trace is best-effort; never affects the request path */
+  }
+}
+let runMechanismCli;
+try {
+  const mod = await import(pathToFileURL(cliPath).href);
+  runMechanismCli = mod.runMechanismCli;
+} catch (cause) {
+  writeSync(2, JSON.stringify({
+    worker_error: "cli import failed",
+    message: String((cause && cause.message) || cause),
+  }) + "\n");
+  process.exit(3);
+}
+if (typeof runMechanismCli !== "function") {
+  writeSync(2, JSON.stringify({ worker_error: "cli exports no runMechanismCli" }) + "\n");
+  process.exit(3);
+}
+async function executeOnce(requestBytes) {
+  const outChunks = [];
+  const errChunks = [];
+  const output = new Writable({
+    write(chunk, _enc, cb) { outChunks.push(Buffer.from(chunk)); cb(); },
+  });
+  const error = new Writable({
+    write(chunk, _enc, cb) { errChunks.push(Buffer.from(chunk)); cb(); },
+  });
+  const code = await runMechanismCli({
+    input: Readable.from([Buffer.from(requestBytes)]),
+    output: output,
+    error: error,
+  });
+  return {
+    code: code,
+    out: Buffer.concat(outChunks),
+    err: Buffer.concat(errChunks),
+  };
+}
+const selfCheckRequest = Buffer.from(
+  JSON.stringify({ operation: "self-check", params: {} }),
+  "utf8"
+);
+let selfCheck;
+try {
+  selfCheck = await executeOnce(selfCheckRequest);
+} catch (cause) {
+  const message = String((cause && cause.message) || cause);
+  traceLine(selfCheckRequest, -1, Buffer.alloc(0), Buffer.from(message, "utf8"));
+  writeSync(2, JSON.stringify({ worker_error: "self-check crashed", message: message }) + "\n");
+  process.exit(4);
+}
+traceLine(selfCheckRequest, selfCheck.code, selfCheck.out, selfCheck.err);
+let selfCheckValid = false;
+try {
+  const parsed = JSON.parse(selfCheck.out.toString("utf8"));
+  selfCheckValid = Boolean(parsed && parsed.valid === true);
+} catch (_err) {
+  selfCheckValid = false;
+}
+if (selfCheck.code !== 0 || !selfCheckValid) {
+  writeSync(2, JSON.stringify({
+    worker_error: "self-check failed",
+    code: selfCheck.code,
+    err: selfCheck.err.toString("utf8").slice(0, 4000),
+  }) + "\n");
+  process.exit(4);
+}
+await stdoutLine(JSON.stringify({ ready: true }) + "\n");
+let buffer = Buffer.alloc(0);
+for await (const chunk of process.stdin) {
+  buffer = Buffer.concat([buffer, Buffer.from(chunk)]);
+  let nl;
+  while ((nl = buffer.indexOf(10)) !== -1) {
+    const frame = buffer.subarray(0, nl);
+    buffer = buffer.subarray(nl + 1);
+    let requestBytes;
+    try {
+      requestBytes = Buffer.from(frame.toString("utf8"), "base64");
+    } catch (_err) {
+      writeSync(2, JSON.stringify({ worker_error: "bad base64 frame" }) + "\n");
+      process.exit(5);
+    }
+    let outcome;
+    try {
+      outcome = await executeOnce(requestBytes);
+    } catch (cause) {
+      const message = String((cause && cause.message) || cause);
+      const errBuf = Buffer.from(JSON.stringify({ worker_error: true, message: message }), "utf8");
+      await stdoutLine(JSON.stringify({
+        code: 2,
+        out_b64: "",
+        err_b64: errBuf.toString("base64"),
+      }) + "\n");
+      process.exit(6);
+    }
+    // Trace 只由 Python 侧传输层每请求追加（design §3.4）；worker 只写启动
+    // self-check 一条（worker 内部事件，Python 侧不可见）。
+    await stdoutLine(JSON.stringify({
+      code: outcome.code,
+      out_b64: outcome.out.toString("base64"),
+      err_b64: outcome.err.toString("base64"),
+    }) + "\n");
+  }
+}
+process.exit(0);
+"""
+
+
+# 每进程状态：node 运行时缓存 / bundle 校验缓存 / 常驻 worker。
+# 缓存不跨进程（模块状态即进程状态）；失败结果一律不缓存（负例每次重新全量校验）。
+_NODE_RUNTIME_CACHE: dict[str, tuple[Path, str]] = {}
+# 缓存值 = (entry, 全量校验闭包元数据快照 {resolved path: (st_mtime_ns, st_size)})。
+# 哨兵覆盖首次全量链实际读取/校验的每个文件（入口/foundation-projection.json/
+# receipt 源 foundation-handoff.json 或 foundation-pin.json/import-closure 全部成员）；
+# 快照任一成员 stat 失配即视为内容可能变化并重跑与首次逐字节相同的全量链
+# （R-G4 修复裁决 2026-09-07：入口单文件哨兵放过了只改闭包其他成员的篡改序列）。
+_BUNDLE_VERIFY_CACHE: dict[str, tuple[Path, dict[str, tuple[int, int]]]] = {}
+_FOUNDATION_WORKER: dict | None = None  # {node_path, cli, proc, trace_path}
+_FOUNDATION_WORKER_LOCK = threading.Lock()
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _bundle_snapshot_note(path: Path) -> tuple[int, int]:
+    """取 (st_mtime_ns, st_size) 元数据哨兵；stat 失败以 (-1,-1) 全不匹配表示，
+    使任何成员缺失/不可读都触发重跑全量链（fail-closed 语义）。"""
+    try:
+        s = path.stat()
+    except OSError:
+        return (-1, -1)
+    return (s.st_mtime_ns, s.st_size)
+
+
+def _bundle_snapshot_matches(snapshot: dict[str, tuple[int, int]]) -> bool:
+    """快照全部成员当前 stat 与记录一致才命中；任一成员变化即触发重跑。"""
+    for recorded_path, expected in snapshot.items():
+        if _bundle_snapshot_note(Path(recorded_path)) != expected:
+            return False
+    return True
 
 
 def _check_path_chain_no_symlinks(path: Path, error_code: str = "FOUNDATION_RUNNER_SYMLINK") -> None:
@@ -62,7 +274,22 @@ def _check_path_chain_no_symlinks(path: Path, error_code: str = "FOUNDATION_RUNN
 
 
 def verify_foundation_bundle(entry_ref: str) -> Path:
-    """Verify one fixed entry's static import closure before Node imports it."""
+    """Verify one fixed entry's static import closure before Node imports it.
+
+    频率（C04 授权摊薄 + R-G4 修复裁决 2026-09-07，design-adjudication.md
+    §3.2）：完整校验链（符号链接路径链/provenance/receipt/payload 摘要/
+    import-closure 全量 sha256）对同一 resolved realpath 每 checker 进程首次
+    调用执行一次；此后该 realpath 的校验结果按内容级缓存复用。缓存命中带全量
+    校验闭包元数据快照哨兵：首次全量链执行时对每个实际读取/校验的文件（入口、
+    foundation-projection.json、receipt 源 foundation-handoff.json 或
+    foundation-pin.json、import-closure 全部成员）记录 (resolved path,
+    st_mtime_ns, st_size)；命中条件 = 入口 stat 匹配且快照全部成员 stat 均与
+    当前一致才直接返回；任一成员变化都视为内容可能变化，重跑与首次完全相同的
+    全量校验链（校验链一字不弱化；首校验失败照抛原错误码且不入缓存）。语义代价
+    （如实记录）：同进程内 mtime+size 双保持的恶意篡改不探测——旧形态每请求
+    全哈希已按 §3.2 摊薄取代，本快照哨兵为对该已接受风险的收紧，堵住测试序列
+    式普通篡改（只改入口以外闭包成员、不改入口元数据）在缓存期不被发现的缺口。
+    """
     raw = Path(entry_ref).expanduser()
     symlink_error = (
         "FOUNDATION_RUNNER_SYMLINK"
@@ -80,6 +307,28 @@ def verify_foundation_bundle(entry_ref: str) -> Path:
     entry = raw.resolve(strict=True)
     if not entry.is_file():
         raise RuntimeError(invalid_error)
+    try:
+        entry_stat = entry.stat()
+    except OSError:
+        entry_stat = None
+    cached = _BUNDLE_VERIFY_CACHE.get(str(entry))
+    if cached is not None and entry_stat is not None:
+        cached_entry, cached_snapshot = cached
+        if (
+            cached_entry == entry
+            and entry_stat.st_mtime_ns
+            == cached_snapshot.get(str(entry), (-1, -1))[0]
+            and entry_stat.st_size
+            == cached_snapshot.get(str(entry), (-1, -1))[1]
+            and _bundle_snapshot_matches(cached_snapshot)
+        ):
+            return cached_entry
+
+    snapshot: dict[str, tuple[int, int]] = {}
+
+    def _note(path: Path) -> None:
+        """记录校验闭包成员当前 (st_mtime_ns, st_size)；stat 先于该文件内容读取。"""
+        snapshot[str(path)] = _bundle_snapshot_note(path)
 
     bundle_root = entry.parent
     provenance_raw = bundle_root / "foundation-projection.json"
@@ -88,7 +337,9 @@ def verify_foundation_bundle(entry_ref: str) -> Path:
         if not member.is_file():
             raise RuntimeError("FOUNDATION_BUNDLE_MEMBER_MISSING")
 
-    provenance = _load(provenance_raw.resolve(strict=True))
+    provenance_path = provenance_raw.resolve(strict=True)
+    _note(provenance_path)
+    provenance = _load(provenance_path)
     if provenance.get("kind") != "skill-family.foundation-projection":
         raise RuntimeError("FOUNDATION_BUNDLE_PROVENANCE_INVALID")
     profile = provenance.get("profile")
@@ -120,6 +371,7 @@ def verify_foundation_bundle(entry_ref: str) -> Path:
     pin_raw = bundle_root.parent / "foundation-pin.json"
     if handoff_raw.is_file():
         _check_path_chain_no_symlinks(handoff_raw, "FOUNDATION_RECEIPT_INVALID")
+        _note(handoff_raw.resolve(strict=True))
         handoff = _load(handoff_raw)
         receipt = handoff.get("receipt")
         if (
@@ -130,8 +382,8 @@ def verify_foundation_bundle(entry_ref: str) -> Path:
                 "baseCommit": source.get("baseCommit"),
             }
             or not isinstance(receipt, dict)
-            or receipt.get("kind") not in FOUNDATION_RECEIPT_KINDS
-            or not isinstance(receipt.get("receiptId"), str)
+            or set(receipt) != {"kind", "sha256"}
+            or receipt.get("kind") != FOUNDATION_RECEIPT_KIND
             or not HEX64.fullmatch(receipt.get("sha256", ""))
             or handoff.get("payloadDigest") != payload.get("digest")
             or handoff.get("provenanceDigest") != _sha256(provenance_raw)
@@ -141,6 +393,7 @@ def verify_foundation_bundle(entry_ref: str) -> Path:
         _check_path_chain_no_symlinks(pin_raw, "FOUNDATION_RECEIPT_INVALID")
         if not pin_raw.is_file():
             raise RuntimeError("FOUNDATION_RECEIPT_INVALID")
+        _note(pin_raw.resolve(strict=True))
         pin = _load(pin_raw)
         pin_profile = pin.get("profile")
         pin_source = pin.get("source")
@@ -177,12 +430,15 @@ def verify_foundation_bundle(entry_ref: str) -> Path:
             raise RuntimeError("FOUNDATION_BUNDLE_IMPORT_ESCAPE") from exc
         if relative in checked:
             continue
+        _note(resolved)
         if declared.get(relative) != _sha256(resolved):
             raise RuntimeError("FOUNDATION_BUNDLE_MEMBER_DIGEST_MISMATCH")
         checked.add(relative)
         if resolved.suffix == ".mjs":
             source = resolved.read_text(encoding="utf-8")
             pending.extend(resolved.parent / match for match in import_pattern.findall(source))
+    _note(entry)  # 入口幂等兜底入快照（闭包循环已记录；此处保证存储态含入口）
+    _BUNDLE_VERIFY_CACHE[str(entry)] = (entry, snapshot)
     return entry
 
 
@@ -204,13 +460,32 @@ def _package_root() -> Path | None:
     return None
 
 
+def _host_platform_root() -> Path | None:
+    """返回当前执行副本所属的受管平台根（自身 runner marker 的最近祖先）。
+
+    plugin-src 源树脚本不属于任何平台副本时返回 None（调用方回退到仓内全量
+    候选，保持确定性排序）。任何路径分量或入口为符号链接即视为不成立，
+    与 ``_check_path_chain_no_symlinks`` 的失败关闭语义一致。
+    """
+    here = Path(__file__).resolve(strict=True)
+    for ancestor in (here.parent, *here.parents):
+        marker = ancestor / "foundation" / "quickstart-profile" / "runner.mjs"
+        if marker.is_file() and not marker.is_symlink():
+            return ancestor
+    return None
+
+
 def _default_audit_bundle_candidates() -> list[Path]:
     """仓内默认可发现的 Audit Foundation Bundle 候选（确定性排序）。
 
     候选来自仓库自身受管平台投影 ``generated/platforms/<platform>/foundation/
-    quickstart-profile/runner.mjs``；任何候选在使用前仍经过
-    ``verify_foundation_bundle`` 全量校验（provenance、receipt、payload 摘要、
-    import 闭包），默认推断不放宽任何校验。
+    quickstart-profile/runner.mjs``；当执行副本本身位于某个平台投影内时（如
+    codex 投影脚本在未显式绑定 runner 的环境下运行），该副本所属平台的
+    runner 前置到候选首位（去重后仍保留其余仓内候选），避免 host gate 把
+    本平台 caller 误判为其它平台的越界调用；plugin-src 源树执行不属于任何
+    平台副本，候选顺序不变。任何候选在使用前仍经过 ``verify_foundation_bundle``
+    全量校验（provenance、receipt、payload 摘要、import 闭包），默认推断不放宽
+    任何校验。
     """
     root = _package_root()
     if root is None:
@@ -222,6 +497,14 @@ def _default_audit_bundle_candidates() -> list[Path]:
             runner = platform_dir / "foundation" / "quickstart-profile" / "runner.mjs"
             if runner.is_file() and not runner.is_symlink():
                 candidates.append(runner)
+    own_root = _host_platform_root()
+    if own_root is not None:
+        own_runner = own_root / "foundation" / "quickstart-profile" / "runner.mjs"
+        if own_runner in candidates:
+            candidates = [
+                own_runner,
+                *(candidate for candidate in candidates if candidate != own_runner),
+            ]
     return candidates
 
 
@@ -251,7 +534,16 @@ def foundation_runner() -> Path:
 
 
 def _validate_node_runtime(raw: Path) -> tuple[Path, str]:
-    """对单个 Node 运行时入口执行全量校验（路径链、文件、版本区间）。"""
+    """对单个 Node 运行时入口执行全量校验（路径链、文件、版本区间）。
+
+    频率（C04 授权摊薄，design-adjudication.md §3.2；用户 D2 明文授权）：同一
+    入口路径每 checker 进程只 spawn 一次 ``node --version`` 做完整校验，成功结果
+    (path, version) 按 str(raw) 缓存；失败仍抛 FoundationNodeRuntimeError 原错误码
+    且不缓存（负例每次重新全量校验）。缓存不跨进程；env 读取本身不缓存。
+    """
+    cached = _NODE_RUNTIME_CACHE.get(str(raw))
+    if cached is not None:
+        return cached
     if not raw.is_absolute():
         raise FoundationNodeRuntimeError(
             "FOUNDATION_NODE_NOT_ABSOLUTE", f"Node.js 入口必须是绝对路径: {raw}"
@@ -295,6 +587,7 @@ def _validate_node_runtime(raw: Path) -> tuple[Path, str]:
             "FOUNDATION_NODE_VERSION_INCOMPATIBLE",
             f"Node.js 版本 {version} 不在 >=22.22.2 <23 范围内",
         )
+    _NODE_RUNTIME_CACHE[str(raw)] = (raw, version)
     return raw, version
 
 
@@ -350,31 +643,236 @@ def foundation_node_runtime() -> tuple[Path, str]:
 
 
 def call_foundation_cli(runner: Path, cli_name: str, request: dict) -> object:
-    """Call one fixed CLI from the already verified managed Bundle."""
+    """Call one fixed CLI from the already verified managed Bundle.
+
+    self-check（C04 授权摊薄，design-adjudication.md §3.2）：由"每请求独立 spawn
+    一次 self-check"改为"常驻 worker 启动时一次 + fail-closed"——worker 在进入帧
+    循环前以注入流执行逐字节相同的 self-check 请求，valid!==true 或返回码非 0
+    即退非零（Python 侧映射为 FOUNDATION_CLI_SELF_CHECK_FAILED）。
+    verify_foundation_bundle 与 foundation_node_runtime 在此仍逐请求调用，但内部
+    缓存使完整校验链只在每进程首次（或内容元数据变化时）执行。
+    """
     if cli_name != "mechanisms-cli.mjs":
         raise RuntimeError("FOUNDATION_CLI_NOT_ALLOWED")
     runner = verify_foundation_bundle(str(runner))
     cli = verify_foundation_bundle(str(runner.parent / cli_name))
     node_path, _node_version = foundation_node_runtime()
-    if request.get("operation") != "self-check":
-        self_check = _run_foundation_cli(node_path, cli, {"operation": "self-check", "params": {}})
-        if not isinstance(self_check, dict) or self_check.get("valid") is not True:
-            raise RuntimeError("FOUNDATION_CLI_SELF_CHECK_FAILED")
     return _run_foundation_cli(node_path, cli, request)
 
 
-def _run_foundation_cli(node_path: Path, cli: Path, request: dict) -> object:
-    completed = subprocess.run(
-        [str(node_path), str(cli)],
-        input=json.dumps(request, ensure_ascii=False).encode("utf-8"),
-        capture_output=True, check=False,
+def _trace_transport_request(
+    trace_path: str, request_bytes: bytes, code: int, out_bytes: bytes, err_bytes: bytes
+) -> None:
+    """SFA_AUDIT_MECHANISM_TRACE=<path> 观测 trace（可选；默认 off 零行为差异）。
+
+    NDJSON 行：{"req_b64","code","out_sha256","out_len","err_sha256"}；帧内容与
+    CLI 形态请求/响应字节一一对应（V5 等价差分的真实请求流来源）。best-effort，
+    任何写失败不影响请求路径。
+    """
+    if not trace_path:
+        return
+    try:
+        with open(trace_path, "a", encoding="utf-8") as handle:
+            handle.write(
+                json.dumps(
+                    {
+                        "req_b64": base64.b64encode(request_bytes).decode("ascii"),
+                        "code": code,
+                        "out_sha256": hashlib.sha256(out_bytes).hexdigest(),
+                        "out_len": len(out_bytes),
+                        "err_sha256": hashlib.sha256(err_bytes).hexdigest(),
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+    except OSError:
+        return
+
+
+def _drain_worker_stderr(proc) -> str:
+    try:
+        return (proc.stderr.read() or b"").decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _read_worker_line(proc, timeout: float) -> bytes | None:
+    """Read one newline-terminated line from the worker stdout; None on EOF.
+
+    timeout=None 时阻塞读（与旧 subprocess.run 无超时语义一致）；超时抛
+    TimeoutError 由调用方按 fail-closed 处理。
+    """
+    if timeout is not None:
+        ready, _, _ = select.select([proc.stdout], [], [], timeout)
+        if not ready:
+            raise TimeoutError(f"Foundation CLI worker did not respond within {timeout:.0f}s")
+    return proc.stdout.readline()
+
+
+def _terminate_worker_proc(proc) -> None:
+    if proc.poll() is None:
+        try:
+            proc.terminate()
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+
+
+def _ensure_foundation_worker(node_path: Path, cli: Path) -> dict:
+    """Start (or reuse) the resident Node worker; must be called under the lock.
+
+    worker 启动 = spawn + 启动 self-check + ready 握手。启动失败（import 失败、
+    self-check 非 valid、超时、进程早退）一律 fail-closed：非 ready 退出即抛
+    RuntimeError，其中 self-check 失败映射为旧的 FOUNDATION_CLI_SELF_CHECK_FAILED
+    语义（错误码/消息不变）。worker 参数（node/cli）变化时重启（进程内同时只
+    保留一个 worker）。
+    """
+    global _FOUNDATION_WORKER
+    current = _FOUNDATION_WORKER
+    if current is not None and (
+        current["node_path"] != node_path or current["cli"] != cli
+    ):
+        _terminate_worker_proc(current["proc"])
+        current = None
+        _FOUNDATION_WORKER = None
+    if current is not None:
+        proc = current["proc"]
+        if proc.poll() is None:
+            return current
+        _drain_worker_stderr(proc)
+        current = None
+        _FOUNDATION_WORKER = None
+    trace_path = os.environ.get("SFA_AUDIT_MECHANISM_TRACE", "")
+    proc = subprocess.Popen(
+        [
+            str(node_path),
+            "--input-type=module",
+            "-e",
+            _FOUNDATION_WORKER_SOURCE,
+            str(node_path),  # argv[1]：真实存在的非 cli 文件（见模块顶部说明）
+            str(cli),        # argv[2]：cli 绝对路径（worker 按此导入，不自行选路）
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     try:
-        stdout = completed.stdout.decode("utf-8", errors="strict")
-        stderr = completed.stderr.decode("utf-8", errors="strict")
+        ready_line = _read_worker_line(proc, _FOUNDATION_WORKER_STARTUP_TIMEOUT)
+    except TimeoutError as exc:
+        _terminate_worker_proc(proc)
+        raise RuntimeError(
+            f"Foundation CLI worker startup timed out: {exc}"
+        ) from exc
+    if not ready_line:
+        _terminate_worker_proc(proc)
+        detail = _drain_worker_stderr(proc)
+        if "self-check" in detail:
+            raise RuntimeError("FOUNDATION_CLI_SELF_CHECK_FAILED")
+        raise RuntimeError(detail.strip() or "Foundation CLI worker failed to start")
+    try:
+        ready = json.loads(ready_line.decode("utf-8", errors="strict")).get("ready")
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        ready = None
+    if ready is not True:
+        _terminate_worker_proc(proc)
+        raise RuntimeError("Foundation CLI worker returned an invalid ready frame")
+    worker = {"node_path": node_path, "cli": cli, "proc": proc, "trace_path": trace_path}
+    _FOUNDATION_WORKER = worker
+    return worker
+
+
+def _shutdown_foundation_worker() -> None:
+    """atexit：终止常驻 worker，关闭管道。"""
+    global _FOUNDATION_WORKER
+    try:
+        _FOUNDATION_WORKER_LOCK.acquire(timeout=10)
+    except Exception:
+        return
+    try:
+        current = _FOUNDATION_WORKER
+        _FOUNDATION_WORKER = None
+        if current is not None:
+            _terminate_worker_proc(current["proc"])
+            for stream in ("stdin", "stdout", "stderr"):
+                try:
+                    getattr(current["proc"], stream).close()
+                except Exception:
+                    pass
+    finally:
+        _FOUNDATION_WORKER_LOCK.release()
+
+
+atexit.register(_shutdown_foundation_worker)
+
+
+def _run_foundation_cli(node_path: Path, cli: Path, request: dict) -> object:
+    """Call one fixed CLI via the resident worker.
+
+    签名与返回/异常语义与旧 subprocess 形态不变：request 以
+    ``base64(json.dumps(request, ensure_ascii=False).encode("utf-8"))`` 一行写入
+    worker 管道（base64 解码后与旧 CLI stdin 字节逐字节相同），读一行响应帧；
+    out/err 字节解码走原有的 utf-8 strict decode / returncode!=0 → RuntimeError /
+    JSONDecodeError → RuntimeError 路径。worker 死亡、帧损坏、管道断裂、超时 →
+    RuntimeError fail-closed（后续调用自动重启 worker）。
+    """
+    with _FOUNDATION_WORKER_LOCK:
+        worker = _ensure_foundation_worker(node_path, cli)
+        proc = worker["proc"]
+        request_bytes = json.dumps(request, ensure_ascii=False).encode("utf-8")
+        frame = base64.b64encode(request_bytes).decode("ascii") + "\n"
+        try:
+            assert proc.stdin is not None
+            proc.stdin.write(frame.encode("ascii"))
+            proc.stdin.flush()
+        except (BrokenPipeError, OSError) as exc:
+            _terminate_worker_proc(proc)
+            raise RuntimeError(f"Foundation CLI worker pipe write failed: {exc}") from exc
+        try:
+            response_line = _read_worker_line(
+                proc, _FOUNDATION_WORKER_REQUEST_TIMEOUT
+            )
+        except TimeoutError as exc:
+            _terminate_worker_proc(proc)
+            raise RuntimeError(f"Foundation CLI worker request timed out: {exc}") from exc
+        if not response_line:
+            _terminate_worker_proc(proc)
+            detail = _drain_worker_stderr(proc)
+            raise RuntimeError(
+                detail.strip()
+                or "Foundation CLI worker terminated unexpectedly during a request"
+            )
+        try:
+            response_frame = json.loads(
+                response_line.decode("utf-8", errors="strict")
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            _terminate_worker_proc(proc)
+            raise RuntimeError("Foundation CLI returned an invalid response frame") from exc
+        if not isinstance(response_frame, dict):
+            _terminate_worker_proc(proc)
+            raise RuntimeError("Foundation CLI returned an invalid response frame")
+        code = response_frame.get("code")
+        try:
+            out_bytes = base64.b64decode(response_frame["out_b64"])
+            err_bytes = base64.b64decode(response_frame["err_b64"])
+        except (KeyError, TypeError, ValueError) as exc:
+            _terminate_worker_proc(proc)
+            raise RuntimeError("Foundation CLI returned an invalid response frame") from exc
+        if not isinstance(code, int):
+            _terminate_worker_proc(proc)
+            raise RuntimeError("Foundation CLI returned an invalid response frame")
+        _trace_transport_request(
+            worker["trace_path"], request_bytes, code, out_bytes, err_bytes
+        )
+    # 以下解码/判定路径与旧 subprocess 形态逐字相同。
+    try:
+        stdout = out_bytes.decode("utf-8", errors="strict")
+        stderr = err_bytes.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
         raise RuntimeError("Foundation CLI returned invalid UTF-8") from exc
-    if completed.returncode != 0:
+    if code != 0:
         raise RuntimeError(stderr.strip() or "Foundation CLI failed")
     try:
         return json.loads(stdout)
@@ -431,19 +929,25 @@ def foundation_host_for(module_file: str, runner: Path | None = None) -> object:
     """Return this single host only to a sibling in the same managed platform tree."""
     caller = Path(module_file).resolve(strict=True)
     host_file = Path(__file__).resolve(strict=True)
-    allowed_roots: list[Path] = []
-    if runner is None:
-        allowed_roots.append(foundation_runner().parents[2])
-    for origin in (host_file, caller):
-        source_root = next(
-            (ancestor / "plugin-src" for ancestor in origin.parents if (ancestor / "plugin-src").is_dir()),
-            None,
-        )
-        if source_root is not None:
-            allowed_roots.append(source_root.resolve(strict=True))
-    if runner is not None and host_file in runner.parents[2].parents:
-        allowed_roots.append(runner.parents[2])
-    if not any(caller == root or root in caller.parents for root in allowed_roots):
+    verified_runner = (
+        foundation_runner()
+        if runner is None
+        else verify_foundation_bundle(str(runner))
+    )
+    platform_root = verified_runner.parents[2]
+    same_platform = (
+        platform_root in host_file.parents and platform_root in caller.parents
+    )
+    source_root = next(
+        (ancestor for ancestor in host_file.parents if ancestor.name == "plugin-src"),
+        None,
+    )
+    same_source = (
+        source_root is not None
+        and source_root in caller.parents
+        and platform_root.parent == source_root.parent / "generated" / "platforms"
+    )
+    if not (same_platform or same_source):
         raise RuntimeError("FOUNDATION_HOST_CALLER_OUTSIDE_PLATFORM")
     return sys.modules.get(__name__) or sys.modules.get("conformance_check")
 

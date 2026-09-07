@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.negative.wrong-auth", "contract": "host-descriptor", "class": "negative",
+  "description": "A retired auth combination is rejected: only existing-user-state + host-managed is admitted.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "kimi-code", "displayName": "Kimi Code", "support": "manual", "maturity": "manual", "sourceAliases": ["kimi"], "verification": { "driverId": "kimi-code-print-v1", "authStrategy": "dedicated-persistent", "credentialMutation": "may-refresh" }, "pathCategories": [ { "id": "plugin-adapter-skill-root", "role": "skill-root", "scope": "project", "anchor": "project-root", "relPath": "skills" } ], "probeCapabilities": ["cli", "version", "payload", "registry", "discover", "enabled", "reload", "smoke", "uninstall"] }
+}

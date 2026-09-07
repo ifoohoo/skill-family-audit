@@ -51,6 +51,24 @@ SELFHEAL_POLICY_FIELDS = (
     "escalation_conditions",
 )
 
+#: 真实机械执行器可为单个方法报告的状态。``NOT_RUN`` 仅用于明确记录
+#: 该方法没有运行；多方法结果不得全部为 ``NOT_RUN``。
+METHOD_SUBRESULT_STATUSES = (
+    "PASS", "FAIL", "EVIDENCE_MISSING", "NOT_APPLICABLE", "NOT_RUN",
+)
+
+#: dispatcher 自己拥有的 observation_source；执行器不得伪造这些来源。
+MANAGED_METHOD_OBSERVATION_SOURCES = frozenset({
+    "executor_aggregate_single_mechanical_method",
+    "executor_method_subresults_invalid",
+    "method_not_executed_by_mechanical_executor",
+})
+
+AGGREGATE_EVIDENCE_REFERENCE = {
+    "kind": "executor_aggregate_evidence_reference",
+    "field": "evidence",
+}
+
 
 class ExecutorEvidenceError(ValueError):
     """治理声明形状非法等失败关闭情形。"""
@@ -58,6 +76,107 @@ class ExecutorEvidenceError(ValueError):
     def __init__(self, code: str, detail: str = ""):
         super().__init__(detail or code)
         self.code = code
+
+
+def validate_method_subresults(
+    value: Any,
+    *,
+    required_methods: list[str],
+    aggregate_status: str,
+) -> list[dict[str, Any]]:
+    """Validate executor-owned, per-mechanical-method observations.
+
+    The managed route owns the method identity set.  Executors may only
+    describe that exact set and must attach both an observation source and
+    non-empty structured evidence to every method.  The dispatcher, not the
+    executor, supplies compatibility and non-executed rows.
+    """
+    if not isinstance(value, list):
+        raise ExecutorEvidenceError(
+            "EXECUTOR_METHOD_SUBRESULTS_MISSING",
+            "多机械方法执行器必须返回 check_method_subresults",
+        )
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(value):
+        where = f"check_method_subresults[{index}]"
+        if not isinstance(raw, dict) or set(raw) != {
+            "check_method", "status", "observation_source", "evidence",
+        }:
+            raise ExecutorEvidenceError(
+                "EXECUTOR_METHOD_SUBRESULT_INVALID",
+                f"{where} 必须且只能包含逐方法身份、状态、观察来源与证据",
+            )
+        method = raw["check_method"]
+        status = raw["status"]
+        source = raw["observation_source"]
+        evidence = raw["evidence"]
+        if not isinstance(method, str) or method not in required_methods:
+            raise ExecutorEvidenceError(
+                "EXECUTOR_METHOD_SUBRESULT_UNKNOWN",
+                f"{where} 不属于受管 required_mechanical_methods",
+            )
+        if method in seen:
+            raise ExecutorEvidenceError(
+                "EXECUTOR_METHOD_SUBRESULT_DUPLICATE",
+                f"{where} 重复报告方法 {method}",
+            )
+        if status not in METHOD_SUBRESULT_STATUSES:
+            raise ExecutorEvidenceError(
+                "EXECUTOR_METHOD_SUBRESULT_STATUS_INVALID",
+                f"{where} 返回非法状态 {status!r}",
+            )
+        if (
+            not isinstance(source, str)
+            or not source.strip()
+            or source in MANAGED_METHOD_OBSERVATION_SOURCES
+        ):
+            raise ExecutorEvidenceError(
+                "EXECUTOR_METHOD_SUBRESULT_SOURCE_INVALID",
+                f"{where} 缺少执行器自有 observation_source 或伪造受管来源",
+            )
+        if not isinstance(evidence, dict) or not evidence:
+            raise ExecutorEvidenceError(
+                "EXECUTOR_METHOD_SUBRESULT_EVIDENCE_INVALID",
+                f"{where} 必须携带非空结构化证据",
+            )
+        seen.add(method)
+        rows.append({
+            "check_method": method,
+            "status": status,
+            "observation_source": source,
+            "evidence": dict(evidence),
+        })
+    if seen != set(required_methods):
+        missing = sorted(set(required_methods) - seen)
+        raise ExecutorEvidenceError(
+            "EXECUTOR_METHOD_SUBRESULTS_INCOMPLETE",
+            f"逐方法结果与受管全集不一致，缺少 {missing}",
+        )
+    statuses = [row["status"] for row in rows]
+    if statuses and all(status == "NOT_RUN" for status in statuses):
+        raise ExecutorEvidenceError(
+            "EXECUTOR_METHOD_SUBRESULTS_ALL_NOT_RUN",
+            "多机械方法执行器不得把全部方法报告为 NOT_RUN",
+        )
+    coherent = (
+        (aggregate_status == "PASS" and all(status == "PASS" for status in statuses))
+        or (
+            aggregate_status == "NOT_APPLICABLE"
+            and all(status == "NOT_APPLICABLE" for status in statuses)
+        )
+        or (aggregate_status == "FAIL" and "FAIL" in statuses)
+        or (
+            aggregate_status == "EVIDENCE_MISSING"
+            and any(status in {"EVIDENCE_MISSING", "NOT_RUN"} for status in statuses)
+        )
+    )
+    if not coherent:
+        raise ExecutorEvidenceError(
+            "EXECUTOR_METHOD_SUBRESULTS_AGGREGATE_MISMATCH",
+            "逐方法状态与 aggregate status 不一致",
+        )
+    return sorted(rows, key=lambda row: row["check_method"])
 
 
 def governance_dir(ctx: dict[str, Any]) -> Path:

@@ -2,8 +2,8 @@
   "author": {
     "name": "广州市风荷科技有限公司"
   },
-  "description": "技能族规范检查与生命周期审计插件；覆盖行为、符合性、发布与运行时审计方法，通过技能族生命周期市场分发。",
+  "description": "Skill family specification, audit methods, and platform projections",
   "license": "Apache-2.0",
   "name": "skill-family-audit",
-  "version": "1.1.2"
+  "version": "1.1.3"
 }

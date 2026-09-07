@@ -1,0 +1,104 @@
+{
+  "fixtureId": "fixed-set-publication-manifest.positive.valid",
+  "contract": "fixed-set-publication-manifest",
+  "class": "positive",
+  "description": "A complete fixed-set manifest.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/fixed-set-publication-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": true
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-publication-manifest",
+    "source": {
+      "rootBinding": {
+        "kind": "trusted-filesystem-root-binding",
+        "digestAlgorithm": "sha256",
+        "basis": "canonical-realpath-device-inode-type-mode-v1",
+        "digest": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "root": {
+        "type": "directory",
+        "mode": 493,
+        "device": "1",
+        "inode": "101"
+      },
+      "directories": [
+        {
+          "path": "generated",
+          "type": "directory",
+          "mode": 493,
+          "device": "1",
+          "inode": "102"
+        },
+        {
+          "path": "generated/platforms",
+          "type": "directory",
+          "mode": 493,
+          "device": "1",
+          "inode": "103"
+        },
+        {
+          "path": "generated/platforms/fixture",
+          "type": "directory",
+          "mode": 493,
+          "device": "1",
+          "inode": "104"
+        },
+        {
+          "path": "generated/platforms/fixture/skills",
+          "type": "directory",
+          "mode": 493,
+          "device": "1",
+          "inode": "105"
+        },
+        {
+          "path": "generated/platforms/fixture/skills/demo",
+          "type": "directory",
+          "mode": 493,
+          "device": "1",
+          "inode": "106"
+        }
+      ],
+      "closureDigest": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "target": {
+      "rootBinding": {
+        "kind": "trusted-filesystem-root-binding",
+        "digestAlgorithm": "sha256",
+        "basis": "canonical-realpath-device-inode-type-mode-v1",
+        "digest": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "root": {
+        "type": "directory",
+        "mode": 493,
+        "device": "2",
+        "inode": "201"
+      },
+      "directories": [],
+      "closureDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+      "expectation": "absent"
+    },
+    "members": [
+      {
+        "path": "generated/platforms/fixture/plugin.json",
+        "type": "regular",
+        "mode": 420,
+        "bytes": 18,
+        "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      {
+        "path": "generated/platforms/fixture/skills/demo/SKILL.md",
+        "type": "regular",
+        "mode": 420,
+        "bytes": 24,
+        "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+      }
+    ],
+    "digest": "6666666666666666666666666666666666666666666666666666666666666666"
+  }
+}

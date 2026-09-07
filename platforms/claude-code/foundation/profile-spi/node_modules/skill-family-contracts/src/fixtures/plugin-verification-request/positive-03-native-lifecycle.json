@@ -1,0 +1,35 @@
+{
+  "fixtureId": "plugin-verification-request/positive-03-native-lifecycle",
+  "class": "positive",
+  "contract": "plugin-verification-request",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/plugin-verification-request.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.plugin-verification-request",
+    "operation": "plugin-verification",
+    "verificationSetId": "native-qoder-set",
+    "goal": "native-lifecycle",
+    "source": {
+      "type": "local-marketplace",
+      "candidateRef": "candidate-native",
+      "marketplaceId": "fixture-marketplace",
+      "pluginId": "fixture-plugin",
+      "revisions": {
+        "v1": { "version": "1.0.0", "sourceManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "membersDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+        "v2": { "version": "1.1.0", "sourceManifestSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "membersDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }
+      }
+    },
+    "host": { "hostId": "qoder", "descriptorSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "driverId": "qodercli-print-v1", "driverVersion": "1.0.0" },
+    "install": { "mode": "fresh-tree" },
+    "auth": { "strategy": "existing-user-state", "credentialMutation": "host-managed" },
+    "invocation": {
+      "effectivePromptSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "fixtureClosureDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "protectedWorkspaceClosureDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "timeoutPolicy": { "schemaVersion": 1, "kind": "skill-family.timeout-policy", "maxSeconds": 30, "killGraceSeconds": 2 },
+      "modelOverridePolicy": "forbidden",
+      "restrictions": { "approvalPolicy": "deny-unattended", "tools": "skill-only", "mcp": "disabled", "settingsSources": "empty", "sessionPersistence": "disabled", "history": "fresh", "browserIntegration": "disabled" }
+    }
+  },
+  "expect": { "valid": true }
+}

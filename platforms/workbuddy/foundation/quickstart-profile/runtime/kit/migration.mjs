@@ -16,6 +16,104 @@ function validateContractDocument(document, { schemaId } = {}) {
 }
 
 const UTF8_STRICT_DECODER = new TextDecoder("utf-8", { fatal: true });
+const USE_ID_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
+
+function isString(value) {
+  return typeof value === "string";
+}
+
+function codePointLength(value) {
+  return Array.from(value).length;
+}
+
+function textError(value, label, maxLength, required = true) {
+  if (!isString(value)) return `${label} must be a string`;
+  if (required && value.length === 0) return `${label} must not be empty`;
+  if (codePointLength(value) > maxLength) return `${label} exceeds ${maxLength} characters`;
+  if (value !== value.trim()) return `${label} must equal trim()`;
+  if (value.includes("\0")) return `${label} must not contain NUL`;
+  return null;
+}
+
+function stringArrayErrors(value, label, { min, max, itemMax, required = true } = {}) {
+  if (!Array.isArray(value)) return [`${label} must be an array`];
+  const errors = [];
+  if (required && value.length < min) errors.push(`${label} must contain at least ${min} item(s)`);
+  if (value.length > max) errors.push(`${label} must contain at most ${max} item(s)`);
+  const seen = new Set();
+  for (const [index, item] of value.entries()) {
+    const error = textError(item, `${label}[${index}]`, itemMax);
+    if (error) errors.push(error);
+    if (isString(item) && seen.has(item)) errors.push(`${label} must not contain duplicate items`);
+    if (isString(item)) seen.add(item);
+  }
+  return errors;
+}
+
+/** Shared item-level capabilityUse validator for temporary and migration uses. */
+export function validateCapabilityUse(value) {
+  const errors = [];
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { valid: false, errors: ["capabilityUse must be an object"] };
+  }
+  const allowed = new Set(["useId", "problemStatement", "constraints", "retainedGuarantees", "catalogFilters"]);
+  for (const key of Object.keys(value)) if (!allowed.has(key)) errors.push(`unknown field ${key}`);
+  if (!isString(value.useId) || !USE_ID_RE.test(value.useId) || value.useId.length > 80) {
+    errors.push("useId must match the capability use id pattern and be at most 80 characters");
+  }
+  const problemError = textError(value.problemStatement, "problemStatement", 1000);
+  if (problemError) errors.push(problemError);
+  errors.push(...stringArrayErrors(value.constraints, "constraints", { min: 0, max: 20, itemMax: 500, required: false }));
+  errors.push(...stringArrayErrors(value.retainedGuarantees, "retainedGuarantees", { min: 1, max: 20, itemMax: 500 }));
+  if (value.catalogFilters !== undefined) {
+    errors.push(...stringArrayErrors(value.catalogFilters, "catalogFilters", { min: 0, max: 20, itemMax: 200, required: false }));
+    if (Array.isArray(value.catalogFilters)) {
+      const normalized = new Set();
+      for (const filter of value.catalogFilters) {
+        if (!isString(filter)) continue;
+        const folded = filter.normalize("NFC").replace(/[A-Z]/gu, (character) => character.toLowerCase());
+        if (normalized.has(folded)) errors.push("catalogFilters must be unique after NFC and ASCII case folding");
+        normalized.add(folded);
+      }
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+/** Shared uses-array validator, including stable useId uniqueness. */
+export function validateCapabilityUses(value) {
+  if (!Array.isArray(value)) return { valid: false, errors: ["capabilityUses must be an array"] };
+  const errors = [];
+  if (value.length < 1 || value.length > 200) errors.push("capabilityUses must contain 1..200 items");
+  const useIds = new Set();
+  for (const [index, use] of value.entries()) {
+    const outcome = validateCapabilityUse(use);
+    for (const error of outcome.errors) errors.push(`capabilityUses[${index}]: ${error}`);
+    if (isString(use?.useId)) {
+      if (useIds.has(use.useId)) errors.push(`capabilityUses[${index}]: duplicate useId ${use.useId}`);
+      useIds.add(use.useId);
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+// Contracts/Ajv counts JSON Schema maxLength in UTF-16 code units. Capability
+// use text is a Kit-owned boundary and counts Unicode code points instead, so
+// validate the real values above and give Contracts an equivalent structural
+// document with short ASCII text for its remaining manifest checks.
+function capabilityManifestForContractValidation(manifest) {
+  if (!manifest || !Array.isArray(manifest.capabilityUses)) return manifest;
+  const capabilityUses = manifest.capabilityUses.map((use, useIndex) => ({
+    ...use,
+    problemStatement: `problem-${useIndex}`,
+    constraints: use.constraints.map((_, index) => `constraint-${useIndex}-${index}`),
+    retainedGuarantees: use.retainedGuarantees.map((_, index) => `guarantee-${useIndex}-${index}`),
+    ...(use.catalogFilters === undefined
+      ? {}
+      : { catalogFilters: use.catalogFilters.map((_, index) => `filter-${useIndex}-${index}`) }),
+  }));
+  return { ...manifest, capabilityUses };
+}
 
 /**
  * Migration closure facts for adopt-plan (FND-070, formalized by the
@@ -83,7 +181,15 @@ export async function loadMigrationManifestState(root) {
   if (!result.ok) {
     return { status: result.reason === "missing" ? "missing" : "parse-failed" };
   }
-  const outcome = validateContractDocument(result.value, { schemaId: MIGRATION_MANIFEST_SCHEMA_ID });
+  const uses = Array.isArray(result.value?.capabilityUses) ? validateCapabilityUses(result.value.capabilityUses) : null;
+  if (uses && !uses.valid) {
+    return {
+      status: "schema-invalid",
+      problems: uses.errors,
+      errorCode: "SFC1001",
+    };
+  }
+  const outcome = validateContractDocument(capabilityManifestForContractValidation(result.value), { schemaId: MIGRATION_MANIFEST_SCHEMA_ID });
   if (!outcome.valid) {
     return {
       status: "schema-invalid",
@@ -339,6 +445,172 @@ export const REQUIRED_FOUNDATION_PACKAGES = Object.freeze([
   "skill-family-engineering-kit",
 ]);
 
+/** The only dispositions a migration use may record. */
+export const CAPABILITY_DISPOSITIONS = Object.freeze([
+  "direct-adoption",
+  "compatibility-layer",
+  "keep-business",
+  "foundation-gap",
+]);
+
+/** The fixed, Foundation-owned consumer verification statement. */
+export const CONSUMER_VERIFICATION_NOT_EVALUATED = Object.freeze({
+  claim: null,
+  evaluatedByFoundation: false,
+  reason: "consumer-owned-test-result-not-evaluated",
+});
+
+/**
+ * Checks the cross-document facts owned by Kit for capability adoption.
+ * Contracts validates shapes; this function validates relationships and
+ * deliberately returns findings instead of throwing.  The input is the
+ * already validated manifest plus the assessment generated from that same
+ * manifest, so it never needs (or accepts) an Audit finding or schema.
+ */
+export function assessCapabilityMigration({ manifest, assessment, profileCapabilities = [] } = {}) {
+  const uses = Array.isArray(manifest?.capabilityUses) ? manifest.capabilityUses : [];
+  if (uses.length === 0) {
+    return { blockers: [], decisionsByUse: new Map(), byUse: new Map(), legacyByUse: new Map() };
+  }
+  const decisions = Array.isArray(manifest?.capabilityDecisions) ? manifest.capabilityDecisions : [];
+  const usesById = new Map(uses.map((use) => [use.useId, use]));
+  const decisionsByUse = new Map();
+  const records = [];
+  const useOrder = new Map(uses.map((use, index) => [use.useId, index]));
+
+  // T60 has one narrow finding projection. Keep its ordering local to this
+  // function: known uses follow manifest order, then the eight SPEC classes,
+  // then a stable relationship key. Unknown-use records come last.
+  const add = (category, useId, relationKey, message) => {
+    records.push({
+      category,
+      useId: useId ?? "<unknown>",
+      relationKey: String(relationKey),
+      message: `capability ${useId ?? "<unknown>"}: ${message}`,
+    });
+  };
+
+  for (const decision of decisions) {
+    if (!usesById.has(decision?.useId)) {
+      add(2, decision?.useId, `decision:${decision?.disposition ?? "missing"}:${decision?.targetCapability ?? ""}`, `decision references unknown use ${decision?.useId ?? "<missing>"}`);
+      continue;
+    }
+    const existing = decisionsByUse.get(decision.useId) ?? [];
+    existing.push(decision);
+    decisionsByUse.set(decision.useId, existing);
+  }
+  for (const use of uses) {
+    const entries = decisionsByUse.get(use.useId) ?? [];
+    if (entries.length === 0) {
+      add(1, use.useId, "decision:none", "no unique decision");
+      continue;
+    }
+    if (entries.length > 1) {
+      for (const decision of entries) {
+        add(2, use.useId, `decision:${decision?.disposition ?? "missing"}:${decision?.targetCapability ?? ""}`, "multiple decisions are declared");
+      }
+      continue;
+    }
+    const [decision] = entries;
+    if (!CAPABILITY_DISPOSITIONS.includes(decision?.disposition)) {
+      add(2, use.useId, `decision:${decision?.disposition ?? "missing"}:${decision?.targetCapability ?? ""}`, "decision has an invalid disposition");
+      continue;
+    }
+    if (decision.disposition === "keep-business" || decision.disposition === "foundation-gap") continue;
+
+    const target = decision.targetCapability;
+    const views = [
+      ...(assessment?.scopeCapabilities ?? []),
+      ...(assessment?.scopeBoundaries ?? []),
+    ];
+    const inScope = (candidate) => assessment?.scope === "all"
+      || !Array.isArray(candidate?.adoptionScopes)
+      || candidate.adoptionScopes.includes(assessment?.scope);
+    const capability = views.find((candidate) => candidate.id === target && inScope(candidate));
+    if (!capability) {
+      // A capability may exist in the bundled catalog but be outside this
+      // manifest's declared scope.  Keep that distinction observable.
+      const anywhere = (assessment?.allCapabilities ?? []).find((candidate) => candidate.id === target);
+      add(3, use.useId, `target:${target ?? ""}`, anywhere ? `target ${target} is outside the evaluation scope` : `target ${target} is unknown`);
+    } else if (capability.stability === "unsupported") {
+      add(3, use.useId, `target:${target}`, `target ${target} is unsupported`);
+    } else if (capability.available !== true || capability.stability !== "stable") {
+      add(3, use.useId, `target:${target}`, `target ${target} is not stable and available`);
+    }
+    if (!profileCapabilities.includes(target)) add(4, use.useId, `target:${target ?? ""}`, `target ${target} is not declared by the project Profile`);
+  }
+
+  const legacyByUse = new Map(uses.map((use) => [use.useId, { infra: [], references: [] }]));
+  const checkLegacy = (items, kind) => {
+    for (const item of items ?? []) {
+      const useId = item?.useId;
+      if (!useId || !usesById.has(useId)) {
+        const relationKey = kind === "legacyInfra"
+          ? `legacyInfra:${item?.path ?? ""}`
+          : `legacyReferences:${item?.path ?? ""}:${item?.text ?? ""}`;
+        add(5, useId, relationKey, `${kind} entry references an unknown use`);
+        if (kind === "legacyInfra" && (!isString(item?.recoveryRef) || item.recoveryRef.trim() === "")) {
+          add(8, useId, relationKey, "legacyInfra entry is missing recoveryRef");
+        }
+        continue;
+      }
+      const destination = legacyByUse.get(useId)[kind === "legacyInfra" ? "infra" : "references"];
+      const relationKey = kind === "legacyInfra"
+        ? `legacyInfra:${item?.path ?? ""}`
+        : `legacyReferences:${item?.path ?? ""}:${item?.text ?? ""}`;
+      if (!destination.some((candidate) => (
+        kind === "legacyInfra"
+          ? candidate?.path === item?.path
+          : candidate?.path === item?.path && candidate?.text === item?.text
+      ))) destination.push(item);
+      const entryDecisions = decisionsByUse.get(useId) ?? [];
+      const decision = entryDecisions.length === 1 ? entryDecisions[0] : null;
+      if (item.replacedBy === null || item.replacedBy === undefined) {
+        add(5, useId, relationKey, `${kind} entry has nullable replacement`);
+      }
+      if (decision?.disposition === "keep-business" || decision?.disposition === "foundation-gap") {
+        add(7, useId, `${relationKey}:${decision.disposition}`, `${kind} entry is incorrectly linked to ${decision.disposition}`);
+      } else if (
+        decision &&
+        (decision.disposition === "direct-adoption" || decision.disposition === "compatibility-layer") &&
+        typeof item.replacedBy === "string" &&
+        item.replacedBy !== decision.targetCapability
+      ) {
+        add(6, useId, `${relationKey}:${decision.targetCapability}`, `${kind} replacement does not match target ${decision.targetCapability}`);
+      }
+      if (kind === "legacyInfra" && (!isString(item.recoveryRef) || item.recoveryRef.trim() === "")) {
+        add(8, useId, relationKey, "legacyInfra entry is missing recoveryRef");
+      }
+    }
+  };
+  checkLegacy(manifest?.legacyInfra, "legacyInfra");
+  checkLegacy(manifest?.legacyReferences, "legacyReferences");
+  const unique = new Map();
+  for (const record of records) {
+    const key = `${record.category}|${record.useId}|${record.relationKey}`;
+    if (!unique.has(key)) unique.set(key, record);
+  }
+  const sorted = [...unique.values()].sort((left, right) => {
+    const leftKnown = useOrder.has(left.useId);
+    const rightKnown = useOrder.has(right.useId);
+    if (leftKnown !== rightKnown) return leftKnown ? -1 : 1;
+    if (leftKnown && useOrder.get(left.useId) !== useOrder.get(right.useId)) {
+      return useOrder.get(left.useId) - useOrder.get(right.useId);
+    }
+    if (!leftKnown && !rightKnown) {
+      const byUse = left.useId < right.useId ? -1 : left.useId > right.useId ? 1 : 0;
+      const byRelation = left.relationKey < right.relationKey ? -1 : left.relationKey > right.relationKey ? 1 : 0;
+      return byUse || byRelation || left.category - right.category;
+    }
+    if (left.category !== right.category) return left.category - right.category;
+    const byUse = left.useId < right.useId ? -1 : left.useId > right.useId ? 1 : 0;
+    return byUse || (left.relationKey < right.relationKey ? -1 : left.relationKey > right.relationKey ? 1 : 0);
+  });
+  const byUse = new Map(uses.map((use) => [use.useId, []]));
+  for (const record of sorted) if (byUse.has(record.useId)) byUse.get(record.useId).push(record.message);
+  return { blockers: sorted.map((record) => record.message), decisionsByUse, byUse, legacyByUse };
+}
+
 /** The four evidence kinds a complete migration must prove. */
 export const VERIFICATION_EVIDENCE_KINDS = Object.freeze([
   "unit",
@@ -460,6 +732,7 @@ export function evaluateMigrationCompletion({
   pendingWrites = 0,
   checkGreen,
   verificationFacts,
+  capabilityBlockers = [],
 }) {
   const adoptionBlockers = [];
   const verificationBlockers = [];
@@ -528,6 +801,10 @@ export function evaluateMigrationCompletion({
   if ((conflicts ?? []).length > 0) {
     adoptionBlockers.push(`${conflicts.length} unresolved adoption conflict(s) remain`);
   }
+  // Capability blockers are relationship facts from the new manifest
+  // extension. They intentionally join the existing adoption bucket so the
+  // five-state migration closure remains unchanged.
+  adoptionBlockers.push(...capabilityBlockers);
 
   if (checkGreen !== true) {
     verificationBlockers.push("the Foundation check gate is not green");

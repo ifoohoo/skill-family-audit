@@ -1,27 +1,13 @@
-"""Compose Audit-owned release findings and evidence.
+"""Compose Audit-owned release findings and evidence in memory.
 
 Foundation Quickstart owns the operation request/result exchange. This module
-recomputes only release-domain decisions and serializes their four outputs.
+combines the thin upstream-verifier consumption with the release assessment
+rows into one domain result object; it never reimplements release semantics.
 """
 
 from __future__ import annotations
 
-import json
-import os
 from typing import Any
-
-try:
-    from . import release_receipts
-except ImportError:  # pragma: no cover - direct script-directory loading
-    import release_receipts  # type: ignore[no-redef]
-
-
-FILENAMES = (
-    "release-result.json",
-    "gate-findings.json",
-    "evidence-list.json",
-    "blocking-reasons.json",
-)
 
 
 class ReleasePublicError(Exception):
@@ -30,19 +16,6 @@ class ReleasePublicError(Exception):
     def __init__(self, errors: list[str]) -> None:
         self.errors = list(errors)
         super().__init__("; ".join(self.errors))
-
-
-def _json_bytes(value: Any) -> bytes:
-    return (
-        json.dumps(value, ensure_ascii=False, allow_nan=False, indent=2, sort_keys=True)
-        + "\n"
-    ).encode("utf-8")
-
-
-def _absolute(value: Any, label: str) -> str:
-    if not isinstance(value, str) or not os.path.isabs(value):
-        raise ReleasePublicError([f"{label} 必须是绝对路径"])
-    return value
 
 
 def _assessment_rows(value: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
@@ -64,39 +37,27 @@ def _assessment_rows(value: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     return sorted(rows)
 
 
-def build_public_bundle(
+def _compose_domain_result(
     *,
-    provider_root: str,
-    plan_path: str | None,
-    run_path: str | None,
     expected_unit_id: str,
     expected_target_version: str,
-    claimed_audit: dict[str, Any],
-    runtime_context: dict[str, Any],
+    verifier_audit: dict[str, Any],
     assessment_result: dict[str, Any] | None = None,
     assessments_path: str | None = None,
 ) -> dict[str, Any]:
-    """Recompute the release decision and return four domain outputs."""
+    """Compose the thin upstream-verifier result with release assessments.
 
-    provider_root = _absolute(provider_root, "provider_root")
-    if plan_path is not None:
-        plan_path = _absolute(plan_path, "plan_path")
-    if run_path is not None:
-        run_path = _absolute(run_path, "run_path")
-    if assessments_path is not None:
-        assessments_path = _absolute(assessments_path, "assessments_path")
-    if not isinstance(runtime_context, dict):
-        raise ReleasePublicError(["runtime_context 必须是对象"])
+    模块私有组合函数：只消费 receipt 审计结果，不构成公共调用入口，
+    不得绕过已封闭的上游消费契约构造 SUCCEEDED。
+    """
 
-    recomputed = release_receipts.audit_release_receipts(
-        provider_root=provider_root,
-        plan_path=plan_path,
-        run_path=run_path,
-        expected_unit_id=expected_unit_id,
-        expected_target_version=expected_target_version,
-    )
-    if claimed_audit != recomputed:
-        raise ReleasePublicError(["claimed_audit 与领域验证器重新计算结果不一致"])
+    if not isinstance(verifier_audit, dict):
+        raise ReleasePublicError(["verifier_audit 必须是领域结果对象"])
+    if (
+        verifier_audit.get("status")
+        not in {"SUCCEEDED", "BLOCKED", "FAILED"}
+    ):
+        raise ReleasePublicError(["verifier_audit.status 无效"])
     if (assessment_result is None) != (assessments_path is None):
         raise ReleasePublicError(["assessment_result 与 assessments_path 必须同时提供"])
 
@@ -109,7 +70,7 @@ def build_public_bundle(
         raise ReleasePublicError(["assessment_result.execution_status 无效"])
     status_order = {"SUCCEEDED": 0, "BLOCKED": 1, "FAILED": 2}
     status = max(
-        (recomputed["status"], assessment_status),
+        (verifier_audit["status"], assessment_status),
         key=lambda item: status_order[item],
     )
     assessment_blockers = [
@@ -117,8 +78,8 @@ def build_public_bundle(
         for name, row in _assessment_rows(assessment_result or {})
         if row.get("status") not in {"valid", "exception_pass", "not_applicable"}
     ]
-    gate_findings = list(recomputed["gate_findings"])
-    blocking_reasons = list(recomputed["blocking_reasons"])
+    gate_findings = list(verifier_audit["gate_findings"])
+    blocking_reasons = list(verifier_audit["blocking_reasons"])
     if assessment_status == "FAILED":
         gate_findings.extend(assessment_blockers)
     elif assessment_status == "BLOCKED":
@@ -126,7 +87,7 @@ def build_public_bundle(
 
     evidence = [
         {"source": "release-skill", **item}
-        for item in recomputed.get("evidence", [])
+        for item in verifier_audit.get("evidence", [])
         if isinstance(item, dict)
     ]
     evidence.extend(
@@ -145,26 +106,16 @@ def build_public_bundle(
         "protocol_version": "1.0.0-candidate",
         "status": status,
         "candidate_id": f"{expected_unit_id}:{expected_target_version}",
-        "receipt_audit": recomputed,
+        "receipt_audit": verifier_audit,
         "assessments": assessment_result,
         "source_results_reexecuted": False,
     }
-    domain_result = {
+    return {
         "release_result": release_result,
         "gate_findings": gate_findings,
         "evidence_list": evidence,
         "blocking_reasons": blocking_reasons,
     }
-    values = {
-        "release-result.json": release_result,
-        "gate-findings.json": gate_findings,
-        "evidence-list.json": evidence,
-        "blocking-reasons.json": blocking_reasons,
-    }
-    return {
-        "domain_result": domain_result,
-        "artifact_bytes": {name: _json_bytes(value) for name, value in values.items()},
-    }
 
 
-__all__ = ["FILENAMES", "ReleasePublicError", "build_public_bundle"]
+__all__ = ["ReleasePublicError"]

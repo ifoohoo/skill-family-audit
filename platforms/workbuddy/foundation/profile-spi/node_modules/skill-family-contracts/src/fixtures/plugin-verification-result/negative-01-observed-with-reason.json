@@ -1,0 +1,47 @@
+{
+  "fixtureId": "plugin-verification-result/negative-01-observed-with-reason",
+  "class": "negative",
+  "contract": "plugin-verification-result",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/plugin-verification-result.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.plugin-verification-result",
+    "operation": "plugin-verification",
+    "status": "observed",
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "goal": "install-only",
+    "source": {
+      "type": "local-staged",
+      "candidateRef": "candidate-1",
+      "sourceManifestSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "membersDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "host": {
+      "hostId": "claude",
+      "descriptorSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "driverId": "claude-code-print-v1",
+      "driverVersion": "1.0.0"
+    },
+    "facts": {
+      "input": {
+        "sourceClosureDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "membersDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "runtimeIdentities": null,
+        "probe": null
+      },
+      "install": {
+        "installedClosureDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "payloadMatches": true,
+        "observationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "sourceMode": "local-staged",
+        "commands": [],
+        "retained": true
+      },
+      "discovery": { "status": "not-performed", "basis": "none", "pluginId": null },
+      "invocation": null
+    },
+    "reason": "execution-failed",
+    "requiredActions": []
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

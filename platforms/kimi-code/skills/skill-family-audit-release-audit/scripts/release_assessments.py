@@ -23,16 +23,13 @@ STATUSES = {
 PLATFORMS = {"claude-code", "codex", "kimi-code", "workbuddy"}
 REQUIRED = {
     "conformance",
-    "behavior",
-    "runtime",
     "platforms",
     "exceptions",
     "release_policy",
 }
+ASSESSMENT_DOCUMENT_FIELDS = REQUIRED | {"release_class", "candidate_id"}
 METHOD_IDENTITIES = {
     "conformance": "skill-family-audit:conformance-audit",
-    "behavior": "skill-family-audit:behavior-audit",
-    "runtime": "skill-family-audit:runtime-audit",
 }
 METHOD_FIELDS = {
     "conformance": {
@@ -40,17 +37,6 @@ METHOD_FIELDS = {
         "rule_findings",
         "evidence_list",
         "remediation_plan",
-    },
-    "behavior": {
-        "behavior_result",
-        "execution_records",
-        "evidence_list",
-        "regression_record",
-    },
-    "runtime": {
-        "runtime_result",
-        "governance_findings",
-        "evidence_list",
     },
 }
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -107,73 +93,10 @@ def _conformance_content_error(domain_result: dict[str, Any]) -> str | None:
     return None
 
 
-def _behavior_content_error(domain_result: dict[str, Any]) -> str | None:
-    result = domain_result.get("behavior_result")
-    if not isinstance(result, dict):
-        return "behavior_result 缺失"
-    status = result.get("overall_status")
-    if status not in {"SUCCEEDED", "FAILED", "BLOCKED"}:
-        return f"behavior 状态非法: {status!r}"
-    records = domain_result.get("execution_records")
-    if not isinstance(records, list):
-        return "behavior execution_records 必须是数组"
-    if status == "SUCCEEDED" and not records:
-        return "behavior SUCCEEDED 但 execution_records 为空"
-    for index, entry in enumerate(records):
-        if (
-            not isinstance(entry, dict)
-            or not isinstance(entry.get("fixture_id"), str)
-            or not entry["fixture_id"]
-        ):
-            return f"execution_records[{index}] 缺少合法 fixture_id"
-        if not isinstance(entry.get("status"), str) or not entry["status"]:
-            return f"execution_records[{index}] 缺少合法 status"
-    return None
-
-
-def _runtime_content_error(domain_result: dict[str, Any]) -> str | None:
-    result = domain_result.get("runtime_result")
-    if not isinstance(result, dict):
-        return "runtime_result 缺失"
-    status = result.get("execution_status")
-    if status not in {"SUCCEEDED", "BLOCKED", "FAILED"}:
-        return f"runtime 状态非法: {status!r}"
-    findings = domain_result.get("governance_findings")
-    evidence_list = domain_result.get("evidence_list")
-    if not isinstance(findings, list) or not isinstance(evidence_list, list):
-        return "runtime governance_findings 或 evidence_list 必须是数组"
-    if status == "SUCCEEDED":
-        if findings:
-            return "runtime SUCCEEDED 但 governance_findings 非空"
-        if not evidence_list:
-            return "runtime SUCCEEDED 但 evidence_list 为空"
-    elif not findings:
-        return f"runtime {status} 但 governance_findings 为空"
-    return None
-
-
 def _content_error(name: str, domain_result: dict[str, Any]) -> str | None:
-    """内容级语义校验（FM-02 修复）。
-
-    发布评估只校验方法输出契约可证明的必然关系，不重新计算任何审计（与
-    SKILL.md 边界一致）。此前仅做字段集合检查，自我一致的伪造 Foundation
-    Result（如 SUCCEEDED 却无任何规则结果）可通过；以下不变式均来自真实
-    方法实现：
-
-    - conformance：workflow 中 status 由 ``rules and not failed`` 决定，
-      SUCCEEDED 必然执行过规则（rule_results 非空），且 rule_findings
-      与 rule_results 同源；
-    - behavior：plan.fixtures 非空且执行记录必须覆盖全部 fixture，
-      SUCCEEDED 必然有非空 execution_records；
-    - runtime：governance_findings 由错误列表派生，SUCCEEDED 必然无发现
-      且 evidence_list 非空，非 SUCCEEDED 必然有发现。
-    """
+    """校验 conformance 输出必然关系，不重新执行审计。"""
     if name == "conformance":
         return _conformance_content_error(domain_result)
-    if name == "behavior":
-        return _behavior_content_error(domain_result)
-    if name == "runtime":
-        return _runtime_content_error(domain_result)
     return None
 
 
@@ -289,6 +212,9 @@ def assess(
     document: dict[str, Any],
     expected_candidate_id: str | None = None,
 ) -> dict[str, Any]:
+    unknown_sections = sorted(set(document) - ASSESSMENT_DOCUMENT_FIELDS)
+    if unknown_sections:
+        raise AssessmentError(f"ASSESSMENTS_UNKNOWN:{unknown_sections}")
     missing_sections = sorted(REQUIRED - set(document))
     if missing_sections:
         raise AssessmentError(f"ASSESSMENTS_INCOMPLETE:{missing_sections}")
@@ -307,7 +233,7 @@ def assess(
 
     rows = {
         name: check_evidence(name, document[name], candidate_id)
-        for name in ("conformance", "behavior", "runtime", "exceptions", "release_policy")
+        for name in ("conformance", "exceptions", "release_policy")
     }
     platforms = document["platforms"]
     if not isinstance(platforms, dict) or set(platforms) != PLATFORMS:

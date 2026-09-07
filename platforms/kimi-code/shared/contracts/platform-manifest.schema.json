@@ -53,8 +53,8 @@
     "fileCount": {"type": "integer", "minimum": 1},
     "logicalMappings": {
       "type": "array",
-      "minItems": 7,
-      "maxItems": 7,
+      "minItems": 5,
+      "maxItems": 5,
       "uniqueItems": true,
       "items": {
         "type": "object",
@@ -71,12 +71,12 @@
     },
     "methodContracts": {
       "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
+      "minItems": 2,
+      "maxItems": 2,
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "pattern": "^shared/methods/(behavior|conformance|release|runtime)-audit\\.json$"
+        "pattern": "^shared/methods/(conformance|release)-audit\\.json$"
       }
     },
     "sharedRuntime": {
@@ -107,12 +107,24 @@
     "foundationProjection": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "profile", "source", "bundleDigest"],
+      "required": ["path", "profile", "source", "bundleDigest", "profileSpi"],
       "properties": {
         "path": {"const": "foundation/quickstart-profile/foundation-projection.json"},
         "profile": {"type": "object"},
         "source": {"type": "object"},
-        "bundleDigest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        "bundleDigest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "profileSpi": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "entry", "projectionSha256", "closureSha256", "receiptSha256"],
+          "properties": {
+            "path": {"const": "foundation/profile-spi/foundation-profile-spi-projection.json"},
+            "entry": {"const": "foundation/profile-spi/node_modules/skill-family-engineering-kit/profile-spi/index.mjs"},
+            "projectionSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "closureSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "receiptSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          }
+        }
       }
     },
     "claimsStableSupport": {"type": "boolean"},

@@ -1,0 +1,40 @@
+{
+  "fixtureId": "plugin-verification-result/negative-05-native-extra-facts",
+  "class": "negative",
+  "contract": "plugin-verification-result",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/plugin-verification-result.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.plugin-verification-result",
+    "operation": "plugin-verification",
+    "status": "rejected",
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "goal": "native-lifecycle",
+    "source": { "type": "local-marketplace", "candidateRef": "candidate-native", "marketplaceId": "fixture-marketplace", "pluginId": "fixture-plugin", "revisions": { "v1": { "version": "1.0.0", "sourceManifestSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "membersDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }, "v2": { "version": "1.1.0", "sourceManifestSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "membersDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" } } },
+    "host": { "hostId": "qoder", "descriptorSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "driverId": "qodercli-print-v1", "driverVersion": "1.0.0" },
+    "facts": {
+      "lifecycle": {
+        "scope": "local",
+        "stages": [
+          { "name": "preflight", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "validate-v1", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "marketplace-add", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "install-v1", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "discover-v1", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "invoke-v1", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "disable", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "enable", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "update-v2", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "invoke-v2", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "uninstall", "status": "not-performed", "commands": [], "trees": [] },
+          { "name": "absent-after-uninstall", "status": "not-performed", "commands": [], "trees": [] }
+        ],
+        "cleanup": { "pluginAbsent": false }
+      },
+      "input": {}
+    },
+    "reason": "preflight-rejected",
+    "requiredActions": []
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

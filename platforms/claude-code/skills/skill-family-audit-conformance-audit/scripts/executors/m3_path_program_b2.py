@@ -20,7 +20,9 @@
 """
 from __future__ import annotations
 
-from pathlib import Path
+import fnmatch
+import subprocess
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .contracts import (
@@ -2107,6 +2109,480 @@ def check_write_003(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# P4-D1：REPO-005..006（运行态/证据目录分离与排除基线，机械执行器）
+#
+# 证据面 = 目标真实文件系统（顶层目录扫描 + .gitignore 排除基线）+
+# 治理声明（runtime-layout / runtime-directories）；只读目标树，逐机械方法
+# 返回独立 subresult（validate_method_subresults 消费）。
+# ---------------------------------------------------------------------------
+
+
+def _target_file(ctx: dict[str, Any], relative: str) -> Path | None:
+    """目标真实文件（只读）；不存在、不可读或符号链接返回 None。"""
+    path = Path(ctx["target"], *relative.split("/"))
+    if not path.is_file() or path.is_symlink():
+        return None
+    return path
+
+
+def _read_target_text(ctx: dict[str, Any], relative: str) -> str | None:
+    path = _target_file(ctx, relative)
+    if path is None:
+        return None
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_UNREADABLE", f"目标文件无法读取: {relative}: {exc}"
+        ) from exc
+
+
+def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[str, Any]:
+    return {
+        "check_method": method,
+        "status": status,
+        "observation_source": source,
+        "evidence": evidence or {"reason": status.lower()},
+    }
+
+
+def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    """从逐方法行确定性推导聚合状态，与 contracts.validate_method_subresults 一致。"""
+    statuses = {row["status"] for row in rows}
+    if "FAIL" in statuses:
+        status = "FAIL"
+    elif "EVIDENCE_MISSING" in statuses or "NOT_RUN" in statuses:
+        status = "EVIDENCE_MISSING"
+    elif statuses == {"NOT_APPLICABLE"}:
+        status = "NOT_APPLICABLE"
+    elif statuses == {"PASS"}:
+        status = "PASS"
+    else:
+        raise ExecutorEvidenceError(
+            "METHOD_RESULT_COMBINATION_INVALID", repr(sorted(statuses))
+        )
+    return {
+        "status": status,
+        "evidence": dict(evidence),
+        "check_method_subresults": rows,
+    }
+
+
+def _static_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "static_scan", status, "executor_static_scan_observation", **evidence
+    )
+
+
+#: REPO-005：需收敛进运行/证据目录的宿主痕迹与运行时目录。
+_REPO_005_RUNTIME_DIR_NAMES = (
+    "dist/candidate",
+    "runs",
+    "evidence",
+    ".qoder",
+    ".workbuddy",
+    ".codex",
+    ".release-skill",
+    ".loop-agent-runs",
+    ".loop-agent-observations",
+    ".e2e-test-runs",
+    "isolated-runs",
+    "frozen-runs",
+)
+
+
+def _normalized_runtime_dir(value: str) -> str | None:
+    """把治理声明归一成目标根下的 POSIX 相对目录；越界声明失败关闭。"""
+    raw = value.replace("\\", "/").strip()
+    if raw.startswith("/"):
+        return None
+    raw = raw.rstrip("/")
+    if not raw:
+        return None
+    path = PurePosixPath(raw)
+    if path.is_absolute() or any(part in ("", ".", "..") for part in path.parts):
+        return None
+    return path.as_posix()
+
+
+def _gitignore_lines(ctx: dict[str, Any]) -> list[str]:
+    text = _read_target_text(ctx, ".gitignore")
+    if text is None:
+        return []
+    return [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def _baseline_covers(lines: list[str], dir_name: str) -> bool:
+    """gitignore 排除基线是否覆盖目录名（容忍结尾斜杠与前导斜杠变体）。"""
+    normalized = dir_name.rstrip("/")
+    for line in lines:
+        if line.startswith("!"):
+            continue
+        entry = line.strip().rstrip("/")
+        if entry.startswith("/"):
+            entry = entry[1:]
+        if entry == normalized:
+            return True
+        if entry == normalized + "/**":
+            return True
+        if entry == "**/" + normalized:
+            return True
+    return False
+
+
+def _tracked_files(ctx: dict[str, Any]) -> list[str] | None:
+    """读取目标自身 Git 跟踪清单；没有目标仓库时返回 None。
+
+    不向父仓库借用 Git 上下文：冻结发布副本可能没有 ``.git``，此时源码
+    计数与运行副本排除事实不可判定，必须失败关闭。
+    """
+    target = Path(ctx["target"]).resolve()
+    try:
+        discovered = subprocess.run(
+            ["git", "-C", str(target), "rev-parse", "--show-toplevel"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=10,
+            text=True,
+        )
+        git_root = Path(discovered.stdout.strip()).resolve()
+        target_prefix = target.relative_to(git_root).as_posix()
+        pathspec = target_prefix if target_prefix != "." else "."
+        completed = subprocess.run(
+            ["git", "-C", str(git_root), "ls-files", "-z", "--", pathspec],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=10,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    tracked = [item.decode("utf-8") for item in completed.stdout.split(b"\0") if item]
+    if target_prefix == ".":
+        return tracked
+    prefix = target_prefix + "/"
+    return [item[len(prefix):] for item in tracked if item.startswith(prefix)]
+
+
+def _has_source_surface(target: Path) -> bool:
+    """识别真实源码/生成物表面，避免仅因普通空目录改变状态。"""
+    for source, generated in (("skills-src", "skills"), ("src", "dist"), ("src", "build")):
+        if (target / source).is_dir() and (target / generated).is_dir():
+            if any(path.is_file() for path in (target / source).rglob("*")):
+                return True
+    return False
+
+
+def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
+    """运行态与源码目录分离。
+
+    机械断言：运行态/证据/宿主痕迹产物必须收敛进专用运行/证据目录并由
+    gitignore 排除基线覆盖；混居仓库顶层且无排除基线为 FAIL；布局归属
+    与排除事实不可判定为 EVIDENCE_MISSING。
+    """
+    target = Path(ctx["target"])
+    found = sorted(name for name in _REPO_005_RUNTIME_DIR_NAMES if (target / name).is_dir())
+    layout = load_governance_document(ctx, "runtime-layout")
+    declared: list[str] = []
+    if layout is not None:
+        rows = rows_of(layout, "runtime_directories", "runtime-layout")
+        raw_declared = [row.get("path") for row in rows]
+        if not all(_nonempty_str(item) for item in raw_declared):
+            raise ExecutorEvidenceError(
+                "GOVERNANCE_DOCUMENT_INVALID",
+                "runtime-layout.runtime_directories 每行必须含非空 path",
+            )
+        declared = [_normalized_runtime_dir(item) for item in raw_declared]
+        if any(item is None for item in declared):
+            raise ExecutorEvidenceError(
+                "GOVERNANCE_DOCUMENT_INVALID",
+                "runtime-layout.runtime_directories.path 必须是目标根下的规范化相对目录",
+            )
+    declared_existing = sorted(name for name in declared if (target / name).is_dir())
+    # 声明可以把已知顶层容器收窄到其真实运行子目录；此时顶层 ``runs``
+    # 只是容器，不应再作为另一条“未声明运行目录”重复计算。
+    effective_found = [
+        name
+        for name in found
+        if not any(declared_name.startswith(name + "/") for declared_name in declared_existing)
+    ]
+    runtime_dirs = sorted(set(effective_found) | set(declared_existing))
+    if not runtime_dirs:
+        return _finish(
+            [_static_row("NOT_APPLICABLE", reason="no_runtime_artifacts")],
+            runtime_artifacts=0,
+        )
+    baseline_lines = _gitignore_lines(ctx)
+    tracked = _tracked_files(ctx)
+    covered = {name for name in runtime_dirs if _baseline_covers(baseline_lines, name)}
+    runtime_tracked = [] if tracked is None else [
+        path
+        for path in tracked
+        if any(path == directory or path.startswith(directory + "/") for directory in runtime_dirs)
+    ]
+    if layout is None:
+        if found and not baseline_lines:
+            return _finish(
+                [
+                    _static_row(
+                        "FAIL",
+                        reason="runtime_artifacts_mixed_at_top_level_without_exclusion",
+                        runtime_dirs=found,
+                        tracked_runtime_file_count=len(runtime_tracked),
+                        tracked_runtime_file_samples=runtime_tracked[:20],
+                    )
+                ],
+                runtime_artifacts=len(found),
+            )
+        return _finish(
+            [
+                _static_row(
+                    "EVIDENCE_MISSING",
+                    reason="runtime_layout_undeterminable",
+                    runtime_dirs=runtime_dirs,
+                )
+            ],
+            runtime_artifacts=len(runtime_dirs),
+        )
+    violations = []
+    undeclared = sorted(set(effective_found) - set(declared))
+    if undeclared:
+        violations.append(
+            {"problem": "runtime_dir_not_converged_into_declared_layout", "dirs": undeclared}
+        )
+    missing_declared = sorted(set(declared) - set(declared_existing))
+    if missing_declared:
+        return _finish(
+            [
+                _static_row(
+                    "EVIDENCE_MISSING",
+                    reason="declared_runtime_dir_missing",
+                    dirs=missing_declared,
+                )
+            ],
+            runtime_artifacts=len(runtime_dirs),
+        )
+    uncovered = sorted(set(runtime_dirs) - covered)
+    if uncovered:
+        violations.append(
+            {"problem": "exclusion_baseline_missing_or_not_covering", "dirs": uncovered}
+        )
+    if layout.get("source_count_excludes_runtime") is not True:
+        violations.append({"problem": "runtime_copies_counted_as_source"})
+    # 一旦真实运行/证据/宿主目录存在，规则要求同时核对 Git 跟踪清单；
+    # 冻结副本没有目标自身 Git 元数据时，不能凭 .gitignore 推断“未计入源码”。
+    if tracked is None:
+        return _finish(
+            [_static_row("EVIDENCE_MISSING", reason="tracked_source_inventory_unavailable")],
+            runtime_artifacts=len(runtime_dirs),
+        )
+    else:
+        if runtime_tracked:
+            violations.append({
+                "problem": "runtime_files_tracked_as_source",
+                "count": len(runtime_tracked),
+                "path_samples": runtime_tracked[:20],
+            })
+    if violations:
+        return _finish(
+            [_static_row("FAIL", reason="runtime_layout_violations", violations=violations)],
+            runtime_artifacts=len(runtime_dirs),
+        )
+    return _finish(
+        [
+            _static_row(
+                "PASS",
+                reason="runtime_artifacts_separated_and_excluded",
+                runtime_dirs=runtime_dirs,
+            )
+        ],
+        runtime_artifacts=len(runtime_dirs),
+    )
+
+
+def check_repo_006(ctx: dict[str, Any]) -> dict[str, Any]:
+    """运行证据目录命名与排除约定。
+
+    机械断言：运行/证据目录必须由项目声明（runtime-directories，含保留
+    策略与版本真源关系）、全部被 gitignore 排除基线覆盖，且不进入发布
+    载荷。
+    """
+    target = Path(ctx["target"])
+    scan_names = ("runs", "evidence")
+    found = sorted(name for name in scan_names if (target / name).is_dir())
+    document = load_governance_document(ctx, "runtime-directories")
+    declared_rows: list[dict[str, Any]] = []
+    if document is not None:
+        declared_rows = rows_of(document, "directories", "runtime-directories")
+        for row in declared_rows:
+            if not _nonempty_str(row.get("name")):
+                raise ExecutorEvidenceError(
+                    "GOVERNANCE_DOCUMENT_INVALID",
+                    "runtime-directories.directories 每行必须含非空 name",
+                )
+    declared_names = [row["name"] for row in declared_rows]
+    declared_existing = sorted(
+        name for name in declared_names if (target / name.rstrip("/")).is_dir()
+    )
+    runtime_dirs = sorted(set(found) | set(declared_existing))
+    if not runtime_dirs:
+        return _finish(
+            [_static_row("NOT_APPLICABLE", reason="no_runtime_directories")],
+            runtime_dirs=0,
+        )
+    baseline_lines = _gitignore_lines(ctx)
+    covered = {name for name in runtime_dirs if _baseline_covers(baseline_lines, name)}
+    if document is None:
+        uncovered = sorted(set(runtime_dirs) - covered)
+        if uncovered:
+            return _finish(
+                [
+                    _static_row(
+                        "FAIL",
+                        reason="runtime_traces_without_exclusion_baseline",
+                        dirs=uncovered,
+                    )
+                ],
+                runtime_dirs=len(runtime_dirs),
+            )
+        return _finish(
+            [_static_row("EVIDENCE_MISSING", reason="runtime_directory_declaration_missing")],
+            runtime_dirs=len(runtime_dirs),
+        )
+    violations = []
+    undeclared = sorted(set(found) - set(declared_names))
+    if undeclared:
+        violations.append({"problem": "runtime_dir_not_declared", "dirs": undeclared})
+    uncovered = sorted(set(runtime_dirs) - covered)
+    if uncovered:
+        violations.append(
+            {"problem": "exclusion_baseline_missing_or_not_covering", "dirs": uncovered}
+        )
+    # A broad exclusion followed by an exact negation re-includes a real evidence
+    # file only when that is the final applicable rule. Wildcard negations are
+    # deliberately not interpreted as a full gitignore language: if they apply to
+    # an observed file, the result is evidence-missing.
+    uncertain_negations = []
+    for directory in runtime_dirs:
+        directory_root = target / directory
+        if not directory_root.is_dir():
+            continue
+        observed = [
+            path.relative_to(target).as_posix()
+            for path in directory_root.rglob("*")
+            if path.is_file() and not path.is_symlink()
+        ]
+        for observed_path in observed:
+            state = None
+            parent_excluded = False
+            wildcard_negation = False
+            for line in baseline_lines:
+                negated = line.startswith("!")
+                rule = line[1:] if negated else line
+                rule = rule.lstrip("/")
+                negated_directory_rule = negated and rule.endswith("/")
+                directory_rule = not negated and rule.endswith("/")
+                rule = rule.rstrip("/")
+                if not rule:
+                    continue
+                if rule.endswith("/**"):
+                    matches = observed_path == rule[:-3].rstrip("/") or observed_path.startswith(
+                        rule[:-3].rstrip("/") + "/"
+                    )
+                elif directory_rule:
+                    matches = observed_path.startswith(rule + "/")
+                elif negated_directory_rule:
+                    matches = observed_path.startswith(rule + "/")
+                elif any(char in rule for char in "*?["):
+                    matches = fnmatch.fnmatchcase(observed_path, rule)
+                else:
+                    matches = observed_path == rule
+                if not matches:
+                    continue
+                if negated_directory_rule:
+                    if parent_excluded:
+                        if {"path": observed_path} not in uncertain_negations:
+                            uncertain_negations.append({"path": observed_path})
+                        continue
+                    state = False
+                    continue
+                if directory_rule:
+                    parent_excluded = True
+                    state = True
+                    continue
+                if negated and parent_excluded:
+                    # Git cannot re-include a child beneath an excluded parent;
+                    # the child negation does not change the final state.
+                    continue
+                state = not negated
+                if negated and any(char in rule for char in "*?["):
+                    wildcard_negation = True
+            if wildcard_negation:
+                uncertain_negations.append({"path": observed_path})
+            elif state is False:
+                violations.append(
+                    {
+                        "problem": "runtime_evidence_reincluded_by_negation",
+                        "path": observed_path,
+                    }
+                )
+    for row in declared_rows:
+        if row.get("retention") == "long_term":
+            problems = []
+            if not _nonempty_str(row.get("retention_policy")):
+                problems.append("retention_policy_missing")
+            if not _nonempty_str(row.get("version_truth_source_ref")):
+                problems.append("version_truth_source_ref_missing")
+            if problems:
+                violations.append({"name": row.get("name"), "problems": problems})
+    release = _doc(ctx, "release-packages")
+    if release is not None:
+        payload_files: list[str] = []
+        for row in rows_of(release, "packages", "release-packages"):
+            files = row.get("payload_files")
+            if isinstance(files, list) and all(_nonempty_str(item) for item in files):
+                payload_files.extend(files)
+        for path in payload_files:
+            if any(path == name or path.startswith(name.rstrip("/") + "/") for name in declared_names):
+                violations.append({"problem": "runtime_traces_in_release_payload", "path": path})
+    if violations:
+        return _finish(
+            [
+                _static_row(
+                    "FAIL", reason="runtime_directory_convention_violations", violations=violations
+                )
+            ],
+            runtime_dirs=len(runtime_dirs),
+        )
+    if uncertain_negations:
+        return _finish(
+            [
+                _static_row(
+                    "EVIDENCE_MISSING",
+                    reason="runtime_negation_order_undeterminable",
+                    paths=uncertain_negations,
+                )
+            ],
+            runtime_dirs=len(runtime_dirs),
+        )
+    return _finish(
+        [
+            _static_row(
+                "PASS",
+                reason="runtime_directories_declared_and_excluded",
+                runtime_dirs=runtime_dirs,
+            )
+        ],
+        runtime_dirs=len(runtime_dirs),
+    )
+
+
+# ---------------------------------------------------------------------------
 # 登记
 # ---------------------------------------------------------------------------
 
@@ -2139,6 +2615,8 @@ CHECKS = {
     "SFA-PROGRAM-014": check_program_014,
     "SFA-PROGRAM-016": check_program_016,
     "SFA-PROGRAM-017": check_program_017,
+    "SFA-REPO-005": check_repo_005,
+    "SFA-REPO-006": check_repo_006,
     "SFA-RUNTIMEPKG-001": check_runtimepkg_001,
     "SFA-RUNTIMEPKG-002": check_runtimepkg_002,
     "SFA-RUNTIMEPKG-003": check_runtimepkg_003,

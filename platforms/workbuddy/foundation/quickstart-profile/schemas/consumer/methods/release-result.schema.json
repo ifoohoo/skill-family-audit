@@ -2,12 +2,144 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/result.json",
   "title": "Skill Family Audit release-audit domain result",
-  "description": "发布门禁检查方法的领域结果合同。",
+  "description": "发布门禁检查方法的领域结果合同。release_result 只汇总已审证据：conformance 结论、平台支持事实、有效例外与发布政策证据，不重新执行审计。",
   "type": "object",
   "properties": {
     "release_result": {
       "type": "object",
-      "description": "发布审计领域结论"
+      "description": "发布审计领域结论",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "protocol_id": {
+          "const": "skill-family-audit:release-audit"
+        },
+        "protocol_version": {
+          "const": "1.0.0-candidate"
+        },
+        "status": {
+          "enum": [
+            "SUCCEEDED",
+            "BLOCKED",
+            "FAILED"
+          ]
+        },
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string"
+        },
+        "receipt_audit": {
+          "type": "object"
+        },
+        "assessments": {
+          "type": "object",
+          "description": "发布门禁评估汇总；必需证据集合精确为 conformance、platforms、exceptions、release_policy 四类。",
+          "required": [
+            "schema_version",
+            "release_class",
+            "candidate_id",
+            "execution_status",
+            "assessments",
+            "source_results_reexecuted",
+            "stable_policy_applied"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": "1.0.0"
+            },
+            "release_class": {
+              "enum": [
+                "candidate",
+                "stable"
+              ]
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "execution_status": {
+              "enum": [
+                "SUCCEEDED",
+                "BLOCKED"
+              ]
+            },
+            "source_results_reexecuted": {
+              "const": false
+            },
+            "stable_policy_applied": {
+              "type": "boolean"
+            },
+            "assessments": {
+              "type": "object",
+              "required": [
+                "conformance",
+                "platforms",
+                "exceptions",
+                "release_policy"
+              ],
+              "properties": {
+                "conformance": {
+                  "type": "object"
+                },
+                "platforms": {
+                  "type": "object"
+                },
+                "exceptions": {
+                  "type": "object"
+                },
+                "release_policy": {
+                  "type": "object"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "source_results_reexecuted": {
+          "const": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "SUCCEEDED",
+                  "FAILED"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "protocol_id": {},
+              "protocol_version": {},
+              "candidate_id": {},
+              "receipt_audit": {},
+              "assessments": {},
+              "source_results_reexecuted": {}
+            },
+            "required": [
+              "protocol_id",
+              "protocol_version",
+              "candidate_id",
+              "receipt_audit",
+              "assessments",
+              "source_results_reexecuted"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
     },
     "gate_findings": {
       "type": "array",

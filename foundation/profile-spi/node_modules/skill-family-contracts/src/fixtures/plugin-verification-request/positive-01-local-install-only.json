@@ -1,0 +1,27 @@
+{
+  "fixtureId": "plugin-verification-request/positive-01-local-install-only",
+  "class": "positive",
+  "contract": "plugin-verification-request",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/plugin-verification-request.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.plugin-verification-request",
+    "operation": "plugin-verification",
+    "verificationSetId": "set-1",
+    "goal": "install-only",
+    "source": {
+      "type": "local-staged",
+      "candidateRef": "candidate-1",
+      "sourceManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "membersDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "host": {
+      "hostId": "claude",
+      "descriptorSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "driverId": "claude-code-print-v1",
+      "driverVersion": "1.0.0"
+    },
+    "install": { "mode": "fresh-tree" }
+  },
+  "expect": { "valid": true }
+}

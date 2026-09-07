@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spec/packages/skill-development/schemas/skill_rule_exception.schema.json",
+  "title": "skill rule exception 制品",
+  "description": "记录技能开发规则的例外审批与执行状态，包括例外范围、截止时间、审批人、补偿措施及生命周期状态，用于在合规框架下管理临时性规则豁免。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "exception_id",
+    "target_rule_id",
+    "target_revision_digest",
+    "scope",
+    "deadline",
+    "approver",
+    "compensation",
+    "revocation",
+    "invalidation_conditions",
+    "status",
+    "created_at"
+  ],
+  "properties": {
+    "exception_id": {
+      "type": "string",
+      "pattern": "^exception:[a-z][a-z0-9-]+:[a-f0-9]{8}$",
+      "description": "例外唯一标识"
+    },
+    "target_rule_id": {
+      "type": "string",
+      "description": "被例外的规则标识"
+    },
+    "target_revision_digest": {
+      "type": "string",
+      "description": "被例外的规则修订摘要"
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1,
+      "description": "例外范围"
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "例外截止时间"
+    },
+    "approver": {
+      "type": "string",
+      "minLength": 1,
+      "description": "批准主体"
+    },
+    "compensation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "补偿措施"
+    },
+    "revocation": {
+      "type": "object",
+      "description": "撤销要素：撤销主体、撤销条件和撤销证据",
+      "additionalProperties": false,
+      "required": [
+        "revoker",
+        "conditions",
+        "evidence_ref"
+      ],
+      "properties": {
+        "revoker": {
+          "type": "string",
+          "minLength": 1,
+          "description": "有权撤销该例外的主体"
+        },
+        "conditions": {
+          "type": "string",
+          "minLength": 1,
+          "description": "触发撤销的条件"
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "撤销证据引用；撤销发生时追加状态事实"
+        }
+      }
+    },
+    "invalidation_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "description": "失效条件：何种事实变化使例外提前失效（如规则修订变化、补偿失效、范围扩大）"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_approval",
+        "active",
+        "expired",
+        "revoked",
+        "remediation_completed"
+      ],
+      "description": "例外生命周期状态"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "创建时间"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "可选元数据"
+    }
+  }
+}

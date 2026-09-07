@@ -1,0 +1,30 @@
+{
+  "fixtureId": "skill-family-directory-verification-result/positive-01-observed",
+  "class": "positive",
+  "contract": "skill-family-directory-verification-result",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/skill-family-directory-verification-result.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.skill-family-directory-verification-result",
+    "operation": "skill-family-directory-verification",
+    "status": "observed",
+    "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "host": { "hostId": "kimi-code", "descriptorSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "driverId": "kimi-code-print-v1", "driverVersion": "1.0.0", "cliVersion": "0.39.1" },
+    "facts": {
+      "familyTree": { "sourceManifestSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "membersDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+      "skills": [
+        { "name": "alpha", "sourceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "discovery": "observed", "load": "observed", "callId": "call-alpha", "resultId": "result-alpha" },
+        { "name": "beta", "sourceSha256": "5555555555555555555555555555555555555555555555555555555555555555", "discovery": "observed", "load": "observed", "callId": "call-beta", "resultId": "result-beta" }
+      ],
+      "workload": {
+        "execution": { "spawned": true, "exitStatus": 0, "processStatus": "EXITED", "terminationReason": null, "watchdogReason": null, "runnerModelOverrideAbsent": true },
+        "streams": { "stdout": { "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "bytes": 1, "sensitivity": "private" }, "stderr": { "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "bytes": 0, "sensitivity": "private" } },
+        "snapshots": { "family": { "preClosureDigest": "2222222222222222222222222222222222222222222222222222222222222222", "postClosureDigest": "2222222222222222222222222222222222222222222222222222222222222222" }, "fixture": { "preClosureDigest": "3333333333333333333333333333333333333333333333333333333333333333", "postClosureDigest": "3333333333333333333333333333333333333333333333333333333333333333" }, "protectedWorkspace": { "preClosureDigest": "4444444444444444444444444444444444444444444444444444444444444444", "postClosureDigest": "4444444444444444444444444444444444444444444444444444444444444444" } },
+        "snapshotsMatch": true
+      }
+    },
+    "reason": null,
+    "requiredActions": []
+  },
+  "expect": { "valid": true }
+}

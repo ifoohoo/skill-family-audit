@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/task.json",
+  "$id": "https://contracts.skill-family.example/quickstart-profile/v2/task.json",
   "title": "QuickstartTask",
   "description": "Candidate narrow profile (v2) over the stable operation-request envelope. The single operation is the business-neutral execute-method; params.method and params.parameters are caller-owned and Foundation never interprets them. The Task digest binds the complete canonical Task, so the optional requestedAt timestamp is excluded from this profile.",
   "allOf": [
@@ -40,7 +40,7 @@
               "items": {
                 "allOf": [
                   {
-                    "$ref": "https://contracts.skill-family.example/candidate/quickstart-profile/v2/resource.json"
+                    "$ref": "https://contracts.skill-family.example/quickstart-profile/v2/resource.json"
                   },
                   {
                     "type": "object",
