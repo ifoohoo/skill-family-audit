@@ -291,13 +291,22 @@ _H004_CONSUMER_ANCHORS = (
         ),
     ),
 )
-#: 角色③ 治理声明键与记录内容字段。声明键 = harness-interfaces 顶层键
-#: （003/005/007 同文档同通道）；记录内容字段逐字引证 canonical 义务句 3 与
-#: evidence_requirements 第 4 条（版本/审阅对象/输入输出绑定的既有审阅记录）。
-_H004_REVIEW_RECORD_KEY = "version_bound_review_record"
+#: 角色③只消费调用方已严格校验的 evidence-set，不读取目标内本地指针。
+_H004_REVIEW_RECORD_KIND = "skill-family-audit.version-bound-review-record"
 _H004_RECORD_CONTENT_FIELDS = (
-    "target_version", "reviewed_object", "input_binding", "output_binding",
+    "target_version", "target_digest", "reviewed_object", "input_binding",
+    "output_binding",
 )
+_H004_REVIEWED_OBJECT = "skill-family-audit-conformance:check_harness_004"
+_H004_INPUT_BINDING_KEYS = (
+    "contracts", "declared", "sample_evidence_ref", "sample_contract",
+)
+_H004_OUTPUT_VERDICTS = ("PASS", "FAIL", "EVIDENCE_MISSING")
+_H004_SAMPLE_FIELDS = (
+    "sample_identity", "input_reference", "expected_contract",
+    "applicable_platforms_and_methods", "side_effects", "cleanup_requirements",
+)
+_H004_SAMPLE_EVIDENCE_ROLE = "versioned_sample_evidence"
 
 
 def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[str, Any]:
@@ -581,7 +590,7 @@ def _h004_role_consumer_implementation(
 
 def _h004_current_version(ctx: dict[str, Any]) -> str | None:
     """目标当前版本：沿 .skill-family-audit/governance/version-authority.json 的
-    unique_truth_source 声明读取版本载体文件（缺省语义同 PKG 实测）。"""
+    PUBLISH-011 合同只接受 ``unique_truth_source == package.json``。"""
     authority_path = (
         Path(ctx["target"]) / ".skill-family-audit" / "governance"
         / "version-authority.json"
@@ -601,67 +610,114 @@ def _h004_current_version(ctx: dict[str, Any]) -> str | None:
     if not isinstance(authority, dict):
         return None
     source_name = authority.get("unique_truth_source")
-    if not isinstance(source_name, str) or not source_name:
+    if source_name != "package.json":
         return None
-    source = _h004_read_json(ctx, source_name)
+    source = _h004_read_json(ctx, "package.json")
     if source is None:
         return None
     version = source.get("version")
     return version if isinstance(version, str) and version else None
 
 
-def _h004_role_version_bound_review_record(
-    ctx: dict[str, Any], document: dict[str, Any] | None
-) -> tuple[str, dict[str, Any]]:
-    """角色③既有审阅记录引用核验；引用必须可回读闭合（存在+sha256+版本绑定）。"""
-    if not isinstance(document, dict):
-        return "missing", {"reason": "version_bound_review_record_missing",
-                           "detail": "harness-interfaces 未声明"}
-    record = document.get(_H004_REVIEW_RECORD_KEY)
-    if record is None:
-        return "missing", {"reason": "version_bound_review_record_missing",
-                           "detail": "harness-interfaces 无该键"}
-    if not isinstance(record, dict):
-        return "missing", {"reason": "review_record_reference_incomplete",
-                           "detail": "记录引用必须是对象"}
-    file_value = record.get("file")
-    sha_value = record.get("sha256")
-    if (
-        not isinstance(file_value, str)
-        or not file_value
-        or file_value.startswith("/")
-    ):
-        return "missing", {"reason": "review_record_reference_incomplete",
-                           "detail": "file 引用缺失、非字符串或为绝对路径"}
-    if not is_hex64(sha_value):
-        return "missing", {"reason": "review_record_reference_incomplete",
-                           "detail": "sha256 缺失或非法"}
-    record_path = Path(ctx["target"]).joinpath(*Path(file_value).parts)
+def _h004_file_json(entry: dict[str, Any]) -> tuple[bytes, dict[str, Any]] | None:
+    """回读 evidence-set 普通文件；无法识别的 opaque 条目返回 None。"""
+    path_value = entry.get("path")
+    if not isinstance(path_value, str) or not path_value:
+        return None
+    path = Path(path_value)
+    if path.is_symlink() or not path.is_file():
+        return None
     try:
-        record_path.resolve().relative_to(Path(ctx["target"]).resolve())
-    except ValueError:
-        return "invalid", {"reason": "review_record_file_unreadable",
-                           "detail": "记录引用越出目标根"}
-    if record_path.is_symlink() or not record_path.is_file():
-        return "invalid", {"reason": "review_record_file_unreadable",
-                           "detail": "记录文件不存在或为符号链接"}
-    try:
-        raw = record_path.read_bytes()
-    except OSError as exc:
-        return "invalid", {"reason": "review_record_file_unreadable",
-                           "detail": str(exc)}
-    import hashlib
-    if hashlib.sha256(raw).hexdigest() != sha_value:
-        return "invalid", {"reason": "review_record_digest_mismatch",
-                           "detail": "实读摘要与声明不符"}
-    try:
-        content = json.loads(raw.decode("utf-8"))
+        raw = path.read_bytes()
+        value = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return "invalid", {"reason": "review_record_content_invalid",
-                           "detail": "记录内容不是 JSON 对象"}
-    if not isinstance(content, dict):
-        return "invalid", {"reason": "review_record_content_invalid",
-                           "detail": "记录内容不是 JSON 对象"}
+        return None
+    if not isinstance(value, dict):
+        return None
+    return raw, value
+
+
+def _h004_sample_shape_error(sample: dict[str, Any]) -> str | None:
+    """复用版本化样例清单的既有六字段形状，不建立第二份 schema。"""
+    for field in (
+        "sample_identity", "input_reference", "expected_contract",
+        "cleanup_requirements",
+    ):
+        if not isinstance(sample.get(field), str) or not sample.get(field):
+            return f"{field}_invalid"
+    methods = sample.get("applicable_platforms_and_methods")
+    if (
+        not isinstance(methods, list)
+        or not methods
+        or any(not isinstance(item, str) or not item for item in methods)
+    ):
+        return "applicable_platforms_and_methods_invalid"
+    effects = sample.get("side_effects")
+    if not isinstance(effects, list) or any(
+        not isinstance(item, str) or not item for item in effects
+    ):
+        return "side_effects_invalid"
+    return None
+
+
+def _h004_role_version_bound_review_record(
+    ctx: dict[str, Any], _document: dict[str, Any] | None
+) -> tuple[str, dict[str, Any]]:
+    """角色③核验 evidence-set 中唯一外部版本审阅记录及其样例引用闭包。"""
+    entries = ctx.get("evidence_set")
+    if not isinstance(entries, list):
+        return "missing", {"reason": "version_bound_review_record_missing",
+                           "detail": "evidence_set 不可得"}
+
+    candidates: list[tuple[dict[str, Any], bytes, dict[str, Any]]] = []
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("kind") != "receipt":
+            continue
+        loaded = _h004_file_json(entry)
+        if loaded is None:
+            continue
+        raw, content = loaded
+        if content.get("kind") == _H004_REVIEW_RECORD_KIND:
+            candidates.append((entry, raw, content))
+    if not candidates:
+        return "missing", {"reason": "version_bound_review_record_missing",
+                           "detail": "evidence_set 无匹配外部 receipt"}
+    if len(candidates) != 1:
+        return "invalid", {"reason": "multiple_version_bound_review_records",
+                           "matching_records": len(candidates)}
+
+    entry, raw, content = candidates[0]
+    evidence_id = entry.get("evidence_id")
+    path_value = entry.get("path")
+    outer_sha = entry.get("sha256")
+    if not isinstance(evidence_id, str) or not evidence_id:
+        return "missing", {"reason": "review_record_reference_incomplete",
+                           "missing_fields": ["evidence_id"]}
+    if not isinstance(path_value, str) or not path_value:
+        return "missing", {"reason": "review_record_reference_incomplete",
+                           "missing_fields": ["path"]}
+    try:
+        Path(path_value).resolve().relative_to(Path(ctx["target"]).resolve())
+    except ValueError:
+        pass
+    else:
+        return "invalid", {"reason": "review_record_must_be_external",
+                           "evidence_id": evidence_id}
+    if outer_sha is None:
+        return "missing", {"reason": "review_record_reference_incomplete",
+                           "missing_fields": ["sha256"]}
+    import hashlib
+    actual_record_sha = hashlib.sha256(raw).hexdigest()
+    if not is_hex64(outer_sha) or outer_sha != actual_record_sha:
+        return "invalid", {"reason": "review_record_digest_mismatch",
+                           "evidence_id": evidence_id}
+
+    missing_fields = [
+        field for field in _H004_RECORD_CONTENT_FIELDS if field not in content
+    ]
+    if missing_fields:
+        return "missing", {"reason": "review_record_fields_incomplete",
+                           "missing_fields": missing_fields}
     current_version = _h004_current_version(ctx)
     if current_version is None:
         return "missing", {"reason": "current_version_undeterminable",
@@ -669,17 +725,118 @@ def _h004_role_version_bound_review_record(
     if content.get("target_version") != current_version:
         return "invalid", {"reason": "review_record_version_mismatch",
                            "current_version": current_version}
-    missing_fields = [
-        field for field in _H004_RECORD_CONTENT_FIELDS[1:]
-        if not content.get(field)
+
+    gate_binding = ctx.get("gate_binding")
+    expected_digest = (
+        gate_binding.get("target_digest") if isinstance(gate_binding, dict) else None
+    )
+    if not is_hex64(expected_digest):
+        return "missing", {"reason": "gate_target_digest_undeterminable"}
+    record_digest = content.get("target_digest")
+    if not is_hex64(record_digest) or record_digest != expected_digest:
+        return "invalid", {"reason": "review_record_target_digest_mismatch",
+                           "expected_target_digest": expected_digest}
+    if content.get("reviewed_object") != _H004_REVIEWED_OBJECT:
+        return "invalid", {"reason": "review_record_object_mismatch"}
+
+    input_binding = content.get("input_binding")
+    output_binding = content.get("output_binding")
+    if not isinstance(input_binding, dict) or not isinstance(output_binding, dict):
+        return "invalid", {"reason": "review_record_binding_mismatch",
+                           "detail": "input_binding/output_binding 必须是对象"}
+    missing_input = [key for key in _H004_INPUT_BINDING_KEYS if key not in input_binding]
+    if missing_input or "verdicts" not in output_binding:
+        return "missing", {"reason": "review_record_binding_incomplete",
+                           "missing_fields": missing_input + (
+                               [] if "verdicts" in output_binding else ["verdicts"]
+                           )}
+    if (
+        set(input_binding) != set(_H004_INPUT_BINDING_KEYS)
+        or input_binding.get("contracts") != "spec/contracts"
+        or input_binding.get("declared") != "--evidence-set"
+        or set(output_binding) != {"verdicts"}
+        or output_binding.get("verdicts") != list(_H004_OUTPUT_VERDICTS)
+    ):
+        return "invalid", {"reason": "review_record_binding_mismatch"}
+
+    evidence_ref = input_binding.get("sample_evidence_ref")
+    reviewed_sample = input_binding.get("sample_contract")
+    if not isinstance(evidence_ref, dict):
+        return "missing", {"reason": "sample_evidence_reference_missing"}
+    missing_ref = [key for key in _H004_EVIDENCE_REF_KEYS if key not in evidence_ref]
+    if missing_ref:
+        return "missing", {"reason": "sample_evidence_reference_incomplete",
+                           "missing_fields": missing_ref}
+    if set(evidence_ref) != set(_H004_EVIDENCE_REF_KEYS):
+        return "invalid", {"reason": "sample_evidence_reference_mismatch"}
+    if evidence_ref.get("role") != _H004_SAMPLE_EVIDENCE_ROLE:
+        return "invalid", {"reason": "sample_evidence_reference_mismatch",
+                           "detail": "role 不符"}
+    if not isinstance(reviewed_sample, dict):
+        return "missing", {"reason": "reviewed_sample_contract_missing"}
+    missing_sample_fields = [
+        field for field in _H004_SAMPLE_FIELDS if field not in reviewed_sample
     ]
-    if missing_fields:
-        return "missing", {"reason": "review_record_fields_incomplete",
-                           "missing_fields": missing_fields}
+    if missing_sample_fields:
+        return "missing", {"reason": "reviewed_sample_fields_incomplete",
+                           "missing_fields": missing_sample_fields}
+    shape_error = _h004_sample_shape_error(reviewed_sample)
+    if shape_error:
+        return "invalid", {"reason": "reviewed_sample_contract_invalid",
+                           "detail": shape_error}
+
+    sample_id = evidence_ref.get("evidence_id")
+    sample_entries = [
+        item for item in entries
+        if isinstance(item, dict) and item.get("evidence_id") == sample_id
+    ]
+    if not isinstance(sample_id, str) or not sample_id or not sample_entries:
+        return "missing", {"reason": "referenced_sample_evidence_missing",
+                           "evidence_id": sample_id}
+    if len(sample_entries) != 1:
+        return "invalid", {"reason": "referenced_sample_evidence_ambiguous",
+                           "evidence_id": sample_id}
+    sample_entry = sample_entries[0]
+    sample_path = sample_entry.get("path")
+    sample_sha = sample_entry.get("sha256")
+    if (
+        evidence_ref.get("locator") != sample_path
+        or evidence_ref.get("sha256") != sample_sha
+        or not is_hex64(sample_sha)
+    ):
+        return "invalid", {"reason": "sample_evidence_reference_mismatch",
+                           "evidence_id": sample_id}
+    loaded_sample = _h004_file_json(sample_entry)
+    if loaded_sample is None:
+        return "invalid", {"reason": "sample_evidence_unreadable",
+                           "evidence_id": sample_id}
+    sample_raw, sample_content = loaded_sample
+    if hashlib.sha256(sample_raw).hexdigest() != sample_sha:
+        return "invalid", {"reason": "sample_evidence_digest_mismatch",
+                           "evidence_id": sample_id}
+    external_missing = [
+        field for field in _H004_SAMPLE_FIELDS if field not in sample_content
+    ]
+    if external_missing:
+        return "missing", {"reason": "sample_evidence_fields_incomplete",
+                           "missing_fields": external_missing}
+    shape_error = _h004_sample_shape_error(sample_content)
+    if shape_error:
+        return "invalid", {"reason": "sample_evidence_contract_invalid",
+                           "detail": shape_error}
+    field_mismatches = [
+        field for field in _H004_SAMPLE_FIELDS
+        if reviewed_sample.get(field) != sample_content.get(field)
+    ]
+    if field_mismatches:
+        return "invalid", {"reason": "reviewed_sample_fields_mismatch",
+                           "mismatched_fields": field_mismatches}
     return "ok", {
-        "reason": "review_record_bound_to_current_version",
+        "reason": "review_record_bound_to_target_and_sample",
         "target_version": current_version,
-        "record_file": file_value,
+        "target_digest": expected_digest,
+        "record_evidence_id": evidence_id,
+        "sample_evidence_id": sample_id,
     }
 
 
@@ -695,8 +852,8 @@ def check_harness_004(ctx: dict[str, Any]) -> dict[str, Any]:
     与 EVIDENCE_BUNDLE_KIND、METHOD_RECEIPT_KIND / _governance_gate_behavior
     的"不执行命令、不接受自填、摘要重算"合同锚点；只读文本级核验，不执行
     目标代码）；
-    ③ 与该版本绑定的既有审阅记录（harness-interfaces 治理声明引用必须可回读
-    闭合：文件真实存在、sha256 相符、版本与审阅对象/输入输出绑定字段核验）。
+    ③ evidence-set 中与该版本和目标摘要绑定的唯一外部既有审阅记录；记录内
+    审阅对象、输入输出绑定及其引用的版本化样例六字段必须逐项闭合。
     缺失必要信息时如实报告缺证且 missing 只列真实缺失角色；清单存在不构成
     能力证明。旧的自填 ``sample_list_interface`` 与本次审阅宿主输入、执行行为
     均不构成目标能力证明。双机械方法分项行形态遵循 m2_entry_platform_b2

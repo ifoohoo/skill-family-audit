@@ -73,8 +73,15 @@ def _compose_domain_result(
         (verifier_audit["status"], assessment_status),
         key=lambda item: status_order[item],
     )
+
+    def _blocker(name: str, row: dict[str, Any]) -> str:
+        """阻断行沿用 name:status 前缀，并在既有 reason 上附带缺项指引。"""
+        text = f"{name}:{row.get('status')}"
+        reason = row.get("reason")
+        return f"{text}:{reason}" if isinstance(reason, str) and reason else text
+
     assessment_blockers = [
-        f"{name}:{row.get('status')}"
+        _blocker(name, row)
         for name, row in _assessment_rows(assessment_result or {})
         if row.get("status") not in {"valid", "exception_pass", "not_applicable"}
     ]

@@ -31,6 +31,26 @@ RULE_FIELDS = {"ruleId", "revisionDigest", "description", "applicability", "chec
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 FAMILY_NAME_RE = re.compile(r"^[a-z][a-z0-9-]+$")
 FRONTMATTER_BOUNDARY = re.compile(r"^---\s*$")
+_MATERIAL_SCAN_MAX_BYTES = 1_048_576
+_MATERIAL_FINDING_LIMIT = 64
+_MATERIAL_FINDING_TEXT_LIMIT = 160
+_MATERIAL_TEXT_SUFFIXES = frozenset({
+    ".cfg", ".cjs", ".conf", ".css", ".csv", ".htm", ".html", ".ini",
+    ".js", ".json", ".jsonl", ".jsx", ".log", ".md", ".mdx", ".mjs",
+    ".prompt", ".properties", ".py", ".rst", ".sh", ".toml", ".ts",
+    ".tsv", ".tsx", ".txt", ".xml", ".yaml", ".yml",
+})
+_MATERIAL_TEXT_NAMES = frozenset({
+    "Dockerfile", "LICENSE", "Makefile", "NOTICE", "VERSION",
+})
+_PLACEHOLDER_PATTERN = re.compile(
+    r"(?i)\b(?:dummy|example|placeholder|synthetic|test)[-_ ]?"
+    r"(?:secret|token|password|api[-_ ]?key)\b"
+)
+_CREDENTIAL_SHAPED_PATTERN = re.compile(
+    r"\b(?:AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|"
+    r"sk_(?:live|test)_[A-Za-z0-9]{16,})\b"
+)
 FOUNDATION_PROFILE_EXPECTED = {"id": "quickstart-profile", "version": 2}
 FOUNDATION_RECEIPT_KIND = "skill-family.source-authority-receipt"
 NODE_VERSION_MIN = (22, 22, 2)
@@ -1092,16 +1112,293 @@ def verify_self_audit_freshness(spec_dir: Path) -> str | None:
     return None
 
 
-def _scan(target: Path) -> dict:
-    result = {"skill_files": [], "agent_files": [], "script_files": [], "manifest_files": []}
-    for root, dirs, files in os.walk(target):
-        dirs[:] = [d for d in dirs if d not in {"node_modules", "__pycache__"}]
+#: 敏感值脱敏材料的来源编号。它自身已按来源去向表退出，承接关系只从权威数据
+#: 读取，不在代码里复制（见 _secret_redaction_material_state）。
+SECRET_REDACTION_RULE_ID = "SFA-SECRET-003"
+
+
+def _redaction_source_disposition(source_id: str) -> dict | None:
+    """只读权威库存去向表，返回该来源编号的退出与承接条目。"""
+    root = _package_root()
+    if root is None:
+        return None
+    path = root / "governance" / "rules" / "canonical-rule-inventory.json"
+    try:
+        inventory = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    dispositions = inventory.get("source_dispositions")
+    if not isinstance(dispositions, list):
+        return None
+    for item in dispositions:
+        if isinstance(item, dict) and item.get("source_id") == source_id:
+            return item
+    return None
+
+
+def _secret_redaction_material_state(
+    *,
+    projection: dict | None = None,
+    disposition: dict | None = None,
+) -> dict:
+    """解析脱敏材料检查的权威状态。
+
+    权威依据只有两处：投影内该编号的生命周期与修订摘要，以及库存
+    ``source_dispositions`` 中该编号的去向与承接条目；承接关系不在此处推断。
+
+    - ``resolved``：投影内仍有该编号的合法修订摘要，按它标注脱敏依据；
+    - ``successor_implemented``：该编号已按去向表退出，承接者已进入投影且不再
+      是 RETAINED_UNIMPLEMENTED——恢复正常检查路径，不再报告能力缺口；
+    - ``retired_unimplemented``：承接者仍为 RETAINED_UNIMPLEMENTED——不再向
+      目标索要已退出编号的材料（VALIDATION §2.9：退出编号只解释去向，不运行
+      旧检查），只披露 Audit 侧能力缺口，不静默跳过；
+    - ``unavailable``：其余情形维持失败关闭。
+    """
+    if projection is None:
+        authority = Path(__file__).resolve().parent.parent / "refs" / "canonical-rule-projection.json"
+        try:
+            projection = json.loads(authority.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {"status": "unavailable", "reason": "redaction_authority_unreadable"}
+    rows = projection.get("rules")
+    if not isinstance(rows, list):
+        return {"status": "unavailable", "reason": "redaction_authority_invalid"}
+    lifecycle = {
+        row.get("canonical_id"): row.get("lifecycle_status")
+        for row in rows
+        if isinstance(row, dict) and isinstance(row.get("canonical_id"), str)
+    }
+    for row in rows:
+        if isinstance(row, dict) and row.get("canonical_id") == SECRET_REDACTION_RULE_ID:
+            revision = row.get("revision_digest")
+            if isinstance(revision, str) and HEX64.fullmatch(revision):
+                return {
+                    "status": "resolved",
+                    "rule_id": SECRET_REDACTION_RULE_ID,
+                    "revision_digest": revision,
+                }
+            return {"status": "unavailable", "reason": "redaction_revision_invalid"}
+    if disposition is None:
+        disposition = _redaction_source_disposition(SECRET_REDACTION_RULE_ID)
+    if not isinstance(disposition, dict):
+        return {"status": "unavailable", "reason": "redaction_rule_disposition_absent"}
+    successors = sorted(
+        carrier
+        for carrier in disposition.get("carried_by") or []
+        if isinstance(carrier, str) and carrier
+    )
+    if not successors or disposition.get("carried_by_status") != "effective":
+        return {"status": "unavailable", "reason": "redaction_successor_unregistered"}
+    if any(lifecycle.get(carrier) == "RETAINED_UNIMPLEMENTED" for carrier in successors):
+        return {
+            "status": "retired_unimplemented",
+            "rule_id": SECRET_REDACTION_RULE_ID,
+            "destination": disposition.get("destination"),
+            "successors": successors,
+            "capability_gap": {
+                "capability_gap": "secret_redaction_material_unimplemented",
+                "retired_rule_id": SECRET_REDACTION_RULE_ID,
+                "destination": disposition.get("destination"),
+                "successors": successors,
+                "successor_status": "RETAINED_UNIMPLEMENTED",
+            },
+        }
+    if all(lifecycle.get(carrier) for carrier in successors):
+        return {
+            "status": "successor_implemented",
+            "rule_id": SECRET_REDACTION_RULE_ID,
+            "destination": disposition.get("destination"),
+            "successors": successors,
+        }
+    return {"status": "unavailable", "reason": "redaction_successor_state_unknown"}
+
+
+def _bounded_material_observation(
+    target: Path,
+    relative_paths: list[str],
+    *,
+    secret_revision_digest: str | None = None,
+) -> dict:
+    """Inspect only enumerated Audit text materials and emit redacted facts."""
+    if secret_revision_digest is not None:
+        redaction_state = {
+            "status": "resolved",
+            "rule_id": SECRET_REDACTION_RULE_ID,
+            "revision_digest": secret_revision_digest,
+        }
+    else:
+        redaction_state = _secret_redaction_material_state()
+    revision = redaction_state.get("revision_digest")
+    if not isinstance(revision, str) or not HEX64.fullmatch(revision):
+        revision = None
+    records: list[dict] = []
+    findings: list[dict] = []
+    unavailable: list[dict] = []
+    truncated = False
+    root = target if target.is_dir() else target.parent
+    for relative in sorted(set(relative_paths)):
+        path = root / relative
+        if path.is_symlink():
+            unavailable.append({"path": relative, "reason": "symlink_not_supported"})
+            continue
+        if (
+            path.name not in _MATERIAL_TEXT_NAMES
+            and path.suffix.lower() not in _MATERIAL_TEXT_SUFFIXES
+        ):
+            unavailable.append({
+                "path": relative,
+                "reason": "material_type_not_supported",
+            })
+            continue
+        try:
+            resolved = path.resolve(strict=True)
+            resolved.relative_to(root.resolve(strict=True))
+            payload = resolved.read_bytes()
+        except (OSError, ValueError):
+            unavailable.append({"path": relative, "reason": "material_unavailable"})
+            continue
+        digest = hashlib.sha256(payload).hexdigest()
+        if len(payload) > _MATERIAL_SCAN_MAX_BYTES:
+            unavailable.append({
+                "path": relative,
+                "reason": "material_size_not_supported",
+                "content_sha256": digest,
+            })
+            continue
+        try:
+            text = payload.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            unavailable.append({
+                "path": relative,
+                "reason": "material_encoding_not_supported",
+                "content_sha256": digest,
+            })
+            continue
+        classifications: list[str] = []
+        placeholder_matches = list(_PLACEHOLDER_PATTERN.finditer(text))
+        sensitive_matches = list(_CREDENTIAL_SHAPED_PATTERN.finditer(text))
+        if placeholder_matches:
+            classifications.append("placeholder-or-synthetic")
+        if sensitive_matches:
+            classifications.append("credential-shaped-or-sensitive")
+        if not classifications:
+            classifications.append("no-sensitive-shape-observed")
+        records.append({
+            "path": relative,
+            "content_sha256": digest,
+            "classifications": classifications,
+            "placeholder_or_synthetic_match_present": bool(placeholder_matches),
+            "credential_shaped_or_sensitive_match_present": bool(sensitive_matches),
+        })
+        for match in sensitive_matches:
+            if len(findings) >= _MATERIAL_FINDING_LIMIT:
+                truncated = True
+                break
+            line = text.count("\n", 0, match.start()) + 1
+            summary = "credential-shaped or sensitive material exists; matched value redacted"
+            summary = summary[:_MATERIAL_FINDING_TEXT_LIMIT]
+            findings.append({
+                "canonical_rule_id": SECRET_REDACTION_RULE_ID,
+                "location": {"path": relative, "line": line},
+                "content_sha256": digest,
+                "category": "credential-shaped-or-sensitive",
+                "match_present": True,
+                "forensic_reference": f"sha256:{digest}#L{line}",
+                "summary": summary,
+                "summary_char_count": len(summary),
+                "summary_limit": _MATERIAL_FINDING_TEXT_LIMIT,
+                "truncated": False,
+                "redaction_rule_version": (
+                    f"{SECRET_REDACTION_RULE_ID}@{revision}" if revision else None
+                ),
+                "redaction_applied": True,
+            })
+        if truncated:
+            break
+    redaction_authority_status = redaction_state.get("status")
+    redaction_capability_gap = redaction_state.get("capability_gap")
+    if not isinstance(redaction_capability_gap, dict):
+        redaction_capability_gap = None
+    # 已退出编号的承接者未实现时，缺口归 Audit 侧能力：不伪装成目标证据缺失
+    # （那等于继续索要已退出规则的材料），也不静默跳过——缺口随本 payload 与
+    # 运行级 warnings 显式披露。未知或不可用权威状态仍失败关闭。
+    status = "PASS"
+    if unavailable or (
+        revision is None
+        and redaction_authority_status
+        not in {"retired_unimplemented", "successor_implemented"}
+    ):
+        status = "EVIDENCE_MISSING"
+    return {
+        "scanner": {
+            "method_id": CHECKER_METHOD_ID,
+            "version": CHECKER_VERSION,
+        },
+        "scope": "enumerated-audit-text-materials-only",
+        "status": status,
+        "paths": records,
+        "path_count": len(records),
+        "unavailable": unavailable,
+        "findings": findings,
+        "finding_count": len(findings),
+        "finding_limit": _MATERIAL_FINDING_LIMIT,
+        "truncated": truncated,
+        "credential_shaped_or_sensitive_match_present": bool(findings),
+        "absence_claim_scope": "scanned_paths_only",
+        "redaction_rule_version": (
+            f"{SECRET_REDACTION_RULE_ID}@{revision}" if revision else None
+        ),
+        "redaction_applied": bool(findings),
+        "redaction_authority_status": redaction_authority_status,
+        "redaction_capability_gap": redaction_capability_gap,
+    }
+
+
+def _scan(
+    target: Path,
+    *,
+    secret_revision_digest: str | None = None,
+    excluded_paths: set[Path] | None = None,
+) -> dict:
+    result = {
+        "skill_files": [],
+        "agent_files": [],
+        "script_files": [],
+        "manifest_files": [],
+        "material_files": [],
+    }
+    walk_root = target if target.is_dir() else target.parent
+    excluded = {path.resolve() for path in (excluded_paths or set())}
+    for root, dirs, files in os.walk(walk_root):
+        retained_dirs = []
+        for dirname in dirs:
+            if dirname in {".git", ".pytest_cache", "node_modules", "__pycache__"}:
+                continue
+            path = Path(root) / dirname
+            if path.is_symlink():
+                result["material_files"].append(
+                    path.relative_to(walk_root).as_posix()
+                )
+                continue
+            retained_dirs.append(dirname)
+        dirs[:] = retained_dirs
         for filename in files:
-            rel = (Path(root) / filename).relative_to(target).as_posix()
+            path = Path(root) / filename
+            if path.resolve() in excluded:
+                continue
+            if target.is_file() and path != target:
+                continue
+            rel = path.relative_to(walk_root).as_posix()
+            result["material_files"].append(rel)
             if filename == "SKILL.md": result["skill_files"].append(rel)
             elif filename.endswith((".py", ".sh")): result["script_files"].append(rel)
             elif filename.endswith(".md") and "agent" in filename.lower(): result["agent_files"].append(rel)
             elif filename == "manifest.json" or filename.endswith(".plugin.json"): result["manifest_files"].append(rel)
+    result["material_security"] = _bounded_material_observation(
+        target,
+        result["material_files"],
+        secret_revision_digest=secret_revision_digest,
+    )
     return result
 
 
@@ -1365,7 +1662,10 @@ def run_conformance_check(target_path: str, project_root: str, spec_version_ref:
         self_audit = True
     if manifest.get("checkerMethodId") != CHECKER_METHOD_ID:
         return _blocked("UNKNOWN_CHECKER", index, target_path)
-    scan, results = _scan(target), []
+    scan, results = _scan(
+        target,
+        excluded_paths={output} if output is not None else None,
+    ), []
     for category in manifest.get("ruleCategories", []):
         for rule in category.get("rules", []):
             # 该兼容入口只审计 skill；四类目标由 conformance_workflow.py
@@ -1388,7 +1688,14 @@ def run_conformance_check(target_path: str, project_root: str, spec_version_ref:
     counts = {key: sum(r["status"] == label for r in results) for key, label in
               {"pass":"PASS", "fail":"FAIL", "not_run":"NOT_RUN", "blocked":"BLOCKED", "evidence_missing":"EVIDENCE_MISSING"}.items()}
     counts["total"] = len(results)
-    if counts["blocked"]:
+    material_security = scan.get("material_security", {})
+    material_status = material_security.get("status")
+    material_capability_gap = material_security.get("redaction_capability_gap")
+    # 只有真正的材料证据缺失才劫持运行结论；已退出编号的能力缺口不改写结论
+    # （不向目标索要已退出规则的材料），但必须在 warnings 里显式披露。
+    if material_status == "EVIDENCE_MISSING":
+        status, error_code = "FAILED", "MATERIAL_SCAN_EVIDENCE_MISSING"
+    elif counts["blocked"]:
         status, error_code = "BLOCKED", "RULE_BLOCKED"
     elif not counts["total"]:
         status, error_code = "FAILED", "RULE_MANIFEST_EMPTY"
@@ -1400,12 +1707,17 @@ def run_conformance_check(target_path: str, project_root: str, spec_version_ref:
         status, error_code = "FAILED", "RULE_FAILED"
     else:
         status, error_code = "SUCCEEDED", ""
+    warnings = (
+        [{"code": "MATERIAL_REDACTION_CAPABILITY_GAP", **material_capability_gap}]
+        if isinstance(material_capability_gap, dict)
+        else []
+    )
     result = {"status": status, "summary": "规范检查通过" if status == "SUCCEEDED" else "规范检查失败",
               "error_code": error_code, "counts": counts,
               "rule_results": results,
               "scan_summary": scan, "input_summary": {"target": target.name, "target_is_relative": True},
               "rule_release_summary": {"release_id": "", "release_digest": "", "rule_manifest_digest": ""},
-              "checker_summary": _checker_summary(), "warnings": [], "blocked_reason": "",
+              "checker_summary": _checker_summary(), "warnings": warnings, "blocked_reason": "",
               "test_fixture": index.get("test_fixture") is True,
               "self_audit": self_audit,
               "publication_eligible": index.get("test_fixture") is not True and index.get("selfAudit") is not True}

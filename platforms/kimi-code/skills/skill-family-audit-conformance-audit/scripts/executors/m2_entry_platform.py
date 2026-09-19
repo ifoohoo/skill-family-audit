@@ -8,7 +8,8 @@
 文档缺省语义（逐规则注明）：
 - 入口结构类（ENTRY-003/009）直接消费观察投影，无文档依赖；
 - 边界声明类规则约束"已声明者"：文档缺失 = 无可判违反事实 → PASS；
-- PLAT-002 例外：project_adoption 目标已声明发布，限制声明缺失本身即违反。
+- PLAT-002 例外：显式 platform-restrictions 声明自身触发四字段校验；
+  普通采用、候选元数据与静态平台投影不证明实际发行子集，不触发。
 
 所有 behavior_also_required 规则只覆盖机械半区，行为义务继续挂账
 （证据以 mechanical_half=true 标注）。
@@ -357,62 +358,61 @@ def check_entry_025(ctx: dict[str, Any]) -> dict[str, Any]:
     return result("PASS", high_impact_parameter_count=len(high_impact), mechanical_half=True)
 
 
-def _platform_restrictions(ctx: dict[str, Any], *, required: bool):
-    document = load_governance_document(
-        ctx,
-        "platform-restrictions",
-        required_fields=(
-            "project",
-            "released_platform_subset",
-            "missing_platforms",
-            "declared_version",
-        ),
-    )
-    if document is None and required:
-        raise ExecutorEvidenceError(
-            "PLATFORM_RESTRICTIONS_MISSING",
-            "已声明发布的采用目标缺少平台限制声明",
-        )
-    return document
+def _platform_restrictions(ctx: dict[str, Any]):
+    return load_governance_document(ctx, "platform-restrictions")
 
 
 def check_plat_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """平台子集自由但必须用标准限制声明如实声明（四字段，机器可检查）。
 
-    机械断言：project_adoption 目标必须声明四字段；subset/missing 必须是
-    必需平台集合的互补划分；声明版本非空。未声明者（非发布目标）无违反事实。
+    机械断言：当前观察合同没有可证明实际候选/发行平台集合的字段，因此仅
+    显式 platform-restrictions 声明自身触发；触发后四字段必须完整，
+    subset/missing 必须是必需平台集合的互补划分，声明版本非空。
+    Foundation adoption profile、普通候选元数据与静态源投影均不触发。
     """
-    adoption_declared = isinstance(ctx.get("scope", {}).get("project_profile_document"), dict)
-    document = _platform_restrictions(ctx, required=adoption_declared)
+    document = _platform_restrictions(ctx)
     if document is None:
         return result("PASS", release_declared=False, mechanical_half=True)
     subset = document.get("released_platform_subset")
     missing = document.get("missing_platforms")
-    if (
-        not isinstance(subset, list)
-        or not isinstance(missing, list)
-        or not all(isinstance(item, str) for item in subset)
-        or not all(isinstance(item, str) for item in missing)
-    ):
-        raise ExecutorEvidenceError(
-            "GOVERNANCE_DOCUMENT_INVALID",
-            "platform-restrictions 平台集合必须是字符串数组",
-        )
     violations = []
-    if not set(subset) <= set(REQUIRED_PLATFORMS):
-        violations.append("unknown_platform_in_subset")
-    if not set(missing) <= set(REQUIRED_PLATFORMS):
-        violations.append("unknown_platform_in_missing")
-    if set(subset) & set(missing):
-        violations.append("subset_and_missing_overlap")
-    if set(subset) | set(missing) != set(REQUIRED_PLATFORMS):
-        violations.append("subset_missing_not_a_partition")
+    required_fields = {
+        "project",
+        "released_platform_subset",
+        "missing_platforms",
+        "declared_version",
+    }
+    if missing_fields := sorted(required_fields - set(document)):
+        violations.append({"problem": "required_fields_missing", "fields": missing_fields})
+    if not isinstance(document.get("project"), str) or not document.get("project"):
+        violations.append("project_empty")
+    valid_subset = isinstance(subset, list) and all(isinstance(item, str) for item in subset)
+    valid_missing = isinstance(missing, list) and all(isinstance(item, str) for item in missing)
+    if not valid_subset:
+        violations.append("released_platform_subset_not_string_array")
+    if not valid_missing:
+        violations.append("missing_platforms_not_string_array")
+    if valid_subset and valid_missing:
+        if not set(subset) <= set(REQUIRED_PLATFORMS):
+            violations.append("unknown_platform_in_subset")
+        if not set(missing) <= set(REQUIRED_PLATFORMS):
+            violations.append("unknown_platform_in_missing")
+        if set(subset) & set(missing):
+            violations.append("subset_and_missing_overlap")
+        if set(subset) | set(missing) != set(REQUIRED_PLATFORMS):
+            violations.append("subset_missing_not_a_partition")
     if not isinstance(document.get("declared_version"), str) or not document.get("declared_version"):
         violations.append("declared_version_empty")
     if violations:
-        return result("FAIL", restriction_violations=violations, mechanical_half=True)
+        return result(
+            "FAIL",
+            release_declared=True,
+            restriction_violations=violations,
+            mechanical_half=True,
+        )
     return result(
         "PASS",
+        release_declared=True,
         released_platform_subset=sorted(subset),
         missing_platforms=sorted(missing),
         mechanical_half=True,

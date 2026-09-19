@@ -1,6 +1,6 @@
-"""M2 执行族：人类入口/命名/平台投影/发行包/源码投影/摘要链（W2-B2 子批 M2，70 条）。
+"""M2 执行族：人类入口/命名/平台投影/发行包/源码投影/摘要链（W2-B2 子批 M2，82 条）。
 
-本模块覆盖 B2 批 execution_family=M2、violation_impact=error 的 70 条规则，
+本模块覆盖 B2 批 execution_family=M2 的 82 条规则，
 全部被终态裁决为机械方法 digest_verification 且
 behavior_verification_also_required=true；执行器只覆盖机械半区
 （evidence 携 mechanical_half=true），行为义务继续挂账。
@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -4092,18 +4093,162 @@ def check_publish_016(ctx: dict[str, Any]) -> dict[str, Any]:
     与版本真源关系。
     """
     # 只消费 release-skill 的正式稳定别名，不发明 Audit 私有 plan/approval 形状。
+    scope = ctx.get("scope")
+    plugin_project = scope.get("plugin_project") if isinstance(scope, dict) else None
+    plugin = plugin_project.get("plugin") if isinstance(plugin_project, dict) else None
+    plugin_id = plugin.get("id") if isinstance(plugin, dict) else None
+    material_ctx = ctx
+    target_root = Path(ctx["target"]).resolve(strict=True)
+    plan_relative = ".release-skill/release-plan.json"
+    approval_relative = ".release-skill/approval-record.json"
+    local_plan = Path(ctx["target"], *plan_relative.split("/"))
+    local_approval = Path(ctx["target"], *approval_relative.split("/"))
+    local_material_present = any(
+        path.exists() or path.is_symlink()
+        for path in (local_plan, local_approval)
+    )
     plan_path = (
-        ".release-skill/release-plan.json"
-        if _target_file(ctx, ".release-skill/release-plan.json") is not None
+        plan_relative
+        if _target_file(ctx, plan_relative) is not None
         else None
     )
     approval_path = (
-        ".release-skill/approval-record.json"
-        if _target_file(ctx, ".release-skill/approval-record.json") is not None
+        approval_relative
+        if _target_file(ctx, approval_relative) is not None
         else None
     )
-    plan_material = _read_json_file(ctx, plan_path) if plan_path else None
-    approval_material = _read_json_file(ctx, approval_path) if approval_path else None
+    plan_material = _read_json_file(material_ctx, plan_path) if plan_path else None
+    approval_material = _read_json_file(material_ctx, approval_path) if approval_path else None
+    if not local_material_present:
+        parent_authorities: list[tuple[Path, Path, Path]] = []
+        for parent in target_root.parents:
+            candidate_plan = parent / ".release-skill" / "release-plan.json"
+            candidate_approval = parent / ".release-skill" / "approval-record.json"
+            if any(
+                path.exists() or path.is_symlink()
+                for path in (candidate_plan, candidate_approval)
+            ):
+                parent_authorities.append((parent, candidate_plan, candidate_approval))
+        if len(parent_authorities) > 1:
+            return _finish(
+                [_static_row(
+                    "EVIDENCE_MISSING",
+                    reason="release_parent_authority_ambiguous",
+                    authority_roots=[str(item[0]) for item in parent_authorities],
+                )],
+                release_gate_evidence=True,
+            )
+        if parent_authorities:
+            authority_root, candidate_plan, candidate_approval = parent_authorities[0]
+            release_directory = authority_root / ".release-skill"
+            if (
+                release_directory.is_symlink()
+                or candidate_plan.is_symlink()
+                or candidate_approval.is_symlink()
+            ):
+                return _finish(
+                    [_static_row(
+                        "EVIDENCE_MISSING",
+                        reason="release_parent_authority_symlink_rejected",
+                        authority_root=str(authority_root),
+                    )],
+                    release_gate_evidence=True,
+                )
+            if not candidate_plan.is_file() or not candidate_approval.is_file():
+                return _finish(
+                    [_static_row(
+                        "EVIDENCE_MISSING",
+                        reason="release_plan_approval_pair_incomplete",
+                        authority_root=str(authority_root),
+                        release_plan_path=(plan_relative if candidate_plan.is_file() else None),
+                        approval_path=(approval_relative if candidate_approval.is_file() else None),
+                    )],
+                    release_gate_evidence=True,
+                )
+            material_ctx = dict(ctx)
+            material_ctx["target"] = str(authority_root)
+            plan_path = plan_relative
+            approval_path = approval_relative
+            plan_material = _read_json_file(material_ctx, plan_path)
+            approval_material = _read_json_file(material_ctx, approval_path)
+            units = plan_material.get("units") if plan_material else None
+            if (
+                not isinstance(units, list)
+                or not units
+                or not all(isinstance(item, dict) for item in units)
+            ):
+                return _finish(
+                    [_static_row("EVIDENCE_MISSING", reason="release_plan_units_missing")],
+                    release_gate_evidence=True,
+                )
+            bound_units: list[dict[str, Any]] = []
+            for unit_index, item in enumerate(units):
+                source = item.get("source")
+                normalized_source = source.replace("\\", "/") if isinstance(source, str) else None
+                source_parts = Path(normalized_source).parts if normalized_source else ()
+                if (
+                    not _nonempty_str(source)
+                    or source.startswith(("/", "\\"))
+                    or re.match(r"^[A-Za-z]:[/\\\\]", source) is not None
+                    or ".." in source_parts
+                ):
+                    return _finish(
+                        [_static_row(
+                            "FAIL",
+                            reason="release_unit_source_path_invalid",
+                            unit_source=source,
+                            unit_index=unit_index,
+                        )],
+                        release_gate_evidence=True,
+                    )
+                bound_target = authority_root
+                for part in source_parts:
+                    bound_target = bound_target / part
+                    if bound_target.is_symlink():
+                        return _finish(
+                            [_static_row(
+                                "EVIDENCE_MISSING",
+                                reason="release_parent_source_symlink_rejected",
+                                unit_source=source,
+                                unit_index=unit_index,
+                            )],
+                            release_gate_evidence=True,
+                        )
+                try:
+                    resolved_bound_target = bound_target.resolve(strict=True)
+                except OSError:
+                    resolved_bound_target = None
+                if resolved_bound_target == target_root:
+                    bound_units.append(item)
+            if not bound_units:
+                return _finish(
+                    [_static_row(
+                        "EVIDENCE_MISSING",
+                        reason="release_parent_authority_target_unbound",
+                        target=str(target_root),
+                    )],
+                    release_gate_evidence=True,
+                )
+            if len(bound_units) > 1:
+                return _finish(
+                    [_static_row(
+                        "EVIDENCE_MISSING",
+                        reason="release_parent_authority_target_ambiguous",
+                        target=str(target_root),
+                        unit_ids=[item.get("id") for item in bound_units],
+                    )],
+                    release_gate_evidence=True,
+                )
+            if _nonempty_str(plugin_id) and bound_units[0].get("id") != plugin_id:
+                return _finish(
+                    [_static_row(
+                        "EVIDENCE_MISSING",
+                        reason="release_plan_target_unit_unresolved",
+                        target_plugin_id=plugin_id,
+                        bound_unit_id=bound_units[0].get("id"),
+                    )],
+                    release_gate_evidence=True,
+                )
     if plan_path is None and approval_path is None:
         return _finish(
             [_static_row("NOT_APPLICABLE", reason="no_release_plan_or_approval_material")],
@@ -4191,10 +4336,6 @@ def check_publish_016(ctx: dict[str, Any]) -> dict[str, Any]:
                              action_ids=unapproved_actions)],
                 release_gate_evidence=True,
             )
-    scope = ctx.get("scope")
-    plugin_project = scope.get("plugin_project") if isinstance(scope, dict) else None
-    plugin = plugin_project.get("plugin") if isinstance(plugin_project, dict) else None
-    plugin_id = plugin.get("id") if isinstance(plugin, dict) else None
     units = plan_material.get("units")
     if not isinstance(units, list) or not units or not all(isinstance(item, dict) for item in units):
         return _finish(
@@ -4217,14 +4358,15 @@ def check_publish_016(ctx: dict[str, Any]) -> dict[str, Any]:
         if (
             not _nonempty_str(source)
             or source.startswith(("/", "\\"))
+            or re.match(r"^[A-Za-z]:[/\\\\]", source) is not None
             or ".." in Path(source.replace("\\", "/")).parts
         ):
             return _finish(
-                [_static_row("FAIL", reason="release_unit_source_path_invalid", source=source)],
+                [_static_row("FAIL", reason="release_unit_source_path_invalid", unit_source=source)],
                 release_gate_evidence=True,
             )
         package_path = source.rstrip("/\\") + "/package.json"
-    package = _read_json_file(ctx, package_path)
+    package = _read_json_file(material_ctx, package_path)
     trunk_version = package.get("version") if package else None
     trunk_parts = _semver_parts(trunk_version)
     if trunk_parts is None:
@@ -4293,6 +4435,374 @@ def check_publish_016(ctx: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+_RELEASE_RECORD_STATUS = {"CONSISTENT", "CONTRADICTED", "INSUFFICIENT"}
+_RELEASE_TERMINAL_STATUS = {"PARTIAL", "PUBLISHED", "VERIFIED"}
+_RELEASE_FINDING_CODES = {
+    "INPUT_MISSING",
+    "INPUT_DAMAGED",
+    "FORMAT_UNSUPPORTED",
+    "PLAN_DIGEST_MISMATCH",
+    "APPROVAL_DIGEST_MISMATCH",
+    "RUN_DIGEST_MISMATCH",
+    "IDENTITY_MISMATCH",
+    "PLAN_BINDING_MISMATCH",
+    "APPROVAL_ACTION_MISMATCH",
+    "RUN_LINEAGE_MISMATCH",
+    "TRANSITION_MISMATCH",
+    "CHECKPOINT_MISMATCH",
+    "HISTORICAL_TIME_MISSING",
+    "HISTORICAL_TIME_OUTSIDE_WINDOW",
+}
+
+
+def _release_evidence_entries(ctx: dict[str, Any]) -> list[dict[str, Any]] | None:
+    entries = ctx.get("evidence_set")
+    if entries is None:
+        scope = ctx.get("scope")
+        entries = scope.get("evidence_set") if isinstance(scope, dict) else None
+    return entries if isinstance(entries, list) else None
+
+
+def _release_evidence_bytes(
+    entries: list[dict[str, Any]],
+) -> tuple[list[tuple[dict[str, Any], bytes, str]], list[dict[str, Any]]]:
+    """重算 evidence-set 原始字节摘要；不发现文件、不跟随输出 basename。"""
+    loaded: list[tuple[dict[str, Any], bytes, str]] = []
+    violations: list[dict[str, Any]] = []
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            violations.append({"index": index, "problem": "entry_not_object"})
+            continue
+        # source_tree 已由 conformance workflow 按 Foundation tree digest 校验，
+        # 且不属于 verify-records 的原始普通文件输入；本机械半区不得用文件
+        # SHA-256 规则重新解释或误伤它。
+        if entry.get("kind") == "source_tree":
+            continue
+        path_value = entry.get("path")
+        expected = entry.get("sha256")
+        if not isinstance(path_value, str) or not is_hex64(expected):
+            violations.append({"index": index, "problem": "entry_binding_invalid"})
+            continue
+        path = Path(path_value)
+        if not path.is_absolute() or not path.is_file() or path.is_symlink():
+            violations.append({"index": index, "problem": "entry_file_unavailable"})
+            continue
+        try:
+            raw = path.read_bytes()
+        except OSError:
+            violations.append({"index": index, "problem": "entry_file_unreadable"})
+            continue
+        actual = hashlib.sha256(raw).hexdigest()
+        if actual != expected:
+            violations.append({
+                "index": index,
+                "evidence_id": entry.get("evidence_id"),
+                "problem": "entry_digest_mismatch",
+            })
+            continue
+        loaded.append((entry, raw, actual))
+    return loaded, violations
+
+
+def _release_digest_shape(value: Any) -> bool:
+    if value is None:
+        return True
+    return (
+        isinstance(value, dict)
+        and set(value) == {
+            "bytesSha256", "carriedDomainDigest", "recomputedDomainDigest"
+        }
+        and is_hex64(value.get("bytesSha256"))
+        and (
+            value.get("carriedDomainDigest") is None
+            or is_hex64(value.get("carriedDomainDigest"))
+        )
+        and (
+            value.get("recomputedDomainDigest") is None
+            or is_hex64(value.get("recomputedDomainDigest"))
+        )
+    )
+
+
+def _release_verifier_shape_problems(value: dict[str, Any]) -> list[str]:
+    problems: list[str] = []
+    if set(value) != {
+        "status", "unitId", "targetVersion", "historicalTerminalStatus",
+        "inputs", "digests", "findings",
+    }:
+        problems.append("top_level_fields_not_closed")
+    status = value.get("status")
+    if status not in _RELEASE_RECORD_STATUS:
+        problems.append("status_invalid")
+    for field in ("unitId", "targetVersion"):
+        field_value = value.get(field)
+        if not (
+            _nonempty_str(field_value)
+            or (status == "INSUFFICIENT" and field_value is None)
+        ):
+            problems.append(f"{field}_invalid")
+    terminal = value.get("historicalTerminalStatus")
+    if terminal is not None and terminal not in _RELEASE_TERMINAL_STATUS:
+        problems.append("historical_terminal_status_invalid")
+
+    inputs = value.get("inputs")
+    digests = value.get("digests")
+    required = {"plan", "approval", "targetRun", "sourceRuns"}
+    if not isinstance(inputs, dict) or set(inputs) != required:
+        problems.append("inputs_shape_invalid")
+        inputs = {}
+    if not isinstance(digests, dict) or set(digests) != required:
+        problems.append("digests_shape_invalid")
+        digests = {}
+
+    source_inputs = inputs.get("sourceRuns")
+    source_digests = digests.get("sourceRuns")
+    if not isinstance(source_inputs, list):
+        problems.append("source_inputs_invalid")
+        source_inputs = []
+    if not isinstance(source_digests, list):
+        problems.append("source_digests_invalid")
+        source_digests = []
+    if len(source_inputs) != len(source_digests):
+        problems.append("source_run_cardinality_mismatch")
+
+    summaries = [
+        ("plan", inputs.get("plan")),
+        ("approval", inputs.get("approval")),
+        ("targetRun", inputs.get("targetRun")),
+        *[(f"sourceRun[{index}]", item) for index, item in enumerate(source_inputs)],
+    ]
+    for expected_role, summary in summaries:
+        if (
+            not isinstance(summary, dict)
+            or set(summary) != {"role", "source"}
+            or summary.get("role") != expected_role
+            or not (
+                summary.get("source") is None
+                or _nonempty_str(summary.get("source"))
+            )
+        ):
+            problems.append(f"input_summary_invalid:{expected_role}")
+
+    digest_rows = [
+        ("plan", digests.get("plan")),
+        ("approval", digests.get("approval")),
+        ("targetRun", digests.get("targetRun")),
+        *[(f"sourceRun[{index}]", item) for index, item in enumerate(source_digests)],
+    ]
+    for role, digest in digest_rows:
+        if not _release_digest_shape(digest):
+            problems.append(f"digest_shape_invalid:{role}")
+
+    findings = value.get("findings")
+    if not isinstance(findings, list):
+        problems.append("findings_invalid")
+        findings = []
+    for index, finding in enumerate(findings):
+        if (
+            not isinstance(finding, dict)
+            or set(finding) != {"code", "role", "message"}
+            or finding.get("code") not in _RELEASE_FINDING_CODES
+            or not _nonempty_str(finding.get("role"))
+            or not _nonempty_str(finding.get("message"))
+        ):
+            problems.append(f"finding_invalid:{index}")
+    if status == "CONSISTENT" and findings:
+        problems.append("consistent_output_has_findings")
+    if status in {"CONTRADICTED", "INSUFFICIENT"} and not findings:
+        problems.append("non_consistent_output_missing_findings")
+    return problems
+
+
+def _release_verifier_mechanical_half(ctx: dict[str, Any]) -> dict[str, Any]:
+    """薄消费 release-skill@0.9.17 输出，只核形状、候选身份与原始字节摘要。
+
+    上游状态静态映射与 ``release_receipts.audit_release_receipts`` 一致：
+    CONSISTENT 表示本次记录一致性检查成功，CONTRADICTED 失败，INSUFFICIENT
+    与输入字节缺失保持 EVIDENCE_MISSING。``historicalTerminalStatus``
+    （VERIFIED、PUBLISHED、PARTIAL 或合同允许的缺省）只是提供方事实，原样
+    展示，既不是附加成功条件也不是否决条件；本函数不做发布状态机判定。
+    """
+    entries = _release_evidence_entries(ctx)
+    if entries is None:
+        return _finish(
+            [
+                _schema_row("EVIDENCE_MISSING", reason="evidence_set_missing"),
+                _digest_row("EVIDENCE_MISSING", reason="release_verifier_output_missing"),
+            ],
+            mechanical_half=True,
+        )
+    loaded, entry_violations = _release_evidence_bytes(entries)
+    if entry_violations:
+        return _finish(
+            [
+                _schema_row("PASS", reason="evidence_set_container_observed"),
+                _digest_row(
+                    "FAIL", reason="evidence_set_digest_binding_invalid",
+                    violations=entry_violations,
+                ),
+            ],
+            mechanical_half=True,
+        )
+
+    candidates: list[tuple[bytes, str, dict[str, Any]]] = []
+    for entry, raw, actual in loaded:
+        if entry.get("kind") not in {"log", "receipt"}:
+            continue
+        try:
+            value = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if (
+            isinstance(value, dict)
+            and "status" in value
+            and "inputs" in value
+            and "digests" in value
+        ):
+            candidates.append((raw, actual, value))
+    if len(candidates) != 1:
+        return _finish(
+            [
+                _schema_row(
+                    "EVIDENCE_MISSING", reason="release_verifier_output_not_unique",
+                    matching_outputs=len(candidates),
+                ),
+                _digest_row("EVIDENCE_MISSING", reason="release_verifier_output_unbound"),
+            ],
+            mechanical_half=True,
+        )
+
+    _output_raw, output_sha256, output = candidates[0]
+    shape_problems = _release_verifier_shape_problems(output)
+    if shape_problems:
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL", reason="release_verifier_output_shape_invalid",
+                    problems=shape_problems,
+                ),
+                _digest_row("NOT_RUN", reason="output_shape_invalid"),
+            ],
+            mechanical_half=True,
+            release_verifier_output_sha256=output_sha256,
+        )
+
+    if output["status"] == "INSUFFICIENT":
+        return _finish(
+            [
+                _schema_row("PASS", reason="release_verifier_output_shape_valid"),
+                _digest_row("EVIDENCE_MISSING", reason="release_verifier_insufficient"),
+            ],
+            mechanical_half=True,
+            upstream_status=output["status"],
+        )
+
+    package = _read_json_file(ctx, "package.json")
+    scope = ctx.get("scope")
+    plugin_project = scope.get("plugin_project") if isinstance(scope, dict) else None
+    plugin = plugin_project.get("plugin") if isinstance(plugin_project, dict) else None
+    expected_unit = plugin.get("id") if isinstance(plugin, dict) else None
+    expected_version = package.get("version") if isinstance(package, dict) else None
+    if not _nonempty_str(expected_unit) or not _nonempty_str(expected_version):
+        return _finish(
+            [
+                _schema_row("EVIDENCE_MISSING", reason="release_candidate_identity_missing"),
+                _digest_row("NOT_RUN", reason="candidate_identity_missing"),
+            ],
+            mechanical_half=True,
+        )
+    if output["unitId"] != expected_unit or output["targetVersion"] != expected_version:
+        return _finish(
+            [
+                _schema_row(
+                    "FAIL", reason="release_candidate_identity_mismatch",
+                    expected_unit=expected_unit,
+                    expected_version=expected_version,
+                    observed_unit=output["unitId"],
+                    observed_version=output["targetVersion"],
+                ),
+                _digest_row("NOT_RUN", reason="candidate_identity_mismatch"),
+            ],
+            mechanical_half=True,
+        )
+
+    digest_document = output["digests"]
+    declared = [
+        digest_document["plan"],
+        digest_document["approval"],
+        digest_document["targetRun"],
+        *digest_document["sourceRuns"],
+    ]
+    declared_sha256 = [
+        item["bytesSha256"] for item in declared if isinstance(item, dict)
+    ]
+    # evidence_id 不等于独立资源：同一路径可以被多个 ID 重复登记。先按规范化
+    # 真实路径去重，再做摘要多重集合闭包，避免一份物理文件冒充多个输入。
+    unique_resources = {
+        str(Path(entry["path"]).resolve(strict=True)): actual
+        for entry, _raw, actual in loaded
+    }
+    available_sha256 = Counter(unique_resources.values())
+    available_sha256[output_sha256] -= 1
+    if available_sha256[output_sha256] <= 0:
+        del available_sha256[output_sha256]
+    declared_counts = Counter(declared_sha256)
+    missing_sha256 = {
+        digest: count - available_sha256[digest]
+        for digest, count in sorted(declared_counts.items())
+        if count > available_sha256[digest]
+    }
+    if any(item is None for item in declared) or missing_sha256:
+        return _finish(
+            [
+                _schema_row("PASS", reason="release_verifier_output_shape_valid"),
+                _digest_row(
+                    "EVIDENCE_MISSING", reason="release_verifier_input_bytes_missing",
+                    missing_sha256=missing_sha256,
+                    null_digest_rows=sum(item is None for item in declared),
+                ),
+            ],
+            mechanical_half=True,
+            upstream_status=output["status"],
+        )
+    if output["status"] == "CONTRADICTED":
+        return _finish(
+            [
+                _schema_row("PASS", reason="release_verifier_output_shape_valid"),
+                _digest_row("FAIL", reason="release_verifier_contradicted"),
+            ],
+            mechanical_half=True,
+            upstream_status=output["status"],
+        )
+    # 历史发布终态不设附加门槛：上游记录一致且输入字节闭包成立时，
+    # VERIFIED、PUBLISHED、PARTIAL 与合同允许的空状态同样使本次记录一致性
+    # 检查成功，其取值只作为提供方事实写入 evidence；矛盾、材料不足、无效
+    # 输出、调用失败与身份不一致仍按前述分支失败或挂账。
+    return _finish(
+        [
+            _schema_row("PASS", reason="release_verifier_output_shape_valid"),
+            _digest_row(
+                "PASS", reason="release_verifier_input_bytes_digest_closed",
+                inputs_bound=len(declared_sha256),
+            ),
+        ],
+        mechanical_half=True,
+        upstream_status=output["status"],
+        historical_terminal_status=output["historicalTerminalStatus"],
+        release_verifier_output_sha256=output_sha256,
+    )
+
+
+def check_publish_017(ctx: dict[str, Any]) -> dict[str, Any]:
+    """标准发布流程的 0.9.17 记录验证机械半区；语义审阅仍为必需。"""
+    return _release_verifier_mechanical_half(ctx)
+
+
+def check_publish_018(ctx: dict[str, Any]) -> dict[str, Any]:
+    """平行发布状态机规则的记录验证机械半区；目标树语义审阅仍为必需。"""
+    return _release_verifier_mechanical_half(ctx)
+
+
 # ---------------------------------------------------------------------------
 # 登记
 # ---------------------------------------------------------------------------
@@ -4331,6 +4841,8 @@ CHECKS = {
     "SFA-PUBLISH-013": check_publish_013,
     "SFA-PUBLISH-015": check_publish_015,
     "SFA-PUBLISH-016": check_publish_016,
+    "SFA-PUBLISH-017": check_publish_017,
+    "SFA-PUBLISH-018": check_publish_018,
     "SFA-PLAT-001": check_plat_001,
     "SFA-PLAT-003": check_plat_003,
     "SFA-PLAT-004": check_plat_004,

@@ -127,6 +127,7 @@
       "required": [
         "binding_id",
         "canonical_id",
+        "check_method",
         "rule_revision_digest",
         "status",
         "reason_code",
@@ -141,6 +142,11 @@
         "canonical_id": {
           "type": "string",
           "pattern": "^SFA-[A-Z0-9]+-[0-9]{3}$"
+        },
+        "check_method": {
+          "enum": [
+            "semantic_review"
+          ]
         },
         "rule_revision_digest": {
           "$ref": "#/$defs/digest"

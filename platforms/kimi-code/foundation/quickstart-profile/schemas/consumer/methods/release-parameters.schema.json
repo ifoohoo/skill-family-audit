@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/parameters.json",
   "title": "Skill Family Audit release-audit parameters",
-  "description": "发布门禁检查方法的领域参数合同。方法只绑定一个冻结的 release-audit-input Resource；候选身份、发布评估引用与 Release Skill 公开验证器输出全部冻结在该文档内。",
+  "description": "发布门禁检查方法的领域参数合同。方法只绑定一个冻结的 release-audit-input Resource；候选身份、发布评估引用、显式发布记录路径和 Release Skill 0.9.17 固定公开 CLI 路径全部冻结在该文档内；Node 22 由既有 Foundation host 提供，不属于调用者输入。",
   "type": "object",
   "properties": {
     "release_audit_input": {

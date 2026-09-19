@@ -31,6 +31,29 @@ ASSESSMENT_DOCUMENT_FIELDS = REQUIRED | {"release_class", "candidate_id"}
 METHOD_IDENTITIES = {
     "conformance": "skill-family-audit:conformance-audit",
 }
+ACCEPTABLE_STATUSES = {"valid", "exception_pass", "not_applicable"}
+# 缺项指引：只使用已存在的公开入口；统一专业协议不可用时明确能力缺口。
+ENTRY_GUIDANCE = {
+    "conformance": (
+        "适用入口 skill-family-audit:conformance-audit（也可经 skill-family-audit:quickstart "
+        "绑定证据后调用），按当前候选重新生成 conformance 结论；本方法只消费结论，不重跑审计"
+    ),
+    "platform": (
+        "适用入口 skill-family-audit:setup（只读诊断环境、规范包与静态平台投影）：先确认"
+        "该平台投影是否已按当前候选生成，再按诊断计划补齐；本方法只消费投影，不重新生成"
+    ),
+    "exceptions": (
+        "能力缺口：本方法只消费既有非豁免政策证据，当前没有公开专业入口可生成例外结论，"
+        "待提供方证据接入"
+    ),
+    "release_policy": (
+        "能力缺口：本方法只消费已激活的发布政策证据，当前没有公开专业入口可生成发布政策结论，"
+        "待提供方证据接入"
+    ),
+}
+ENTRY_GUIDANCE_FALLBACK = (
+    "能力缺口：本方法只消费已有权威证据，当前没有公开专业入口可生成该类专业结论"
+)
 METHOD_FIELDS = {
     "conformance": {
         "conformance_result",
@@ -159,7 +182,27 @@ def _semantic_error(
     return "未知证据类别"
 
 
+def entry_guidance(name: str) -> str:
+    """返回该类缺项实际适用的接入或检查入口；无公开入口时如实说明能力缺口。"""
+    key = "platform" if name.startswith("platform:") else name
+    return ENTRY_GUIDANCE.get(key, ENTRY_GUIDANCE_FALLBACK)
+
+
+def _with_guidance(name: str, row: dict[str, Any]) -> dict[str, Any]:
+    """缺项行在既有 reason 字段上补充适用入口；不改状态，不新增字段。"""
+    if row["status"] in ACCEPTABLE_STATUSES:
+        return row
+    reason = str(row.get("reason", ""))
+    guidance = entry_guidance(name)
+    row["reason"] = f"{reason}；{guidance}" if reason else guidance
+    return row
+
+
 def check_evidence(name: str, value: Any, candidate_id: str) -> dict[str, Any]:
+    return _with_guidance(name, _check_evidence_row(name, value, candidate_id))
+
+
+def _check_evidence_row(name: str, value: Any, candidate_id: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {"status": "missing", "reason": f"{name} 未提供"}
     status = value.get("status")
@@ -246,8 +289,7 @@ def assess(
         *[row["status"] for name, row in rows.items() if name != "platforms"],
         *[row["status"] for row in rows["platforms"].values()],
     ]
-    acceptable = {"valid", "exception_pass", "not_applicable"}
-    passed = all(status in acceptable for status in statuses)
+    passed = all(status in ACCEPTABLE_STATUSES for status in statuses)
     if release_class == "stable":
         passed = passed and all(status == "valid" for status in statuses)
     return {

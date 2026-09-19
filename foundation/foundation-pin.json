@@ -1,6 +1,6 @@
 {
   "bundle": {
-    "payloadSha256": "5eedd504a665c54c101cf6afb1f1414d52ba4b338be28955199090b7628a79f8",
+    "payloadSha256": "434905e1e7cf6e08247f168a3c705babf832311d3e67d93b0523676dbf773e24",
     "targetPrefix": "foundation/quickstart-profile"
   },
   "consumerSchemas": [
@@ -25,19 +25,19 @@
     {
       "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/parameters.json",
       "path": "methods/conformance-parameters.schema.json",
-      "sha256": "1e2e96947435aad7eaadaf4ca3b74dfce45f070777c64cf163bf59be299312c1",
+      "sha256": "f7e9d484c2b13d3d270b664766286cbcda475ac537e7fc747e816b7b1eb541ef",
       "sourcePath": "spec/contracts/methods/conformance-parameters.schema.json"
     },
     {
       "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/result.json",
       "path": "methods/conformance-result.schema.json",
-      "sha256": "e34862f7df16fe29ca9d50250e60d85c0aa6f43ebed9c7c655615e0918c5447d",
+      "sha256": "3019f9959823ec41362f9ed3b3257a685147225a8809ad9f4ec290cf73994b24",
       "sourcePath": "spec/contracts/methods/conformance-result.schema.json"
     },
     {
       "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/release/parameters.json",
       "path": "methods/release-parameters.schema.json",
-      "sha256": "76d0d6cfe4f81ea7746b488daecc95008b797383da8b6392589f2bd39dd5def6",
+      "sha256": "d3d1f643bbdd25e56b2392c64e4481cff91894b33f964470c2fa9469340d3c6f",
       "sourcePath": "spec/contracts/methods/release-parameters.schema.json"
     },
     {
@@ -49,7 +49,7 @@
     {
       "$id": "skill-family-audit:semantic-review-result",
       "path": "semantic-review-result.schema.json",
-      "sha256": "fd972c61e3d3dfa1433fe91a72d39930c37f0297215adf8af54aa722976e2171",
+      "sha256": "53afbc522bb81563b5bc03f0652e205b55bea2da6c4e471895549433bf7fdc0e",
       "sourcePath": "spec/contracts/semantic-review-result.schema.json"
     },
     {

@@ -147,7 +147,6 @@ def _validate_method_route(route: Any) -> tuple[list[str], list[str]]:
         or len(methods) != len(set(methods))
         or any(method not in _CANONICAL_CHECK_METHODS for method in methods)
         or not isinstance(required, list)
-        or not required
         or len(required) != len(set(required))
         or any(method not in _MECHANICAL_CHECK_METHODS for method in required)
         or sorted(set(methods) & _MECHANICAL_CHECK_METHODS) != sorted(required)

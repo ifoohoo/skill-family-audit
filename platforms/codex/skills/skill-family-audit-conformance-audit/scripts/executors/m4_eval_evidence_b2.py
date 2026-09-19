@@ -1956,15 +1956,37 @@ def check_qualify_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     claims = _qualification(ctx)
     if claims is None:
-        raise ExecutorEvidenceError(
-            "QUALIFICATION_CLAIMS_MISSING",
-            "稳定联合发布资格无法在 qualification-claims 缺失时判定",
+        return _finish(
+            [
+                _schema_row(
+                    "NOT_APPLICABLE", reason="stable_joint_release_not_declared"
+                ),
+                _doc_digest_row(
+                    ctx,
+                    ("qualification-claims",),
+                    status="NOT_APPLICABLE",
+                    reason="stable_joint_release_not_declared",
+                ),
+            ],
+            stable_joint_release_declared=False,
+            qualification_document_present=False,
         )
     rows = rows_of(claims, "stable_joint_releases", "qualification-claims")
     if not rows:
-        raise ExecutorEvidenceError(
-            "STABLE_JOINT_RELEASES_MISSING",
-            "稳定联合发布资格至少需要一条 stable_joint_releases 证据",
+        return _finish(
+            [
+                _schema_row(
+                    "NOT_APPLICABLE", reason="stable_joint_release_not_declared"
+                ),
+                _doc_digest_row(
+                    ctx,
+                    ("qualification-claims",),
+                    status="NOT_APPLICABLE",
+                    reason="stable_joint_release_not_declared",
+                ),
+            ],
+            stable_joint_release_declared=False,
+            qualification_document_present=True,
         )
     violations = []
     for row in rows:

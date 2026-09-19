@@ -24,6 +24,7 @@ import json
 import os
 import re
 import tarfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -181,6 +182,12 @@ def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
 def _digest_row(status: str, **evidence: Any) -> dict[str, Any]:
     return _method_row(
         "digest_verification", status, "executor_digest_verification_observation", **evidence
+    )
+
+
+def _static_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "static_scan", status, "executor_static_scan_observation", **evidence
     )
 
 
@@ -427,13 +434,16 @@ def check_graph_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """规范治理链与技能交付链可相交，但不得合并为同一权威链。
 
     机械断言：``graph-links.authority_chains`` 声明的两条权威链必须不同源，
-    且 merged_into_single_authority 必须为 false。
+    且 merged_into_single_authority 必须为 false。受管路由声明
+    digest_verification + schema_validation + static_scan：static_scan 只静态
+    读取声明原文里的链身份，不替目标推断未声明的交叉关系。
     """
     document = _doc(ctx, "graph-links")
     if document is None:
         return _finish(
             [
                 _schema_row("PASS", reason="no_declared_document"),
+                _static_row("PASS", reason="no_declared_document"),
                 _doc_digest_row(ctx, ("graph-links",)),
             ],
             declared_authority_chains=False,
@@ -445,6 +455,12 @@ def check_graph_001(ctx: dict[str, Any]) -> dict[str, Any]:
         return _finish(
             [
                 _schema_row("FAIL", reason="authority_chains_merged"),
+                _static_row(
+                    "FAIL",
+                    reason="merged_single_authority_declared",
+                    merged_into_single_authority=True,
+                    documents=_documents_observed(ctx, ("graph-links",)),
+                ),
                 _doc_digest_row(ctx, ("graph-links",)),
             ],
             reason="authority_chains_merged",
@@ -457,6 +473,13 @@ def check_graph_001(ctx: dict[str, Any]) -> dict[str, Any]:
         return _finish(
             [
                 _schema_row("FAIL", reason="authority_chains_identical"),
+                _static_row(
+                    "FAIL",
+                    reason="authority_chain_identity_reused",
+                    spec_chain=spec_chain,
+                    delivery_chain=delivery_chain,
+                    documents=_documents_observed(ctx, ("graph-links",)),
+                ),
                 _doc_digest_row(ctx, ("graph-links",)),
             ],
             reason="authority_chains_identical",
@@ -465,6 +488,13 @@ def check_graph_001(ctx: dict[str, Any]) -> dict[str, Any]:
         [
             _schema_row(
                 "PASS", reason="schema_checks_passed", spec_chain=spec_chain, delivery_chain=delivery_chain
+            ),
+            _static_row(
+                "PASS",
+                reason="authority_chains_distinct",
+                spec_chain=spec_chain,
+                delivery_chain=delivery_chain,
+                documents=_documents_observed(ctx, ("graph-links",)),
             ),
             _doc_digest_row(ctx, ("graph-links",)),
         ],
@@ -691,13 +721,21 @@ def check_graph_008(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_graph_009(ctx: dict[str, Any]) -> dict[str, Any]:
-    """入口、技能、检查器等必须连接与其职责最近的权威制品，不得全挂技能族根。"""
+    """入口、技能、检查器等必须连接与其职责最近的权威制品，不得全挂技能族根。
+
+    受管路由只声明 ``static_scan``（+ semantic_review）：本执行器静态读取
+    ``graph-links.attachments`` 的逐条声明原文并附所读材料摘要，不主张路由
+    未声明的方法；简单项目保留较粗关联（不登记该文档）时不适用。
+    """
     document = _doc(ctx, "graph-links")
     if document is None:
         return _finish(
             [
-                _schema_row("PASS", reason="no_declared_document"),
-                _doc_digest_row(ctx, ("graph-links",)),
+                _static_row(
+                    "PASS",
+                    reason="no_declared_document",
+                    documents=_documents_observed(ctx, ("graph-links",)),
+                ),
             ],
             declared_attachments=0,
         )
@@ -711,17 +749,24 @@ def check_graph_009(ctx: dict[str, Any]) -> dict[str, Any]:
     if violations:
         return _finish(
             [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("graph-links",)),
+                _static_row(
+                    "FAIL",
+                    reason="attachments_not_nearest_authority",
+                    violations=violations,
+                    declared_attachments=len(attachments),
+                    documents=_documents_observed(ctx, ("graph-links",)),
+                ),
             ],
             attachments_not_nearest_authority=violations,
         )
     return _finish(
         [
-            _schema_row(
-                "PASS", reason="schema_checks_passed", declared_attachments=len(attachments)
+            _static_row(
+                "PASS",
+                reason="declared_attachments_nearest_authority",
+                declared_attachments=len(attachments),
+                documents=_documents_observed(ctx, ("graph-links",)),
             ),
-            _doc_digest_row(ctx, ("graph-links",)),
         ],
         declared_attachments=len(attachments),
     )
@@ -814,13 +859,28 @@ def check_graph_025(ctx: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _axis_check(ctx: dict[str, Any], axis_key: str) -> dict[str, Any]:
+def _axis_check(
+    ctx: dict[str, Any], axis_key: str, *, declaration_method: str = "digest_verification"
+) -> dict[str, Any]:
+    """状态轴词表检查。
+
+    第二行按该规则受管路由声明的方法观察声明原文：路由声明 static_scan 的轴
+    （GRAPH-012/013/017）静态读取声明值；仍声明 digest_verification 的轴保持
+    字节摘要观察。执行器不主张路由之外的方法。
+    """
+
+    def _declaration_row(status: str = "PASS", **evidence: Any) -> dict[str, Any]:
+        documents = _documents_observed(ctx, ("status-axes",))
+        if declaration_method == "static_scan":
+            return _static_row(status, documents=documents, **evidence)
+        return _digest_row(status, documents=documents, **evidence)
+
     document = _doc(ctx, "status-axes")
     if document is None:
         return _finish(
             [
                 _schema_row("PASS", reason="no_declared_axis", axis=axis_key),
-                _doc_digest_row(ctx, ("status-axes",), axis=axis_key),
+                _declaration_row(axis=axis_key),
             ],
             declared_axis=False,
             axis=axis_key,
@@ -831,7 +891,7 @@ def _axis_check(ctx: dict[str, Any], axis_key: str) -> dict[str, Any]:
         return _finish(
             [
                 _schema_row("PASS", reason="no_declared_axis", axis=axis_key),
-                _doc_digest_row(ctx, ("status-axes",), axis=axis_key),
+                _declaration_row(axis=axis_key),
             ],
             declared_axis=False,
             axis=axis_key,
@@ -851,7 +911,13 @@ def _axis_check(ctx: dict[str, Any], axis_key: str) -> dict[str, Any]:
                     out_of_vocabulary=out_of_vocabulary,
                     vocabulary=sorted(vocabulary),
                 ),
-                _doc_digest_row(ctx, ("status-axes",), axis=axis_key),
+                _declaration_row(
+                    "FAIL" if declaration_method == "static_scan" else "PASS",
+                    reason="out_of_vocabulary_observed",
+                    axis=axis_key,
+                    declared=values,
+                    out_of_vocabulary=out_of_vocabulary,
+                ),
             ],
             axis=axis_key,
             out_of_vocabulary=out_of_vocabulary,
@@ -862,7 +928,11 @@ def _axis_check(ctx: dict[str, Any], axis_key: str) -> dict[str, Any]:
             _schema_row(
                 "PASS", reason="schema_checks_passed", axis=axis_key, recorded=len(values)
             ),
-            _doc_digest_row(ctx, ("status-axes",), axis=axis_key),
+            _declaration_row(
+                reason="declared_axis_values_observed",
+                axis=axis_key,
+                declared=values,
+            ),
         ],
         axis=axis_key,
         recorded=len(values),
@@ -875,13 +945,21 @@ def check_graph_011(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_graph_012(ctx: dict[str, Any]) -> dict[str, Any]:
-    """技能族成熟度状态轴限定为实验/孵化/稳定/已废弃。"""
-    return _axis_check(ctx, "family_maturity")
+    """技能族成熟度状态轴限定为实验/孵化/稳定/已废弃。
+
+    路由声明 schema_validation + static_scan：第二行静态读取声明的成熟度
+    标签及声明范围，不认证标签对应的运行效果。
+    """
+    return _axis_check(ctx, "family_maturity", declaration_method="static_scan")
 
 
 def check_graph_013(ctx: dict[str, Any]) -> dict[str, Any]:
-    """能力与方法支持状态轴限定为规划中/受支持/实验/已废弃。"""
-    return _axis_check(ctx, "capability_support")
+    """能力与方法支持状态轴限定为规划中/受支持/实验/已废弃。
+
+    路由声明 schema_validation + static_scan：第二行静态读取声明的能力
+    与方法支持状态，品质标签与可用性不作为互斥状态处理。
+    """
+    return _axis_check(ctx, "capability_support", declaration_method="static_scan")
 
 
 def check_graph_014(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -940,8 +1018,12 @@ def check_graph_016(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_graph_017(ctx: dict[str, Any]) -> dict[str, Any]:
-    """平台支持状态轴限定为受支持/实验/暂缺/已废弃。"""
-    return _axis_check(ctx, "platform_support")
+    """平台支持状态轴限定为受支持/实验/暂缺/已废弃。
+
+    路由声明 schema_validation + static_scan：第二行静态读取逐平台声明，
+    不替目标推断未声明的平台支持程度。
+    """
+    return _axis_check(ctx, "platform_support", declaration_method="static_scan")
 
 
 def check_graph_018(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -3398,6 +3480,11 @@ _FOUNDATION_PACKAGE_NAMES = (
     "skill-family-contracts",
     "skill-family-engineering-kit",
 )
+# 采用豁免合同的发布状态尚未落定：合同未发布本身只是能力缺口，
+# 随报告如实披露，不构成对目标的违规判断，也不要求目标补交证明文件。
+_FOUNDATION_ADOPTION_CONTRACT_CAPABILITY_GAP = (
+    "foundation_adoption_exemption_contract_pending"
+)
 _FOUNDATION_CLASSIFICATION_SCHEMA_ID = (
     "https://contracts.skill-family.example/skill-family-audit/candidate/v2/"
     "foundation-consumption-classification.json"
@@ -3411,12 +3498,6 @@ _JS_IMPORT_RE = re.compile(
     r"""(?:from\s+|import\s*\(|import\s+["']|require\s*\()["']([^"']+)["']"""
 )
 _PY_STRING_RE = re.compile(r"""["']([^"']{0,400})["']""")
-
-
-def _static_row(status: str, **evidence: Any) -> dict[str, Any]:
-    return _method_row(
-        "static_scan", status, "executor_static_scan_observation", **evidence
-    )
 
 
 def _target_source_files(target: Path) -> list[Path]:
@@ -5081,7 +5162,24 @@ _SKILL_RULE_EXCEPTION_SCHEMA_ID = (
     "spec/packages/skill-development/schemas/skill_rule_exception.schema.json"
 )
 _EXCEPTION_STATUS_VOCABULARY = frozenset(
-    {"pending_approval", "active", "expired", "revoked"}
+    {"pending_approval", "active", "expired", "revoked", "remediation_completed"}
+)
+_EXCEPTION_REQUIRED_FIELDS = (
+    "target_rule_id",
+    "target_revision_digest",
+    "scope",
+    "deadline",
+    "approver",
+    "compensation",
+    "revocation",
+    "invalidation_conditions",
+    "status",
+)
+_EXCEPTION_CARRIER_SPECS = (
+    (".skill-family-audit/governance/exception-register.json", "entries"),
+    (".skill-family-audit/governance/exception-records.json", "records"),
+    (".skill-family-audit/governance/waivers-register.json", "records"),
+    ("spec/policies/exception-policy.json", "currentExceptions"),
 )
 _GATE_IDS = ("artifact_drift", "entry_contract", "public_boundary")
 _GOVERNANCE_GATE_SCHEMA_ID = (
@@ -5243,12 +5341,166 @@ def _project_profile_document(
     return value if isinstance(value, dict) else None
 
 
+def _read_exception_carriers(target_root: Path) -> dict[str, Any]:
+    """从两个规则共享的既有载体集合取得可观察记录和载体三态。"""
+    carriers: list[str] = []
+    records: list[tuple[dict[str, Any], str]] = []
+    unreadable: list[dict[str, str]] = []
+    violations: list[dict[str, Any]] = []
+
+    def read_object(path: Path, carrier: str) -> dict[str, Any] | None:
+        if path.is_symlink():
+            unreadable.append({"carrier": carrier, "reason": "carrier_symlink"})
+            return None
+        if not path.is_file():
+            violations.append({"carrier": carrier, "reason": "carrier_not_file"})
+            return None
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            unreadable.append(
+                {
+                    "carrier": carrier,
+                    "reason": "carrier_unreadable",
+                    "detail": type(exc).__name__,
+                }
+            )
+            return None
+        if not isinstance(value, dict):
+            violations.append({"carrier": carrier, "reason": "carrier_not_object"})
+            return None
+        return value
+
+    for relative, rows_key in _EXCEPTION_CARRIER_SPECS:
+        path = target_root / relative
+        if not path.exists() and not path.is_symlink():
+            continue
+        carriers.append(relative)
+        document = read_object(path, relative)
+        if document is None:
+            continue
+        rows = document.get(rows_key)
+        if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+            violations.append(
+                {
+                    "carrier": relative,
+                    "reason": "carrier_records_invalid",
+                    "field": rows_key,
+                }
+            )
+            continue
+        if rows_key == "currentExceptions":
+            declared_fields = document.get("requiredExceptionFields")
+            if (
+                not isinstance(declared_fields, list)
+                or not all(isinstance(field, str) for field in declared_fields)
+                or not set(_EXCEPTION_REQUIRED_FIELDS).issubset(set(declared_fields))
+            ):
+                violations.append(
+                    {"carrier": relative, "reason": "policy_required_fields_incomplete"}
+                )
+        records.extend((row, relative) for row in rows)
+
+    waiver_dir = target_root / "waivers"
+    if waiver_dir.exists() or waiver_dir.is_symlink():
+        carriers.append("waivers/")
+        if waiver_dir.is_symlink():
+            unreadable.append({"carrier": "waivers/", "reason": "carrier_symlink"})
+        elif not waiver_dir.is_dir():
+            violations.append({"carrier": "waivers/", "reason": "carrier_not_directory"})
+        else:
+            for path in sorted(waiver_dir.glob("*.json")):
+                relative = path.relative_to(target_root).as_posix()
+                document = read_object(path, relative)
+                if document is not None:
+                    records.append((document, relative))
+    return {
+        "carriers": carriers,
+        "records": records,
+        "unreadable": unreadable,
+        "violations": violations,
+    }
+
+
+def _exception_record_violations(entry: dict[str, Any]) -> list[str]:
+    """只实现 PGM-003 的九要素与期限/状态/撤销形状，不判历史或身份真伪。"""
+    missing = [field for field in _EXCEPTION_REQUIRED_FIELDS if field not in entry]
+    if missing:
+        return [f"required_fields_missing:{','.join(missing)}"]
+    violations: list[str] = []
+    for field in (
+        "target_rule_id",
+        "target_revision_digest",
+        "scope",
+        "approver",
+        "compensation",
+    ):
+        if not isinstance(entry.get(field), str) or not entry[field].strip():
+            violations.append(f"{field}_invalid")
+    deadline = entry.get("deadline")
+    try:
+        parsed_deadline = datetime.fromisoformat(deadline) if isinstance(deadline, str) else None
+    except ValueError:
+        parsed_deadline = None
+    if parsed_deadline is None or parsed_deadline.tzinfo is None:
+        violations.append("deadline_invalid")
+    if entry.get("status") not in _EXCEPTION_STATUS_VOCABULARY:
+        violations.append("status_invalid")
+    revocation = entry.get("revocation")
+    if not isinstance(revocation, dict):
+        violations.append("revocation_invalid")
+    else:
+        for field in ("revoker", "conditions", "evidence_ref"):
+            if not isinstance(revocation.get(field), str) or not revocation[field].strip():
+                violations.append(f"revocation_{field}_invalid")
+    invalidation = entry.get("invalidation_conditions")
+    if (
+        not isinstance(invalidation, list)
+        or not invalidation
+        or any(not isinstance(item, str) or not item.strip() for item in invalidation)
+    ):
+        violations.append("invalidation_conditions_invalid")
+    return violations
+
+
 def _validate_exception_entries(
     entries: list[dict[str, Any]],
 ) -> tuple[str, dict[str, Any]]:
-    """通过 Foundation 校验真实例外载体，不复制权威 Schema 的 Oracle。"""
+    """核验 PGM-003 九要素；专用 skill_rule_exception 再调用其公共 Schema。"""
     violations: list[dict[str, Any]] = []
+    specialized_schema_records = 0
     for index, entry in enumerate(entries):
+        shape_violations = _exception_record_violations(entry)
+        if shape_violations:
+            violations.append(
+                {
+                    "index": index,
+                    "reason": "exception_minimum_shape_invalid",
+                    "details": shape_violations,
+                }
+            )
+            continue
+        has_exception_id = "exception_id" in entry
+        has_created_at = "created_at" in entry
+        if has_exception_id != has_created_at:
+            violations.append(
+                {
+                    "index": index,
+                    "reason": "partial_specialized_identity",
+                    "present": [
+                        field
+                        for field, present in (
+                            ("exception_id", has_exception_id),
+                            ("created_at", has_created_at),
+                        )
+                        if present
+                    ],
+                }
+            )
+            continue
+        if not has_exception_id:
+            continue
+        specialized_schema_records += 1
         try:
             response = conformance_check._foundation(
                 {
@@ -5264,9 +5516,7 @@ def _validate_exception_entries(
                 "schema_id": _SKILL_RULE_EXCEPTION_SCHEMA_ID,
                 "failed_index": index,
             }
-        if not isinstance(response, dict) or not isinstance(
-            response.get("valid"), bool
-        ):
+        if not isinstance(response, dict) or not isinstance(response.get("valid"), bool):
             return "EVIDENCE_MISSING", {
                 "reason": "foundation_schema_response_unjudgable",
                 "schema_id": _SKILL_RULE_EXCEPTION_SCHEMA_ID,
@@ -5290,6 +5540,7 @@ def _validate_exception_entries(
         "reason": "exception_records_schema_validated",
         "schema_id": _SKILL_RULE_EXCEPTION_SCHEMA_ID,
         "records": len(entries),
+        "specialized_schema_records": specialized_schema_records,
     }
 
 
@@ -5868,10 +6119,10 @@ def check_governance_001(ctx: dict[str, Any]) -> dict[str, Any]:
 def check_governance_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """治理最低制品：例外登记与自加严的机器可读形态（schema_validation）。
 
-    - 触发：例外登记条目、profile.json overrides 或例外使用事实任一存在；
-    - FAIL：公共 Foundation Profile SPI 拒绝 overrides，或权威例外 Schema
-      拒绝登记条目；
-    - EVIDENCE_MISSING：例外使用事实存在但缺登记载体与自加严声明（有行为无载体）；
+    - 触发：任一既有例外载体或 profile.json overrides 存在；
+    - FAIL：公共 Foundation Profile SPI 拒绝 overrides，九要素或
+      期限/状态/撤销形状非法，或专用例外 Schema 拒绝登记条目；
+    - EVIDENCE_MISSING：已声明自加严但缺例外载体，或既有载体不可读；
     - NOT_APPLICABLE：零例外零自加严（推荐口径）。
     例外登记载体与 FOUNDATION-003 的 foundation 豁免登记是不同对象，不得混用。
 
@@ -5887,10 +6138,9 @@ def check_governance_002(ctx: dict[str, Any]) -> dict[str, Any]:
             mechanical_half=True,
         )
     target_root = Path(target)
-    register = _doc(ctx, "exception-register")
-    entries = (
-        rows_of(register, "entries", "exception-register") if register is not None else []
-    )
+    carrier_observation = _read_exception_carriers(target_root)
+    carrier_records = carrier_observation["records"]
+    entries = [record for record, _carrier in carrier_records]
     profile = _project_profile_document(ctx, target_root)
     overrides = None
     if profile is not None:
@@ -5900,49 +6150,50 @@ def check_governance_002(ctx: dict[str, Any]) -> dict[str, Any]:
             )
         overrides = profile.get("overrides")
     override_rows = overrides if isinstance(overrides, list) else []
-    usage = _scope_flag(ctx, "exception_usage")
-    if not entries and not override_rows and not usage:
+    carriers = carrier_observation["carriers"]
+    if not carriers and not override_rows:
         return _finish_validated(
             [_schema_row("NOT_APPLICABLE", reason="no_exception_or_self_tightening")],
             ["schema_validation"],
             mechanical_half=True,
         )
-    if usage and register is None and not override_rows:
-        return _finish_validated(
-            [_schema_row("EVIDENCE_MISSING", reason="exception_carrier_missing", usage=True)],
-            ["schema_validation"],
-            mechanical_half=True,
-        )
-    violations = []
+    violations = list(carrier_observation["violations"])
+    unavailable = list(carrier_observation["unreadable"])
     schema_status = "PASS"
     schema_evidence: dict[str, Any] = {}
     if entries:
         schema_status, schema_evidence = _validate_exception_entries(entries)
         if schema_status == "FAIL":
-            violations.extend(schema_evidence.get("violations", []))
+            violations.extend(
+                {
+                    "carrier": carrier_records[item["index"]][1],
+                    **item,
+                }
+                for item in schema_evidence.get("violations", [])
+            )
         elif schema_status == "EVIDENCE_MISSING":
-            violations.append(schema_evidence)
+            unavailable.append(schema_evidence)
     foundation_profile = _scope(ctx).get("foundation_profile")
     if override_rows:
         # target_scope 已经通过同一公共入口 verifyProjectProfile 生成该结果。
         # 缺失/基础设施故障不能被本地形状检查降级为通过；公共拒绝也不能由
         # Audit 自行解释成另一套 overrides 合同。
         if not isinstance(foundation_profile, dict) or not foundation_profile:
-            violations.append({"reason": "verify_project_profile_result_missing"})
+            unavailable.append({"reason": "verify_project_profile_result_missing"})
         else:
             profile_code = foundation_profile.get("code")
             profile_complete = (
                 foundation_profile.get("foundation_profile_complete") is True
             )
             if not isinstance(profile_code, str) or not profile_code:
-                violations.append({"reason": "verify_project_profile_result_missing"})
+                unavailable.append({"reason": "verify_project_profile_result_missing"})
             elif profile_code == "SPE0000":
                 if not profile_complete:
                     violations.append(
                         {"reason": "verification_result_contradicts_success_code"}
                     )
             elif profile_code in _FOUNDATION_VERIFICATION_INFRA_CODES:
-                violations.append(
+                unavailable.append(
                     {
                         "reason": "foundation_verification_unavailable",
                         "code": profile_code,
@@ -5955,57 +6206,29 @@ def check_governance_002(ctx: dict[str, Any]) -> dict[str, Any]:
                         "code": profile_code,
                     }
                 )
+    if override_rows and not carriers:
+        unavailable.append({"reason": "exception_carrier_missing"})
     if violations:
-        unavailable = any(
-            violation.get("reason")
-            in {
-                "verify_project_profile_result_missing",
-                "foundation_verification_unavailable",
-                "foundation_schema_mechanism_unavailable",
-                "foundation_schema_response_unjudgable",
-            }
-            for violation in violations
-        )
-        # 基础设施缺失/未运行只能形成缺证；其余公共拒绝或例外形态问题为 FAIL。
-        if unavailable and not any(
-            violation.get("reason")
-            not in {
-                "verify_project_profile_result_missing",
-                "foundation_verification_unavailable",
-                "foundation_schema_mechanism_unavailable",
-                "foundation_schema_response_unjudgable",
-            }
-            for violation in violations
-        ):
-            return _finish_validated(
-                [
-                    _schema_row(
-                        "EVIDENCE_MISSING",
-                        reason=(
-                            next(
-                                violation.get("reason")
-                                for violation in violations
-                                if violation.get("reason")
-                                in {
-                                    "verify_project_profile_result_missing",
-                                    "foundation_verification_unavailable",
-                                    "foundation_schema_mechanism_unavailable",
-                                    "foundation_schema_response_unjudgable",
-                                }
-                            )
-                        ),
-                        violations=violations,
-                    )
-                ],
-                ["schema_validation"],
-                mechanical_half=True,
-            )
         return _finish_validated(
             [
                 _schema_row(
                     "FAIL",
                     reason="governance_artifacts_schema_invalid",
                     violations=violations,
+                    unavailable=unavailable,
+                )
+            ],
+            ["schema_validation"],
+            mechanical_half=True,
+        )
+    if unavailable:
+        return _finish_validated(
+            [
+                _schema_row(
+                    "EVIDENCE_MISSING",
+                    reason=unavailable[0].get("reason", "exception_carrier_unreadable"),
+                    unavailable=unavailable,
+                    carriers=carriers,
                 )
             ],
             ["schema_validation"],
@@ -6018,6 +6241,7 @@ def check_governance_002(ctx: dict[str, Any]) -> dict[str, Any]:
                 reason="governance_artifacts_shape_valid",
                 entries=len(entries),
                 overrides=len(override_rows),
+                carriers=carriers,
                 schema_validation=schema_evidence if entries else None,
             )
         ],
@@ -6029,13 +6253,16 @@ def check_governance_002(ctx: dict[str, Any]) -> dict[str, Any]:
 def check_governance_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """例外记录最低形态推广适用（schema_validation）。
 
-    - 触发：任一载体出现例外条目，或存在例外使用事实；
-    - FAIL：Foundation 权威例外 Schema 拒绝条目；
-    - EVIDENCE_MISSING：存在例外使用事实但无法定位任何例外载体；
-    - NOT_APPLICABLE：无任何例外记录（含 waivers 形态与项目侧载体均无）。
-      撤销、过期与待审等追加式状态仍是需由权威 Schema 校验的例外记录；
+    - 触发：共享既有载体集合中出现例外条目；
+    - FAIL：九要素或期限/状态/撤销形状非法，或专用例外
+      Schema 拒绝条目；
+    - EVIDENCE_MISSING：已提供的既有载体不可读；
+    - NOT_APPLICABLE：共享载体均无例外记录。
+      撤销、过期与待审等追加式状态仍是需校验的例外记录；
       禁止以状态过滤或缺载体文件代替触发判断。
-    字段、嵌套对象、数组、状态枚举和额外字段均由 Foundation 权威 Schema 判定。
+    九要素及期限/状态/撤销形状在此机械校验；仅专用
+    skill_rule_exception 记录的额外字段由 Foundation 权威 Schema 判定，
+    历史与身份追溯仍由现有 semantic_review 负责。
     """
     target = ctx.get("target")
     if not target or not Path(target).is_dir():
@@ -6044,23 +6271,46 @@ def check_governance_003(ctx: dict[str, Any]) -> dict[str, Any]:
             ["schema_validation"],
             mechanical_half=True,
         )
-    records: list[tuple[dict[str, Any], str]] = []
-    for name in ("exception-records", "waivers-register"):
-        doc = _doc(ctx, name)
-        if doc is None:
-            continue
-        for row in rows_of(doc, "records", name):
-            records.append((row, name))
-    usage = _scope_flag(ctx, "exception_usage")
-    if not records:
-        if usage:
-            return _finish_validated(
-                [_schema_row("EVIDENCE_MISSING", reason="exception_usage_without_carrier")],
-                ["schema_validation"],
-                mechanical_half=True,
-            )
+    carrier_observation = _read_exception_carriers(Path(target))
+    records = carrier_observation["records"]
+    carriers = carrier_observation["carriers"]
+    carrier_violations = carrier_observation["violations"]
+    unreadable = carrier_observation["unreadable"]
+    if carrier_violations:
         return _finish_validated(
-            [_schema_row("NOT_APPLICABLE", reason="no_exception_records")],
+            [
+                _schema_row(
+                    "FAIL",
+                    reason="exception_carrier_shape_invalid",
+                    violations=carrier_violations,
+                    carriers=carriers,
+                )
+            ],
+            ["schema_validation"],
+            mechanical_half=True,
+        )
+    if unreadable:
+        return _finish_validated(
+            [
+                _schema_row(
+                    "EVIDENCE_MISSING",
+                    reason="exception_carrier_unreadable",
+                    unreadable=unreadable,
+                    carriers=carriers,
+                )
+            ],
+            ["schema_validation"],
+            mechanical_half=True,
+        )
+    if not records:
+        return _finish_validated(
+            [
+                _schema_row(
+                    "NOT_APPLICABLE",
+                    reason="no_exception_records",
+                    carriers=carriers,
+                )
+            ],
             ["schema_validation"],
             mechanical_half=True,
         )
@@ -6096,6 +6346,7 @@ def check_governance_003(ctx: dict[str, Any]) -> dict[str, Any]:
                 "PASS",
                 reason="exception_records_schema_valid",
                 records=len(records),
+                carriers=carriers,
                 schema_validation=schema_evidence,
             )
         ],
@@ -7240,16 +7491,20 @@ def check_foundation_002(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_foundation_003(ctx: dict[str, Any]) -> dict[str, Any]:
-    """零消费豁免登记与机器审计（schema_validation）。
+    """共用能力适用性与特殊处理记录核对（schema_validation）。
 
     - 触发：foundation 三包之一部或全部零消费（采用声明未钉扎且源码无具名
       import 的包存在缺口）；
-    - PASS：缺口包全部被豁免记录覆盖，记录经权威
+    - PASS：缺口包全部被现行（status=active）记录覆盖，记录经权威
       spec/contracts/foundation-adoption-exemption.schema.json 机器校验通过，
       边界证据引用可解析；
-    - FAIL：零消费缺口无豁免记录（未登记豁免的零消费视为违反 FADO-001）、
-      记录形状非法（含证据引用不可解析）；
-    - NOT_APPLICABLE：三包全部消费（无零消费缺口）；纯文档技能族无义务。
+    - NOT_APPLICABLE：三包全部消费（无零消费缺口）；纯文档技能族无义务；
+      缺口未被任何特殊处理记录覆盖——「不适用直接判断」，未声明特殊处理
+      即该事项不适用，不判违规、不要求目标补交豁免材料；
+    - FAIL：已声明记录形状违反权威公共 Schema，或记录声明的边界证据引用
+      不可解析——这是对记录对象与事项的核对，不鉴定由谁填写或批准；
+    - 采用豁免合同的发布状态尚未落定：合同未发布只作为能力缺口随报告披露
+      （capability_gap），不构成违规，也不要求目标提交证明文件。
     不发明任何字段/ID 规则；exemptionId/schemaVersion 等约束以权威 schema 为准。
     """
     target = ctx.get("target")
@@ -7328,7 +7583,12 @@ def check_foundation_003(ctx: dict[str, Any]) -> dict[str, Any]:
     records = _exemption_records(ctx)
     if not records:
         return _finish_validated(
-            [_schema_row("FAIL", reason="zero_consumption_without_exemption", gap=gap)],
+            [_schema_row(
+                "NOT_APPLICABLE",
+                reason="no_declared_special_handling_not_applicable",
+                gap=gap,
+                capability_gap=_FOUNDATION_ADOPTION_CONTRACT_CAPABILITY_GAP,
+            )],
             ["schema_validation"],
             mechanical_half=True,
         )
@@ -7385,10 +7645,6 @@ def check_foundation_003(ctx: dict[str, Any]) -> dict[str, Any]:
                         "reference": ref,
                     }
                 )
-    if not schema_unavailable:
-        uncovered = [package for package in gap if package not in covered]
-        if uncovered:
-            violations.append({"reason": "exemption_coverage_incomplete", "uncovered": uncovered})
     if violations:
         return _finish_validated(
             [_schema_row("FAIL", reason="exemption_machine_audit_failed", violations=violations)],
@@ -7401,6 +7657,21 @@ def check_foundation_003(ctx: dict[str, Any]) -> dict[str, Any]:
             ["schema_validation"],
             mechanical_half=True,
         )
+    uncovered = [package for package in gap if package not in covered]
+    if uncovered:
+        # 已声明记录未覆盖当前缺口：未覆盖部分按「不适用直接判断」报告，
+        # 既不判违规也不要求补件；记录与缺口事实原样披露。
+        return _finish_validated(
+            [_schema_row(
+                "NOT_APPLICABLE",
+                reason="declared_records_do_not_cover_gap_not_applicable",
+                uncovered=uncovered,
+                records=len(records),
+                capability_gap=_FOUNDATION_ADOPTION_CONTRACT_CAPABILITY_GAP,
+            )],
+            ["schema_validation"],
+            mechanical_half=True,
+        )
     return _finish_validated(
         [
             _schema_row(
@@ -7408,6 +7679,7 @@ def check_foundation_003(ctx: dict[str, Any]) -> dict[str, Any]:
                 reason="exemption_machine_audit_passed",
                 records=len(records),
                 covered=sorted(covered),
+                capability_gap=_FOUNDATION_ADOPTION_CONTRACT_CAPABILITY_GAP,
             )
         ],
         ["schema_validation"],

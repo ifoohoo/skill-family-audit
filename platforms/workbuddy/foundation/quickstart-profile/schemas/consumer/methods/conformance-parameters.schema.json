@@ -82,80 +82,66 @@
       "items": {
         "type": "string",
         "enum": [
-          "artifact.identity-granularity",
-          "artifact.spec-rule-lifecycle",
           "artifact.capability-contract",
-          "artifact.method-contract-registry",
-          "artifact.internal-skill-binding",
-          "artifact.assessment-layering",
-          "artifact.release-facts",
           "artifact.derived-projections",
-          "ecosystem.product-roles",
-          "topology.kernel-composer",
-          "topology.assistant-routing",
-          "topology.domain-release",
-          "ecosystem.bridge-lifecycle",
-          "ecosystem.single-graph",
-          "ecosystem.extension-boundary",
-          "profile.domain-selection",
-          "profile.logical-views",
-          "profile.authoring-generation",
-          "foundation.terminology",
-          "foundation.engineering-kit",
-          "foundation.quickstart-exchange",
-          "upstream.consumer-compatibility",
-          "governance.machine-truth",
-          "repository.initial-layout",
-          "repository.published-dependencies",
-          "repository.foundation-adoption",
-          "dependency.product-direction",
+          "artifact.identity-granularity",
+          "artifact.internal-skill-binding",
+          "artifact.method-contract-registry",
+          "artifact.spec-rule-lifecycle",
+          "compose.ordering-parallelism",
+          "compose.public-boundaries",
+          "context.instruction-budget",
           "dependency.consumer-compatibility",
-          "supply.provenance",
-          "publish.byte-chain",
-          "publish.candidate-authorization",
-          "publish.channel-qualification",
-          "publish.licensing-authorship",
-          "install.recoverable-transaction",
-          "install.deactivation",
-          "install.physical-cleanup",
-          "reference.lineage",
-          "reference.adjudication",
-          "reference.completion",
-          "migration.decision",
-          "migration.lifecycle-boundaries",
-          "migration.contract-adaptation",
-          "migration.truth-and-portability",
-          "security.authorization",
-          "security.filesystem-write",
-          "security.untrusted-input",
-          "security.tools-network",
-          "security.sensitive-data",
-          "security.crypto",
-          "security.release-payload",
-          "repair.audit-boundary",
-          "repair.autofix",
-          "runtime.node-package",
-          "runtime.python-package",
+          "dependency.product-direction",
+          "ecosystem.bridge-lifecycle",
+          "ecosystem.extension-boundary",
+          "ecosystem.product-roles",
+          "entry.fixed-surfaces",
+          "entry.quickstart-routing",
+          "entry.task-validation-and-defaults",
+          "extension.carrier-selection",
           "family.identity-capability",
+          "foundation.engineering-kit",
+          "governance.machine-truth",
+          "install.deactivation",
+          "install.recoverable-transaction",
           "method.public-surfaces",
           "method.registration",
-          "audit.public-methods",
-          "audit.readonly-control",
-          "audit.pipeline-release-summary",
-          "worker.semantic-stage-responsibility",
-          "worker.execution-isolation",
-          "worker.executor-topology",
-          "compose.public-boundaries",
-          "compose.ordering-parallelism",
-          "compose.repair-loop",
-          "compatibility.adoption-state",
-          "compatibility.strong-composition",
+          "migration.contract-adaptation",
+          "migration.lifecycle-boundaries",
+          "migration.truth-and-portability",
+          "platform.contract-parity",
+          "platform.release-coverage",
+          "profile.domain-selection",
+          "program.runtime-contract",
+          "publish.licensing-authorship",
+          "repository.foundation-adoption",
+          "runtime.install-lifecycle-diagnostics",
           "runtime.mixed-boundary",
-          "specification.authority-layers",
-          "specification.audit-consumption"
+          "runtime.python-package",
+          "security.authorization",
+          "security.sensitive-data",
+          "selfheal.bounded-recovery",
+          "source.meaning-stability",
+          "state.execution-status",
+          "topology.assistant-routing",
+          "topology.domain-release",
+          "upstream.consumer-compatibility",
+          "worker.executor-topology",
+          "worker.semantic-stage-responsibility"
         ]
       },
       "description": "仅 targeted 允许的非空、唯一、已登记语义组 ID 数组；其他 profile 或缺省（按 full 处理）传入失败。"
+    },
+    "canonical_rule_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^SFA-[A-Z0-9]+-[0-9]{3}$"
+      },
+      "description": "仅 targeted 允许的非空、唯一 canonical rule ID 数组；与 semantic_group_ids 互斥。规则存在性与当前 scope 由运行时 canonical inventory 校验。"
     }
   },
   "required": [
@@ -176,11 +162,23 @@
         ]
       },
       "then": {
-        "properties": {
-          "semantic_group_ids": {}
-        },
-        "required": [
-          "semantic_group_ids"
+        "oneOf": [
+          {
+            "properties": {
+              "semantic_group_ids": {}
+            },
+            "required": [
+              "semantic_group_ids"
+            ]
+          },
+          {
+            "properties": {
+              "canonical_rule_ids": {}
+            },
+            "required": [
+              "canonical_rule_ids"
+            ]
+          }
         ]
       }
     },
@@ -198,14 +196,28 @@
         ]
       },
       "then": {
-        "not": {
-          "properties": {
-            "semantic_group_ids": {}
+        "allOf": [
+          {
+            "not": {
+              "properties": {
+                "semantic_group_ids": {}
+              },
+              "required": [
+                "semantic_group_ids"
+              ]
+            }
           },
-          "required": [
-            "semantic_group_ids"
-          ]
-        }
+          {
+            "not": {
+              "properties": {
+                "canonical_rule_ids": {}
+              },
+              "required": [
+                "canonical_rule_ids"
+              ]
+            }
+          }
+        ]
       }
     },
     {
@@ -217,14 +229,28 @@
         }
       },
       "then": {
-        "not": {
-          "properties": {
-            "semantic_group_ids": {}
+        "allOf": [
+          {
+            "not": {
+              "properties": {
+                "semantic_group_ids": {}
+              },
+              "required": [
+                "semantic_group_ids"
+              ]
+            }
           },
-          "required": [
-            "semantic_group_ids"
-          ]
-        }
+          {
+            "not": {
+              "properties": {
+                "canonical_rule_ids": {}
+              },
+              "required": [
+                "canonical_rule_ids"
+              ]
+            }
+          }
+        ]
       }
     }
   ]

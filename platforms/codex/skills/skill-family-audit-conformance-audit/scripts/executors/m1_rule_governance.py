@@ -130,10 +130,11 @@ def _exceptions(ctx: dict[str, Any]) -> list[dict[str, Any]] | None:
 
 
 def check_graph_026(ctx: dict[str, Any]) -> dict[str, Any]:
-    """目标项目不得自行批准对上级强制规则的豁免。
+    """放宽已采用要求的特殊处理只核对对象、规则和处理事项。
 
-    机械断言：任何已声明的豁免记录必须携带非空外部权威引用 authority_ref，
-    且 approver 不得是目标项目自身。未声明任何豁免则无违反事实。
+    机械断言：已声明的例外记录存在并计入文档摘要。作者身份、外部权威引用
+    与批准人不构成机械门槛——Audit 接受约定记录，不鉴定由谁填写或批准。
+    未声明任何豁免则无违反事实。
     """
     exceptions = _exceptions(ctx)
     if exceptions is None:
@@ -145,30 +146,12 @@ def check_graph_026(ctx: dict[str, Any]) -> dict[str, Any]:
             declared_exceptions=0,
             mechanical_half=True,
         )
-    violations = []
-    for index, row in enumerate(exceptions):
-        authority_ref = row.get("authority_ref")
-        approver = row.get("approver")
-        self_approved = (
-            not isinstance(authority_ref, str)
-            or not authority_ref
-            or approver in {"target_project", "project_self", "self"}
-        )
-        if self_approved:
-            violations.append({"index": index, "rule_id": row.get("rule_id")})
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("exceptions",)),
-            ],
-            self_approved_exceptions=violations,
-            mechanical_half=True,
-        )
     return _finish(
         [
             _schema_row(
-                "PASS", reason="schema_checks_passed", declared_exceptions=len(exceptions)
+                "PASS",
+                reason="declared_exceptions_recorded",
+                declared_exceptions=len(exceptions),
             ),
             _doc_digest_row(ctx, ("exceptions",)),
         ],

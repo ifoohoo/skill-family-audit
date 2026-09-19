@@ -1,8 +1,8 @@
 """A4 切片：人类入口的确定性路由、结果呈现与下一步选择内核。
 
-本模块只提供三个固定纯函数（resolve_human_route、choose_primary_next_action、
-render_human_summary）。函数只处理普通 Python 值（字典/列表/字符串），
-不读取文件、不导入项目内模块、不调用模型、不接触 Foundation。
+本模块只提供四个固定纯函数（resolve_human_route、interpret_source_numbers、
+choose_primary_next_action、render_human_summary）。函数只处理普通 Python 值
+（字典/列表/字符串），不读取文件、不导入项目内模块、不调用模型、不接触 Foundation。
 
 输入契约
 --------
@@ -19,14 +19,32 @@ render_human_summary）。函数只处理普通 Python 值（字典/列表/字�
   本模块不读取文件、不计算摘要，也不维护摘要副本。
 - deterministic_rule_ids：已有确定性本地 executor 路由的 canonical rule ID
   集合（机械规则集合由调用方按 routing 派生，不在本模块复制任何固定计数）。
+- source_dispositions：可选。canonical 库 source_dispositions 的公开投影行列表；
+  每行至少携带非空 source_id 与 destination，合并行可再携带 carried_by 与
+  carried_by_status，其余字段原样忽略。本模块只读消费调用方给出的投影，不读取
+  私有库存、不复制任何编号映射。省略时按既有行为处理：未命中的请求仍以
+  unresolved_selector 失败关闭。
+
+旧编号解释
+----------
+请求的 selector 或 canonical_rule_id 未命中当前规则清单时，若调用方提供了去向投影：
+- destination 为 merge_trace 且 carried_by_status 为 effective：按 carried_by
+  的承接编号继续解析（承接编号必须命中当前清单，否则失败关闭）；
+- 其余去向（移除、专业接线、项目或宿主职责、待决、承接尚未生效等）：只解释去向，
+  跳过该编号，不运行旧检查、也不计入符合率。
+投影中不存在的编号仍是未知编号，按 unresolved_selector 失败关闭。解释结果随路由
+返回在 source_number_explanations 中（列表，按 source_id 排序；每行携带
+source_id、disposition、destination、destination_label、successors、runnable、
+detail）。
 
 失败形态
 --------
 任何无法解析、歧义、重复或无效 Registry 输入都抛出 ValueError，消息以
 "<error_code>: <detail>" 开头（例如 unresolved_selector、ambiguous_selector、
 duplicate_selector、invalid_registry、invalid_intent、invalid_profile、
-targeted_requires_group_ids、selectors_forbidden_for_non_targeted）。
-绝不猜组、不模糊匹配、不调用模型、不自动改变 profile。
+targeted_requires_group_ids、selectors_forbidden_for_non_targeted、
+invalid_source_dispositions、source_number_successor_unresolved）。
+绝不猜组、不模糊匹配、不调用模型、不自动改变 profile；也不猜测旧编号去向。
 
 profile 选择优先级与 journey-contract.json selection_precedence 一致：
 显式 profile > release_preparation > complete_audit > 精确 selector
@@ -66,7 +84,115 @@ _STATUS_MEANING = {
 # blocking_findings 按状态排序：失败规则、缺证角色、仍需审阅。
 _FINDING_STATUS_ORDER = {"FAIL": 0, "EVIDENCE_MISSING": 1, "REVIEW_REQUIRED": 2}
 
-__all__ = ["resolve_human_route", "choose_primary_next_action", "render_human_summary"]
+__all__ = [
+    "resolve_human_route",
+    "interpret_source_numbers",
+    "choose_primary_next_action",
+    "render_human_summary",
+]
+
+# 合并追溯但承接未生效、以及已退出/已迁出当前规则集合的去向，只解释、不执行。
+_SOURCE_NUMBER_MERGED = "merged"
+_SOURCE_NUMBER_MERGE_PENDING = "merge_pending"
+_SOURCE_NUMBER_EXITED = "exited"
+
+
+def interpret_source_numbers(source_ids, source_dispositions):
+    """按公开去向投影解释来源编号：承接、退出或未知（普通字典，纯函数）。
+
+    source_ids 是精确编号字符串列表；source_dispositions 是 canonical 库
+    source_dispositions 的公开投影行列表。返回
+    {"successors": {source_id: {"successors": [...], "destination": str,
+    "destination_label": str}}, "exited": {同结构}, "unknown": [source_id],
+    "explanations": [按 source_id 排序的解释行]}。结构非法一律抛 ValueError，
+    消息以 "invalid_source_dispositions" 开头；绝不推定去向，也不复制编号映射。
+    """
+    table = _validate_source_dispositions(source_dispositions)
+    return _interpret_source_numbers(source_ids, table)
+
+
+def _interpret_source_numbers(source_ids, table):
+    """已校验去向表上的解释内核（table 为 source_id → 行字典）。"""
+    if not isinstance(source_ids, list):
+        raise ValueError(
+            "invalid_source_ids: source_ids 必须是精确编号字符串列表"
+        )
+    successors, exited, unknown, explanations = {}, {}, [], []
+    for source_id in sorted(set(source_ids)):
+        if not isinstance(source_id, str) or not source_id:
+            raise ValueError("invalid_source_ids: 编号必须是非空字符串")
+        row = table.get(source_id)
+        if row is None:
+            unknown.append(source_id)
+            continue
+        destination = row["destination"]
+        label = row.get("destination_label") or destination
+        carried_by = list(row.get("carried_by") or [])
+        if destination == "merge_trace" and row.get("carried_by_status") == "effective" and carried_by:
+            successors[source_id] = {
+                "successors": carried_by,
+                "destination": destination,
+                "destination_label": label,
+            }
+            explanations.append({
+                "source_id": source_id,
+                "disposition": _SOURCE_NUMBER_MERGED,
+                "destination": destination,
+                "destination_label": label,
+                "successors": carried_by,
+                "runnable": True,
+                "detail": (
+                    "来源编号 {} 已合并到 {}；本次按承接规则执行，"
+                    "不运行旧编号检查。".format(source_id, "、".join(carried_by))
+                ),
+            })
+            continue
+        if destination == "merge_trace":
+            explanations.append({
+                "source_id": source_id,
+                "disposition": _SOURCE_NUMBER_MERGE_PENDING,
+                "destination": destination,
+                "destination_label": label,
+                "successors": carried_by,
+                "runnable": False,
+                "detail": (
+                    "来源编号 {} 的合并承接尚未生效（状态：{}，候选承接：{}）；"
+                    "本次不承接，也不运行旧检查。".format(
+                        source_id,
+                        row.get("carried_by_status") or "unknown",
+                        "、".join(carried_by) or "无",
+                    )
+                ),
+            })
+            exited[source_id] = {
+                "successors": [],
+                "destination": destination,
+                "destination_label": label,
+            }
+            continue
+        exited[source_id] = {
+            "successors": [],
+            "destination": destination,
+            "destination_label": label,
+        }
+        explanations.append({
+            "source_id": source_id,
+            "disposition": _SOURCE_NUMBER_EXITED,
+            "destination": destination,
+            "destination_label": label,
+            "successors": [],
+            "runnable": False,
+            "detail": (
+                "来源编号 {} 已不在当前规则集合（去向：{}）；"
+                "不运行旧检查，也不计入符合率。".format(source_id, label)
+            ),
+        })
+    return {
+        "successors": successors,
+        "exited": exited,
+        "unknown": unknown,
+        "explanations": explanations,
+    }
 
 
 def _build_execution_plan_event(
@@ -94,6 +220,9 @@ def _build_execution_plan_event(
         "requested_semantic_group_ids": profile_plan[
             "requested_semantic_group_ids"
         ],
+        "canonical_rule_ids": profile_plan.get(
+            "requested_canonical_rule_ids", []
+        ),
         "selected_semantic_group_ids": profile_plan[
             "selected_semantic_group_ids"
         ],
@@ -120,12 +249,22 @@ def _build_execution_plan_event(
     }
 
 
-def resolve_human_route(explicit_profile, intent, selectors, group_registry, deterministic_rule_ids):
+def resolve_human_route(
+    explicit_profile,
+    intent,
+    selectors,
+    group_registry,
+    deterministic_rule_ids,
+    canonical_rule_ids=None,
+    source_dispositions=None,
+):
     """按 journey-contract selection_precedence 解析人类入口的 profile 与语义组。
 
     返回 {"execution_profile": str, "semantic_group_ids": [...],
-    "selection_reason": str}。semantic_group_ids 为唯一、排序后的 group ID
-    数组，非 targeted 时为空列表。失败关闭一律抛 ValueError。
+    "canonical_rule_ids": [...], "selection_reason": str,
+    "source_number_explanations": [...]}。两种 ID 数组均排序，targeted 时互斥；
+    非 targeted 时均为空列表。source_number_explanations 是旧编号解释行（按
+    source_id 排序），未涉及旧编号时为空列表。失败关闭一律抛 ValueError。
     """
     if explicit_profile is not None and explicit_profile not in _EXECUTION_PROFILES:
         raise ValueError("invalid_profile: {!r}".format(explicit_profile))
@@ -133,19 +272,47 @@ def resolve_human_route(explicit_profile, intent, selectors, group_registry, det
         raise ValueError("invalid_intent: {!r}".format(intent))
     groups = _validate_registry(group_registry)
     selectors = _validate_selectors(selectors)
+    dispositions = _validate_source_dispositions(source_dispositions)
+    explanations: list = []
+    exact_rule_ids = _normalize_canonical_rule_ids(
+        canonical_rule_ids, groups, deterministic_rule_ids, dispositions, explanations
+    )
 
     if explicit_profile is not None:
-        return _resolve_with_explicit_profile(explicit_profile, selectors, groups, deterministic_rule_ids)
+        return _resolve_with_explicit_profile(
+            explicit_profile,
+            selectors,
+            groups,
+            deterministic_rule_ids,
+            exact_rule_ids,
+            dispositions,
+            explanations,
+        )
 
     if intent == "release_preparation":
-        return _route("full", [], "release_preparation")
+        return _route("full", [], "release_preparation", explanations=explanations)
     if intent == "complete_audit":
-        return _route("full", [], "complete_audit")
+        return _route("full", [], "complete_audit", explanations=explanations)
+    if exact_rule_ids:
+        if selectors:
+            raise ValueError(
+                "targeted_selection_ambiguous: group selectors and canonical_rule_ids "
+                "are mutually exclusive"
+            )
+        return _route(
+            "targeted",
+            [],
+            "registered_group_name_group_id_or_canonical_rule_id",
+            exact_rule_ids,
+            explanations=explanations,
+        )
     if selectors:
-        return _resolve_from_selectors(selectors, groups, deterministic_rule_ids)
+        return _resolve_from_selectors(
+            selectors, groups, deterministic_rule_ids, dispositions, explanations
+        )
     if intent == "deterministic_only":
-        return _route("mechanical", [], "deterministic_only")
-    return _route("economy", [], "ordinary_conformance")
+        return _route("mechanical", [], "deterministic_only", explanations=explanations)
+    return _route("economy", [], "ordinary_conformance", explanations=explanations)
 
 
 def choose_primary_next_action(domain_result, journey_facts=None):
@@ -357,32 +524,140 @@ def _validate_journey_facts(journey_facts):
     }
 
 
-def _route(profile, group_ids, reason):
+def _route(profile, group_ids, reason, canonical_rule_ids=None, *, explanations=None):
     return {
         "execution_profile": profile,
         "semantic_group_ids": sorted(group_ids),
+        "canonical_rule_ids": sorted(canonical_rule_ids or []),
         "selection_reason": reason,
+        "source_number_explanations": sorted(
+            explanations or [], key=lambda row: row["source_id"]
+        ),
     }
 
 
-def _resolve_with_explicit_profile(profile, selectors, group_registry, deterministic_rule_ids):
+def _resolve_with_explicit_profile(
+    profile,
+    selectors,
+    group_registry,
+    deterministic_rule_ids,
+    canonical_rule_ids,
+    source_dispositions=None,
+    explanations=None,
+):
     if profile == "targeted":
-        group_ids = _resolve_selectors(selectors, group_registry, deterministic_rule_ids)
+        if selectors and canonical_rule_ids:
+            raise ValueError(
+                "targeted_selection_ambiguous: group selectors and canonical_rule_ids "
+                "are mutually exclusive"
+            )
+        if canonical_rule_ids:
+            return _route(
+                "targeted", [], "explicit_profile", canonical_rule_ids,
+                explanations=explanations,
+            )
+        group_ids = _resolve_selectors(
+            selectors, group_registry, deterministic_rule_ids, source_dispositions,
+            explanations,
+        )
         if not group_ids:
             raise ValueError("targeted_requires_group_ids: targeted 必须提供非空、可解析的语义组选择")
-        return _route("targeted", group_ids, "explicit_profile")
-    if selectors:
+        return _route("targeted", group_ids, "explicit_profile", explanations=explanations)
+    if selectors or canonical_rule_ids:
         raise ValueError(
             "selectors_forbidden_for_non_targeted: 非 targeted 显式 profile 不接受 group/rule 选择器"
         )
-    return _route(profile, [], "explicit_profile")
+    return _route(profile, [], "explicit_profile", explanations=explanations)
 
 
-def _resolve_from_selectors(selectors, group_registry, deterministic_rule_ids):
-    group_ids = _resolve_selectors(selectors, group_registry, deterministic_rule_ids)
+def _resolve_from_selectors(
+    selectors,
+    group_registry,
+    deterministic_rule_ids,
+    source_dispositions=None,
+    explanations=None,
+):
+    group_ids = _resolve_selectors(
+        selectors, group_registry, deterministic_rule_ids, source_dispositions,
+        explanations,
+    )
     if group_ids:
-        return _route("targeted", group_ids, "registered_group_name_group_id_or_canonical_rule_id")
-    return _route("mechanical", [], "registered_group_name_group_id_or_canonical_rule_id")
+        return _route(
+            "targeted", group_ids,
+            "registered_group_name_group_id_or_canonical_rule_id",
+            explanations=explanations,
+        )
+    return _route(
+        "mechanical", [], "registered_group_name_group_id_or_canonical_rule_id",
+        explanations=explanations,
+    )
+
+
+def _validate_source_dispositions(source_dispositions):
+    """失败关闭校验旧编号去向投影行列表；None 视为未提供投影（返回空表）。
+
+    只接受字典列表：每行必须携带非空且全局唯一的 source_id 与非空 destination；
+    destination_label（非空字符串）、carried_by（非空字符串列表）、
+    carried_by_status（非空字符串）可选，其余字段原样忽略。返回
+    source_id → {"destination", "destination_label", "carried_by",
+    "carried_by_status"} 的表。结构非法抛 ValueError，消息以
+    "invalid_source_dispositions" 开头；本函数不推定任何去向，也不复制编号映射。
+    """
+    if source_dispositions is None:
+        return {}
+    if not isinstance(source_dispositions, list):
+        raise ValueError(
+            "invalid_source_dispositions: source_dispositions 必须是投影行列表"
+        )
+    table = {}
+    for row in source_dispositions:
+        if not isinstance(row, dict):
+            raise ValueError("invalid_source_dispositions: 每行必须是字典")
+        source_id = row.get("source_id")
+        destination = row.get("destination")
+        if not isinstance(source_id, str) or not source_id:
+            raise ValueError("invalid_source_dispositions: 行缺少非空 source_id")
+        if not isinstance(destination, str) or not destination:
+            raise ValueError(
+                "invalid_source_dispositions: 行 {!r} 缺少非空 destination".format(
+                    source_id
+                )
+            )
+        if source_id in table:
+            raise ValueError(
+                "invalid_source_dispositions: source_id 重复 {!r}".format(source_id)
+            )
+        label = row.get("destination_label")
+        if label is not None and (not isinstance(label, str) or not label):
+            raise ValueError(
+                "invalid_source_dispositions: 行 {!r} 的 destination_label 必须是非空"
+                "字符串".format(source_id)
+            )
+        carried_by = row.get("carried_by")
+        if carried_by is None:
+            carried_by = []
+        if not isinstance(carried_by, list) or any(
+            not isinstance(value, str) or not value for value in carried_by
+        ):
+            raise ValueError(
+                "invalid_source_dispositions: 行 {!r} 的 carried_by 必须是非空字符串"
+                "列表".format(source_id)
+            )
+        carried_by_status = row.get("carried_by_status")
+        if carried_by_status is not None and (
+            not isinstance(carried_by_status, str) or not carried_by_status
+        ):
+            raise ValueError(
+                "invalid_source_dispositions: 行 {!r} 的 carried_by_status 必须是非空"
+                "字符串".format(source_id)
+            )
+        table[source_id] = {
+            "destination": destination,
+            "destination_label": label,
+            "carried_by": carried_by,
+            "carried_by_status": carried_by_status,
+        }
+    return table
 
 
 def _validate_selectors(selectors):
@@ -398,6 +673,76 @@ def _validate_selectors(selectors):
         seen.add(s)
         out.append(s)
     return out
+
+
+def _normalize_canonical_rule_ids(
+    canonical_rule_ids,
+    group_registry,
+    deterministic_rule_ids,
+    source_dispositions=None,
+    explanations=None,
+):
+    if canonical_rule_ids is None:
+        return []
+    if not isinstance(canonical_rule_ids, list):
+        raise ValueError(
+            "invalid_canonical_rule_ids: canonical_rule_ids 必须是字符串列表"
+        )
+    if any(not isinstance(value, str) or not value for value in canonical_rule_ids):
+        raise ValueError(
+            "invalid_canonical_rule_ids: canonical_rule_ids 必须只含非空字符串"
+        )
+    normalized = sorted(set(canonical_rule_ids))
+    if not normalized:
+        raise ValueError(
+            "invalid_canonical_rule_ids: canonical_rule_ids 不得为空"
+        )
+    registered = set(deterministic_rule_ids or [])
+    registered.update(
+        rule["canonical_id"]
+        for group in group_registry
+        for rule in group["rules"]
+    )
+    table = source_dispositions or {}
+    unknown = sorted(set(normalized) - registered)
+    if not unknown:
+        return normalized
+    interpretation = _interpret_source_numbers(unknown, table)
+    if explanations is not None:
+        explanations.extend(interpretation["explanations"])
+    resolved, unresolved = [], []
+    for value in normalized:
+        if value in registered:
+            resolved.append(value)
+            continue
+        successors = (interpretation["successors"].get(value) or {}).get(
+            "successors"
+        ) or []
+        if not successors:
+            # 去向投影中不存在该编号 → 未知编号，失败关闭；有去向但不可运行
+            # （已退出、或承接尚未生效）→ 只解释、跳过，不猜编号。
+            if value in interpretation["unknown"]:
+                unresolved.append(value)
+            continue
+        missing = sorted(set(successors) - registered)
+        if missing:
+            raise ValueError(
+                "source_number_successor_unresolved: 来源编号 {!r} 的承接编号未命中当前"
+                "规则清单 {!r}".format(value, missing)
+            )
+        resolved.extend(successors)
+    if unresolved:
+        raise ValueError(
+            "unresolved_selector: canonical_rule_ids 未命中当前规则清单 {!r}".format(
+                unresolved
+            )
+        )
+    if not resolved:
+        raise ValueError(
+            "source_numbers_not_runnable: 请求的编号全部已退出或被承接尚未生效，"
+            "本次没有可运行规则"
+        )
+    return sorted(set(resolved))
 
 
 def _validate_registry(group_registry):
@@ -444,7 +789,13 @@ def _validate_registry(group_registry):
     return groups
 
 
-def _resolve_selectors(selectors, group_registry, deterministic_rule_ids):
+def _resolve_selectors(
+    selectors,
+    group_registry,
+    deterministic_rule_ids,
+    source_dispositions=None,
+    explanations=None,
+):
     groups = list(group_registry)
     by_id = {g["group_id"]: g for g in groups}
     by_name = {}
@@ -455,8 +806,19 @@ def _resolve_selectors(selectors, group_registry, deterministic_rule_ids):
         for rule in g["rules"]:
             rule_to_group[rule["canonical_id"]] = g
     deterministic = set(deterministic_rule_ids or [])
+    table = source_dispositions or {}
+
+    def _add_rule(value):
+        """把一个精确 canonical rule ID 记入已解析集合（确定性规则无需分组）。"""
+        if value in rule_to_group:
+            resolved_groups.add(rule_to_group[value]["group_id"])
+            return True
+        return value in deterministic
 
     resolved_groups = set()
+    interpretation = None
+    runnable_count = 0
+    dropped_count = 0
     for s in selectors:
         matches = []
         if s in by_id:
@@ -467,12 +829,52 @@ def _resolve_selectors(selectors, group_registry, deterministic_rule_ids):
             matches.append(rule_to_group[s])
         is_deterministic = s in deterministic
         if len(matches) == 0 and not is_deterministic:
-            raise ValueError("unresolved_selector: {!r} 未命中任何已登记 group/rule".format(s))
+            # 未命中当前清单：有去向投影时按旧编号解释处理，否则失败关闭。
+            if interpretation is None:
+                interpretation = _interpret_source_numbers(
+                    [
+                        value for value in selectors
+                        if value not in by_id
+                        and value not in by_name
+                        and value not in rule_to_group
+                        and value not in deterministic
+                    ],
+                    table,
+                )
+                if explanations is not None:
+                    explanations.extend(interpretation["explanations"])
+            successors = (interpretation["successors"].get(s) or {}).get(
+                "successors"
+            ) or []
+            if successors:
+                # 合并承接：按承接编号继续解析，不运行旧编号检查。
+                unresolved = [
+                    value for value in successors if not _add_rule(value)
+                ]
+                if unresolved:
+                    raise ValueError(
+                        "source_number_successor_unresolved: 来源编号 {!r} 的承接编号未"
+                        "命中当前规则清单 {!r}".format(s, sorted(unresolved))
+                    )
+                continue
+            if s in interpretation["unknown"]:
+                raise ValueError(
+                    "unresolved_selector: {!r} 未命中任何已登记 group/rule".format(s)
+                )
+            # 已退出或承接尚未生效：只解释去向，跳过该编号。
+            dropped_count += 1
+            continue
         if len(matches) > 1 or (len(matches) == 1 and is_deterministic):
             raise ValueError("ambiguous_selector: {!r} 存在多个命中或同时为确定性规则".format(s))
+        runnable_count += 1
         if is_deterministic:
             continue
         resolved_groups.add(matches[0]["group_id"])
+    if dropped_count and not runnable_count:
+        raise ValueError(
+            "source_numbers_not_runnable: 请求的选择器全部已退出或承接尚未生效，"
+            "本次没有可运行规则"
+        )
     return resolved_groups
 
 

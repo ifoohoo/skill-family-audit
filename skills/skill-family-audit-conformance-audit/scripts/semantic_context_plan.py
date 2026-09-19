@@ -23,6 +23,8 @@ _PACKING_COSTS = ("compact", "standard", "heavy")
 _BOX_CAPACITY = {"compact": 12, "standard": 6, "heavy": 2}
 _APPLICABILITY_VALUES = ("APPLICABLE", "NOT_APPLICABLE", "UNDETERMINED")
 _ROLE_STATUS_VALUES = ("READY", "MISSING", "NOT_REQUIRED")
+# 当前权威的非机械审阅方法集合：behavior_verification 已从数据真源剥除。
+_NON_MECHANICAL_CHECK_METHODS = ("semantic_review",)
 _SCOPE_DISPOSITION_VALUES = ("APPLICABLE", "NOT_APPLICABLE", "UNDETERMINED")
 
 _RULE_FIELDS = (
@@ -41,7 +43,8 @@ _PREFLIGHT_FIELDS = (
     "semantic_review_required",
 )
 _RESULT_FIELDS = (
-    "canonical_id", "revision_digest", "binding_id", "evidence_refs",
+    "canonical_id", "revision_digest", "check_method", "binding_id",
+    "evidence_refs",
 )
 
 
@@ -182,7 +185,8 @@ def pack_semantic_candidates(preflight_rows, group_registry):
 def validate_child_result_rows(parent_rows, child_result_rows):
     """校验子结果集合精确覆盖 parent 请求，返回排序后的子结果列表本身。
 
-    - child 的 canonical_id 集合必须与 parent 完全相等、每条恰好一次；
+    - child 的 (canonical_id, revision_digest, check_method) 集合必须与
+      parent 完全相等、每项恰好一次；
       遗漏、重复、越界/未知 → ValueError；
     - 每条 child 行的 revision_digest、binding_id、evidence_refs 必须与
       parent 对应行一致（evidence_refs 按完全相等比较，顺序敏感）；
@@ -191,17 +195,35 @@ def validate_child_result_rows(parent_rows, child_result_rows):
     """
     _validate_result_rows(parent_rows, "parent 行")
     _validate_result_rows(child_result_rows, "child 行")
-    parent_ids = [row["canonical_id"] for row in parent_rows]
+    parent_ids = [
+        (row["canonical_id"], row["revision_digest"], row["check_method"])
+        for row in parent_rows
+    ]
     if len(parent_ids) != len(set(parent_ids)):
-        raise ValueError("parent canonical_id 重复")
-    parent_by_id = {row["canonical_id"]: row for row in parent_rows}
-    child_ids = [row["canonical_id"] for row in child_result_rows]
+        raise ValueError(
+            "parent (canonical_id, revision_digest, check_method) 重复"
+        )
+    parent_by_id = {
+        (row["canonical_id"], row["revision_digest"], row["check_method"]): row
+        for row in parent_rows
+    }
+    child_ids = [
+        (row["canonical_id"], row["revision_digest"], row["check_method"])
+        for row in child_result_rows
+    ]
     if set(child_ids) != set(parent_by_id):
-        raise ValueError("child 与 parent 的 canonical_id 集合不一致")
+        raise ValueError(
+            "child 与 parent 的 (canonical_id, revision_digest, check_method) 集合不一致"
+        )
     if len(child_ids) != len(parent_ids):
         raise ValueError("child 行数与 parent 不一致（存在重复或遗漏）")
     for child in child_result_rows:
-        parent = parent_by_id[child["canonical_id"]]
+        identity = (
+            child["canonical_id"],
+            child["revision_digest"],
+            child["check_method"],
+        )
+        parent = parent_by_id[identity]
         if child["revision_digest"] != parent["revision_digest"]:
             raise ValueError("revision_digest 不一致：%s"
                              % child["canonical_id"])
@@ -209,7 +231,12 @@ def validate_child_result_rows(parent_rows, child_result_rows):
             raise ValueError("binding_id 不一致：%s" % child["canonical_id"])
         if child["evidence_refs"] != parent["evidence_refs"]:
             raise ValueError("evidence_refs 不一致：%s" % child["canonical_id"])
-    return sorted(child_result_rows, key=lambda row: row["canonical_id"])
+    return sorted(
+        child_result_rows,
+        key=lambda row: (
+            row["canonical_id"], row["revision_digest"], row["check_method"]
+        ),
+    )
 
 
 # --------------------------------------------------------------------------
@@ -379,5 +406,7 @@ def _validate_result_rows(rows, what):
                 what, ", ".join(sorted(missing_fields))))
         _require_non_empty_string(row["canonical_id"], "canonical_id")
         _require_non_empty_string(row["revision_digest"], "revision_digest")
+        if row["check_method"] not in _NON_MECHANICAL_CHECK_METHODS:
+            raise ValueError("check_method 必须是非机械审阅方法")
         _require_non_empty_string(row["binding_id"], "binding_id")
         _require_string_list(row["evidence_refs"], "evidence_refs")

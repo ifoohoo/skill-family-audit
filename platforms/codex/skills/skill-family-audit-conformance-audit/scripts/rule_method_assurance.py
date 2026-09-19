@@ -480,14 +480,17 @@ def _project_trusted_conformance_observation(
     executor_family_of: Callable[[str], str],
     digest_document: Callable[[Any], str],
     *,
-    finalized_semantic_reviews: dict[str, dict[str, Any]] | None = None,
+    finalized_semantic_reviews: (
+        dict[tuple[str, str, str], dict[str, Any]] | None
+    ) = None,
 ) -> dict[str, Any]:
     """Purely project an in-process Conformance observation onto this ledger.
 
     This private entry performs no I/O.  Mechanical observations remain
     unchanged.  Only the current workflow's finalize_review return value may
-    fill a mixed route's semantic obligation; the parameter is not reviewer
-    authentication. Caller receipts remain confined to assurance_report.
+    fill a mixed route's matching non-mechanical obligation; the parameter is
+    not reviewer authentication. Caller receipts remain confined to
+    assurance_report.
     """
     base = _require_object(report, "assurance report")
     document = _require_object(observation, "trusted observation")
@@ -654,7 +657,6 @@ def _project_trusted_conformance_observation(
             or len(route_methods) != len(set(route_methods))
             or any(method not in CANONICAL_CHECK_METHODS for method in route_methods)
             or not isinstance(required_mechanical, list)
-            or not required_mechanical
             or len(required_mechanical) != len(set(required_mechanical))
             or sorted(set(route_methods) & MECHANICAL_CHECK_METHODS)
             != sorted(required_mechanical)
@@ -801,7 +803,17 @@ def _project_trusted_conformance_observation(
                 )
             )
         )
-        if not coherent:
+        # 零机械义务路线（承接行）：派发器为语义义务合成规范的“未执行”标记行，
+        # required_rows 恒为空集，状态一致性判定对该形状不可满足。此类观测只作
+        # 非证明性记录；聚合状态仍限定为执行器合法取值（NOT_RUN 聚合保持
+        # fail-closed，静态执行器不可能合法返回）。
+        if not coherent and not (
+            not required_mechanical
+            and aggregate_status in {
+                "PASS", "FAIL", "EVIDENCE_MISSING",
+                "NOT_APPLICABLE",
+            }
+        ):
             raise AssuranceError(
                 TRUSTED_OBSERVATION_INVALID,
                 f"{where} has incoherent aggregate and per-method statuses",
@@ -813,16 +825,27 @@ def _project_trusted_conformance_observation(
                 observed[(canonical_id, revision_digest, row["check_method"])][
                     "proof_eligible"
                 ] = True
-    for canonical_id, review in (finalized_semantic_reviews or {}).items():
-        review_revision_digest = review.get("rule_revision_digest")
+    for review_identity, review in (finalized_semantic_reviews or {}).items():
+        if (
+            not isinstance(review_identity, tuple)
+            or len(review_identity) != 3
+            or not all(isinstance(value, str) for value in review_identity)
+        ):
+            raise AssuranceError(
+                TRUSTED_OBSERVATION_INVALID,
+                "finalized review key must bind canonical_id, revision_digest, "
+                "and check_method",
+            )
+        canonical_id, review_revision_digest, review_method = review_identity
         route = routes.get((canonical_id, review_revision_digest))
         if route is None:
             raise AssuranceError(
                 TRUSTED_OBSERVATION_INVALID,
                 "finalized review does not bind a known canonical route",
             )
-        review_method = select_review_method(route.get("check_methods", []))
-        if review_method is None:
+        if review_method not in NON_MECHANICAL_CHECK_METHODS or review_method not in (
+            route.get("check_methods", [])
+        ):
             raise AssuranceError(
                 TRUSTED_OBSERVATION_INVALID,
                 "finalized review route has no supported review method",
@@ -835,6 +858,7 @@ def _project_trusted_conformance_observation(
             )
         if (
             review.get("canonical_id") != canonical_id
+            or review.get("check_method") != review_method
             or review.get("rule_revision_digest") != identity[1]
             or review.get("lifecycle_status") != expected[identity]["lifecycle_status"]
             or review.get("status") not in {

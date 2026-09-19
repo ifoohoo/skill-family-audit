@@ -18,6 +18,7 @@ behavior_also_required=false、semantic_also_required=false，机械断言即全
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import json
 import re
@@ -79,6 +80,18 @@ _GRAPH_OWNED_DUTIES = (
     "evaluation_traceability",
     "release_traceability",
 )
+_MAXIMUM_SIDE_EFFECT_CATEGORIES = {
+    "filesystem",
+    "processExecution",
+    "dependencyInstall",
+    "networkRead",
+    "externalWrite",
+    "credentialReference",
+    "publish",
+}
+_FILESYSTEM_EFFECTS = {"read", "create", "modify", "overwrite", "delete", "move"}
+_RELEASE_AUDIT_METHOD_ID = "skill-family-audit:release-audit"
+_RELEASE_AUDIT_PROCESS_EXECUTION = "release-skill@0.9.17:verify-records-only"
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +128,98 @@ def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
         "evidence": dict(evidence),
         "check_method_subresults": rows,
     }
+
+
+def _aggregate_matches_rows(status: str, statuses: list[str]) -> bool:
+    """与 contracts.validate_method_subresults 的聚合一致性条件同构。"""
+    return (
+        (status == "PASS" and all(item == "PASS" for item in statuses))
+        or (
+            status == "NOT_APPLICABLE"
+            and all(item == "NOT_APPLICABLE" for item in statuses)
+        )
+        or (status == "FAIL" and "FAIL" in statuses)
+        or (
+            status == "EVIDENCE_MISSING"
+            and any(item in {"EVIDENCE_MISSING", "NOT_RUN"} for item in statuses)
+        )
+    )
+
+
+def _project_managed_method_subresults(
+    outcome: dict[str, Any], ctx: dict[str, Any]
+) -> dict[str, Any]:
+    """把本次逐方法行投影到受管路由拥有的机械方法集。
+
+    受管路由拥有方法身份集：执行器只主张 ``required_mechanical_methods`` 内的
+    机械观察，不主张路由之外的方法行（对齐 M1 Class E「执行器不主张路由之外的
+    方法」）。无 ``method_route`` 的聚合调用（执行器单测）保持原样；纯语义路由
+    机械方法集为空，不发任何机械行，未执行方法由调度器显式标注；受管方法未自产
+    行或失败面不可分离时，按规则级聚合状态归属，失败绝不消失。
+    """
+    route = ctx.get("method_route")
+    rows = outcome.get("check_method_subresults")
+    if not isinstance(route, dict) or not isinstance(rows, list):
+        return outcome
+    required = list(route.get("required_mechanical_methods") or [])
+    if not required:
+        outcome.pop("check_method_subresults", None)
+        return outcome
+    observed = {
+        row["check_method"]: row
+        for row in rows
+        if isinstance(row, dict) and row.get("check_method") in required
+    }
+    unmanaged = sorted({
+        item["check_method"]
+        for item in rows
+        if isinstance(item, dict) and item.get("check_method") not in required
+    })
+    projected: list[dict[str, Any]] = []
+    for method in sorted(required):
+        row = observed.get(method)
+        if row is not None:
+            projected.append(row)
+            continue
+        projected.append(
+            _method_row(
+                method,
+                outcome["status"],
+                f"executor_{method}_observation",
+                reason="managed_method_observed_at_rule_level",
+                aggregate_status=outcome["status"],
+                unmanaged_methods=unmanaged,
+            )
+        )
+    statuses = [row["status"] for row in projected]
+    if not _aggregate_matches_rows(outcome["status"], statuses):
+        projected = [
+            _method_row(
+                row["check_method"],
+                outcome["status"],
+                row["observation_source"],
+                reason="managed_method_aggregate_attribution",
+                aggregate_status=outcome["status"],
+                method_observed_status=row["status"],
+                dependent_facet_evidence=row["evidence"],
+            )
+            for row in projected
+        ]
+    outcome["check_method_subresults"] = projected
+    return outcome
+
+
+def _with_managed_method_projection(checks: dict[str, Any]) -> dict[str, Any]:
+    """路由在场时按 required 机械方法集发子结果行；无 route 调用保持原样。"""
+
+    def _project(check: Any) -> Any:
+        @functools.wraps(check)
+        def projected(ctx: dict[str, Any]) -> dict[str, Any]:
+            return _project_managed_method_subresults(check(ctx), ctx)
+
+        return projected
+
+    return {canonical_id: _project(check) for canonical_id, check in checks.items()}
 
 
 def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
@@ -1575,19 +1680,21 @@ def _registration_implementation(
     return value, resolved_relative
 
 
-def _sfa_product_gate(ctx: dict[str, Any]) -> dict[str, Any] | None:
+def _sfa_product_gate(
+    ctx: dict[str, Any], *, row_factory=_static_row
+) -> dict[str, Any] | None:
     scope = ctx.get("scope")
     plugin_project = scope.get("plugin_project") if isinstance(scope, dict) else None
     plugin = plugin_project.get("plugin") if isinstance(plugin_project, dict) else None
     plugin_id = plugin.get("id") if isinstance(plugin, dict) else None
     if not _nonempty_str(plugin_id):
         return _finish(
-            [_static_row("EVIDENCE_MISSING", reason="target_plugin_identity_unconfirmed")],
+            [row_factory("EVIDENCE_MISSING", reason="target_plugin_identity_unconfirmed")],
             target_plugin_id=None,
         )
     if plugin_id != "skill-family-audit":
         return _finish(
-            [_static_row("NOT_APPLICABLE", reason="target_plugin_is_not_skill_family_audit",
+            [row_factory("NOT_APPLICABLE", reason="target_plugin_is_not_skill_family_audit",
                          target_plugin_id=plugin_id)],
             target_plugin_id=plugin_id,
         )
@@ -2133,6 +2240,7 @@ def check_registry_011(ctx: dict[str, Any]) -> dict[str, Any]:
     internal_kinds = set(internal["kinds"])
     violations = []
     missing_material = []
+    maximum_side_effect_inventory = []
     for method_id in sorted(strict_ids):
         if not method_id.startswith("skill-family-audit:"):
             violations.append({"method_id": method_id, "problem": "strict_method_outside_audit_family"})
@@ -2167,6 +2275,65 @@ def check_registry_011(ctx: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(binding.get(field), dict) or not binding[field]:
                 missing_material.append({"method_id": method_id, "path": relative,
                                          "problem": f"{field}_missing"})
+        maximum = method_document.get("maximumSideEffects")
+        if not isinstance(maximum, dict):
+            missing_material.append({
+                "method_id": method_id,
+                "path": relative,
+                "problem": "maximum_side_effects_missing",
+            })
+            continue
+        if set(maximum) != _MAXIMUM_SIDE_EFFECT_CATEGORIES:
+            violations.append({
+                "method_id": method_id,
+                "path": relative,
+                "problem": "maximum_side_effect_categories_invalid",
+                "missing_categories": sorted(
+                    _MAXIMUM_SIDE_EFFECT_CATEGORIES - set(maximum)
+                ),
+                "extra_categories": sorted(
+                    set(maximum) - _MAXIMUM_SIDE_EFFECT_CATEGORIES
+                ),
+            })
+            continue
+        filesystem = maximum.get("filesystem")
+        scalar_categories = _MAXIMUM_SIDE_EFFECT_CATEGORIES - {
+            "filesystem",
+            "processExecution",
+        }
+        expected_process_execution = (
+            _RELEASE_AUDIT_PROCESS_EXECUTION
+            if method_id == _RELEASE_AUDIT_METHOD_ID
+            else "none"
+        )
+        if (
+            not isinstance(filesystem, list)
+            or not filesystem
+            or len(filesystem) != len(set(filesystem))
+            or not set(filesystem) <= _FILESYSTEM_EFFECTS
+            or maximum.get("processExecution") != expected_process_execution
+            or any(maximum.get(category) != "none" for category in scalar_categories)
+        ):
+            violations.append({
+                "method_id": method_id,
+                "path": relative,
+                "problem": "maximum_side_effect_values_invalid",
+            })
+            continue
+        coarse = method_document.get("sideEffects")
+        if coarse != ["read-only"] or filesystem != ["read"]:
+            violations.append({
+                "method_id": method_id,
+                "path": relative,
+                "problem": "coarse_and_structured_side_effects_conflict",
+            })
+            continue
+        maximum_side_effect_inventory.append({
+            "method_id": method_id,
+            "method_contract_path": relative,
+            "method_contract_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "maximum_side_effects": maximum,
+        })
 
     implementation, implementation_path = _registration_implementation(
         ctx, implementation_ref
@@ -2323,8 +2490,10 @@ def check_registry_011(ctx: dict[str, Any]) -> dict[str, Any]:
     return _finish(
         [_static_row("PASS", reason="registration_boundary_and_strict_io_closed",
                      strict_methods_checked=len(strict_ids),
-                     entries_checked=actual_surface_count)],
+                     entries_checked=actual_surface_count,
+                     maximum_side_effect_inventory=maximum_side_effect_inventory)],
         registry_declared=True,
+        permission_surface_inventory=maximum_side_effect_inventory,
     )
 
 
@@ -2335,7 +2504,7 @@ def check_registry_012(ctx: dict[str, Any]) -> dict[str, Any]:
     严格方法集合）并引用协议权威（钉扎 v2 schema 摘要）；不得采用
     v1+映射并行形态，不得把样例文档当作第二份协议真源。
     """
-    applicability = _sfa_product_gate(ctx)
+    applicability = _sfa_product_gate(ctx, row_factory=_schema_row)
     if applicability is not None:
         return applicability
     boundary = _registration_boundary_authority(ctx)
@@ -2708,7 +2877,7 @@ def check_registry_015(ctx: dict[str, Any]) -> dict[str, Any]:
     钉扎版本的已发布 registry 校验（冻结结果）且引用钉扎协议 schema；
     human_entry 不得作为机器标记写入协议文档。
     """
-    applicability = _sfa_product_gate(ctx)
+    applicability = _sfa_product_gate(ctx, row_factory=_schema_row)
     if applicability is not None:
         return applicability
     boundary = _registration_boundary_authority(ctx)
@@ -2811,7 +2980,7 @@ def check_registry_015(ctx: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-CHECKS = {
+CHECKS = _with_managed_method_projection({
     "SFA-ARTMETHOD-001": check_artmethod_001,
     "SFA-ARTMETHOD-002": check_artmethod_002,
     "SFA-ARTMETHOD-004": check_artmethod_004,
@@ -2839,4 +3008,4 @@ CHECKS = {
     "SFA-TEMPLATE-003": check_template_003,
     "SFA-TEMPLATE-004": check_template_004,
     "SFA-TEMPLATE-005": check_template_005,
-}
+})

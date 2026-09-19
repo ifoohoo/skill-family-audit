@@ -3,84 +3,100 @@
   "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/result.json",
   "title": "Skill Family Audit conformance-audit domain result",
   "$defs": {
+    "canonicalRuleId": {
+      "type": "string",
+      "pattern": "^SFA-[A-Z0-9]+-[0-9]{3}$"
+    },
     "semanticGroupId": {
       "type": "string",
       "enum": [
-        "artifact.identity-granularity",
-        "artifact.spec-rule-lifecycle",
-        "artifact.capability-contract",
-        "artifact.method-contract-registry",
-        "artifact.internal-skill-binding",
         "artifact.assessment-layering",
-        "artifact.release-facts",
+        "artifact.capability-contract",
         "artifact.derived-projections",
-        "ecosystem.product-roles",
-        "topology.kernel-composer",
-        "topology.assistant-routing",
-        "topology.domain-release",
+        "artifact.identity-granularity",
+        "artifact.internal-skill-binding",
+        "artifact.method-contract-registry",
+        "artifact.release-facts",
+        "artifact.spec-rule-lifecycle",
+        "audit.pipeline-release-summary",
+        "audit.public-methods",
+        "audit.readonly-control",
+        "compatibility.adoption-state",
+        "compatibility.strong-composition",
+        "compose.ordering-parallelism",
+        "compose.public-boundaries",
+        "compose.repair-loop",
+        "context.instruction-budget",
+        "dependency.consumer-compatibility",
+        "dependency.product-direction",
         "ecosystem.bridge-lifecycle",
-        "ecosystem.single-graph",
         "ecosystem.extension-boundary",
-        "profile.domain-selection",
-        "profile.logical-views",
-        "profile.authoring-generation",
-        "foundation.terminology",
+        "ecosystem.product-roles",
+        "ecosystem.single-graph",
+        "entry.fixed-surfaces",
+        "entry.quickstart-routing",
+        "entry.task-validation-and-defaults",
+        "extension.carrier-selection",
+        "family.identity-capability",
         "foundation.engineering-kit",
         "foundation.quickstart-exchange",
-        "upstream.consumer-compatibility",
+        "foundation.terminology",
         "governance.machine-truth",
-        "repository.initial-layout",
-        "repository.published-dependencies",
-        "repository.foundation-adoption",
-        "dependency.product-direction",
-        "dependency.consumer-compatibility",
-        "supply.provenance",
+        "install.deactivation",
+        "install.physical-cleanup",
+        "install.recoverable-transaction",
+        "method.public-surfaces",
+        "method.registration",
+        "migration.contract-adaptation",
+        "migration.decision",
+        "migration.lifecycle-boundaries",
+        "migration.truth-and-portability",
+        "platform.contract-parity",
+        "platform.release-coverage",
+        "profile.authoring-generation",
+        "profile.domain-selection",
+        "profile.logical-views",
+        "program.runtime-contract",
         "publish.byte-chain",
         "publish.candidate-authorization",
         "publish.channel-qualification",
         "publish.licensing-authorship",
-        "install.recoverable-transaction",
-        "install.deactivation",
-        "install.physical-cleanup",
-        "reference.lineage",
         "reference.adjudication",
         "reference.completion",
-        "migration.decision",
-        "migration.lifecycle-boundaries",
-        "migration.contract-adaptation",
-        "migration.truth-and-portability",
-        "security.authorization",
-        "security.filesystem-write",
-        "security.untrusted-input",
-        "security.tools-network",
-        "security.sensitive-data",
-        "security.crypto",
-        "security.release-payload",
+        "reference.lineage",
         "repair.audit-boundary",
         "repair.autofix",
+        "repository.foundation-adoption",
+        "repository.initial-layout",
+        "repository.published-dependencies",
+        "runtime.install-lifecycle-diagnostics",
+        "runtime.mixed-boundary",
         "runtime.node-package",
         "runtime.python-package",
-        "family.identity-capability",
-        "method.public-surfaces",
-        "method.registration",
-        "audit.public-methods",
-        "audit.readonly-control",
-        "audit.pipeline-release-summary",
-        "worker.semantic-stage-responsibility",
+        "security.authorization",
+        "security.crypto",
+        "security.filesystem-write",
+        "security.release-payload",
+        "security.sensitive-data",
+        "security.tools-network",
+        "security.untrusted-input",
+        "selfheal.bounded-recovery",
+        "source.meaning-stability",
+        "specification.audit-consumption",
+        "specification.authority-layers",
+        "state.execution-status",
+        "supply.provenance",
+        "topology.assistant-routing",
+        "topology.domain-release",
+        "topology.kernel-composer",
+        "upstream.consumer-compatibility",
         "worker.execution-isolation",
         "worker.executor-topology",
-        "compose.public-boundaries",
-        "compose.ordering-parallelism",
-        "compose.repair-loop",
-        "compatibility.adoption-state",
-        "compatibility.strong-composition",
-        "runtime.mixed-boundary",
-        "specification.authority-layers",
-        "specification.audit-consumption"
+        "worker.semantic-stage-responsibility"
       ]
     }
   },
-  "description": "规范符合性检查方法的领域结果合同。逐规则结果以 EVIDENCE_MISSING/REVIEW_REQUIRED 表示未获证；外部语义审阅仅作为待审证据，其中任何状态（含 PASS）不直接改变顶层结论。",
+  "description": "规范符合性检查方法的领域结果合同。full 单次覆盖 canonical inventory 全部 814 条规则：已激活规则保留 baseline lineage，保留规则使用不伪造基线载体的 canonical-only 试运行。逐规则结果以 EVIDENCE_MISSING/REVIEW_REQUIRED 表示未获证；外部语义审阅仅作为待审证据，其中任何状态（含 PASS）不直接改变顶层结论。",
   "type": "object",
   "properties": {
     "conformance_result": {
@@ -162,6 +178,7 @@
             "coverage_complete",
             "conclusion_complete",
             "requested_semantic_group_ids",
+            "requested_canonical_rule_ids",
             "selected_semantic_group_ids",
             "selected_deterministic_rule_count",
             "semantic_group_registry_digest"
@@ -208,6 +225,14 @@
                 "$ref": "#/$defs/semanticGroupId"
               },
               "description": "调用方明确请求的语义组；非 targeted 时为空。"
+            },
+            "requested_canonical_rule_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/canonicalRuleId"
+              },
+              "description": "调用方明确请求的 canonical rule IDs；非 targeted 或语义组 targeted 时为空。"
             },
             "selected_semantic_group_ids": {
               "type": "array",
@@ -355,7 +380,7 @@
         "rule_results": {
           "type": "array",
           "uniqueItems": true,
-          "description": "逐规则审阅结果。未获证规则必须保持 EVIDENCE_MISSING 或 REVIEW_REQUIRED，不得合成 PASS。",
+          "description": "逐规则审阅结果。full 必须恰好输出 canonical inventory 的 814 个身份；保留规则不得伪造 baseline carrier。未获证规则必须保持 EVIDENCE_MISSING 或 REVIEW_REQUIRED，不得合成 PASS。",
           "items": {
             "type": "object",
             "required": [
@@ -813,12 +838,32 @@
             "properties": {
               "coverage": {
                 "type": "object",
-                "properties": {
-                  "requested_semantic_group_ids": {
-                    "type": "array",
-                    "minItems": 1
+                "oneOf": [
+                  {
+                    "properties": {
+                      "requested_semantic_group_ids": {
+                        "type": "array",
+                        "minItems": 1
+                      },
+                      "requested_canonical_rule_ids": {
+                        "type": "array",
+                        "maxItems": 0
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "requested_semantic_group_ids": {
+                        "type": "array",
+                        "maxItems": 0
+                      },
+                      "requested_canonical_rule_ids": {
+                        "type": "array",
+                        "minItems": 1
+                      }
+                    }
                   }
-                }
+                ]
               }
             }
           }
@@ -844,6 +889,10 @@
                 "type": "object",
                 "properties": {
                   "requested_semantic_group_ids": {
+                    "type": "array",
+                    "maxItems": 0
+                  },
+                  "requested_canonical_rule_ids": {
                     "type": "array",
                     "maxItems": 0
                   }

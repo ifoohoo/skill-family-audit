@@ -28,6 +28,21 @@ REVIEW_STATUSES = {
     "NOT_APPLICABLE",
     "REVIEW_REQUIRED",
 }
+# 非机械审阅方法只按当前权威的 check_methods 取值：behavior_verification 已从
+# 数据真源剥除（T1 账本修复、T6-1b 复核），消费侧不再保留该值。
+NON_MECHANICAL_CHECK_METHODS = ("semantic_review",)
+
+
+def review_identity(row: dict[str, Any]) -> tuple[str, str, str]:
+    """Return the atomic rule-revision-method review identity."""
+    revision_digest = row.get(
+        "canonical_revision_digest", row.get("rule_revision_digest")
+    )
+    return row["canonical_id"], revision_digest, row["check_method"]
+
+
+def _method_binding_id(binding_id: str, check_method: str) -> str:
+    return f"{binding_id}#{check_method}"
 
 
 class SemanticReviewError(RuntimeError):
@@ -51,7 +66,7 @@ def load_bindings(
     canonical_rules: list[dict[str, Any]],
     path: Path = BINDINGS_PATH,
 ) -> dict[tuple[str, str], dict[str, Any]]:
-    """Validate candidate bindings against the canonical projection identities.
+    """Validate current bindings against the canonical projection identities.
 
     The bindings file stores exactly three fact kinds: the canonical foreign
     key, the revision digest, and the required evidence roles.  Binding
@@ -59,6 +74,10 @@ def load_bindings(
     (``semantic:<canonical_id>@<revision>`` and ``lifecycle_status``); the
     bindings file carries no hand-written status, no activation blockers,
     and no fixed runtime count.
+
+    消费集合以当前权威投影为准：identity 不在当前 canonical 集合中的行属于
+    历史绑定行，按迁移裁决原样保留、不重写、也不作为当前执行契约进入返回值。
+    历史编号的可追溯性由规则来源去向表承担，不在这里补写。
     """
     document = _load_json(path)
     if (
@@ -87,6 +106,7 @@ def load_bindings(
     }
     bindings: dict[tuple[str, str], dict[str, Any]] = {}
     binding_ids: set[str] = set()
+    seen_identities: set[tuple[Any, Any]] = set()
     for item in document["bindings"]:
         if not isinstance(item, dict) or set(item) != {
             "canonical_id",
@@ -105,25 +125,7 @@ def load_bindings(
             or not canonical_id
             or not isinstance(revision_digest, str)
             or not HEX64.fullmatch(revision_digest)
-            or identity in bindings
-            or identity not in canonical
-            or not isinstance(canonical[identity].get("check_methods"), list)
-            # 单一语义审阅通道同时承接语义审阅与外部行为证据审阅：
-            # 绑定契约允许语义方法或行为验证方法，二者至少其一。
-            or not (
-                "semantic_review" in canonical[identity]["check_methods"]
-                or "behavior_verification" in canonical[identity]["check_methods"]
-            )
-            or not isinstance(canonical[identity].get("revision"), int)
-            or not isinstance(canonical[identity].get("lifecycle_status"), str)
-            # lifecycle_status must be RETAINED_UNIMPLEMENTED、ACTIVE_SEMANTIC
-            # 或 ACTIVE_MECHANICAL：激活规则的 binding 是正式执行契约；
-            # ACTIVE_MECHANICAL 规则的 binding 只承载其语义/行为半区契约。
-            or canonical[identity]["lifecycle_status"] not in (
-                "RETAINED_UNIMPLEMENTED",
-                "ACTIVE_SEMANTIC",
-                "ACTIVE_MECHANICAL",
-            )
+            or identity in seen_identities
             or not isinstance(roles, dict)
             or not roles
             or list(roles) != sorted(roles)
@@ -141,9 +143,32 @@ def load_bindings(
                 "SEMANTIC_BINDINGS_INVALID",
                 f"semantic binding identity or evidence contract is invalid: {canonical_id}",
             )
-        binding_id = (
-            f"semantic:{canonical_id}@{canonical[identity]['revision']}"
-        )
+        seen_identities.add(identity)
+        canonical_rule = canonical.get(identity)
+        if canonical_rule is None:
+            # 历史绑定行：旧编号只须能追溯到承接规则。历史行原样保留，
+            # 不参与当前消费，也不改写为新的编号或摘要。
+            continue
+        if (
+            not isinstance(canonical_rule.get("check_methods"), list)
+            or not isinstance(canonical_rule.get("revision"), int)
+            or not isinstance(canonical_rule.get("lifecycle_status"), str)
+            # lifecycle_status must be RETAINED_UNIMPLEMENTED、ACTIVE_SEMANTIC
+            # 或 ACTIVE_MECHANICAL：激活规则的 binding 是正式执行契约；
+            # ACTIVE_MECHANICAL 规则的 binding 只承载其语义半区契约。
+            # 规则是否需要非机械审阅由 check_methods 在消费侧判定，
+            # 不在这里按方法封禁绑定行。
+            or canonical_rule["lifecycle_status"] not in (
+                "RETAINED_UNIMPLEMENTED",
+                "ACTIVE_SEMANTIC",
+                "ACTIVE_MECHANICAL",
+            )
+        ):
+            raise SemanticReviewError(
+                "SEMANTIC_BINDINGS_INVALID",
+                f"semantic binding identity or evidence contract is invalid: {canonical_id}",
+            )
+        binding_id = f"semantic:{canonical_id}@{canonical_rule['revision']}"
         if binding_id in binding_ids:
             raise SemanticReviewError(
                 "SEMANTIC_BINDINGS_INVALID",
@@ -155,7 +180,7 @@ def load_bindings(
             "canonical_id": canonical_id,
             "revision_digest": revision_digest,
             "required_evidence_roles": roles,
-            "lifecycle_status": canonical[identity]["lifecycle_status"],
+            "lifecycle_status": canonical_rule["lifecycle_status"],
         }
     return bindings
 
@@ -184,9 +209,10 @@ def bound_rule_descriptors(
         )
         if rule.get("checkType") == "semantic" or (
             rule.get("checkType") == "static"
-            and (
-                "semantic_review" in canonical.get(identity, {}).get("check_methods", [])
-                or "behavior_verification" in canonical.get(identity, {}).get("check_methods", [])
+            and any(
+                method
+                in (canonical.get(identity, {}).get("check_methods") or [])
+                for method in NON_MECHANICAL_CHECK_METHODS
             )
         ):
             active_identities.add(identity)
@@ -216,28 +242,33 @@ def bound_rule_descriptors(
         canonical_rule = canonical.get(identity)
         if binding is None or canonical_rule is None:
             continue
-        descriptors.append({
-            "baseline_rule_id": rule["ruleId"],
-            "baseline_revision_digest": rule["revisionDigest"],
-            "canonical_id": identity[0],
-            "canonical_revision_digest": identity[1],
-            "name": canonical_rule["name"],
-            "obligation": canonical_rule["obligation"],
-            "binding_id": binding["binding_id"],
-            "required_evidence_roles": binding["required_evidence_roles"],
-            "lifecycle_status": canonical_rule["lifecycle_status"],
-            # Formal scope fields are copied from the same canonical rule
-            # descriptor.  They are context for the reviewer only: no local
-            # interpretation, default, or second applicability policy is
-            # introduced here.
-            "project_scope": canonical_rule["project_scope"],
-            "applicability": canonical_rule["applicability"],
-            "platform_scope": canonical_rule["platform_scope"],
-            "adoption_mode": canonical_rule["adoption_mode"],
-            "adjudication_note": canonical_rule["adjudication_note"],
-            "evidence_requirements": canonical_rule["evidence_requirements"],
-        })
-    return sorted(descriptors, key=lambda item: item["canonical_id"])
+        for check_method in sorted(
+            set(canonical_rule["check_methods"])
+            & set(NON_MECHANICAL_CHECK_METHODS)
+        ):
+            descriptors.append({
+                "baseline_rule_id": rule["ruleId"],
+                "baseline_revision_digest": rule["revisionDigest"],
+                "canonical_id": identity[0],
+                "canonical_revision_digest": identity[1],
+                "check_method": check_method,
+                "name": canonical_rule["name"],
+                "obligation": canonical_rule["obligation"],
+                "binding_id": _method_binding_id(
+                    binding["binding_id"], check_method
+                ),
+                "required_evidence_roles": binding["required_evidence_roles"],
+                "lifecycle_status": canonical_rule["lifecycle_status"],
+                # Formal scope fields are copied from the same canonical rule
+                # descriptor.  They are context for the reviewer only.
+                "project_scope": canonical_rule["project_scope"],
+                "applicability": canonical_rule["applicability"],
+                "platform_scope": canonical_rule["platform_scope"],
+                "adoption_mode": canonical_rule["adoption_mode"],
+                "adjudication_note": canonical_rule["adjudication_note"],
+                "evidence_requirements": canonical_rule["evidence_requirements"],
+            })
+    return sorted(descriptors, key=review_identity)
 
 
 def retained_trial_descriptors(
@@ -267,28 +298,34 @@ def retained_trial_descriptors(
             canonical_id not in requested
             or canonical_rule.get("lifecycle_status") != "RETAINED_UNIMPLEMENTED"
             or not isinstance(methods, list)
-            or "semantic_review" not in methods
+            or not set(methods).intersection(NON_MECHANICAL_CHECK_METHODS)
         ):
             continue
         binding = bindings.get(identity)
         if binding is None:
             continue
-        descriptors.append({
-            "canonical_id": canonical_id,
-            "canonical_revision_digest": revision_digest,
-            "name": canonical_rule["name"],
-            "obligation": canonical_rule["obligation"],
-            "binding_id": binding["binding_id"],
-            "required_evidence_roles": binding["required_evidence_roles"],
-            "lifecycle_status": canonical_rule["lifecycle_status"],
-            "project_scope": canonical_rule["project_scope"],
-            "applicability": canonical_rule["applicability"],
-            "platform_scope": canonical_rule["platform_scope"],
-            "adoption_mode": canonical_rule["adoption_mode"],
-            "adjudication_note": canonical_rule["adjudication_note"],
-            "evidence_requirements": canonical_rule["evidence_requirements"],
-        })
-    return sorted(descriptors, key=lambda item: item["canonical_id"])
+        for check_method in sorted(
+            set(methods).intersection(NON_MECHANICAL_CHECK_METHODS)
+        ):
+            descriptors.append({
+                "canonical_id": canonical_id,
+                "canonical_revision_digest": revision_digest,
+                "check_method": check_method,
+                "name": canonical_rule["name"],
+                "obligation": canonical_rule["obligation"],
+                "binding_id": _method_binding_id(
+                    binding["binding_id"], check_method
+                ),
+                "required_evidence_roles": binding["required_evidence_roles"],
+                "lifecycle_status": canonical_rule["lifecycle_status"],
+                "project_scope": canonical_rule["project_scope"],
+                "applicability": canonical_rule["applicability"],
+                "platform_scope": canonical_rule["platform_scope"],
+                "adoption_mode": canonical_rule["adoption_mode"],
+                "adjudication_note": canonical_rule["adjudication_note"],
+                "evidence_requirements": canonical_rule["evidence_requirements"],
+            })
+    return sorted(descriptors, key=review_identity)
 
 
 def build_review_request(
@@ -331,6 +368,7 @@ def build_review_request(
                 ),
                 "canonical_id": item["canonical_id"],
                 "canonical_revision_digest": item["canonical_revision_digest"],
+                "check_method": item["check_method"],
             }
             for item in descriptors
         ]),
@@ -352,7 +390,7 @@ def finalize_review(
     payload: dict[str, Any],
     *,
     digest_document: Callable[[Any], str],
-) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+    ) -> tuple[dict[tuple[str, str, str], dict[str, Any]], dict[str, Any]]:
     """Validate an internal Skill review and conservatively project its statuses."""
     if not isinstance(payload, dict):
         raise SemanticReviewError(
@@ -381,16 +419,22 @@ def finalize_review(
             "SEMANTIC_REVIEW_RESULT_INVALID", "reviews must be an array"
         )
     expected_rules = {
-        item["canonical_id"]: item for item in request.get("rules", [])
+        review_identity(item): item for item in request.get("rules", [])
     }
+    if len(expected_rules) != len(request.get("rules", [])):
+        raise SemanticReviewError(
+            "SEMANTIC_REVIEW_REQUEST_INVALID",
+            "semantic review request contains duplicate method obligations",
+        )
     evidence = {
         item["evidence_id"]: item for item in request.get("evidence", [])
     }
-    observed: dict[str, dict[str, Any]] = {}
+    observed: dict[tuple[str, str, str], dict[str, Any]] = {}
     for review in reviews:
         if not isinstance(review, dict) or set(review) != {
             "binding_id",
             "canonical_id",
+            "check_method",
             "rule_revision_digest",
             "status",
             "reason_code",
@@ -401,12 +445,18 @@ def finalize_review(
                 "SEMANTIC_REVIEW_RESULT_INVALID", "review shape is invalid"
             )
         canonical_id = review.get("canonical_id")
-        rule = expected_rules.get(canonical_id)
+        check_method = review.get("check_method")
+        identity = (
+            canonical_id,
+            review.get("rule_revision_digest"),
+            check_method,
+        )
+        rule = expected_rules.get(identity)
         status = review.get("status")
         refs = review.get("evidence_refs")
         if (
             rule is None
-            or canonical_id in observed
+            or identity in observed
             or review.get("binding_id") != rule["binding_id"]
             or review.get("rule_revision_digest")
             != rule["canonical_revision_digest"]
@@ -471,8 +521,9 @@ def finalize_review(
             # NOT_APPLICABLE 是缺证，不是不适用。
             projected_status = "EVIDENCE_MISSING"
             projected_reason = "TRIGGER_FALSE_UNPROVEN"
-        observed[canonical_id] = {
+        observed[identity] = {
             "canonical_id": canonical_id,
+            "check_method": check_method,
             "rule_revision_digest": rule["canonical_revision_digest"],
             "binding_id": rule["binding_id"],
             "status": projected_status,

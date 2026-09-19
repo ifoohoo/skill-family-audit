@@ -156,9 +156,63 @@ def normalize_profile_request(execution_profile, semantic_group_ids,
     )
 
 
+def normalize_targeted_selection(
+    execution_profile,
+    semantic_group_ids,
+    canonical_rule_ids,
+    registered_group_ids,
+    registered_rule_ids,
+    in_scope_rule_ids,
+):
+    """Normalize the two mutually exclusive targeted selection modes.
+
+    The legacy semantic-group mode delegates to ``normalize_profile_request``
+    unchanged.  Exact canonical selection is available only for ``targeted``
+    and validates identities against the current runtime inventory and scope;
+    no canonical ID table is copied into this module.
+    """
+    registered_rules = _as_unique_string_list(
+        registered_rule_ids, "registered_rule_ids"
+    )
+    in_scope = _as_unique_string_list(in_scope_rule_ids, "in_scope_rule_ids")
+    if canonical_rule_ids is None:
+        profile, groups = normalize_profile_request(
+            execution_profile, semantic_group_ids, registered_group_ids
+        )
+        return profile, groups, []
+    if execution_profile != "targeted":
+        raise ValueError(
+            "canonical_rule_ids is allowed only for execution_profile 'targeted'"
+        )
+    if semantic_group_ids is not None:
+        raise ValueError(
+            "canonical_rule_ids and semantic_group_ids are mutually exclusive"
+        )
+    requested = _as_unique_string_list(
+        canonical_rule_ids, "canonical_rule_ids"
+    )
+    if not requested:
+        raise ValueError("targeted requires a non-empty canonical_rule_ids array")
+    registered_set = set(registered_rules)
+    in_scope_set = set(in_scope)
+    for canonical_id in requested:
+        if canonical_id not in registered_set:
+            raise ValueError(
+                "canonical_rule_ids contains unknown canonical id: {id!r}".format(
+                    id=canonical_id
+                )
+            )
+        if canonical_id not in in_scope_set:
+            raise ValueError(
+                "canonical_rule_ids contains canonical id outside current scope: "
+                "{id!r}".format(id=canonical_id)
+            )
+    return "targeted", [], sorted(requested)
+
+
 def select_rule_ids(profile, in_scope_rule_ids, deterministic_rule_ids,
                     first_tier_semantic_rule_ids, group_members,
-                    requested_group_ids):
+                    requested_group_ids, requested_rule_ids=None):
     """按执行分支选择规则，返回排序去重的 ID 数组。
 
     输入契约：
@@ -174,9 +228,11 @@ def select_rule_ids(profile, in_scope_rule_ids, deterministic_rule_ids,
     - mechanical / economy：sorted(in_scope ∩ deterministic)。语义规则
       （first-tier 与组内）即使 in-scope 也不选；economy 的语义预筛由 A3 表达，
       不把语义规则算作已选择。
-    - targeted：sorted((in_scope ∩ deterministic) ∪ (in_scope ∩
+    - targeted 组模式：sorted((in_scope ∩ deterministic) ∪ (in_scope ∩
       请求各组成员的并集))。已启用的 first-tier semantic 规则已经进入同一
       group registry；不在请求组内时不得自动加入。
+    - targeted exact 模式：requested_rule_ids 必须与 requested_group_ids
+      互斥，只返回显式请求且 in-scope 的 canonical IDs；不自动补确定性规则。
     - full：sorted(in_scope)（调用方传入的 in_scope 已视为完成 executable 过滤，
       handoff 5.2）。
     - deterministic_rule_ids / first_tier_semantic_rule_ids 中不在 in-scope 的
@@ -199,6 +255,26 @@ def select_rule_ids(profile, in_scope_rule_ids, deterministic_rule_ids,
         first_tier_semantic_rule_ids, "first_tier_semantic_rule_ids"
     )
     requested = _as_unique_string_list(requested_group_ids, "requested_group_ids")
+    exact = _as_unique_string_list(
+        [] if requested_rule_ids is None else requested_rule_ids,
+        "requested_rule_ids",
+    )
+    if exact and profile != "targeted":
+        raise ValueError("requested_rule_ids is allowed only for targeted")
+    if exact and requested:
+        raise ValueError(
+            "requested_rule_ids and requested_group_ids are mutually exclusive"
+        )
+    if exact:
+        in_scope_set = set(in_scope)
+        outside = sorted(set(exact) - in_scope_set)
+        if outside:
+            raise ValueError(
+                "requested_rule_ids contains ids outside in-scope: {ids}".format(
+                    ids=outside
+                )
+            )
+        return sorted(exact)
     if requested:
         if not isinstance(group_members, dict):
             raise ValueError(
@@ -237,9 +313,12 @@ def select_rule_ids(profile, in_scope_rule_ids, deterministic_rule_ids,
 def project_in_scope_rule_results(in_scope_rule_ids, result_rows):
     """把内部检查结果投影为精确的 canonical ``rule_results``。
 
-    没有 ``canonical_lineage`` 的辅助检查只保留在诊断发现中，不得进入公开
-    ``rule_results``，也不得参与 profile 状态聚合。带 lineage 的结果必须恰好
-    覆盖每条 in-scope canonical rule 一次；缺行、重复行或 scope 外行均失败。
+    已激活规则必须通过 ``canonical_lineage`` 进入公开结果。``full``
+    的保留试运行和有权威适用性结论的规则可以使用明确的
+    ``canonical_only=True`` 与 ``canonical_id``；该行禁止伪造基线身份。
+    其他没有 lineage 的辅助检查只保留在诊断发现中。投影结果必须
+    恰好覆盖每条 in-scope canonical rule 一次；缺行、重复行或
+    scope 外行均失败。
     """
     in_scope = _as_unique_string_list(in_scope_rule_ids, "in_scope_rule_ids")
     if not isinstance(result_rows, (list, tuple)):
@@ -251,10 +330,21 @@ def project_in_scope_rule_results(in_scope_rule_ids, result_rows):
             raise ValueError("result_rows must contain only objects")
         lineage = row.get("canonical_lineage")
         if lineage is None:
-            continue
-        if not isinstance(lineage, dict):
-            raise ValueError("canonical_lineage must be an object when present")
-        canonical_id = lineage.get("canonical_id")
+            if row.get("canonical_only") is not True:
+                continue
+            canonical_id = row.get("canonical_id")
+            if (
+                row.get("rule_id") != canonical_id
+                or "baseline_rule_id" in row
+                or "baseline_revision_digest" in row
+            ):
+                raise ValueError(
+                    "canonical-only result must not claim a baseline carrier"
+                )
+        else:
+            if not isinstance(lineage, dict):
+                raise ValueError("canonical_lineage must be an object when present")
+            canonical_id = lineage.get("canonical_id")
         if not isinstance(canonical_id, str) or canonical_id not in in_scope_set:
             raise ValueError(
                 "canonical result row must identify one in-scope rule"

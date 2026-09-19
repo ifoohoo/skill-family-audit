@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import fnmatch
+import json
 import subprocess
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -2278,12 +2279,100 @@ def _has_source_surface(target: Path) -> bool:
     return False
 
 
+def _repo_005_package_version(ctx: dict[str, Any]) -> str | None:
+    """版本真源 = 目标根 package.json 的 version 字段（版本真源载体钉扎规则）。
+
+    载体缺失、不可解析或字段缺失时返回 None——活动候选例外视为无效
+    （等同无例外），不因载体缺失而失败关闭。
+    """
+    text = _read_target_text(ctx, "package.json")
+    if text is None:
+        return None
+    try:
+        document = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(document, dict):
+        return None
+    version = document.get("version")
+    return version if _nonempty_str(version) else None
+
+
+def _repo_005_active_candidate_exception_applies(
+    ctx: dict[str, Any],
+    layout: dict[str, Any],
+    runtime_tracked: list[str],
+) -> tuple[bool, str | None]:
+    """RB01.1 单一活动候选例外判定（SPEC §7.1 行为合同 1-6，逐字执行）。
+
+    runtime-layout ``active_candidate_exception`` 字段整体缺失时等同无例外；
+    声明形状非法（非对象、active_candidate_directory 缺失或不可规范化为
+    目标根下相对目录）失败关闭，绝不静默放行（沿用治理声明纪律）。例外
+    生效仅当全部成立：
+
+    - 声明目录规范化为 ``dist/candidate/<active-version>`` 且
+      ``<active-version>`` 与当前版本真源（目标根 package.json version）
+      一致（行为合同 1）；
+    - 例外目录在目标磁盘上存在（活动候选缺失 → 例外无效，行为合同 5）；
+    - Git 跟踪清单落在 runtime 目录内的全部路径都位于该活动候选目录内
+      ——第二个被跟踪候选、旧候选/陈旧树或其它运行/证据目录漂移都会使
+      例外无效（行为合同 2/4/5）。
+
+    例外无效时调用方回落既有“无例外”判定（runtime_tracked 非空 → FAIL
+    ``runtime_files_tracked_as_source``），与基线行为一致。发布后 prune
+    （删除声明并回到无被跟踪候选基线，行为合同 6）由治理条款执行；本
+    执行器只消费声明现态，不推断发布完成与否。无新状态枚举、无新 Schema。
+    """
+    exception = layout.get("active_candidate_exception")
+    if exception is None:
+        return False, None
+    if not isinstance(exception, dict):
+        raise ExecutorEvidenceError(
+            "GOVERNANCE_DOCUMENT_INVALID",
+            "runtime-layout.active_candidate_exception 必须是对象",
+        )
+    declared = exception.get("active_candidate_directory")
+    if not _nonempty_str(declared):
+        raise ExecutorEvidenceError(
+            "GOVERNANCE_DOCUMENT_INVALID",
+            "runtime-layout.active_candidate_exception.active_candidate_directory "
+            "必须是非空目录路径字符串",
+        )
+    active_dir = _normalized_runtime_dir(declared)
+    if active_dir is None:
+        raise ExecutorEvidenceError(
+            "GOVERNANCE_DOCUMENT_INVALID",
+            "runtime-layout.active_candidate_exception.active_candidate_directory "
+            "必须是目标根下的规范化相对目录",
+        )
+    version = _repo_005_package_version(ctx)
+    if (
+        version is None
+        or "/" in version
+        or "\\" in version
+        or active_dir != f"dist/candidate/{version}"
+    ):
+        return False, active_dir
+    if not (Path(ctx["target"]) / active_dir).is_dir():
+        return False, active_dir
+    inside = [
+        path
+        for path in runtime_tracked
+        if path == active_dir or path.startswith(active_dir + "/")
+    ]
+    if len(inside) != len(runtime_tracked):
+        return False, active_dir
+    return True, active_dir
+
+
 def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """运行态与源码目录分离。
 
     机械断言：运行态/证据/宿主痕迹产物必须收敛进专用运行/证据目录并由
     gitignore 排除基线覆盖；混居仓库顶层且无排除基线为 FAIL；布局归属
-    与排除事实不可判定为 EVIDENCE_MISSING。
+    与排除事实不可判定为 EVIDENCE_MISSING。RB01.1（SPEC §7.1）：存在与
+    版本真源一致的单一活动候选例外声明且全部 runtime tracked 落于其内时，
+    runtime_files_tracked_as_source 不成立；例外无效时行为等同无例外。
     """
     target = Path(ctx["target"])
     found = sorted(name for name in _REPO_005_RUNTIME_DIR_NAMES if (target / name).is_dir())
@@ -2376,6 +2465,8 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
         violations.append({"problem": "runtime_copies_counted_as_source"})
     # 一旦真实运行/证据/宿主目录存在，规则要求同时核对 Git 跟踪清单；
     # 冻结副本没有目标自身 Git 元数据时，不能凭 .gitignore 推断“未计入源码”。
+    exception_applied = False
+    excepted_active_dir = None
     if tracked is None:
         return _finish(
             [_static_row("EVIDENCE_MISSING", reason="tracked_source_inventory_unavailable")],
@@ -2383,24 +2474,32 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
         )
     else:
         if runtime_tracked:
-            violations.append({
-                "problem": "runtime_files_tracked_as_source",
-                "count": len(runtime_tracked),
-                "path_samples": runtime_tracked[:20],
-            })
+            # RB01.1 单一活动候选例外只豁免“活动候选目录自身被跟踪”这一项
+            # 违反事实；例外无效（漂移/版本不匹配/目录缺失/陈旧或第二候选
+            # 仍被跟踪）时回落既有判定：runtime_files_tracked_as_source → FAIL。
+            exception_applied, excepted_active_dir = (
+                _repo_005_active_candidate_exception_applies(ctx, layout, runtime_tracked)
+            )
+            if not exception_applied:
+                violations.append({
+                    "problem": "runtime_files_tracked_as_source",
+                    "count": len(runtime_tracked),
+                    "path_samples": runtime_tracked[:20],
+                })
     if violations:
         return _finish(
             [_static_row("FAIL", reason="runtime_layout_violations", violations=violations)],
             runtime_artifacts=len(runtime_dirs),
         )
+    pass_evidence = {
+        "reason": "runtime_artifacts_separated_and_excluded",
+        "runtime_dirs": runtime_dirs,
+    }
+    if exception_applied:
+        pass_evidence["active_candidate_exception_applied"] = True
+        pass_evidence["active_candidate_directory"] = excepted_active_dir
     return _finish(
-        [
-            _static_row(
-                "PASS",
-                reason="runtime_artifacts_separated_and_excluded",
-                runtime_dirs=runtime_dirs,
-            )
-        ],
+        [_static_row("PASS", **pass_evidence)],
         runtime_artifacts=len(runtime_dirs),
     )
 

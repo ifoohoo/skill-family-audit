@@ -2,10 +2,10 @@
   "schemaVersion": "1.0.0-candidate",
   "methodId": "skill-family-audit:conformance-audit",
   "name": "规范符合性检查",
-  "description": "覆盖单个技能轻量检查、技能族源码完整检查、发行包检查和目标项目采用检查；只读消费调用方提供的证据集合（含可按 governance-gate-run-evidence.schema.json 解释的三项治理门禁原始收据），组合确定性扫描与必要语义审阅（证据不足时逐规则保持未获证）",
+  "description": "覆盖单个技能轻量检查、技能族源码完整检查、发行包检查和目标项目采用检查；只读消费调用方提供的证据集合（含可按 governance-gate-run-evidence.schema.json 解释的三项治理门禁原始收据），组合确定性扫描与必要语义审阅（证据不足时逐规则保持未获证）；不判断失败模式与实际运行效果，运行类材料不是必备输入，只在某条规则的证据角色确实要求时消费",
   "capability": {
     "capabilityRef": "cap:skill-family-audit.family",
-    "capabilityDigest": "sha256:9000a6775fe0bc7d04c2c516e265aff33486d7d4f020ae6e199ba563a2e8acbb",
+    "capabilityDigest": "sha256:b8985167dd3005687d9feb48b482b5dc434cd4891ef8efc4556b6b1c23cdfedc",
     "methodSlice": "根据版本化正式规则和证据判断技能族规范符合性"
   },
   "accepts": [
@@ -13,7 +13,8 @@
     "target_project_path",
     "scope_selector",
     "execution_profile",
-    "semantic_group_ids"
+    "semantic_group_ids",
+    "canonical_rule_ids"
   ],
   "produces": [
     "conformance_result",
@@ -31,6 +32,17 @@
   "sideEffects": [
     "read-only"
   ],
+  "maximumSideEffects": {
+    "filesystem": [
+      "read"
+    ],
+    "processExecution": "none",
+    "dependencyInstall": "none",
+    "networkRead": "none",
+    "externalWrite": "none",
+    "credentialReference": "none",
+    "publish": "none"
+  },
   "maturity": "experimental",
   "status": "candidate",
   "acceptanceCriteria": [

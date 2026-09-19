@@ -57,6 +57,7 @@ FORBIDDEN_METHOD_OPTIONS = {
     "semantic-review-stdin",
 }
 HUMAN_ROUTE_OPTIONS = {
+    "canonical-rule-id",
     "execution-profile",
     "semantic-group-id",
     "semantic-selector",
@@ -209,9 +210,32 @@ def _foundation_strict_json(
     return value, digest
 
 
+def _load_source_dispositions(
+    runner: Path, projection_path: Path
+) -> tuple[list[Any] | None, str | None, str | None]:
+    """Strict-read the 旧编号去向 segment of the public canonical projection.
+
+    Returns ``(rows, reason, digest)``. 缺失、不可读或结构非法时返回
+    ``rows=None`` 与原因；此时已在当前清单内的编号不受影响，未命中的请求仍按
+    既有 ``unresolved_selector`` 失败关闭。本函数只读公开投影，不读私有库存。
+    """
+    if projection_path.is_symlink() or not projection_path.is_file():
+        return None, "projection_missing", None
+    try:
+        projection, digest = _foundation_strict_json(
+            runner, projection_path, "HUMAN_ROUTE_DISPOSITIONS"
+        )
+    except RouteError:
+        return None, "projection_unreadable", None
+    rows = projection.get("source_dispositions")
+    if not isinstance(rows, list) or not rows:
+        return None, "dispositions_absent", digest
+    return rows, None, digest
+
+
 def _load_human_route_module(
     runner: Path,
-) -> tuple[Any, dict[str, Any], list[str], dict[str, str]]:
+) -> tuple[Any, dict[str, Any], list[str], dict[str, str], tuple[Any, ...]]:
     """Load the conformance-owned route helpers and their managed authorities."""
     host = sys.modules.get("conformance_check")
     host_file = getattr(host, "__file__", None)
@@ -261,7 +285,7 @@ def _load_human_route_module(
         "registry_digest": registry_digest,
         "routing_file_digest": routing_file_digest,
         "trust_projection_digest": trust_projection_digest,
-    }
+    }, _load_source_dispositions(runner, refs / "canonical-rule-projection.json")
 
 
 def _human_intent(request: str) -> str:
@@ -295,18 +319,33 @@ def resolve_conformance_human_route(
     request: str, method_args: list[str], runner: Path
 ) -> tuple[dict[str, Any], dict[str, Any], Any, str, dict[str, str]]:
     """Materialize one human-facing profile before Task creation."""
-    module, registry, deterministic_rule_ids, route_identity = (
-        _load_human_route_module(runner)
-    )
+    (
+        module,
+        registry,
+        deterministic_rule_ids,
+        route_identity,
+        dispositions_state,
+    ) = _load_human_route_module(runner)
+    source_dispositions, dispositions_reason, _ = dispositions_state
     profiles = _option_values(method_args, "execution-profile")
     if len(profiles) > 1:
         raise RouteError("HUMAN_ROUTE_PROFILE_AMBIGUOUS")
-    selectors = [
+    exact_rule_ids = _option_values(method_args, "canonical-rule-id")
+    explicit_selectors = [
         *_option_values(method_args, "semantic-selector"),
         *_option_values(method_args, "semantic-group-id"),
-        *_request_selectors(request, registry),
     ]
+    if exact_rule_ids and explicit_selectors:
+        raise RouteError("HUMAN_ROUTE_INVALID:targeted_selection_ambiguous")
+    selectors = (
+        explicit_selectors
+        if exact_rule_ids
+        else [*explicit_selectors, *_request_selectors(request, registry)]
+    )
     intent = _human_intent(request)
+    _assert_source_numbers_runnable(
+        module, source_dispositions, [*(exact_rule_ids or []), *selectors]
+    )
     try:
         route = module.resolve_human_route(
             profiles[0] if profiles else None,
@@ -314,10 +353,44 @@ def resolve_conformance_human_route(
             selectors,
             registry,
             deterministic_rule_ids,
+            exact_rule_ids or None,
+            source_dispositions,
         )
     except ValueError as exc:
-        raise RouteError(f"HUMAN_ROUTE_INVALID:{exc}") from exc
+        message = str(exc)
+        if source_dispositions is None and any(
+            code in message
+            for code in ("unresolved_selector", "source_number_successor_unresolved")
+        ):
+            # 未命中且没有公开去向投影：保持既有失败形态，附上投影缺口语义。
+            message = "{}（旧编号去向投影不可用：{}）".format(
+                message, dispositions_reason
+            )
+        raise RouteError(f"HUMAN_ROUTE_INVALID:{message}") from exc
     return route, registry, module, intent, route_identity
+
+
+def _assert_source_numbers_runnable(module, source_dispositions, requested_ids) -> None:
+    """Fail closed when every requested 旧编号 has already exited.
+
+    去向了结（已退出，或合并承接尚未生效）的编号只解释、不运行；当请求中没有任何
+    可运行编号时，本次不产生检查结论，以明确解释失败关闭，而不是静默跑别的规则。
+    """
+    if source_dispositions is None or not requested_ids:
+        return
+    interpretation = module.interpret_source_numbers(requested_ids, source_dispositions)
+    explanations = interpretation["explanations"]
+    blocked = [row for row in explanations if not row["runnable"]]
+    if not blocked:
+        return
+    explained = {row["source_id"] for row in explanations}
+    if any(row["runnable"] for row in explanations):
+        return
+    if any(value not in explained for value in requested_ids):
+        return
+    raise RouteError(
+        "HUMAN_ROUTE_SOURCE_NUMBER_EXITED:" + "；".join(row["detail"] for row in blocked)
+    )
 
 
 def assert_release_preparation_input(
@@ -360,6 +433,7 @@ def assert_plan_event_binding(
     plan: dict[str, Any],
     domain: dict[str, Any],
     route_identity: dict[str, str],
+    canonical_rule_ids: list[str] | None = None,
 ) -> None:
     coverage = domain.get("coverage") or {}
     metrics = domain.get("execution_metrics") or {}
@@ -387,6 +461,7 @@ def assert_plan_event_binding(
         "requested_semantic_group_ids": coverage.get(
             "requested_semantic_group_ids", []
         ),
+        "canonical_rule_ids": sorted(canonical_rule_ids or []),
         "selected_semantic_group_ids": coverage.get(
             "selected_semantic_group_ids", []
         ),
@@ -756,6 +831,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     human_intent: str | None = None
     route_identity: dict[str, str] | None = None
     routed_method_args = list(method_args)
+    human_explanations: list[dict[str, Any]] = []
     if intent == "conformance":
         (
             human_route,
@@ -771,15 +847,20 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         parameters["execution_profile"] = human_route["execution_profile"]
         if human_route["semantic_group_ids"]:
             parameters["semantic_group_ids"] = human_route["semantic_group_ids"]
+        if human_route["canonical_rule_ids"]:
+            parameters["canonical_rule_ids"] = human_route["canonical_rule_ids"]
         routed_method_args = _without_options(method_args, HUMAN_ROUTE_OPTIONS)
         routed_method_args.extend(
             ["--execution-profile", human_route["execution_profile"]]
         )
         for group_id in human_route["semantic_group_ids"]:
             routed_method_args.extend(["--semantic-group-id", group_id])
+        for canonical_id in human_route["canonical_rule_ids"]:
+            routed_method_args.extend(["--canonical-rule-id", canonical_id])
         routed_method_args.extend(
             ["--profile-selection-reason", human_route["selection_reason"]]
         )
+        human_explanations = human_route["source_number_explanations"]
     task = create_foundation_task(
         runner,
         resource,
@@ -859,6 +940,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     execution_plan,
                     response["conformance_result"],
                     route_identity,
+                    human_route["canonical_rule_ids"],
                 )
                 if (
                     execution_plan.get("selection_reason")
@@ -937,6 +1019,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     }
     if human_summary is not None:
         response_payload["human_summary"] = human_summary
+    if human_explanations:
+        response_payload["source_number_explanations"] = human_explanations
     if execution_plan is not None:
         response_payload["execution_plan"] = execution_plan
     return response_payload

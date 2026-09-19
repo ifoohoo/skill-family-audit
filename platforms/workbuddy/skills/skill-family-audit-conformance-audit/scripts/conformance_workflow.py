@@ -100,11 +100,13 @@ OWNER_BOUNDARY = {
 }
 
 _RUN_TREE_DIGEST_CACHE: dict[Path, str] = {}
+_GOVERNED_ROUTE_CACHE: dict[str, dict[str, Any]] = {}
 
 
 def _reset_run_fact_cache() -> None:
     """Start one workflow-call frozen-fact scope without persistent state."""
     _RUN_TREE_DIGEST_CACHE.clear()
+    _GOVERNED_ROUTE_CACHE.clear()
 
 # D1 第一档执行路由：冻结闭包规则逐条显式路由（总数以信任策略 total_rules 钉扎），禁止静默跳过。
 # 口径与 scripts/governance/build_first_tier_execution_routing.py 一致：
@@ -126,23 +128,129 @@ EXECUTION_ROUTE_VOCABULARY = (
 )
 
 
+def _governed_route_rows() -> dict[str, dict[str, Any]]:
+    """只读消费第一档执行路由权威，返回 canonical_id 索引的路线真源。
+
+    路线口径（含 ACTIVE_MECHANICAL 中语义义务是唯一义务的 54 条承接规则）
+    已由 ``governance/rules/first-tier-execution-routing.json`` 逐条冻结，
+    本模块不再按生命周期自行二次判定：路线必须与治理路由表逐条一致
+    （见 tests/spec/test_first_tier_execution_routing.py）。承载者身份只从
+    该权威读取，不在代码中复制映射或计数。
+    """
+    if _GOVERNED_ROUTE_CACHE:
+        return _GOVERNED_ROUTE_CACHE
+    root, _authority, routing_relative, _projection = _method_assurance_layout()
+    path = root / routing_relative
+    try:
+        routing_authority = load_json(path)
+    except (OSError, WorkflowError) as exc:
+        raise WorkflowError(
+            "FIRST_TIER_ROUTING_AUTHORITY_INVALID",
+            "第一档执行路由权威不可读取: {path}: {exc}".format(
+                path=routing_relative, exc=exc
+            ),
+        ) from exc
+    if (
+        routing_authority.get("kind")
+        != "skill-family-audit.first-tier-execution-routing"
+        or not isinstance(routing_authority.get("counts"), dict)
+    ):
+        raise WorkflowError(
+            "FIRST_TIER_ROUTING_AUTHORITY_INVALID",
+            "第一档执行路由权威的 kind 或结构非法",
+        )
+    total_rules = routing_authority["counts"].get("total_rules")
+    governed: dict[str, dict[str, Any]] = {}
+    for key in ("first_tier", "executor_gap_list", "semantic_review_routes"):
+        rows = routing_authority.get(key)
+        if not isinstance(rows, list):
+            raise WorkflowError(
+                "FIRST_TIER_ROUTING_AUTHORITY_INVALID",
+                "第一档执行路由权威缺少 {key} 数组".format(key=key),
+            )
+        for row in rows:
+            canonical_id = row.get("canonical_id") if isinstance(row, dict) else None
+            revision_digest = (
+                row.get("revision_digest") if isinstance(row, dict) else None
+            )
+            execution_route = (
+                row.get("execution_route") if isinstance(row, dict) else None
+            )
+            methods = row.get("check_methods") if isinstance(row, dict) else None
+            if (
+                not isinstance(canonical_id, str)
+                or not canonical_id
+                or canonical_id in governed
+                or not isinstance(revision_digest, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", revision_digest)
+                or execution_route not in EXECUTION_ROUTE_VOCABULARY
+                or not isinstance(methods, list)
+                or not all(isinstance(method, str) for method in methods)
+            ):
+                raise WorkflowError(
+                    "FIRST_TIER_ROUTING_AUTHORITY_INVALID",
+                    "第一档执行路由权威行非法或身份重复: {id}".format(
+                        id=canonical_id
+                    ),
+                )
+            governed[canonical_id] = {
+                "revision_digest": revision_digest,
+                "execution_route": execution_route,
+                "check_methods": methods,
+            }
+    if isinstance(total_rules, int) and len(governed) != total_rules:
+        raise WorkflowError(
+            "FIRST_TIER_ROUTING_AUTHORITY_INVALID",
+            "第一档执行路由权威没有逐条覆盖冻结信任策略钉扎的全量规则",
+        )
+    _GOVERNED_ROUTE_CACHE.update(governed)
+    return _GOVERNED_ROUTE_CACHE
+
+
+def _governed_route_detail(entry: dict[str, Any]) -> str:
+    """路由明细只描述已冻结的路线口径，不新增语义。"""
+    methods = entry["check_methods"]
+    if entry["execution_route"] == ROUTE_FIRST_TIER_STATIC:
+        if "semantic_review" in methods:
+            return "terminal_governance_baseline_static_semantic_half_pending"
+        return "terminal_governance_baseline_static"
+    if "semantic_review" in methods:
+        return "isolated_semantic_review"
+    return "governance_routing_authority"
+
+
 def canonical_rule_execution_route(
     rule: dict[str, Any]
 ) -> tuple[str, str]:
     """返回 (execution_route, execution_route_detail)；逐条显式，不静默跳过。
 
-    - ACTIVE_MECHANICAL / ACTIVE_SEMANTIC：第一档实执行（确定性执行器或
-      隔离语义审阅），绑定校验由 _validated_baseline_lineage 失败关闭承担；
+    - ACTIVE_MECHANICAL / ACTIVE_SEMANTIC：路线只从第一档执行路由权威读取。
+      该权威已按当前终态 lifecycle + check_methods + 语义证据角色绑定逐条
+      冻结，包含 ACTIVE_MECHANICAL 中「语义义务是唯一义务」的承接规则；
+      本函数不得再按生命周期单独判定，绑定校验由 _validated_baseline_lineage
+      失败关闭承担；
     - RETAINED_UNIMPLEMENTED 且含机械方法：机械候选档，执行器缺口明示；
     - 其余 RETAINED：语义审阅路由；
-    - 候选未决：失败关闭，不得路由。
+    - 生命周期未冻结：失败关闭，不得路由（候选品质标签本身不改变路由）。
     """
     lifecycle = rule.get("lifecycle_status")
     methods = sorted(set(rule.get("check_methods") or []))
-    if lifecycle == "ACTIVE_MECHANICAL":
-        return ROUTE_FIRST_TIER_STATIC, "terminal_governance_baseline_static"
-    if lifecycle == "ACTIVE_SEMANTIC":
-        return ROUTE_FIRST_TIER_SEMANTIC, "isolated_semantic_review"
+    if lifecycle in {"ACTIVE_MECHANICAL", "ACTIVE_SEMANTIC"}:
+        canonical_id = rule.get("canonical_id")
+        governed = _governed_route_rows().get(canonical_id)
+        if governed is None:
+            raise WorkflowError(
+                "FIRST_TIER_ROUTING_AUTHORITY_INVALID",
+                "激活规则缺少第一档执行路由: {id}".format(id=canonical_id),
+            )
+        if governed["revision_digest"] != rule.get("revision_digest"):
+            raise WorkflowError(
+                "FIRST_TIER_ROUTING_AUTHORITY_INVALID",
+                "激活规则的修订摘要与第一档执行路由不一致: {id}".format(
+                    id=canonical_id
+                ),
+            )
+        return governed["execution_route"], _governed_route_detail(governed)
     if lifecycle == "RETAINED_UNIMPLEMENTED":
         mechanical = sorted(set(methods) & MECHANICAL_CHECK_METHODS)
         if mechanical:
@@ -446,11 +554,21 @@ def method_assurance_routes() -> tuple[
             "first-tier execution routing",
         )
         rebuilt_rows = []
+        carried_rows = []
         seen_routing_identities: set[tuple[str, str]] = set()
         for raw in routing_authority.get("first_tier", []):
             if not isinstance(raw, dict):
                 raise ValueError("routing authority row is invalid")
-            if raw.get("execution_route") != ROUTE_FIRST_TIER_STATIC:
+            execution_route = raw.get("execution_route")
+            if execution_route not in {
+                ROUTE_FIRST_TIER_STATIC, ROUTE_FIRST_TIER_SEMANTIC,
+            }:
+                continue
+            if (
+                execution_route == ROUTE_FIRST_TIER_SEMANTIC
+                and raw.get("lifecycle_status") != "ACTIVE_MECHANICAL"
+            ):
+                # 语义路线上的非激活机械义务不持有方法路线身份。
                 continue
             canonical_id = raw.get("canonical_id")
             revision_digest = raw.get("revision_digest")
@@ -472,7 +590,7 @@ def method_assurance_routes() -> tuple[
             ):
                 raise ValueError("routing authority method row is invalid")
             seen_routing_identities.add(route_identity)
-            rebuilt_rows.append({
+            method_row = {
                 "canonical_id": canonical_id,
                 "revision_digest": revision_digest,
                 "baseline_rule_id": baseline_rule_id,
@@ -480,14 +598,20 @@ def method_assurance_routes() -> tuple[
                 "required_mechanical_methods": sorted(
                     set(methods) & MECHANICAL_CHECK_METHODS
                 ),
-            })
+            }
+            if execution_route == ROUTE_FIRST_TIER_SEMANTIC:
+                # 已批准承接：改由第一档语义审阅路线覆盖的激活机械义务仍持有
+                # 执行器绑定行——静态执行器按该行绑定执行，其终态由语义审阅
+                # 通道合并。该行身份与内容只从第一档执行路由权威读取，不在此
+                # 另立口径，也不免除任何激活义务的路线覆盖。
+                carried_rows.append(method_row)
+            else:
+                rebuilt_rows.append(method_row)
         rebuilt_rows.sort(key=lambda row: row["canonical_id"])
+        carried_rows.sort(key=lambda row: row["canonical_id"])
+        routing_rows = rebuilt_rows + carried_rows
         if (
             not rebuilt_rows
-            or any(
-                not row["required_mechanical_methods"]
-                for row in rebuilt_rows
-            )
             or routing != {
                 "source": METHOD_ASSURANCE_ROUTING_SOURCE_RELATIVE,
                 "first_tier_static": rebuilt_rows,
@@ -538,7 +662,7 @@ def method_assurance_routes() -> tuple[
             )
         canonical_methods[key] = sorted(methods)
     index: dict[tuple[str, str], dict[str, Any]] = {}
-    for row in rows:
+    for row in routing_rows:
         if not isinstance(row, dict) or set(row) != {
             "canonical_id", "revision_digest", "baseline_rule_id",
             "check_methods", "required_mechanical_methods",
@@ -775,11 +899,20 @@ def _profile_execution_plan(
     group_members = _semantic_group_members(registry)
     registered_group_ids = sorted(group_members)
     try:
-        profile, requested_group_ids = conformance_profiles.normalize_profile_request(
+        inventory_rule_ids = sorted({
+            row.get("canonical_id")
+            for row in canonical_applicability.get("rules", [])
+            if isinstance(row, dict) and isinstance(row.get("canonical_id"), str)
+        })
+        profile, requested_group_ids, requested_rule_ids = (
+            conformance_profiles.normalize_targeted_selection(
             getattr(args, "execution_profile", None),
             getattr(args, "semantic_group_ids", None),
+            getattr(args, "canonical_rule_ids", None),
             registered_group_ids,
-        )
+            inventory_rule_ids,
+            sorted(rule_by_canonical),
+        ))
     except ValueError as exc:
         raise WorkflowError("CONFORMANCE_PROFILE_INVALID", str(exc)) from exc
 
@@ -788,7 +921,16 @@ def _profile_execution_plan(
         for row in canonical_applicability.get("rules", [])
         if isinstance(row, dict) and isinstance(row.get("canonical_id"), str)
     }
-    in_scope_rule_ids = sorted(rule_by_canonical)
+    baseline_in_scope_rule_ids = sorted(rule_by_canonical)
+    # ``full`` is the one canonical-complete profile.  Its result identity is
+    # the complete authority inventory, not only the implementation-baseline
+    # carriers currently available to this target.  Other profiles retain the
+    # established baseline-derived scope.
+    in_scope_rule_ids = (
+        inventory_rule_ids
+        if profile == "full"
+        else baseline_in_scope_rule_ids
+    )
     deterministic_rule_ids = sorted(
         canonical_id
         for canonical_id in in_scope_rule_ids
@@ -809,6 +951,7 @@ def _profile_execution_plan(
             first_tier_semantic_rule_ids,
             group_members,
             requested_group_ids,
+            requested_rule_ids,
         )
     except ValueError as exc:
         raise WorkflowError("CONFORMANCE_PROFILE_INVALID", str(exc)) from exc
@@ -829,22 +972,47 @@ def _profile_execution_plan(
     else:
         selected_group_ids = []
 
+    revision_by_canonical: dict[str, str] = {}
+    for canonical_id in inventory_rule_ids:
+        revision_digest = applicability_by_id.get(canonical_id, {}).get(
+            "revision_digest"
+        )
+        if not isinstance(revision_digest, str):
+            baseline = rule_by_canonical.get(canonical_id)
+            lineage = (
+                canonical_lineage.get(baseline["ruleId"])
+                if baseline is not None
+                else None
+            )
+            revision_digest = (
+                lineage.get("canonical_revision_digest")
+                if isinstance(lineage, dict)
+                else None
+            )
+        if isinstance(revision_digest, str):
+            revision_by_canonical[canonical_id] = revision_digest
+    if set(revision_by_canonical) != set(inventory_rule_ids):
+        raise WorkflowError(
+            "CONFORMANCE_PROFILE_SCOPE_INVALID",
+            "canonical inventory 缺少精确 revision digest",
+        )
+
     def identity_rows(canonical_ids: list[str]) -> list[dict[str, str]]:
         rows: list[dict[str, str]] = []
         for canonical_id in sorted(canonical_ids):
-            baseline = rule_by_canonical[canonical_id]
-            lineage = canonical_lineage[baseline["ruleId"]]
             rows.append({
                 "canonical_id": canonical_id,
-                "revision_digest": lineage["canonical_revision_digest"],
+                "revision_digest": revision_by_canonical[canonical_id],
             })
         return rows
 
     return {
         "execution_profile": profile,
         "requested_semantic_group_ids": requested_group_ids,
+        "requested_canonical_rule_ids": requested_rule_ids,
         "selected_semantic_group_ids": selected_group_ids,
         "in_scope_rule_ids": in_scope_rule_ids,
+        "baseline_in_scope_rule_ids": baseline_in_scope_rule_ids,
         "selected_rule_ids": selected_rule_ids,
         "deterministic_rule_ids": deterministic_rule_ids,
         "first_tier_semantic_rule_ids": first_tier_semantic_rule_ids,
@@ -860,6 +1028,7 @@ def _profile_execution_plan(
         "semantic_group_registry_digest": registry_digest,
         "group_members": group_members,
         "rule_by_canonical": rule_by_canonical,
+        "revision_by_canonical": revision_by_canonical,
         "auxiliary_rule_ids": sorted(auxiliary_rule_ids),
     }
 
@@ -868,35 +1037,41 @@ def _retained_targeted_trial_ids(
     plan: dict[str, Any],
     canonical_projection: dict[str, Any],
 ) -> list[str]:
-    """Derive canonical-only retained trial members for explicit targeted runs.
+    """Derive canonical-only retained trial members for targeted or full runs.
 
     The implementation baseline intentionally excludes retained rules.  A
     targeted trial may still reach a retained rule when the Registry selects
-    it and the packaged semantic evidence binding is present.  This helper
-    only returns canonical identities; it never changes executable
-    applicability or creates a baseline carrier.
+    it.  ``full`` reaches every retained rule with an existing semantic or
+    behavior-verification binding.  This helper only returns canonical
+    identities; it never changes executable applicability or creates a
+    baseline carrier.
     """
-    if plan["execution_profile"] != "targeted":
+    if plan["execution_profile"] not in {"targeted", "full"}:
         return []
-    requested = set(plan["requested_semantic_group_ids"])
-    group_members = plan["group_members"]
-    requested_members = {
-        canonical_id
-        for group_id in requested
-        for canonical_id in group_members[group_id]
-    }
+    if plan["execution_profile"] == "full":
+        requested_members = set(plan["selected_rule_ids"])
+    else:
+        requested = set(plan["requested_semantic_group_ids"])
+        group_members = plan["group_members"]
+        requested_members = {
+            canonical_id
+            for group_id in requested
+            for canonical_id in group_members[group_id]
+        }
     projection_rules = [
         row for row in canonical_projection.get("rules", [])
         if isinstance(row, dict)
         and row.get("canonical_id") in requested_members
         and row.get("lifecycle_status") == "RETAINED_UNIMPLEMENTED"
-        and "semantic_review" in (row.get("check_methods") or [])
+        and set(row.get("check_methods") or []).intersection(
+            semantic_review.NON_MECHANICAL_CHECK_METHODS
+        )
     ]
     descriptors = semantic_review.retained_trial_descriptors(
         canonical_projection.get("rules", []),
         {row["canonical_id"] for row in projection_rules},
     )
-    return [row["canonical_id"] for row in descriptors]
+    return sorted({row["canonical_id"] for row in descriptors})
 
 
 def _profile_not_run_results(
@@ -926,6 +1101,61 @@ def _profile_not_run_results(
             },
         })
     return rows
+
+
+def _full_canonical_only_scope_results(
+    plan: dict[str, Any],
+    canonical_applicability: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Project selected full identities that legitimately have no baseline carrier.
+
+    Active applicable rules remain on the verified baseline lineage path.
+    Retained rules are produced by the retained-trial path.  This projection
+    therefore covers only authority-backed non-applicability and any remaining
+    canonical identity that cannot yet be executed.  It never invents a
+    baseline identity.
+    """
+    if plan["execution_profile"] != "full":
+        return []
+    baseline_ids = set(plan["baseline_in_scope_rule_ids"])
+    retained_ids = set(plan.get("retained_trial_rule_ids", []))
+    selected = set(plan["selected_rule_ids"])
+    rows: list[dict[str, Any]] = []
+    for applicability in canonical_applicability.get("rules", []):
+        canonical_id = applicability.get("canonical_id")
+        if (
+            canonical_id not in selected
+            or canonical_id in baseline_ids
+            or canonical_id in retained_ids
+        ):
+            continue
+        disposition = applicability.get("disposition")
+        if disposition == "not_applicable":
+            status = "NOT_APPLICABLE"
+            reason_code = "CANONICAL_SCOPE_NOT_APPLICABLE"
+        else:
+            status = "EVIDENCE_MISSING"
+            reason_code = "CANONICAL_EXECUTION_CARRIER_MISSING"
+        rows.append({
+            "rule_id": canonical_id,
+            "rule_revision_digest": applicability["revision_digest"],
+            "canonical_id": canonical_id,
+            "canonical_only": True,
+            "status": status,
+            "evidence": {
+                "reason_code": reason_code,
+                "disposition": disposition,
+                "reason": applicability.get("reason"),
+                "requested_target_type": applicability.get(
+                    "requested_target_type"
+                ),
+                "requested_platform": applicability.get(
+                    "requested_platform"
+                ),
+            },
+            "worker": "canonical-applicability",
+        })
+    return sorted(rows, key=lambda row: row["canonical_id"])
 
 
 def _semantic_profile_preflight(
@@ -958,7 +1188,7 @@ def _semantic_profile_preflight(
             group_by_rule[rule["canonical_id"]] = group["group_id"]
     in_scope_group_rules = set(plan["in_scope_rule_ids"]).intersection(group_by_rule)
     retained_trial_ids = set(plan.get("retained_trial_rule_ids", []))
-    in_scope_group_rules.update(retained_trial_ids)
+    in_scope_group_rules.update(retained_trial_ids.intersection(group_by_rule))
     if plan["execution_profile"] == "targeted":
         in_scope_group_rules.intersection_update(
             set(plan["selected_rule_ids"]) | retained_trial_ids
@@ -1017,7 +1247,7 @@ def _semantic_profile_preflight(
             "group_id": group_by_rule[canonical_id],
             "revision_digest": canonical["revision_digest"],
             "semantic_review_required": bool(
-                "semantic_review" in methods or "behavior_verification" in methods
+                set(methods) & set(semantic_review.NON_MECHANICAL_CHECK_METHODS)
             ),
             "scope_disposition": scope_disposition,
             "citable_scope_facts": citable_scope_facts,
@@ -1147,7 +1377,8 @@ def _semantic_review_candidate_descriptors(
     rules must be selected and READY in the local preflight.  The registry
     covers both retained and active semantic execution routes.  Deterministic
     routes that also declare a semantic method stay outside this grouping;
-    only ``full`` completes that additional method from the existing binding.
+    ``full`` completes that additional method, while exact ``targeted`` does
+    so only when that canonical rule was explicitly requested.
     """
     if plan["execution_profile"] not in {"targeted", "full"}:
         return []
@@ -1161,11 +1392,16 @@ def _semantic_review_candidate_descriptors(
         and row["evidence_role_status"] == "READY"
         and row["applicability_preflight"] != "NOT_APPLICABLE"
     }
-    ungrouped_full = (
-        selected.intersection(plan["deterministic_rule_ids"])
-        if plan["execution_profile"] == "full"
-        else set()
-    )
+    if plan["execution_profile"] == "full":
+        grouped_ids = {
+            row["canonical_id"] for row in preflight["records"]
+        }
+        ungrouped_selected = selected.intersection(
+            set(plan["deterministic_rule_ids"])
+            | (set(plan.get("retained_trial_rule_ids", [])) - grouped_ids)
+        )
+    else:
+        ungrouped_selected = set(plan.get("requested_canonical_rule_ids", []))
     candidates: list[dict[str, Any]] = []
     for descriptor in descriptors:
         canonical_id = descriptor["canonical_id"]
@@ -1174,10 +1410,90 @@ def _semantic_review_candidate_descriptors(
         required_roles = set(descriptor["required_evidence_roles"])
         if (
             canonical_id in ready_group_rules
-            or canonical_id in ungrouped_full
+            or canonical_id in ungrouped_selected
         ) and required_roles <= covered_roles:
             candidates.append({**descriptor, "evidence_refs": evidence_refs})
-    return sorted(candidates, key=lambda row: row["canonical_id"])
+    return sorted(
+        candidates,
+        key=lambda row: (row["canonical_id"], row["check_method"]),
+    )
+
+
+def _selected_nonmechanical_obligations(
+    plan: dict[str, Any],
+    canonical_rules: list[dict[str, Any]],
+) -> dict[tuple[str, str], list[str]]:
+    """Derive selected non-mechanical methods from the verified projection."""
+    selected = set(plan.get("selected_rule_ids", []))
+    selected.update(plan.get("retained_trial_rule_ids", []))
+    obligations: dict[tuple[str, str], list[str]] = {}
+    seen_ids: set[str] = set()
+    for row in canonical_rules:
+        if not isinstance(row, dict):
+            continue
+        canonical_id = row.get("canonical_id")
+        if canonical_id not in selected:
+            continue
+        revision_digest = row.get("revision_digest")
+        methods = row.get("check_methods")
+        if (
+            not isinstance(canonical_id, str)
+            or canonical_id in seen_ids
+            or not isinstance(revision_digest, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", revision_digest)
+            or not isinstance(methods, list)
+        ):
+            raise WorkflowError(
+                "SEMANTIC_REVIEW_REQUEST_INVALID",
+                "selected canonical method identity is invalid",
+            )
+        seen_ids.add(canonical_id)
+        nonmechanical = sorted(
+            set(methods)
+            & set(semantic_review.NON_MECHANICAL_CHECK_METHODS)
+        )
+        if nonmechanical:
+            obligations[(canonical_id, revision_digest)] = nonmechanical
+    return dict(sorted(obligations.items()))
+
+
+def _nonmechanical_obligation_statuses(
+    canonical_id: str,
+    revision_digest: str,
+    check_methods: list[str],
+    finalized_reviews: dict[tuple[str, str, str], dict[str, Any]],
+    scheduled_review_identities: set[tuple[str, str, str]],
+    missing_evidence_roles: list[str],
+) -> dict[str, str]:
+    """Project every non-mechanical method without allowing substitution."""
+    statuses: dict[str, str] = {}
+    for check_method in sorted(check_methods):
+        identity = (canonical_id, revision_digest, check_method)
+        review = finalized_reviews.get(identity)
+        if review is not None:
+            statuses[check_method] = review["status"]
+        elif missing_evidence_roles:
+            statuses[check_method] = "EVIDENCE_MISSING"
+        elif identity in scheduled_review_identities:
+            statuses[check_method] = "REVIEW_REQUIRED"
+        else:
+            statuses[check_method] = "NOT_RUN"
+    return statuses
+
+
+def _retained_mechanical_gap_statuses(
+    canonical_rule: dict[str, Any],
+) -> dict[str, str]:
+    """Keep every unimplemented retained mechanical method fail-closed."""
+    if canonical_rule.get("lifecycle_status") != "RETAINED_UNIMPLEMENTED":
+        return {}
+    return {
+        method: "EVIDENCE_MISSING"
+        for method in sorted(
+            set(canonical_rule.get("check_methods") or [])
+            & MECHANICAL_CHECK_METHODS
+        )
+    }
 
 
 def _selected_semantic_missing_evidence_roles(
@@ -1199,6 +1515,9 @@ def _selected_semantic_missing_evidence_roles(
     selected_semantic = grouped_selected
     if plan["execution_profile"] == "full":
         selected_semantic.update(plan["deterministic_rule_ids"])
+        selected_semantic.update(plan.get("retained_trial_rule_ids", []))
+    elif plan.get("requested_canonical_rule_ids"):
+        selected_semantic.update(plan["requested_canonical_rule_ids"])
     missing_by_id: dict[str, list[str]] = {}
     for descriptor in descriptors:
         canonical_id = descriptor["canonical_id"]
@@ -1228,6 +1547,54 @@ def _semantic_registry_indexes(
     return group_by_rule, family_by_rule
 
 
+def _bounded_security_observation(
+    target: Path | None,
+    canonical_projection: dict[str, Any],
+) -> dict[str, Any]:
+    """Project the existing checker's bounded scan without exposing matches."""
+    revision = next(
+        (
+            row.get("revision_digest")
+            for row in canonical_projection.get("rules", [])
+            if row.get("canonical_id") == "SFA-SECRET-003"
+        ),
+        None,
+    )
+    expected_version = f"SFA-SECRET-003@{revision}" if revision else None
+    if target is not None:
+        scan = checker._scan(target)
+        observation = scan.get("material_security") if isinstance(scan, dict) else None
+        if isinstance(observation, dict):
+            if observation.get("redaction_rule_version") == expected_version:
+                return observation
+    return {
+        "scanner": {
+            "method_id": checker.CHECKER_METHOD_ID,
+            "version": checker.CHECKER_VERSION,
+        },
+        "scope": "enumerated-audit-text-materials-only",
+        "status": "EVIDENCE_MISSING",
+        "paths": [],
+        "path_count": 0,
+        "unavailable": [{
+            "path": ".",
+            "reason": (
+                "bounded_material_root_unavailable"
+                if target is None
+                else "material_scan_unavailable"
+            ),
+        }],
+        "findings": [],
+        "finding_count": 0,
+        "finding_limit": checker._MATERIAL_FINDING_LIMIT,
+        "truncated": False,
+        "credential_shaped_or_sensitive_match_present": False,
+        "absence_claim_scope": "scanned_paths_only",
+        "redaction_rule_version": expected_version,
+        "redaction_applied": False,
+    }
+
+
 def _context_document(
     canonical_ids: list[str],
     *,
@@ -1238,9 +1605,9 @@ def _context_document(
     platform: str,
     target_digest: str,
 ) -> dict[str, Any]:
-    descriptor_by_id = {
-        row["canonical_id"]: row for row in request["rules"]
-    }
+    descriptor_by_id: dict[str, list[dict[str, Any]]] = {}
+    for row in request["rules"]:
+        descriptor_by_id.setdefault(row["canonical_id"], []).append(row)
     group_by_rule, family_by_rule = _semantic_registry_indexes(registry)
     families = sorted({
         family_by_rule.get(canonical_id, "first-tier-semantic")
@@ -1251,50 +1618,92 @@ def _context_document(
             "SEMANTIC_CONTEXT_INVALID",
             "一个语义上下文不能混入多个 review family",
         )
-    rules = [descriptor_by_id[canonical_id] for canonical_id in canonical_ids]
+    rules = [
+        descriptor
+        for canonical_id in canonical_ids
+        for descriptor in sorted(
+            descriptor_by_id[canonical_id], key=lambda row: row["check_method"]
+        )
+    ]
     identity_rows = [
         {
             "canonical_id": row["canonical_id"],
             "revision_digest": row["canonical_revision_digest"],
+            "check_method": row["check_method"],
             "binding_id": row["binding_id"],
+        }
+        for row in rules
+    ]
+    control_rules = [
+        {key: value for key, value in row.items() if key != "evidence_refs"}
+        for row in rules
+    ]
+    untrusted_rows = [
+        {
+            "canonical_id": row["canonical_id"],
+            "binding_id": row["binding_id"],
+            "data_only": True,
+            "evidence_refs": row.get("evidence_refs", []),
         }
         for row in rules
     ]
     return {
         "kind": "skill-family-audit.semantic-review-context",
         "schema_version": "1.0.0",
-        "parent_review_request_digest": request["review_request_digest"],
-        "foundation_task_digest": request["foundation_task_digest"],
-        "target_type": target_type,
-        "platform": platform,
-        "target_digest": target_digest,
-        "execution_profile": plan["execution_profile"],
-        "review_family": families[0],
-        "group_ids": sorted({
-            group_by_rule[canonical_id]
-            for canonical_id in canonical_ids
-            if canonical_id in group_by_rule
-        }),
-        "context_rule_set_digest": foundation_document_digest(identity_rows),
-        "rules": rules,
-        "review_semantics": {
-            "authority": "interpret_only_the_frozen_rule_and_evidence",
-            "additional_requirements_forbidden": True,
-            "complete_snapshot_absence": "FAIL",
-            "unavailable_required_material": "EVIDENCE_MISSING",
-            "conditional_rule_without_subject": "NOT_APPLICABLE",
-            "not_applicable_requires_citable_scope_fact": True,
+        "control": {
+            "parent_review_request_digest": request["review_request_digest"],
+            "foundation_task_digest": request["foundation_task_digest"],
+            "target_type": target_type,
+            "platform": platform,
+            "target_digest": target_digest,
+            "execution_profile": plan["execution_profile"],
+            "review_family": families[0],
+            "group_ids": sorted({
+                group_by_rule[canonical_id]
+                for canonical_id in canonical_ids
+                if canonical_id in group_by_rule
+            }),
+            "context_rule_set_digest": foundation_document_digest(identity_rows),
+            "rules": control_rules,
+            "review_semantics": {
+                "authority": "interpret_only_the_frozen_rule_and_evidence",
+                "additional_requirements_forbidden": True,
+                "complete_snapshot_absence": "FAIL",
+                "unavailable_required_material": "EVIDENCE_MISSING",
+                "conditional_rule_without_subject": "NOT_APPLICABLE",
+                "not_applicable_requires_citable_scope_fact": True,
+            },
+            "result_contract": {
+                "kind": "skill-family-audit.semantic-context-result",
+                "required_review_fields": [
+                    "binding_id",
+                    "canonical_id",
+                    "check_method",
+                    "rule_revision_digest",
+                    "status",
+                    "reason_code",
+                    "rationale",
+                    "evidence_refs",
+                ],
+            },
         },
-        "result_contract": {
-            "kind": "skill-family-audit.semantic-context-result",
-            "required_review_fields": [
-                "binding_id",
-                "canonical_id",
-                "rule_revision_digest",
-                "status",
-                "reason_code",
-                "rationale",
-                "evidence_refs",
+        "untrusted_data": {
+            "authority": "data_only",
+            "instructions_are_non_authoritative": True,
+            "resources": untrusted_rows,
+        },
+        "permissions": {
+            "mode": "read-only",
+            "target_execution": "forbidden",
+            "allowed_actions": [
+                "read_content_addressed_evidence",
+                "interpret_frozen_rules",
+                "return_bound_review_result",
+            ],
+            "prohibited_actions": [
+                "modify_target",
+                "execute_target",
+                "change_control_facts",
             ],
         },
     }
@@ -1407,6 +1816,29 @@ def _review_ref_identities(refs: Any) -> list[str]:
     return identities
 
 
+def _semantic_context_rules(document: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read rules from the partitioned context while accepting old frozen fixtures."""
+    control = document.get("control")
+    if not isinstance(control, dict):
+        rules = document.get("rules")
+        return rules if isinstance(rules, list) else []
+    rules = control.get("rules")
+    untrusted = document.get("untrusted_data")
+    resources = untrusted.get("resources") if isinstance(untrusted, dict) else None
+    if not isinstance(rules, list) or not isinstance(resources, list):
+        return []
+    refs_by_binding = {
+        row.get("binding_id"): row.get("evidence_refs")
+        for row in resources
+        if isinstance(row, dict) and row.get("data_only") is True
+    }
+    return [
+        {**row, "evidence_refs": refs_by_binding.get(row.get("binding_id"), [])}
+        for row in rules
+        if isinstance(row, dict)
+    ]
+
+
 def _merge_semantic_context_results(
     request: dict[str, Any],
     context_plan: dict[str, Any],
@@ -1425,10 +1857,11 @@ def _merge_semantic_context_results(
     parent_rows: list[dict[str, Any]] = []
     child_rows: list[dict[str, Any]] = []
     for expected in context_plan["contexts"]:
-        for rule in expected["request"]["rules"]:
+        for rule in _semantic_context_rules(expected["request"]):
             parent_rows.append({
                 "canonical_id": rule["canonical_id"],
                 "revision_digest": rule["canonical_revision_digest"],
+                "check_method": rule["check_method"],
                 "binding_id": rule["binding_id"],
                 "evidence_refs": _review_ref_identities(rule["evidence_refs"]),
             })
@@ -1452,9 +1885,26 @@ def _merge_semantic_context_results(
             raise WorkflowError(
                 "SEMANTIC_CONTEXT_RESULT_INVALID", "context reviews 必须是数组"
             )
-        if {row.get("canonical_id") for row in reviews if isinstance(row, dict)} != set(
-            expected["canonical_ids"]
-        ) or len(reviews) != len(expected["canonical_ids"]):
+        expected_review_ids = {
+            (
+                row["canonical_id"],
+                row["canonical_revision_digest"],
+                row["check_method"],
+            )
+            for row in _semantic_context_rules(expected["request"])
+        }
+        observed_review_ids = {
+            (
+                row.get("canonical_id"),
+                row.get("rule_revision_digest"),
+                row.get("check_method"),
+            )
+            for row in reviews if isinstance(row, dict)
+        }
+        if (
+            observed_review_ids != expected_review_ids
+            or len(reviews) != len(expected_review_ids)
+        ):
             raise WorkflowError(
                 "SEMANTIC_CONTEXT_RESULT_INVALID",
                 "context reviews 未精确覆盖冻结的规则子集",
@@ -1469,6 +1919,7 @@ def _merge_semantic_context_results(
             child_rows.append({
                 "canonical_id": review.get("canonical_id"),
                 "revision_digest": review.get("rule_revision_digest"),
+                "check_method": review.get("check_method"),
                 "binding_id": review.get("binding_id"),
                 "evidence_refs": _review_ref_identities(
                     review.get("evidence_refs")
@@ -1485,8 +1936,18 @@ def _merge_semantic_context_results(
         )
     except ValueError as exc:
         raise WorkflowError("SEMANTIC_CONTEXT_RESULT_INVALID", str(exc)) from exc
-    ordered_ids = [row["canonical_id"] for row in validated]
-    review_by_id = {row["canonical_id"]: row for row in child_reviews}
+    ordered_ids = [
+        (row["canonical_id"], row["revision_digest"], row["check_method"])
+        for row in validated
+    ]
+    review_by_id = {
+        (
+            row["canonical_id"],
+            row["rule_revision_digest"],
+            row["check_method"],
+        ): row
+        for row in child_reviews
+    }
     payload = {
         "schema_version": "2.0.0",
         "kind": "skill-family-audit.semantic-review-result",
@@ -1496,7 +1957,7 @@ def _merge_semantic_context_results(
         "review_request_digest": request["review_request_digest"],
         "evidence_set_digest": request["evidence_set_digest"],
         "reviewed_rule_set_digest": request["reviewed_rule_set_digest"],
-        "reviews": [review_by_id[canonical_id] for canonical_id in ordered_ids],
+        "reviews": [review_by_id[identity] for identity in ordered_ids],
     }
     return payload, {
         # Bound context results prove what this run consumed, not whether the
@@ -1653,15 +2114,23 @@ def canonical_rule_applicability(
             or "all" in platform_scope
             or platform in platform_scope
         )
-        candidate_undetermined = (
-            lifecycle_status == "candidate"
-            or effect == "candidate_undetermined"
+        # 候选品质标签只是如实披露的质量描述，不构成执行封禁：可执行性由
+        # 生命周期是否冻结、目标类型与宿主范围是否匹配决定。
+        candidate_label = (
+            effect == "candidate_undetermined"
             or adoption_mode == "candidate_undetermined"
             or "candidate_undetermined" in platform_scope
         )
+        # 只有生命周期未冻结才失败关闭：未冻结规则不得持有执行路由。
+        lifecycle_unfrozen = lifecycle_status not in {
+            "ACTIVE_MECHANICAL",
+            "ACTIVE_SEMANTIC",
+            "RETAINED_UNIMPLEMENTED",
+        }
+        candidate_undetermined = candidate_label or lifecycle_unfrozen
         retained_unimplemented = lifecycle_status == "RETAINED_UNIMPLEMENTED"
         active = lifecycle_status in {"ACTIVE_MECHANICAL", "ACTIVE_SEMANTIC"}
-        executable = active and not candidate_undetermined and not retained_unimplemented and (
+        executable = active and (
             target_type == "project_adoption"
             or (
                 target_type == "family_source"
@@ -1669,10 +2138,10 @@ def canonical_rule_applicability(
             )
         ) and platform_matches
         execution_route, execution_route_detail = canonical_rule_execution_route(rule)
-        if candidate_undetermined and execution_route != ROUTE_UNROUTED_CANDIDATE:
+        if lifecycle_unfrozen != (execution_route == ROUTE_UNROUTED_CANDIDATE):
             raise WorkflowError(
                 "CANONICAL_RULE_APPLICABILITY_INVALID",
-                f"候选未决规则不得持有执行路由: {canonical_id}",
+                f"生命周期冻结状态与执行路由不一致，禁止静默: {canonical_id}",
             )
         rows.append({
             "canonical_id": canonical_id,
@@ -1698,7 +2167,8 @@ def canonical_rule_applicability(
                 f"规则 platform_scope 不包含请求宿主 {platform}" if not platform_matches else
                 "终态五轴已冻结并适用于当前目标" if executable else
                 "规则已保留但尚未绑定可执行实现，禁止执行" if retained_unimplemented else
-                "候选权威尚未冻结五轴，禁止执行" if candidate_undetermined else
+                "候选品质标签如实披露，不作为执行封禁依据；本规则未进入本次可执行集合"
+                if candidate_undetermined else
                 "终态规则不适用于当前目标"
             ),
         })
@@ -2534,6 +3004,33 @@ def validate_plugin_project_observation(observation: dict[str, Any]) -> None:
             f"{scope} scope 必须具有插件身份",
         )
 
+# 平台分布目录：宿主 manifest 位于插件根时，根 skills/ 逻辑技能在各平台
+# adapters/<平台>/skills/** 下的同名拷贝视为平台分布拷贝（分诊裁决
+# triage-duplicate-logical-skill-id.md §3；豁免仅当同一逻辑 ID 同时由根
+# skills/ 声明，根声明为准；根无对应声明或宿主 manifest 缺失时维持 fail-closed）。
+_PLATFORM_DISTRIBUTION_ADAPTER_DIRS = frozenset(
+    {"claude", "codex", "workbuddy", "kimi-code"}
+)
+
+
+def _is_platform_distribution_skill_copy(path: Path, root: Path) -> bool:
+    """判定 path 是否位于 adapters/<已知平台>/skills/** 平台分布拷贝区。
+
+    调用方保证 path 是既有普通文件且非符号链接；本函数只做相对布局判定，
+    不做文件系统访问。
+    """
+    try:
+        parts = path.relative_to(root).parts
+    except ValueError:
+        return False
+    return (
+        len(parts) >= 4
+        and parts[0] == "adapters"
+        and parts[1] in _PLATFORM_DISTRIBUTION_ADAPTER_DIRS
+        and parts[2] == "skills"
+    )
+
+
 def observe_plugin_project(
     target: Path,
     target_type: str,
@@ -2721,6 +3218,45 @@ def observe_plugin_project(
                 for part in path.relative_to(root).parts
             )
         ]
+        # 宿主 manifest 认领的平台分布拷贝豁免（仅 observe 区最小改动）。
+        # 条件：根存在宿主 manifest、且同一逻辑 ID 同时由根 skills/ 声明；
+        # 豁免的拷贝不进入 skills 列表（根声明为准）。根无对应声明或宿主
+        # manifest 缺失时维持 fail-closed（拷贝按普通声明参与重复判定）。
+        distribution_copies = [
+            path
+            for path in skill_paths
+            if _is_platform_distribution_skill_copy(path, root)
+        ]
+        if (
+            distribution_copies
+            and not target.is_file()
+            and any(
+                (root / relative).is_file()
+                and not (root / relative).is_symlink()
+                for relative in host_manifest_relatives
+            )
+        ):
+            root_skills_dir = root / "skills"
+            root_declared_ids: set[str] = set()
+            if root_skills_dir.is_dir() and not root_skills_dir.is_symlink():
+                for declared in sorted(root_skills_dir.rglob("SKILL.md")):
+                    if (
+                        declared.is_file()
+                        and not declared.is_symlink()
+                        and not any(
+                            part in PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS
+                            for part in declared.relative_to(root_skills_dir).parts
+                        )
+                    ):
+                        root_declared_ids.add(_frontmatter_identity(declared))
+            if root_declared_ids:
+                exempt: set[Path] = {
+                    path
+                    for path in distribution_copies
+                    if _frontmatter_identity(path) in root_declared_ids
+                }
+                if exempt:
+                    skill_paths = [path for path in skill_paths if path not in exempt]
     skills = []
     seen_ids: dict[str, str] = {}
     for skill in skill_paths:
@@ -3520,19 +4056,41 @@ def _gmin_static_outcome(
     complete = profile_result.get("foundation_profile_complete") is True
     steps = profile_result.get("steps", [])
     if rule_id == "gmin:compat-status-evidence":
-        required_steps = {
-            "project-profile-schema",
-            "adoption-pin-digests",
-            "overrides-policy",
-        }
+        schema_steps = {"project-profile-schema", "overrides-policy"}
+        digest_steps = {"adoption-pin-digests"}
         checks = {
             "spi_code": profile_result.get("code"),
             "steps": steps,
         }
-        status_ok = complete and required_steps <= set(steps)
+        observed_steps = set(steps)
+        schema_ok = complete and schema_steps <= observed_steps
+        digest_ok = complete and digest_steps <= observed_steps
+        status_ok = schema_ok and digest_ok
         return {
             "status": "PASS" if status_ok else "FAIL",
             "evidence": {"foundation_complete": complete, "checks": checks},
+            "check_method_subresults": [
+                {
+                    "check_method": "schema_validation",
+                    "status": "PASS" if schema_ok else "FAIL",
+                    "observation_source": "foundation_profile_schema_and_policy_steps",
+                    "evidence": {
+                        "foundation_complete": complete,
+                        "required_steps": sorted(schema_steps),
+                        "observed_steps": steps,
+                    },
+                },
+                {
+                    "check_method": "digest_verification",
+                    "status": "PASS" if digest_ok else "FAIL",
+                    "observation_source": "foundation_profile_adoption_pin_digest_step",
+                    "evidence": {
+                        "foundation_complete": complete,
+                        "required_steps": sorted(digest_steps),
+                        "observed_steps": steps,
+                    },
+                },
+            ],
         }
     if rule_id == "gmin:harness-authority-dependencies":
         packages = (
@@ -3595,6 +4153,20 @@ def _gmin_static_outcome(
         return {
             "status": "NOT_APPLICABLE",
             "evidence": {"reason_code": "CONTRACT_DEPRECATED_D8", "missing": []},
+            "check_method_subresults": [
+                {
+                    "check_method": "schema_validation",
+                    "status": "NOT_APPLICABLE",
+                    "observation_source": "deprecated_family_migration_contract",
+                    "evidence": {"reason_code": "CONTRACT_DEPRECATED_D8"},
+                },
+                {
+                    "check_method": "digest_verification",
+                    "status": "NOT_APPLICABLE",
+                    "observation_source": "deprecated_family_migration_contract",
+                    "evidence": {"reason_code": "CONTRACT_DEPRECATED_D8"},
+                },
+            ],
         }
     if rule_id == "gmin:profile-composition-conflicts":
         required_sections = {
@@ -3718,11 +4290,10 @@ def _w2b1_executor_outcome(
         )
     try:
         outcome = executors.execute(rule_id, ctx)
-        # behavior_verification 是非机械方法：受管路由不提升该半区（BIND-0558），
-        # 其观测由生产分发器直调与冻结门禁收据独立供给，工作域内经 finalized
-        # review 通道合成。受信行为行必须保持 dispatcher 合成的 NOT_RUN 形态；
-        # rule_method_assurance 对 executor 自产观测声明非机械方法的行为判
-        # TRUSTED_OBSERVATION_INVALID，聚合状态也不得被行为半区污染
+        # 非机械半区由受管路由与 finalized review 通道承接，机械执行器自产的
+        # 观测不得提升为结论（BIND-0558）。behavior_verification 已从当前权威的
+        # check_methods 剥除，运行认证退出后其观测更不构成规则结论；保留该剔除
+        # 边界，使任何执行器自产的非机械观测都不会污染聚合机械状态
         # （见 test_negative_commands_never_ran_fails 的反污染合同）。
         outcome.pop("behavior_verification_result", None)
         return outcome
@@ -3944,6 +4515,31 @@ def _canonical_guidance_from_results(
     return aggregates
 
 
+def _combine_route_status(statuses: set[str]) -> str:
+    """行级规则终态聚合阶梯（route method ledger + executor 行状态的并集判定）。
+
+    FAIL 优先；任何 EVIDENCE_MISSING/NOT_RUN 混合 fail-closed 为
+    EVIDENCE_MISSING；仅 {PASS}、仅 {NOT_APPLICABLE} 各自直通；聚合阶梯缺口
+    闭合（sfa-814 Batch A 实证）：behavior_verification 是非机械半区
+    （BIND-0558），受信 NOT_APPLICABLE 经 finalized review 通道合成并已投影到
+    assurance 台账（TRUSTED_OBSERVED_NOT_PROVEN），故 {PASS, NOT_APPLICABLE}
+    组合 = 机械 static PASS + 行为半区受信 NA，无 FAIL/EVIDENCE_MISSING/NOT_RUN；
+    SPEC §5.1 关闭标准允许以可核对适用性事实判 NOT_APPLICABLE，该混合按
+    NOT_APPLICABLE 收口。其余组合一律 REVIEW_REQUIRED，不做放宽。
+    """
+    if "FAIL" in statuses:
+        return "FAIL"
+    if statuses & {"EVIDENCE_MISSING", "NOT_RUN"}:
+        return "EVIDENCE_MISSING"
+    if statuses == {"PASS"}:
+        return "PASS"
+    if statuses == {"NOT_APPLICABLE"}:
+        return "NOT_APPLICABLE"
+    if statuses == {"PASS", "NOT_APPLICABLE"}:
+        return "NOT_APPLICABLE"
+    return "REVIEW_REQUIRED"
+
+
 def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
     if not args.run_id:
         raise WorkflowError(
@@ -4139,6 +4735,8 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         parameters["execution_profile"] = args.execution_profile
     if getattr(args, "semantic_group_ids", None) is not None:
         parameters["semantic_group_ids"] = args.semantic_group_ids
+    if getattr(args, "canonical_rule_ids", None) is not None:
+        parameters["canonical_rule_ids"] = args.canonical_rule_ids
     _validate_method_parameters(parameters)
     semantic_target_digest = (
         evidence_set_digest
@@ -4160,7 +4758,15 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         profile_plan.get("retained_trial_rule_ids", []),
     )
     all_semantic_descriptors.extend(retained_descriptors)
-    all_semantic_descriptors.sort(key=lambda row: row["canonical_id"])
+    all_semantic_descriptors.sort(
+        key=lambda row: (row["canonical_id"], row["check_method"])
+    )
+    selected_nonmechanical_obligations = (
+        _selected_nonmechanical_obligations(
+            profile_plan,
+            assurance_canonical_projection.get("rules", []),
+        )
+    )
     internal_review_request: dict[str, Any] | None = None
     foundation_task_digest = getattr(args, "foundation_task_digest", None)
     if getattr(args, "semantic_review_preflight", False) and (
@@ -4230,6 +4836,10 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
             )
         except semantic_review.SemanticReviewError as exc:
             raise WorkflowError(exc.code, str(exc)) from exc
+    scheduled_review_identities = {
+        semantic_review.review_identity(row)
+        for row in (internal_review_request or {}).get("rules", [])
+    }
     injected_spi_root = getattr(args, "foundation_profile_spi_root", None)
     if injected_spi_root is not None:
         injected_spi_root = Path(injected_spi_root)
@@ -4283,7 +4893,7 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         target,
         args.target_type,
     )
-    internal_semantic_reviews: dict[str, dict[str, Any]] = {}
+    internal_semantic_reviews: dict[tuple[str, str, str], dict[str, Any]] = {}
     internal_semantic_binding: dict[str, Any] | None = None
     internal_payload = getattr(args, "internal_semantic_review", None)
     internal_context_results = getattr(
@@ -4342,41 +4952,85 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         except semantic_review.SemanticReviewError as exc:
             raise WorkflowError(exc.code, str(exc)) from exc
     retained_trial_results: list[dict[str, Any]] = []
+    canonical_by_id = {
+        row["canonical_id"]: row
+        for row in assurance_canonical_projection.get("rules", [])
+        if isinstance(row, dict) and isinstance(row.get("canonical_id"), str)
+    }
     preflight_by_id = {
         row["canonical_id"]: row
         for row in semantic_profile_preflight.get("records", [])
     }
+    retained_by_id: dict[str, list[dict[str, Any]]] = {}
     for descriptor in retained_descriptors:
-        canonical_id = descriptor["canonical_id"]
-        internal = internal_semantic_reviews.get(canonical_id)
-        if internal is not None:
-            status = internal["status"]
-            evidence = internal["evidence_refs"]
-            worker = "conformance-skill-semantic-review"
-            row = {"semantic_review": internal}
-        else:
-            preflight_row = preflight_by_id.get(canonical_id, {})
-            missing_roles = semantic_missing_evidence_roles.get(canonical_id, [])
-            evidence = _descriptor_evidence_refs(descriptor, evidence_set)
-            worker = "conformance-skill-semantic-trial"
-            if preflight_row.get("applicability_preflight") == "NOT_APPLICABLE":
-                status = "NOT_APPLICABLE"
-                reason_code = "CANONICAL_SCOPE_NOT_APPLICABLE"
-            elif missing_roles:
-                status = "EVIDENCE_MISSING"
-                reason_code = "REQUIRED_EVIDENCE_ROLE_MISSING"
-            else:
-                status = "REVIEW_REQUIRED"
-                reason_code = "SEMANTIC_REVIEW_PENDING"
-            row = {
-                "reason_code": reason_code,
-                "missing_evidence_roles": missing_roles,
-                "preflight": preflight_row,
+        retained_by_id.setdefault(descriptor["canonical_id"], []).append(
+            descriptor
+        )
+    for canonical_id, descriptors in sorted(retained_by_id.items()):
+        revision_digest = descriptors[0]["canonical_revision_digest"]
+        methods = selected_nonmechanical_obligations.get(
+            (canonical_id, revision_digest), []
+        )
+        preflight_row = preflight_by_id.get(canonical_id, {})
+        missing_roles = semantic_missing_evidence_roles.get(canonical_id, [])
+        method_statuses = _nonmechanical_obligation_statuses(
+            canonical_id,
+            revision_digest,
+            methods,
+            internal_semantic_reviews,
+            scheduled_review_identities,
+            missing_roles,
+        )
+        mechanical_gap_statuses = _retained_mechanical_gap_statuses(
+            canonical_by_id[canonical_id]
+        )
+        # A retained mixed rule has no trusted mechanical executor.  Keep each
+        # missing mechanical method in the same rule aggregation so a semantic
+        # PASS or NOT_APPLICABLE cannot hide the unimplemented half.
+        method_statuses.update(mechanical_gap_statuses)
+        if preflight_row.get("applicability_preflight") == "NOT_APPLICABLE":
+            method_statuses = {
+                method: "NOT_APPLICABLE"
+                for method in sorted(set(methods) | set(mechanical_gap_statuses))
             }
+        status = _combine_route_status(set(method_statuses.values()))
+        semantic_internal = internal_semantic_reviews.get((
+            canonical_id,
+            revision_digest,
+            "semantic_review",
+        ))
+        evidence = (
+            semantic_internal["evidence_refs"]
+            if semantic_internal is not None
+            else _descriptor_evidence_refs(descriptors[0], evidence_set)
+        )
+        worker = (
+            "conformance-skill-semantic-review"
+            if any(
+                identity[0] == canonical_id and identity[1] == revision_digest
+                for identity in internal_semantic_reviews
+            )
+            else "conformance-skill-semantic-trial"
+        )
+        reason_code = (
+            "CANONICAL_SCOPE_NOT_APPLICABLE"
+            if status == "NOT_APPLICABLE"
+            else "REQUIRED_EVIDENCE_ROLE_MISSING"
+            if missing_roles
+            else "SEMANTIC_REVIEW_PENDING"
+        )
+        row = {
+            "reason_code": reason_code,
+            "missing_evidence_roles": missing_roles,
+            "preflight": preflight_row,
+        }
+        if semantic_internal is not None:
+            row["semantic_review"] = semantic_internal
         retained_trial_results.append({
             "rule_id": canonical_id,
-            "rule_revision_digest": descriptor["canonical_revision_digest"],
+            "rule_revision_digest": revision_digest,
             "canonical_id": canonical_id,
+            "canonical_only": True,
             "retained_trial": True,
             "status": status,
             "evidence": evidence,
@@ -4391,7 +5045,11 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         )
         for result in results:
             lineage = result.get("canonical_lineage", {})
-            internal = internal_semantic_reviews.get(lineage.get("canonical_id"))
+            internal = internal_semantic_reviews.get((
+                lineage.get("canonical_id"),
+                lineage.get("revision_digest"),
+                "semantic_review",
+            ))
             if internal is None or next(
                 rule.get("checkType") for rule in rules
                 if rule["ruleId"] == result["rule_id"]
@@ -4407,6 +5065,9 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         scan = checker._scan(target if target.is_dir() else target.parent)
         results = []
     results.extend(retained_trial_results)
+    results.extend(_full_canonical_only_scope_results(
+        profile_plan, canonical_applicability
+    ))
     # 证据受限审阅不进入源码扫描循环（results 已由 _evidence_only_results 填充）。
     for rule in rules if not evidence_only else []:
         if (
@@ -4424,7 +5085,11 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
             }
         elif rule.get("checkType") == "semantic":
             lineage = canonical_lineage.get(rule["ruleId"], {})
-            internal = internal_semantic_reviews.get(lineage.get("canonical_id"))
+            internal = internal_semantic_reviews.get((
+                lineage.get("canonical_id"),
+                lineage.get("canonical_revision_digest"),
+                "semantic_review",
+            ))
             if internal is not None:
                 outcome = {
                     "status": internal["status"],
@@ -4450,6 +5115,13 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
                         "reason": review["reason"],
                     }
         elif rule.get("checkType") == "static":
+            # GMIN 终态家族显式承接的静态规则：路由表以 executor_baseline_rule_id
+            # 声明其执行器载体，未实现的分支一律 GMIN_RULE_UNIMPLEMENTED 失败
+            # 关闭，不存在静默回退。三条 ACTIVE_MECHANICAL 规则
+            # （SFA-HARNESS-002 → gmin:harness-authority-dependencies、
+            # SFA-MIGRATE-001 → gmin:legacy-risk-plan、
+            # SFA-MIGRATE-021 → gmin:family-migration-checklist）即由此承接，
+            # 不登记在 w2b1/w2b2/w2b3 注册表中。
             if rule["ruleId"].startswith("gmin:"):
                 lineage = canonical_lineage.get(rule["ruleId"])
                 if lineage is None:
@@ -4659,12 +5331,11 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
     # path above and must not be presented to the static-route ledger as an
     # unknown identity.
     method_assurance_semantic_reviews = {
-        canonical_id: review
-        for canonical_id, review in internal_semantic_reviews.items()
-        if (
-            canonical_id,
-            review.get("rule_revision_digest"),
-        ) in assurance_routes
+            identity: review
+            for identity, review in internal_semantic_reviews.items()
+            if (
+                identity[0], identity[1],
+            ) in assurance_routes
     }
     method_assurance = (
         rule_method_assurance._project_trusted_conformance_observation(
@@ -4686,37 +5357,47 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
     combined_results = []
     for item in results:
         lineage = item.get("canonical_lineage", {})
-        route = assurance_routes.get((
-            lineage.get("canonical_id"), lineage.get("revision_digest"),
-        ))
-        review_method = rule_method_assurance.select_review_method([
-            row.get("check_method")
-            for row in item.get("check_method_subresults", [])
-            if isinstance(row, dict) and row.get("status") == "NOT_RUN"
-        ])
-        if route is None or review_method is None:
+        canonical_identity = (
+            lineage.get("canonical_id"), lineage.get("revision_digest")
+        )
+        route = assurance_routes.get(canonical_identity)
+        review_methods = sorted(
+            set(route.get("check_methods", []))
+            & set(rule_method_assurance.NON_MECHANICAL_CHECK_METHODS)
+        ) if route is not None else []
+        selected_methods = selected_nonmechanical_obligations.get(
+            canonical_identity, []
+        )
+        if route is not None and review_methods:
+            statuses = {item["status"]}
+            statuses.update(
+                method_records.get((
+                    lineage["canonical_id"], lineage["revision_digest"], method,
+                ), {}).get("trusted_observation", {}).get("status", "NOT_RUN")
+                for method in route["check_methods"]
+            )
+        elif selected_methods:
+            statuses = set(_nonmechanical_obligation_statuses(
+                lineage["canonical_id"],
+                lineage["revision_digest"],
+                selected_methods,
+                internal_semantic_reviews,
+                scheduled_review_identities,
+                semantic_missing_evidence_roles.get(
+                    lineage["canonical_id"], []
+                ),
+            ).values())
+        else:
             combined_results.append(item)
             continue
-        statuses = {item["status"]}
-        statuses.update(
-            method_records.get((
-                lineage["canonical_id"], lineage["revision_digest"], method,
-            ), {}).get("trusted_observation", {}).get("status", "NOT_RUN")
-            for method in route["check_methods"]
-        )
-        if "FAIL" in statuses:
-            combined_status = "FAIL"
-        elif statuses & {"EVIDENCE_MISSING", "NOT_RUN"}:
-            combined_status = "EVIDENCE_MISSING"
-        elif statuses == {"PASS"}:
-            combined_status = "PASS"
-        elif statuses == {"NOT_APPLICABLE"}:
-            combined_status = "NOT_APPLICABLE"
-        else:
-            combined_status = "REVIEW_REQUIRED"
+        combined_status = _combine_route_status(statuses)
         combined = {**item, "status": combined_status}
-        internal = internal_semantic_reviews.get(lineage["canonical_id"])
-        if internal is not None and review_method == "semantic_review":
+        internal = internal_semantic_reviews.get((
+            lineage["canonical_id"],
+            lineage["revision_digest"],
+            "semantic_review",
+        ))
+        if internal is not None:
             combined["semantic_review"] = internal
         combined_results.append(combined)
     results = combined_results + _profile_not_run_results(
@@ -4734,11 +5415,9 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         )
     except ValueError as exc:
         raise WorkflowError("CONFORMANCE_PROFILE_RESULT_INVALID", str(exc)) from exc
-    selected_baseline_rule_ids = {rule["ruleId"] for rule in rules}
     failed = [
         item
-        for item in results
-        if item["rule_id"] in selected_baseline_rule_ids
+        for item in canonical_results
         if item["status"] not in {"PASS", "NOT_APPLICABLE"}
     ]
     findings = [
@@ -4793,7 +5472,11 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         and not canonical_coverage_complete
     )
     status_by_canonical = {
-        item["canonical_lineage"]["canonical_id"]: item["status"]
+        (
+            item["canonical_lineage"]["canonical_id"]
+            if isinstance(item.get("canonical_lineage"), dict)
+            else item["canonical_id"]
+        ): item["status"]
         for item in canonical_results
     }
     try:
@@ -4811,8 +5494,8 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
     except ValueError as exc:
         raise WorkflowError("CONFORMANCE_PROFILE_RESULT_INVALID", str(exc)) from exc
     if profile_plan["execution_profile"] == "targeted" and retained_trial_results:
-        # Candidate trial rows remain outside the executable coverage counts,
-        # but their honest outcome still gates the targeted run conclusion.
+        # Targeted retained trials remain outside the executable coverage
+        # counts, but their honest outcome still gates the run conclusion.
         trial_statuses = {row["status"] for row in retained_trial_results}
         if "FAIL" in trial_statuses:
             status = "FAILED"
@@ -4839,9 +5522,9 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         return [
             {
                 "canonical_id": canonical_id,
-                "revision_digest": canonical_lineage[
-                    profile_plan["rule_by_canonical"][canonical_id]["ruleId"]
-                ]["canonical_revision_digest"],
+                "revision_digest": profile_plan["revision_by_canonical"][
+                    canonical_id
+                ],
             }
             for canonical_id in sorted(canonical_ids)
         ]
@@ -4860,6 +5543,9 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         "conclusion_complete": coverage_core["conclusion_complete"],
         "requested_semantic_group_ids": profile_plan[
             "requested_semantic_group_ids"
+        ],
+        "requested_canonical_rule_ids": profile_plan[
+            "requested_canonical_rule_ids"
         ],
         "selected_semantic_group_ids": profile_plan[
             "selected_semantic_group_ids"
@@ -4909,7 +5595,11 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         "baseline_rule_set": {
             "kind": "implementation-baseline",
             "canonical_rule_ids": sorted(manifest.get("canonicalRuleIds", [])),
-            "executed_rule_count": coverage_core["attempted_count"],
+            "executed_rule_count": sum(
+                1
+                for canonical_id in profile_plan["baseline_in_scope_rule_ids"]
+                if status_by_canonical.get(canonical_id) != "NOT_RUN"
+            ),
             **(
                 {"execution_blockers": family_source_blockers}
                 if args.target_type == "family_source"
@@ -4933,6 +5623,13 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
     credibility = (
         "self_reported" if is_fixture or index.get("selfAudit") is True else "verified"
     )
+    security_observation = _bounded_security_observation(
+        target, assurance_canonical_projection
+    )
+    results.extend({
+        "kind": "skill-family-audit.safe-sensitive-finding",
+        **finding,
+    } for finding in security_observation["findings"])
     evidence = [{
         "kind": "caller-evidence",
         "evidence_id": item["evidence_id"],
@@ -4942,6 +5639,20 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         "evidence_set_digest": evidence_set_digest,
         "credibility": credibility,
     } for item in evidence_set]
+    evidence.append({
+        "kind": "skill-family-audit.bounded-material-security-observation",
+        "evidence_id": "audit-bounded-material-security-observation",
+        "path": str(target),
+        "sha256": semantic_target_digest,
+        "source": "conformance-check-existing-target-enumeration",
+        "canonical_rule_ids": [
+            "SFA-DATASEC-002",
+            "SFA-EVIDENCESEC-001",
+            "SFA-SECRET-003",
+        ],
+        "observation": security_observation,
+        "credibility": credibility,
+    })
     result = {
         "conformance_result": domain,
         "rule_findings": results,
@@ -4981,6 +5692,12 @@ def parser() -> argparse.ArgumentParser:
         dest="semantic_group_ids",
         action="append",
         help="targeted 档位请求的精确语义组 ID；可重复",
+    )
+    value.add_argument(
+        "--canonical-rule-id",
+        dest="canonical_rule_ids",
+        action="append",
+        help="targeted 档位请求的精确 canonical rule ID；与语义组互斥",
     )
     value.add_argument("--semantic-result")
     value.add_argument("--foundation-task-digest")

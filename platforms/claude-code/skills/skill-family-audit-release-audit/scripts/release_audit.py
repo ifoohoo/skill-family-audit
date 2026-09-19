@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """只读 release-audit CLI；领域结果只经 stdout 或宿主 Result 返回。
 
-方法合同只绑定一个 ``release-audit-input`` Resource：候选身份、发布评估
-引用与 Release Skill 公开验证器输出全部冻结在该文档内。``provider_root``、
-``plan``、``run`` 等未进入方法合同的旁路参数不再存在；Audit 不复制
-Release Skill 的判定逻辑。上游公开验证器尚未发布：输入文档携带的
-``release_verifier_output`` 对象不解释为上游权威输出，确定性返回
-BLOCKED/UPSTREAM_RELEASE_VERIFIER_UNAVAILABLE。
+方法合同只绑定一个 ``release-audit-input`` Resource。该文档显式指定 Release
+Skill 0.9.17 公共 CLI、计划、批准、目标 run、全部前驱 run、候选身份
+和发布评估。Audit 只执行字节锁定的 ``verify-records`` 命令并消费其 stdout，
+不读取相邻工作树、不扫描 ``.release-skill``，也不复制上游判定逻辑。
 """
 from __future__ import annotations
 
@@ -74,6 +72,20 @@ def implementation_digest() -> str:
     return digest.hexdigest()
 
 
+def _foundation_node_runtime() -> tuple[Path, str]:
+    """Get the managed Node runtime through the existing Foundation host."""
+    _install_foundation_host()
+    host = sys.modules["conformance_check"].foundation_host_for(__file__)
+    try:
+        node_runtime, node_version = host.foundation_node_runtime()
+    except Exception as exc:
+        code = getattr(exc, "code", exc.__class__.__name__)
+        raise ReleaseCliError(f"FOUNDATION_NODE_RUNTIME_UNAVAILABLE:{code}") from exc
+    if not isinstance(node_runtime, Path) or not isinstance(node_version, str):
+        raise ReleaseCliError("FOUNDATION_NODE_RUNTIME_UNAVAILABLE:INVALID_RESULT")
+    return node_runtime, node_version
+
+
 def _absolute_normalized(value: str, label: str) -> str:
     if not value or not os.path.isabs(value) or os.path.normpath(value) != value:
         raise ReleaseCliError(f"{label} must be an absolute normalized path")
@@ -112,7 +124,8 @@ def _load_release_audit_input(value: str) -> dict[str, Any]:
         "kind",
         "candidate",
         "assessments_ref",
-        "release_verifier_output",
+        "release_skill",
+        "records",
     }:
         raise ReleaseCliError("release-audit input field set must be exactly closed")
     if (
@@ -133,15 +146,32 @@ def _load_release_audit_input(value: str) -> dict[str, Any]:
         or not candidate["target_version"]
     ):
         raise ReleaseCliError("release-audit input candidate identity is invalid")
-    verifier_output = document.get("release_verifier_output")
-    # 字段合同只接受对象或 null：null 表示未提供；提供对象时也不解释为
-    # 上游权威输出（上游公开验证器尚未发布），稳定返回
-    # BLOCKED/UPSTREAM_RELEASE_VERIFIER_UNAVAILABLE，不接受文件引用或符号链接旁路。
-    if verifier_output is not None and not isinstance(verifier_output, dict):
-        raise ReleaseCliError(
-            "release_verifier_output must be an object or null; upstream "
-            "verifier output may not be a file reference or a symlink"
-        )
+    release_skill = document.get("release_skill")
+    if not isinstance(release_skill, dict) or set(release_skill) != {
+        "version",
+        "cli_path",
+    }:
+        raise ReleaseCliError("release_skill shape is invalid")
+    if release_skill.get("version") != release_receipts.UPSTREAM_CONTRACT_VERSION:
+        raise ReleaseCliError("release_skill version is not the pinned version")
+    _absolute_normalized(release_skill.get("cli_path"), "release_skill.cli_path")
+    records = document.get("records")
+    if not isinstance(records, dict) or set(records) != {
+        "plan",
+        "approval",
+        "target_run",
+        "source_runs",
+    }:
+        raise ReleaseCliError("records shape is invalid")
+    for field in ("plan", "approval", "target_run"):
+        _absolute_normalized(records.get(field), f"records.{field}")
+    source_runs = records.get("source_runs")
+    if not isinstance(source_runs, list) or not all(
+        isinstance(path, str) for path in source_runs
+    ):
+        raise ReleaseCliError("records.source_runs must be an array of paths")
+    for index, path in enumerate(source_runs):
+        _absolute_normalized(path, f"records.source_runs[{index}]")
     assessments_ref = document.get("assessments_ref")
     if not isinstance(assessments_ref, str) or not os.path.isabs(assessments_ref):
         raise ReleaseCliError("assessments_ref must be an absolute path")
@@ -153,8 +183,17 @@ def run(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     candidate = document["candidate"]
     digest_before = implementation_digest()
 
-    audit = release_receipts.audit_release_verifier_output(
-        document.get("release_verifier_output"),
+    release_skill = document["release_skill"]
+    records = document["records"]
+    node_runtime, node_version = _foundation_node_runtime()
+    audit = release_receipts.audit_release_receipts(
+        node_runtime=node_runtime,
+        node_version=node_version,
+        release_skill_cli=release_skill["cli_path"],
+        plan_path=records["plan"],
+        approval_path=records["approval"],
+        target_run_path=records["target_run"],
+        source_run_paths=records["source_runs"],
         expected_unit_id=candidate["unit_id"],
         expected_target_version=candidate["target_version"],
     )

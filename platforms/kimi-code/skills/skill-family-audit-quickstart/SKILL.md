@@ -14,6 +14,8 @@ argument-hint: "<自然语言请求，如：对 /path/to/project 进行规范检
 将用户的自然语言请求路由到 `skill-family-audit:conformance-audit` 或
 `skill-family-audit:release-audit`。Foundation 创建并校验 Task/Result，Audit 领域方法只读消费调用方证据，结果直接返回宿主或 stdout，不创建结果目录。
 
+本入口只做分诊与输入绑定。调用方可以绕过它，直接按方法 ID 调用两个业务方法，或运行候选投影中对应方法的脚本；quickstart 不是调用前置条件。
+
 规范检查由 Quickstart 显式选择执行档位。普通请求使用 `economy`，语义模型调用数为 0；已知语义组、组名称或 canonical rule ID 使用 `targeted`；明确只查确定性规则使用 `mechanical`；明确完整审计或准备发布才使用 `full`。底层方法省略档位时仍兼容为 `full`，该兼容规则不适用于人类入口。
 
 ## 输入
@@ -27,7 +29,7 @@ argument-hint: "<自然语言请求，如：对 /path/to/project 进行规范检
 | 用户意图 | 路由目标 | 前置条件 |
 |---|---|---|
 | "规范检查" / "规范符合" / "conformance" | `skill-family-audit:conformance-audit` | 必须提供证据集合文件；单项证据不足只影响对应规则，不拒绝整个审阅请求 |
-| "发布审计" / "release" | `skill-family-audit:release-audit` | 必须提供 assessments、Release Skill 0.3.0 provider 根、不可变 plan/run 收据、目标单元和版本 |
+| "发布审计" / "release" | `skill-family-audit:release-audit` | 必须提供 assessments、Release Skill 0.9.17 provider 根、不可变 plan/run 收据、目标单元和版本 |
 
 ## 行为
 
@@ -87,5 +89,6 @@ argument-hint: "<自然语言请求，如：对 /path/to/project 进行规范检
 - 不直接执行具体检查逻辑
 - 不实现第二套 Task/Result/Resource、摘要算法或运行状态机
 - 不执行、观察、恢复、续接或调度受检技能
-- 只有与当前候选身份一致的治理状态才能进入方法执行；待批候选不得复用旧批准
+- 候选标记只说明品质与批准状态，不阻止可用的只读检查；待批候选不得把旧批准当成本次批准复用
+- 输入损坏、依赖确实缺失或证据不足时如实报告；缺少已约定的专业结论时指向对应提供方入口，不给填写示例
 - 缺少发布权威收据时返回 `BLOCKED`；规范证据不足时保留逐规则未获证状态

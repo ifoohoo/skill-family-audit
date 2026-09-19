@@ -20,7 +20,7 @@ internal: false
 | 公开方法 | 业务切片 | 成熟度 |
 |---|---|---|
 | `skill-family-audit:conformance-audit` | 根据版本化正式规则和证据判断技能族规范符合性 | `experimental` |
-| `skill-family-audit:release-audit` | 判断技能族版本是否满足稳定发布的全部门禁条件 | `experimental` |
+| `skill-family-audit:release-audit` | 发布治理材料的静态检查：消费调用方记录与既有权威结论逐项判定发布门禁，不判断目标运行是否有效，不代替用户批准发布 | `experimental` |
 <!-- END GENERATED CAPABILITY CATALOG -->
 
 ## 人类入口
@@ -32,6 +32,10 @@ internal: false
 | `skill-family-audit:setup` | 默认只读诊断环境、规范包和静态平台投影；需要安装或配置时输出精确计划，经用户确认后执行机械步骤并复验。 |
 | `skill-family-audit:quickstart` | 把自然语言审计请求路由到两个只读公开方法，并用 Foundation Quickstart Profile 绑定调用方证据与领域结果。 |
 <!-- END GENERATED ENTRY CATALOG -->
+
+三个通用入口之外，两个业务方法可以直接调用：按方法 ID `skill-family-audit:conformance-audit` 或 `skill-family-audit:release-audit` 发起，也可以运行候选投影中对应方法的脚本。quickstart 只做分诊和输入绑定，不是调用前置条件；内部工序不新增公开入口。
+
+候选标记说明品质与批准状态，不构成调用禁令。真实依赖缺失、输入不合法或适用专业结论缺失时如实报告，并保留失败判定。
 
 ## 选择检查范围
 
@@ -63,10 +67,12 @@ internal: false
 
 - Python 3.11+
 - 候选内 `foundation/quickstart-profile` 自包含合同与运行时闭包
-- Release 需要显式提供 Release Skill 0.3.0 provider 根
+- Release 需要显式提供 Release Skill 0.9.17 provider 根
 - 无需外部网络连接
 
-Audit 不执行、观察、恢复、续接或调度受检技能。行为与运行材料必须由调用方先行产生，再作为 `conformance-audit` 的证据输入。
+Audit 不执行、观察、恢复、续接或调度受检技能，也不判断失败模式与实际运行效果。运行记录不是必备材料；某条规则的证据角色确实要求运行类材料时才消费它。缺少适用的专业结论时，报告缺项并指向对应提供方的检查或接入入口。
+
+与提供方出现不同结果时，先核对目标、采用版本、适用范围与双方职责，再按实际原因解释；不默认 Audit 有错，也不改写提供方结论。项目名称、目录与临时托管关系只作个案事实，不构成所有技能族的通用义务；改名或换目录不等于符合规范，受影响结果仍按实际适用要求审阅。
 
 ## 最小示例
 
@@ -105,5 +111,5 @@ Audit 不执行、观察、恢复、续接或调度受检技能。行为与运�
 ## 下一步
 
 - 首次使用：运行 `skill-family-audit:setup`
-- 已有环境：运行 `skill-family-audit:quickstart` 开始规范检查
+- 已有环境：运行 `skill-family-audit:quickstart` 开始规范检查，也可以直接调用两个业务方法
 - 了解规范：参见 spec/authority-index.json
