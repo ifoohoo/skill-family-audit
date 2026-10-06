@@ -227,6 +227,86 @@ def _program_reference_violations(reference: Any, label: str) -> list[str]:
     return problems
 
 
+# Foundation 0.15.0 read-file-strict / resolveContained kinds that mean the
+# target path itself cannot be delivered.  Other kinds and non-envelope
+# failures stay on the executor internal-error path.
+_LOCKED_REFERENCE_TARGET_UNAVAILABLE_KINDS = frozenset({
+    "missing-resource",
+    "read-failed",
+    "unsafe-state-entry",
+    "symlink-escape",
+    "realpath-escape",
+    "invalid-path",
+    "absolute-path",
+    "path-traversal",
+    "windows-drive-path",
+    "windows-path",
+    "unc-path",
+})
+
+
+def _foundation_read_error_kind(exc: BaseException) -> str | None:
+    """Read details.kind from a Foundation mechanism envelope; otherwise None."""
+    try:
+        envelope = json.loads(str(exc))
+    except (TypeError, json.JSONDecodeError):
+        return None
+    error = envelope.get("error") if isinstance(envelope, dict) else None
+    details = error.get("details") if isinstance(error, dict) else None
+    kind = details.get("kind") if isinstance(details, dict) else None
+    return kind if isinstance(kind, str) and kind else None
+
+
+def _locked_reference_content_digest(
+    ctx: dict[str, Any], reference: dict[str, Any]
+) -> tuple[str, dict[str, Any]]:
+    """Verify declared content_digest through Foundation strict read."""
+    digest = reference.get("content_digest")
+    if not is_hex64(digest):
+        return "FAIL", {"reason": "locked_reference_digest_invalid"}
+    machine_entry = reference.get("machine_entry", "")
+    if not isinstance(machine_entry, str) or not machine_entry.strip():
+        return "EVIDENCE_MISSING", {
+            "reason": "locked_reference_content_unavailable",
+            "declared_digest": digest,
+        }
+    import conformance_check
+
+    try:
+        observed = conformance_check._foundation({
+            "operation": "read-file-strict",
+            "root": str(_target_root(ctx)),
+            "path": machine_entry.strip(),
+        })
+    except Exception as exc:
+        kind = _foundation_read_error_kind(exc)
+        if kind in _LOCKED_REFERENCE_TARGET_UNAVAILABLE_KINDS:
+            return "EVIDENCE_MISSING", {
+                "reason": "locked_reference_content_unavailable",
+                "declared_digest": digest,
+            }
+        raise ExecutorEvidenceError(
+            "FOUNDATION_READ_FILE_STRICT_FAILED",
+            f"Foundation read-file-strict failed: {kind or type(exc).__name__}",
+        ) from exc
+    sha256 = observed.get("sha256") if isinstance(observed, dict) else None
+    if not isinstance(sha256, str) or not is_hex64(sha256):
+        raise ExecutorEvidenceError(
+            "FOUNDATION_READ_FILE_STRICT_INVALID",
+            "Foundation read-file-strict returned an invalid digest receipt",
+        )
+    if sha256 != digest:
+        return "FAIL", {
+            "reason": "locked_reference_digest_mismatch",
+            "declared_digest": digest,
+            "observed_digest": sha256,
+        }
+    return "PASS", {
+        "reason": "locked_reference_content_verified",
+        "content_digest": digest,
+    }
+
+
 # ---------------------------------------------------------------------------
 # ERROR：结构化错误契约（error-contracts / output-lifecycle）
 # ---------------------------------------------------------------------------
@@ -1090,18 +1170,94 @@ def check_runtimepkg_006(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-packages")
     if document is None:
-        return result("PASS", packages_declared=0, mechanical_half=True)
+        return _finish(
+            [
+                _static_row("PASS", reason="no_declared_packages"),
+                _digest_row("PASS", reason="no_declared_packages"),
+            ],
+            packages_declared=0,
+            mechanical_half=True,
+        )
     packages = rows_of(document, "packages", "runtime-packages")
-    violations = []
+    static_violations = []
+    digest_violations = []
+    digest_missing = []
+    digest_verified = []
     for index, row in enumerate(packages):
         reference = row.get("original_skill_locked_reference")
         problems = _program_reference_violations(reference, "locked_reference")
-        if problems:
-            violations.append({"index": index, "package": row.get("id"),
-                               "problems": problems})
+        digest_problems = [item for item in problems if item == "content_digest"]
+        static_problems = [item for item in problems if item != "content_digest"]
+        if static_problems:
+            static_violations.append({
+                "index": index, "package": row.get("id"), "problems": static_problems,
+            })
+        if digest_problems:
+            digest_violations.append({
+                "index": index, "package": row.get("id"), "problems": digest_problems,
+            })
+            continue
+        if not isinstance(reference, dict):
+            digest_missing.append({
+                "index": index, "package": row.get("id"),
+                "reason": "locked_reference_content_unavailable",
+            })
+            continue
+        digest_status, digest_evidence = _locked_reference_content_digest(ctx, reference)
+        item = {"index": index, "package": row.get("id"), **digest_evidence}
+        if digest_status == "FAIL":
+            digest_violations.append(item)
+        elif digest_status == "EVIDENCE_MISSING":
+            digest_missing.append(item)
+        else:
+            digest_verified.append(item)
+    static_status = "FAIL" if static_violations else "PASS"
+    if digest_violations:
+        digest_status = "FAIL"
+        digest_reason = (
+            "locked_reference_digest_mismatch"
+            if any(
+                item.get("reason") == "locked_reference_digest_mismatch"
+                for item in digest_violations
+            )
+            else "locked_reference_digest_invalid"
+        )
+    elif digest_missing:
+        digest_status = "EVIDENCE_MISSING"
+        digest_reason = "locked_reference_content_unavailable"
+    else:
+        digest_status = "PASS"
+        digest_reason = "locked_reference_content_verified"
+    evidence: dict[str, Any] = {
+        "packages_declared": len(packages),
+        "mechanical_half": True,
+    }
+    violations = static_violations + digest_violations
     if violations:
-        return result("FAIL", locked_references_below_minimum_contract=violations, mechanical_half=True)
-    return result("PASS", packages_declared=len(packages), mechanical_half=True)
+        evidence["locked_references_below_minimum_contract"] = violations
+    if digest_missing:
+        evidence["locked_reference_content_unavailable"] = digest_missing
+    if digest_verified:
+        evidence["locked_reference_content_verified"] = digest_verified
+    return _finish(
+        [
+            _static_row(
+                static_status,
+                reason=(
+                    "locked_references_below_minimum_contract"
+                    if static_violations else "locked_references_shape_valid"
+                ),
+                violations=static_violations,
+            ),
+            _digest_row(
+                digest_status,
+                reason=digest_reason,
+                violations=digest_violations,
+                unavailable=digest_missing,
+            ),
+        ],
+        **evidence,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1167,25 +1323,59 @@ def check_state_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-state-contracts")
     if document is None:
-        return result("PASS", declared_degradations=0, mechanical_half=True)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_degradations"),
+                _static_row("PASS", reason="no_declared_degradations"),
+            ],
+            declared_degradations=0,
+            mechanical_half=True,
+        )
     degradations = rows_of(document, "degradations", "runtime-state-contracts")
     states = rows_of(document, "states", "runtime-state-contracts")
-    violations = [
+    schema_violations = [
         {"kind": "degradation_incomplete", "index": index,
          "capability": row.get("capability")}
         for index, row in enumerate(degradations)
         if not _nonempty_str(row.get("capability"))
         or not _nonempty_str(row.get("semantic_impact"))
     ]
-    violations += [
+    static_violations = [
         {"kind": "degradation_mixed_into_state", "index": index,
          "state": row.get("state")}
         for index, row in enumerate(states)
         if row.get("carries_degradation") is True
     ]
+    schema_status = "FAIL" if schema_violations else "PASS"
+    static_status = "FAIL" if static_violations else "PASS"
+    evidence: dict[str, Any] = {
+        "declared_degradations": len(degradations),
+        "mechanical_half": True,
+    }
+    violations = schema_violations + static_violations
     if violations:
-        return result("FAIL", degradations_not_independent=violations, mechanical_half=True)
-    return result("PASS", declared_degradations=len(degradations), mechanical_half=True)
+        evidence["degradations_not_independent"] = violations
+    return _finish(
+        [
+            _schema_row(
+                schema_status,
+                reason=(
+                    "degradation_incomplete"
+                    if schema_violations else "degradation_shape_valid"
+                ),
+                violations=schema_violations,
+            ),
+            _static_row(
+                static_status,
+                reason=(
+                    "degradation_mixed_into_state"
+                    if static_violations else "degradation_not_mixed_into_state"
+                ),
+                violations=static_violations,
+            ),
+        ],
+        **evidence,
+    )
 
 
 def check_state_004(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1245,22 +1435,60 @@ def check_state_007(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-state-contracts")
     if document is None:
-        return result("PASS", declared_results=0, mechanical_half=True)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_results"),
+                _static_row("PASS", reason="no_declared_results"),
+            ],
+            declared_results=0,
+            mechanical_half=True,
+        )
     results = rows_of(document, "results", "runtime-state-contracts")
     required = (
         "completed_work", "last_valid_checkpoint", "missing",
         "resume_conditions", "outputs", "resource_usage",
     )
-    violations = []
+    schema_violations = []
+    static_violations = []
     for index, row in enumerate(results):
         if row.get("primary_state") not in {"waiting_user", "blocked"}:
             continue
         checkpoint = row.get("checkpoint")
-        if not isinstance(checkpoint, dict) or _missing_fields(checkpoint, required):
-            violations.append({"index": index, "run_id": row.get("run_id")})
+        if not isinstance(checkpoint, dict):
+            static_violations.append({"index": index, "run_id": row.get("run_id")})
+            continue
+        if _missing_fields(checkpoint, required):
+            schema_violations.append({"index": index, "run_id": row.get("run_id")})
+    schema_status = "FAIL" if schema_violations else "PASS"
+    static_status = "FAIL" if static_violations else "PASS"
+    evidence: dict[str, Any] = {
+        "declared_results": len(results),
+        "mechanical_half": True,
+    }
+    violations = schema_violations + static_violations
     if violations:
-        return result("FAIL", checkpoint_not_written_before_pause=violations, mechanical_half=True)
-    return result("PASS", declared_results=len(results), mechanical_half=True)
+        evidence["checkpoint_not_written_before_pause"] = violations
+    return _finish(
+        [
+            _schema_row(
+                schema_status,
+                reason=(
+                    "checkpoint_fields_missing"
+                    if schema_violations else "checkpoint_shape_valid"
+                ),
+                violations=schema_violations,
+            ),
+            _static_row(
+                static_status,
+                reason=(
+                    "checkpoint_missing_before_pause"
+                    if static_violations else "checkpoint_present_before_pause"
+                ),
+                violations=static_violations,
+            ),
+        ],
+        **evidence,
+    )
 
 
 def check_state_009(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1351,21 +1579,57 @@ def check_state_012(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-state-contracts")
     if document is None:
-        return result("PASS", declared_methods=0, mechanical_half=True)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_methods"),
+                _static_row("PASS", reason="no_declared_methods"),
+            ],
+            declared_methods=0,
+            mechanical_half=True,
+        )
     methods = rows_of(document, "methods", "runtime-state-contracts")
-    violations = []
+    schema_violations = []
+    static_violations = []
     for index, row in enumerate(methods):
         characteristics = row.get("idempotence_characteristics")
-        ok = (
-            isinstance(characteristics, list)
-            and bool(characteristics)
-            and all(item in IDEMPOTENCE_CHARACTERISTICS for item in characteristics)
-        )
-        if not ok:
-            violations.append({"index": index, "method_id": row.get("method_id")})
+        if not isinstance(characteristics, list):
+            schema_violations.append({"index": index, "method_id": row.get("method_id")})
+            continue
+        if not characteristics:
+            static_violations.append({"index": index, "method_id": row.get("method_id")})
+            continue
+        if any(item not in IDEMPOTENCE_CHARACTERISTICS for item in characteristics):
+            schema_violations.append({"index": index, "method_id": row.get("method_id")})
+    schema_status = "FAIL" if schema_violations else "PASS"
+    static_status = "FAIL" if static_violations else "PASS"
+    evidence: dict[str, Any] = {
+        "declared_methods": len(methods),
+        "mechanical_half": True,
+    }
+    violations = schema_violations + static_violations
     if violations:
-        return result("FAIL", methods_without_idempotence_declaration=violations, mechanical_half=True)
-    return result("PASS", declared_methods=len(methods), mechanical_half=True)
+        evidence["methods_without_idempotence_declaration"] = violations
+    return _finish(
+        [
+            _schema_row(
+                schema_status,
+                reason=(
+                    "idempotence_characteristics_invalid"
+                    if schema_violations else "idempotence_characteristics_valid"
+                ),
+                violations=schema_violations,
+            ),
+            _static_row(
+                static_status,
+                reason=(
+                    "idempotence_characteristics_missing"
+                    if static_violations else "idempotence_characteristics_declared"
+                ),
+                violations=static_violations,
+            ),
+        ],
+        **evidence,
+    )
 
 
 def check_state_013(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1955,18 +2219,48 @@ def check_task_018(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "task-result-contracts")
     if document is None:
-        return result("PASS", declared_actual_outputs=0, mechanical_half=True)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_actual_outputs"),
+                _static_row("PASS", reason="no_declared_actual_outputs"),
+            ],
+            declared_actual_outputs=0,
+            mechanical_half=True,
+        )
     outputs = rows_of(document, "actual_outputs", "task-result-contracts")
-    violations = [
-        {"index": index, "resource": row.get("resource_id")}
-        for index, row in enumerate(outputs)
-        if not _nonempty_str(row.get("actual_path"))
-        or not _nonempty_str(row.get("content_contract"))
-        or not is_hex64(row.get("content_digest"))
-    ]
-    if violations:
-        return result("FAIL", actual_outputs_not_verifiable=violations, mechanical_half=True)
-    return result("PASS", declared_actual_outputs=len(outputs), mechanical_half=True)
+    schema_violations = []
+    for index, row in enumerate(outputs):
+        if (
+            not _nonempty_str(row.get("actual_path"))
+            or not _nonempty_str(row.get("content_contract"))
+            or not is_hex64(row.get("content_digest"))
+        ):
+            schema_violations.append({"index": index, "resource": row.get("resource_id")})
+    schema_status = "FAIL" if schema_violations else "PASS"
+    evidence: dict[str, Any] = {
+        "declared_actual_outputs": len(outputs),
+        "mechanical_half": True,
+    }
+    if schema_violations:
+        evidence["actual_outputs_not_verifiable"] = schema_violations
+    return _finish(
+        [
+            _schema_row(
+                schema_status,
+                reason=(
+                    "actual_outputs_not_verifiable"
+                    if schema_violations else "actual_output_fields_valid"
+                ),
+                violations=schema_violations,
+            ),
+            _static_row(
+                "PASS",
+                reason="actual_outputs_scanned",
+                outputs_scanned=len(outputs),
+            ),
+        ],
+        **evidence,
+    )
 
 
 def check_task_019(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1977,24 +2271,64 @@ def check_task_019(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "task-result-contracts")
     if document is None:
-        return result("PASS", declared_structured_outputs=0, mechanical_half=True)
+        return _finish(
+            [
+                _schema_row("PASS", reason="no_declared_structured_outputs"),
+                _digest_row("PASS", reason="no_declared_structured_outputs"),
+            ],
+            declared_structured_outputs=0,
+            mechanical_half=True,
+        )
     outputs = rows_of(document, "structured_outputs", "task-result-contracts")
-    violations = []
+    schema_violations = []
+    digest_violations = []
     for index, row in enumerate(outputs):
         examples = row.get("qualified_examples")
         revisions = [row.get(field) for field in STRUCTURED_OUTPUT_REVISION_FIELDS]
-        ok = (
+        schema_ok = (
             _nonempty_str(row.get("authoritative_schema"))
             and isinstance(examples, list) and bool(examples)
             and _nonempty_str(row.get("deterministic_validator"))
             and all(_nonempty_str(revision) for revision in revisions)
+        )
+        digest_ok = (
+            all(_nonempty_str(revision) for revision in revisions)
             and len(set(revisions)) == 1
         )
-        if not ok:
-            violations.append({"index": index, "output": row.get("output_id")})
+        if not schema_ok:
+            schema_violations.append({"index": index, "output": row.get("output_id")})
+        if not digest_ok:
+            digest_violations.append({"index": index, "output": row.get("output_id")})
+    schema_status = "FAIL" if schema_violations else "PASS"
+    digest_status = "FAIL" if digest_violations else "PASS"
+    evidence: dict[str, Any] = {
+        "declared_structured_outputs": len(outputs),
+        "mechanical_half": True,
+    }
+    violations = schema_violations + digest_violations
     if violations:
-        return result("FAIL", structured_outputs_without_validation_package=violations, mechanical_half=True)
-    return result("PASS", declared_structured_outputs=len(outputs), mechanical_half=True)
+        evidence["structured_outputs_without_validation_package"] = violations
+    return _finish(
+        [
+            _schema_row(
+                schema_status,
+                reason=(
+                    "structured_output_schema_incomplete"
+                    if schema_violations else "structured_output_schema_complete"
+                ),
+                violations=schema_violations,
+            ),
+            _digest_row(
+                digest_status,
+                reason=(
+                    "structured_output_revisions_not_locked"
+                    if digest_violations else "structured_output_revisions_locked"
+                ),
+                violations=digest_violations,
+            ),
+        ],
+        **evidence,
+    )
 
 
 def check_task_020(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -2172,6 +2506,18 @@ def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
 def _static_row(status: str, **evidence: Any) -> dict[str, Any]:
     return _method_row(
         "static_scan", status, "executor_static_scan_observation", **evidence
+    )
+
+
+def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "schema_validation", status, "executor_schema_validation_observation", **evidence
+    )
+
+
+def _digest_row(status: str, **evidence: Any) -> dict[str, Any]:
+    return _method_row(
+        "digest_verification", status, "executor_digest_verification_observation", **evidence
     )
 
 

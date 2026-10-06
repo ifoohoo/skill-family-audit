@@ -1,0 +1,26 @@
+{
+  "fixtureId": "project-manifest.negative.invalid-engineering-reference",
+  "contract": "project-manifest",
+  "class": "negative",
+  "description": "A text version reference cannot carry a JSON pointer.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": { "id": "fictional-orchid", "name": "Fictional Orchid" },
+    "contracts": { "version": "1.19.0", "profile": "public-plugin" },
+    "engineering": {
+      "releaseUnits": [
+        {
+          "id": "core",
+          "versionSource": { "path": "VERSION", "format": "text", "jsonPointer": "/version" }
+        }
+      ]
+    }
+  }
+}

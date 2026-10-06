@@ -2070,8 +2070,8 @@
       "rules": [
         {
           "canonical_id": "SFA-PUBLISH-014",
-          "revision": 4,
-          "revision_digest": "527f2b17f3df3dc3d0af2e6ac1475cdd3d1ff5a7ca754eafb6f49543c4c5f556",
+          "revision": 5,
+          "revision_digest": "cc1b608c7af46719469d817d3fce5ef3cd3c5ecb10e0a19096c91577b778fcd7",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -2213,8 +2213,8 @@
       "rules": [
         {
           "canonical_id": "SFA-DATASEC-001",
-          "revision": 2,
-          "revision_digest": "f75b25d58bec148c610b599317f9dac4a06f2f219d8eb508ae5b431f0cc24d79",
+          "revision": 3,
+          "revision_digest": "e42691904a8d45ab4652438eceab7dcdd75890ada1314616a87d3d1132e2ae0c",
           "scan_packs": [
             "declaration",
             "source"

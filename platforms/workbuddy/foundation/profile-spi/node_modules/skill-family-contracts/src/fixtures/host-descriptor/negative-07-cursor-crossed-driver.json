@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.negative.cursor-crossed-driver", "contract": "host-descriptor", "class": "negative",
+  "description": "Cursor cannot carry another host's verification driver in the closed host-to-driver pairing.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "cursor", "displayName": "Cursor", "support": "manual", "maturity": "developer-preview", "sourceAliases": [], "verification": { "driverId": "qodercli-print-v1", "authStrategy": "existing-user-state", "credentialMutation": "host-managed" }, "pathCategories": [ { "id": "cursor-project-skills", "role": "skill-root", "scope": "project", "anchor": "project-root", "relPath": ".cursor/skills" } ], "probeCapabilities": ["cli", "version", "payload", "registry", "discover", "enabled", "reload", "smoke", "uninstall"] }
+}

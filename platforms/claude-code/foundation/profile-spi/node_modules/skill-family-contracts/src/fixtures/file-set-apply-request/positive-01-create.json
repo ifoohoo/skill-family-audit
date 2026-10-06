@@ -1,0 +1,27 @@
+{
+  "fixtureId": "file-set-apply-request.positive.create",
+  "contract": "file-set-apply-request",
+  "class": "positive",
+  "description": "Frozen request for an empty fictional ordinary file; bytes stay outside JSON.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/file-set-apply-request.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.file-set-apply-request",
+    "operationId": "00000000-0000-4000-8000-000000000001",
+    "root": "/tmp/fictional-file-set",
+    "rootBinding": {
+      "kind": "trusted-filesystem-root-binding", "digestAlgorithm": "sha256",
+      "basis": "canonical-realpath-device-inode-type-mode-v1",
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "recoveryRelPath": ".foundation-file-apply",
+    "allowAdjacentStaging": true,
+    "environment": { "filesystem": "apfs", "cooperativeWriters": true },
+    "validationTimeoutMs": 1000,
+    "operations": [{
+      "path": "nested/empty.txt", "action": "create", "expected": { "exists": false },
+      "next": { "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "size": 0, "mode": 384 }
+    }]
+  }
+}

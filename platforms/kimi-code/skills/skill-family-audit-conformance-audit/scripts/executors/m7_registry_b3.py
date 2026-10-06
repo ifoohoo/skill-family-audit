@@ -72,6 +72,22 @@ def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[
     }
 
 
+def _mechanical_methods_to_run(ctx: dict[str, Any]) -> frozenset[str] | None:
+    """None means unmanaged compatibility; empty means semantic-only."""
+    route = ctx.get("method_route")
+    if not isinstance(route, dict):
+        return None
+    required = route.get("required_mechanical_methods")
+    if not isinstance(required, list):
+        return None
+    return frozenset(required)
+
+
+def _should_run(ctx: dict[str, Any], method: str) -> bool:
+    selected = _mechanical_methods_to_run(ctx)
+    return selected is None or method in selected
+
+
 def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
     """从逐方法行确定性推导聚合状态，与 contracts.validate_method_subresults 一致。"""
     statuses = {row["status"] for row in rows}
@@ -92,6 +108,12 @@ def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
         "evidence": dict(evidence),
         "check_method_subresults": rows,
     }
+
+
+def _completed(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    if not rows:
+        return {"status": "PASS", "evidence": dict(evidence)}
+    return _finish(rows, **evidence)
 
 
 def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
@@ -135,51 +157,64 @@ def check_artmethod_003(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：已声明与正式制品无关的能力不得仅为统一形式被强制接入制品
     图；其后满足提升判据的，必须经正式提升流程并留下判据与流程引用。
     """
+    run_schema = _should_run(ctx, "schema_validation")
+    run_digest = _should_run(ctx, "digest_verification")
+    if not run_schema and not run_digest:
+        return {"status": "PASS", "evidence": {"mechanical_methods_not_in_route": True}}
     document = load_governance_document(ctx, "artifact-method-runs")
+    result_rows: list[dict[str, Any]] = []
+    evidence: dict[str, Any] = {}
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_informal_capabilities"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            informal_capabilities_declared=0,
-        )
+        if run_schema:
+            result_rows.append(
+                _schema_row("PASS", reason="no_declared_informal_capabilities")
+            )
+        if run_digest:
+            result_rows.append(_doc_digest_row(ctx, ("artifact-method-runs",)))
+        return _completed(result_rows, informal_capabilities_declared=0)
     rows = rows_of(document, "informal_capabilities", "artifact-method-runs")
-    violations = []
-    for index, row in enumerate(rows):
-        kind = row.get("capability_kind")
-        if kind not in INFORMAL_CAPABILITY_KINDS:
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                f"artifact-method-runs.informal_capabilities 第 {index} 行能力类别非法: {kind!r}",
+    if run_schema:
+        violations = []
+        for index, row in enumerate(rows):
+            kind = row.get("capability_kind")
+            if kind not in INFORMAL_CAPABILITY_KINDS:
+                raise ExecutorEvidenceError(
+                    "GOVERNANCE_DOCUMENT_INVALID",
+                    f"artifact-method-runs.informal_capabilities 第 {index} 行能力类别非法: {kind!r}",
+                )
+            problems = []
+            if row.get("forced_into_artifact_graph") is True:
+                problems.append("forced_into_artifact_graph_for_uniformity")
+            if row.get("promoted") is True and (
+                row.get("promotion_criteria_met") is not True
+                or not _nonempty_str(row.get("formal_promotion_ref"))
+            ):
+                problems.append("promoted_without_formal_process")
+            if problems:
+                violations.append(
+                    {
+                        "index": index,
+                        "capability": row.get("capability_id"),
+                        "problems": problems,
+                    }
+                )
+        if violations:
+            result_rows.append(
+                _schema_row("FAIL", reason="schema_violations", violations=violations)
             )
-        problems = []
-        if row.get("forced_into_artifact_graph") is True:
-            problems.append("forced_into_artifact_graph_for_uniformity")
-        if row.get("promoted") is True and (
-            row.get("promotion_criteria_met") is not True
-            or not _nonempty_str(row.get("formal_promotion_ref"))
-        ):
-            problems.append("promoted_without_formal_process")
-        if problems:
-            violations.append(
-                {"index": index, "capability": row.get("capability_id"), "problems": problems}
+            evidence["informal_capabilities_forced_into_graph"] = violations
+        else:
+            result_rows.append(
+                _schema_row(
+                    "PASS",
+                    reason="schema_checks_passed",
+                    informal_capabilities=len(rows),
+                )
             )
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            informal_capabilities_forced_into_graph=violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", informal_capabilities=len(rows)),
-            _doc_digest_row(ctx, ("artifact-method-runs",)),
-        ],
-        informal_capabilities=len(rows),
-    )
+            evidence["informal_capabilities"] = len(rows)
+    if run_digest:
+        result_rows.append(_doc_digest_row(ctx, ("artifact-method-runs",)))
+    return _completed(result_rows, **evidence)
 
 
 # ---------------------------------------------------------------------------
@@ -193,47 +228,60 @@ def check_registry_006(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：已声明注册业务对象无论是否为制品图正式制品，必须具有稳定
     语义身份和实际证据引用。
     """
+    run_schema = _should_run(ctx, "schema_validation")
+    run_digest = _should_run(ctx, "digest_verification")
+    if not run_schema and not run_digest:
+        return {"status": "PASS", "evidence": {"mechanical_methods_not_in_route": True}}
     document = load_governance_document(ctx, "method-registry-projection")
+    result_rows: list[dict[str, Any]] = []
+    extra: dict[str, Any] = {}
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_business_objects"),
-                _doc_digest_row(ctx, ("method-registry-projection",)),
-            ],
-            business_objects_declared=0,
-        )
-    rows = rows_of(document, "business_objects", "method-registry-projection")
-    violations = []
-    for index, row in enumerate(rows):
-        problems = []
-        if not _nonempty_str(row.get("stable_semantic_identity")):
-            problems.append("stable_semantic_identity_missing")
-        evidence = row.get("evidence_refs")
-        if (
-            not isinstance(evidence, list)
-            or not evidence
-            or not all(_nonempty_str(item) for item in evidence)
-        ):
-            problems.append("evidence_refs_missing")
-        if problems:
-            violations.append(
-                {"index": index, "object": row.get("object_id"), "problems": problems}
+        if run_schema:
+            result_rows.append(
+                _schema_row("PASS", reason="no_declared_business_objects")
             )
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("method-registry-projection",)),
-            ],
-            business_objects_without_semantics_or_evidence=violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", business_objects=len(rows)),
-            _doc_digest_row(ctx, ("method-registry-projection",)),
-        ],
-        business_objects=len(rows),
-    )
+        if run_digest:
+            result_rows.append(_doc_digest_row(ctx, ("method-registry-projection",)))
+        return _completed(result_rows, business_objects_declared=0)
+    rows = rows_of(document, "business_objects", "method-registry-projection")
+    if run_schema:
+        violations = []
+        for index, row in enumerate(rows):
+            problems = []
+            if not _nonempty_str(row.get("stable_semantic_identity")):
+                problems.append("stable_semantic_identity_missing")
+            evidence_refs = row.get("evidence_refs")
+            if (
+                not isinstance(evidence_refs, list)
+                or not evidence_refs
+                or not all(_nonempty_str(item) for item in evidence_refs)
+            ):
+                problems.append("evidence_refs_missing")
+            if problems:
+                violations.append(
+                    {
+                        "index": index,
+                        "object": row.get("object_id"),
+                        "problems": problems,
+                    }
+                )
+        if violations:
+            result_rows.append(
+                _schema_row("FAIL", reason="schema_violations", violations=violations)
+            )
+            extra["business_objects_without_semantics_or_evidence"] = violations
+        else:
+            result_rows.append(
+                _schema_row(
+                    "PASS",
+                    reason="schema_checks_passed",
+                    business_objects=len(rows),
+                )
+            )
+            extra["business_objects"] = len(rows)
+    if run_digest:
+        result_rows.append(_doc_digest_row(ctx, ("method-registry-projection",)))
+    return _completed(result_rows, **extra)
 
 
 # ---------------------------------------------------------------------------

@@ -25,6 +25,8 @@ import sys
 import threading
 from pathlib import Path
 
+import resolve_spec_release as spec_release_resolver
+
 CHECKER_METHOD_ID = "skill-family-audit:conformance-audit"
 CHECKER_VERSION = "0.4.0-conformance-repair"
 RULE_FIELDS = {"ruleId", "revisionDigest", "description", "applicability", "checkType", "failureImpact", "remediation"}
@@ -471,7 +473,8 @@ def _package_root() -> Path | None:
     """从本脚本位置向上寻找包根（以 generated/platforms 目录存在为标识）。
 
     plugin-src 源树与 generated 平台投影树中的脚本副本都能定位到同一个包根；
-    找不到时返回 None（例如被仓外独立安装时），调用方保持失败关闭。
+    找不到时返回 None（例如被仓外独立安装时）。仓外安装没有 generated/platforms
+    时，自身平台根若有合格 runner 就用它，否则候选仍为空。
     """
     here = Path(__file__).resolve(strict=True)
     for ancestor in (here.parent, *here.parents):
@@ -503,12 +506,20 @@ def _default_audit_bundle_candidates() -> list[Path]:
     codex 投影脚本在未显式绑定 runner 的环境下运行），该副本所属平台的
     runner 前置到候选首位（去重后仍保留其余仓内候选），避免 host gate 把
     本平台 caller 误判为其它平台的越界调用；plugin-src 源树执行不属于任何
-    平台副本，候选顺序不变。任何候选在使用前仍经过 ``verify_foundation_bundle``
+    平台副本，候选顺序不变。仓外安装没有 generated/platforms 时，自身平台根
+    若有合格 runner（普通文件且不是符号链接）就只采用这一份，否则候选仍为空。
+    任何候选在使用前仍经过 ``verify_foundation_bundle``
     全量校验（provenance、receipt、payload 摘要、import 闭包），默认推断不放宽
     任何校验。
     """
     root = _package_root()
     if root is None:
+        own_root = _host_platform_root()
+        if own_root is None:
+            return []
+        own_runner = own_root / "foundation" / "quickstart-profile" / "runner.mjs"
+        if own_runner.is_file() and not own_runner.is_symlink():
+            return [own_runner]
         return []
     platforms = root / "generated" / "platforms"
     candidates: list[Path] = []
@@ -660,6 +671,310 @@ def foundation_node_runtime() -> tuple[Path, str]:
         "FOUNDATION_NODE_MISSING",
         "SFA_FOUNDATION_NODE 环境变量未设置" + detail,
     )
+
+
+def professional_providers_manifest() -> Path:
+    """Locate the single professional-provider catalog for this runtime layout."""
+    platform_root = _host_platform_root()
+    if platform_root is not None:
+        for name in ("platform-manifest.json", "manifest.json"):
+            candidate = platform_root / name
+            if candidate.is_file() and not candidate.is_symlink():
+                return candidate
+    package_root = _package_root()
+    if package_root is not None:
+        candidate = package_root / "plugin-src" / "manifest.json"
+        if candidate.is_file() and not candidate.is_symlink():
+            return candidate
+    raise RuntimeError("PROFESSIONAL_PROVIDERS_MISSING")
+
+
+def professional_proof_script() -> Path:
+    platform_root = _host_platform_root()
+    if platform_root is not None:
+        script = platform_root / "shared/scripts/professional_proof.mjs"
+        if script.is_file() and not script.is_symlink():
+            return script
+    script = Path(__file__).resolve().parents[3] / "shared/scripts/professional_proof.mjs"
+    if script.is_symlink() or not script.is_file():
+        raise RuntimeError("PROFESSIONAL_PROOF_SCRIPT_MISSING")
+    return script
+
+
+def load_professional_provider_rows(manifest_path: Path | None = None) -> list[dict]:
+    path = manifest_path if manifest_path is not None else professional_providers_manifest()
+    if path.is_symlink() or not path.is_file():
+        raise RuntimeError("PROFESSIONAL_PROVIDERS_MISSING")
+    document = json.loads(path.read_text(encoding="utf-8"))
+    rows = document.get("professionalProviders") if isinstance(document, dict) else None
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError("PROFESSIONAL_PROVIDERS_MISSING")
+    return rows
+
+
+def _reject_nested_commands(value: object, label: str) -> None:
+    if value is None:
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _reject_nested_commands(item, f"{label}[{index}]")
+        return
+    if isinstance(value, dict):
+        if "command" in value:
+            raise RuntimeError(f"PROFESSIONAL_PROOF_COMMAND_REJECTED:{label}")
+        for key, child in value.items():
+            _reject_nested_commands(child, f"{label}.{key}")
+
+
+def _professional_entry_ref(row: dict, action: str) -> str:
+    if action == "scan":
+        return str(row.get("scanEntryRef") or "")
+    if action == "refresh":
+        return str(row.get("refreshEntryRef") or "")
+    return str(row.get("readEntryRef") or "")
+
+
+def _provider_identity(provider: object) -> tuple[str, str, str] | None:
+    if not isinstance(provider, dict):
+        return None
+    ident = provider.get("id")
+    version = provider.get("version")
+    entry = provider.get("entry")
+    if (
+        not isinstance(ident, str) or not ident
+        or not isinstance(version, str) or not version
+        or not isinstance(entry, str) or not entry
+    ):
+        return None
+    return ident, version, entry
+
+
+def _reader_provider_matches(proof: dict | None, reader_result: dict | None) -> bool:
+    """Top-level reader provider id/version/entry must match the proof provider."""
+    if not isinstance(proof, dict) or not isinstance(reader_result, dict):
+        return False
+    proof_identity = _provider_identity(proof.get("provider"))
+    if proof_identity is None:
+        return False
+    return proof_identity == _provider_identity(reader_result.get("provider"))
+
+
+def _professional_objects_align(proof: dict | None, conclusion: object) -> bool:
+    """Same-version consumption compares the unrewritten proof object."""
+    return isinstance(proof, dict) and isinstance(conclusion, dict) and proof == conclusion
+
+
+def _read_professional_proof_document(proof_root: str, proof_path: str) -> dict:
+    result = _foundation({
+        "operation": "read-file-strict",
+        "root": proof_root,
+        "path": proof_path,
+        "encoding": "utf8",
+    })
+    content = result.get("content")
+    if not isinstance(content, str):
+        raise RuntimeError("PROFESSIONAL_PROOF_UNREADABLE")
+    try:
+        document = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"PROFESSIONAL_PROOF_UNREADABLE:{exc}") from exc
+    if not isinstance(document, dict):
+        raise RuntimeError("PROFESSIONAL_PROOF_UNREADABLE")
+    _reject_nested_commands(document, "proof")
+    return document
+
+
+def consume_professional_proof(payload: dict) -> dict:
+    """Derive identity from a locatable proof and apply version policy.
+
+    Hand-filled status, version, baseline or four-field pass summaries are
+    not consumption inputs. Audit does not execute proof commands, redo
+    professional checks, or authenticate authors.
+    """
+    try:
+        if not isinstance(payload, dict):
+            raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:root")
+        _reject_nested_commands(payload, "input")
+        allowed = {
+            "action",
+            "applicable",
+            "entry_available",
+            "proof_path",
+            "proof_root",
+            "provider_id",
+            "reader_result",
+            "selected",
+        }
+        unknown = sorted(set(payload) - allowed)
+        if unknown:
+            raise RuntimeError("PROFESSIONAL_PROOF_UNKNOWN_FIELD:" + ",".join(unknown))
+        provider_id = payload.get("provider_id")
+        action = payload.get("action")
+        if not isinstance(provider_id, str) or not provider_id:
+            raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:provider_id")
+        if not isinstance(action, str) or not action:
+            raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:action")
+        for name in ("selected", "applicable", "entry_available"):
+            if not isinstance(payload.get(name), bool):
+                raise RuntimeError(f"PROFESSIONAL_PROOF_INPUT_INVALID:{name}")
+        rows = load_professional_provider_rows()
+        matches = [
+            row for row in rows
+            if isinstance(row, dict) and row.get("id") == provider_id
+        ]
+        if len(matches) != 1:
+            raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:provider_id")
+        row = matches[0]
+        baseline = row.get("baselineVersion")
+        family_id = row.get("familyId")
+        if not isinstance(baseline, str) or not baseline:
+            raise RuntimeError("PROFESSIONAL_PROVIDERS_MISSING")
+        if not isinstance(family_id, str) or not family_id:
+            raise RuntimeError("PROFESSIONAL_PROVIDERS_MISSING")
+        proof_root = payload.get("proof_root")
+        proof_path = payload.get("proof_path")
+        proof_present = False
+        identity_matched = False
+        proof_version = None
+        proof_document = None
+        if proof_root is not None or proof_path is not None:
+            if not isinstance(proof_root, str) or not proof_root:
+                raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:proof_root")
+            if not isinstance(proof_path, str) or not proof_path:
+                raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:proof_path")
+            try:
+                proof_document = _read_professional_proof_document(proof_root, proof_path)
+            except RuntimeError as exc:
+                message = str(exc)
+                if not (
+                    "PROFESSIONAL_PROOF_UNREADABLE" in message
+                    or "SFC2004" in message
+                    or "missing-resource" in message
+                    or "does not exist" in message
+                ):
+                    raise
+                raw_reader = payload.get("reader_result")
+                reader_status = "unavailable"
+                reason = "严格读取失败：文件不可读取。"
+                if (
+                    isinstance(raw_reader, dict)
+                    and raw_reader.get("status") in {"pass", "not_pass"}
+                ):
+                    reader_status = raw_reader["status"]
+                elif message.startswith("PROFESSIONAL_PROOF_UNREADABLE:"):
+                    reason = "严格读取失败：证明不是合法 JSON。"
+                    if (
+                        isinstance(raw_reader, dict)
+                        and raw_reader.get("status") == "unavailable"
+                        and isinstance(raw_reader.get("reason"), str)
+                        and raw_reader["reason"]
+                    ):
+                        reason += "专业读取器原因：" + raw_reader["reason"]
+                return {
+                    "baseline_version": baseline,
+                    "does_not_certify_author": False,
+                    "does_not_mean_rescan": False,
+                    "entry_ref": _professional_entry_ref(row, action),
+                    "mode": "reused_proof" if action == "reuse" else "missing_entry",
+                    "provider_id": provider_id,
+                    "reader_status": reader_status,
+                    "reason": reason,
+                    "refresh_suggested": False,
+                    "status": "not_pass",
+                    "version_relation": "absent",
+                }
+            provider = proof_document.get("provider")
+            if isinstance(provider, dict):
+                observed_id = provider.get("id")
+                observed_version = provider.get("version")
+                if isinstance(observed_version, str) and observed_version:
+                    proof_present = True
+                    proof_version = observed_version
+                identity_matched = observed_id == family_id
+        reader_result = payload.get("reader_result")
+        reader_status = None
+        reader_reason = None
+        reader_conclusion = None
+        if reader_result is not None:
+            if not isinstance(reader_result, dict):
+                raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:reader_result")
+            _reject_nested_commands(reader_result, "reader_result")
+            status_value = reader_result.get("status")
+            if status_value is not None and status_value not in {
+                "pass", "not_pass", "unavailable",
+            }:
+                raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:reader_result.status")
+            reader_status = status_value
+            if isinstance(reader_result.get("reason"), str) and reader_result["reason"]:
+                reader_reason = reader_result["reason"]
+            conclusion = reader_result.get("conclusion")
+            if conclusion is not None and not isinstance(conclusion, dict):
+                raise RuntimeError("PROFESSIONAL_PROOF_INPUT_INVALID:reader_result.conclusion")
+            if isinstance(conclusion, dict):
+                _reject_nested_commands(conclusion, "reader_result.conclusion")
+                reader_conclusion = conclusion
+        adapter_input = {
+            "provider_id": provider_id,
+            "baseline_version": baseline,
+            "selected": payload["selected"],
+            "applicable": payload["applicable"],
+            "entry_available": payload["entry_available"],
+            "action": action,
+            "proof_present": proof_present,
+            "identity_matched": identity_matched if proof_present else True,
+            "proof_version": proof_version,
+            "reader_status": reader_status,
+            "entry_ref": _professional_entry_ref(row, action),
+        }
+        node, _ = foundation_node_runtime()
+        completed = subprocess.run(
+            [str(node), str(professional_proof_script())],
+            input=json.dumps(adapter_input, ensure_ascii=False),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(
+                "PROFESSIONAL_PROOF_FAILED:"
+                + (completed.stderr.strip() or completed.stdout.strip() or str(completed.returncode))
+            )
+        document = json.loads(completed.stdout)
+        if not isinstance(document, dict) or "command" in document:
+            raise RuntimeError("PROFESSIONAL_PROOF_OUTPUT_INVALID")
+        if document.get("version_relation") == "same":
+            conclusions_align = (
+                isinstance(proof_document, dict)
+                and _professional_objects_align(proof_document, reader_conclusion)
+            )
+            providers_align = _reader_provider_matches(
+                proof_document,
+                reader_result if isinstance(reader_result, dict) else None,
+            )
+            if document.get("reader_status") != "unavailable" and not conclusions_align:
+                document["status"] = "not_pass"
+                document["mode"] = "missing_proof"
+                document["reason"] = (
+                    "同版本须有完整原读取结论，并与严格读取的证明对象一致。"
+                )
+            elif not providers_align:
+                document["status"] = "not_pass"
+                document["mode"] = "missing_proof"
+                document["reason"] = (
+                    "读取返回的顶层 provider 与证明原 provider 身份不一致。"
+                )
+            elif (
+                reader_reason
+                and document.get("reader_status") in {"not_pass", "unavailable"}
+            ):
+                document["reason"] = reader_reason
+        if isinstance(proof_document, dict):
+            document["conclusion"] = proof_document
+        elif isinstance(reader_conclusion, dict):
+            document["conclusion"] = reader_conclusion
+        return document
+    except TypeError as exc:
+        raise RuntimeError(f"PROFESSIONAL_PROOF_INPUT_INVALID:{exc}") from exc
 
 
 def call_foundation_cli(runner: Path, cli_name: str, request: dict) -> object:
@@ -1000,31 +1315,114 @@ def _load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _validate_package(package: Path, test_fixture: bool) -> tuple[dict | None, dict | None, str | None]:
+def _read_formal_release_object(path: Path, *, missing: dict | None) -> tuple[dict | None, str | None]:
+    if path.is_symlink() or (path.exists() and not path.is_file()):
+        return None, "SPEC_PACKAGE_INVALID_JSON"
+    if not path.exists():
+        return missing, None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None, "SPEC_PACKAGE_INVALID_JSON"
+    if not isinstance(value, dict):
+        return None, "SPEC_PACKAGE_INVALID_JSON"
+    return value, None
+
+
+def _official_external_consumer_directory(release_root: Path) -> Path | None:
+    """官方消费目录来自解析器固定的双文件父目录，不另设路径真源。"""
+    parents = {
+        Path(relative).parent.as_posix()
+        for relative in spec_release_resolver.EXTERNAL_CONSUMER_FILES
+    }
+    if len(parents) != 1:
+        return None
+    relative = next(iter(parents))
+    if relative in {"", "."}:
+        return None
+    root = release_root.resolve()
+    official = (root / relative).resolve()
+    if official != root and root not in official.parents:
+        return None
+    return official
+
+
+def external_consumer_binding_error(package: Path, resolved: dict) -> str | None:
+    """外部消费者前提：active 对象、官方 EXTERNAL_SCOPE、精确 spec 目录。
+
+    上游解析器仍可激活其他合法 scope。这里只拒绝把该结果当作外部规范消费，
+    也不接受同一 release 根下替换后的消费目录。
+    """
+    active = resolved.get("active_release")
+    if resolved.get("status") != "active" or not isinstance(active, dict):
+        return str(resolved.get("reason") or "no_approval_receipt")
+    if active.get("scope") != spec_release_resolver.EXTERNAL_SCOPE:
+        return "external_consumer_scope_mismatch"
+    official = _official_external_consumer_directory(package.resolve().parent)
+    if official is None or package.resolve() != official:
+        return "external_consumer_directory_mismatch"
+    return None
+
+
+def _formal_release_activation(package: Path) -> tuple[dict | None, str | None]:
+    """用显式 release_root 调用上游解析器。不读取环境变量、缓存或解析器默认根。"""
+    release_root = package.resolve().parent
+    release_index, error = _read_formal_release_object(
+        release_root / spec_release_resolver.EXTERNAL_RELEASE_INDEX_PATH,
+        missing={},
+    )
+    if error:
+        return None, error
+    receipt, error = _read_formal_release_object(
+        release_root / spec_release_resolver.GOVERNANCE_APPROVAL_RECEIPT_PATH,
+        missing=None,
+    )
+    if error:
+        return None, error
+    resolved = spec_release_resolver.resolve_spec_release(
+        release_index, receipt, release_root
+    )
+    binding_error = external_consumer_binding_error(package, resolved)
+    if binding_error:
+        return None, binding_error
+    return resolved["active_release"], None
+
+
+def _validate_package(
+    package: Path, test_fixture: bool
+) -> tuple[dict | None, dict | None, str | None, dict | None]:
     index_path, rules_path = package / "authority-index.json", package / "applicable-rules.json"
     if not index_path.is_file() or not rules_path.is_file():
-        return None, None, "SPEC_PACKAGE_INCOMPLETE"
+        return None, None, "SPEC_PACKAGE_INCOMPLETE", None
     try:
         index, manifest = _load(index_path), _load(rules_path)
     except (OSError, json.JSONDecodeError):
-        return None, None, "SPEC_PACKAGE_INVALID_JSON"
+        return None, None, "SPEC_PACKAGE_INVALID_JSON", None
     if index.get("test_fixture") is True and not test_fixture:
-        return index, None, "EXTERNAL_SPEC_REQUIRES_TEST_FIXTURE"
+        return index, None, "EXTERNAL_SPEC_REQUIRES_TEST_FIXTURE", None
     if test_fixture and index.get("test_fixture") is not True:
-        return index, None, "SPEC_PACKAGE_NOT_TEST_FIXTURE"
-    return index, manifest, None
+        return index, None, "SPEC_PACKAGE_NOT_TEST_FIXTURE", None
+    # 自审与显式测试夹具沿用原分支，不进入正式批准链，也不能取得发布资格。
+    if index.get("test_fixture") is True or index.get("selfAudit") is True:
+        return index, manifest, None, None
+    active_release, error = _formal_release_activation(package)
+    if error:
+        return index, None, error, None
+    return index, manifest, None, active_release
 
 
 SELF_AUDIT_SPEC_SUBPATH = ("spec", "self-audit")
 
 
-def self_audit_spec_package_default() -> Path | None:
-    """默认发现路径下的仓内自审规范包。
+def self_audit_spec_package_default(product_root: Path | None = None) -> Path | None:
+    """发现已选产品根下的仓内自审规范包。
 
-    仅当 authority-index.json 与 applicable-rules.json 同时存在时返回目录；
-    无法定位包根（如仓外独立安装）时返回 None，调用方保持失败关闭。
+    审计路径必须传入已明确选中的产品根，不得从安装缓存或当前目录猜测工作区。
+    省略 product_root 时仅定位运行中 checker 自身的包根（供 checker 内部
+    refs 锚定与既有无参调用）；仓外独立安装且未给出产品根时返回 None。
+    仅当 authority-index.json 与 applicable-rules.json 同时存在时返回目录。
     """
-    root = _package_root()
+    root = Path(product_root) if product_root is not None else _package_root()
     if root is None:
         return None
     spec_dir = root.joinpath(*SELF_AUDIT_SPEC_SUBPATH)
@@ -1372,7 +1770,14 @@ def _scan(
     for root, dirs, files in os.walk(walk_root):
         retained_dirs = []
         for dirname in dirs:
-            if dirname in {".git", ".pytest_cache", "node_modules", "__pycache__"}:
+            if dirname in {
+                ".git",
+                ".pytest_cache",
+                "node_modules",
+                "__pycache__",
+                ".codex",
+                ".release-skill",
+            }:
                 continue
             path = Path(root) / dirname
             if path.is_symlink():
@@ -1457,11 +1862,18 @@ def _extract_family_from_path(rel_path: str, target: Path) -> str:
 
     - 如果 SKILL.md 在子目录中（如 `family/SKILL.md`），family 是第一级目录
     - 如果 SKILL.md 在目标根目录（如 `SKILL.md`），family 是目标目录名
+    - 宿主缓存、发布配置等隐藏目录不是技能族
     """
     parts = Path(rel_path).parts
     if len(parts) > 1:
-        return parts[0]
-    return target.name
+        first = parts[0]
+        if first.startswith(".") or first in {".codex", ".release-skill"}:
+            return ""
+        return first
+    name = target.name
+    if name.startswith("."):
+        return ""
+    return name
 
 
 def _check(rule_id: str, scan: dict, target: Path) -> dict:
@@ -1643,21 +2055,22 @@ def run_conformance_check(target_path: str, project_root: str, spec_version_ref:
         except ValueError: return _blocked("OUTPUT_OUTSIDE_AUTHORIZED_ROOT", target=target_path)
         output = resolved
     else: output = None
+    active_release: dict | None = None
     if spec_package:
-        index, manifest, error = _validate_package(Path(spec_package).resolve(), test_fixture)
+        index, manifest, error, active_release = _validate_package(Path(spec_package).resolve(), test_fixture)
         if error: return _blocked(error, index, target_path)
         self_audit = index.get("selfAudit") is True
     else:
         # D2 自审默认发现路径：无显式规范包时只接受本仓裁决权威派生的
         # 自审规范包（selfAudit: true，摘要新鲜性逐条校验）；外部规范必须
         # 显式 --spec-package 提供。自审包缺失时维持原失败关闭结论。
-        spec_dir = self_audit_spec_package_default()
+        spec_dir = self_audit_spec_package_default(root)
         if spec_dir is None:
             return _blocked("NO_ACTIVE_APPROVED_SPEC", target=target_path)
         freshness_error = verify_self_audit_freshness(spec_dir)
         if freshness_error:
             return _blocked(freshness_error, target=target_path)
-        index, manifest, error = _validate_package(spec_dir, test_fixture)
+        index, manifest, error, active_release = _validate_package(spec_dir, test_fixture)
         if error: return _blocked(error, index, target_path)
         self_audit = True
     if manifest.get("checkerMethodId") != CHECKER_METHOD_ID:
@@ -1716,11 +2129,16 @@ def run_conformance_check(target_path: str, project_root: str, spec_version_ref:
               "error_code": error_code, "counts": counts,
               "rule_results": results,
               "scan_summary": scan, "input_summary": {"target": target.name, "target_is_relative": True},
-              "rule_release_summary": {"release_id": "", "release_digest": "", "rule_manifest_digest": ""},
+              "rule_release_summary": {
+                  "release_id": (active_release or {}).get("release_id", ""),
+                  "release_digest": (active_release or {}).get("release_digest", ""),
+                  "rule_manifest_digest": "",
+              },
               "checker_summary": _checker_summary(), "warnings": warnings, "blocked_reason": "",
               "test_fixture": index.get("test_fixture") is True,
               "self_audit": self_audit,
-              "publication_eligible": index.get("test_fixture") is not True and index.get("selfAudit") is not True}
+              # 只表示正式 active 批准链已建立；不是业务 PASS，也不是发布授权。
+              "publication_eligible": active_release is not None}
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")

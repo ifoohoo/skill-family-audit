@@ -2,29 +2,58 @@
 
 技能族静态规范审阅、两个审计方法和四平台投影的唯一公开发布源。
 
-当前版本 `1.1.5` 是尚未批准的本地修订候选，
+当前版本 `1.1.14` 是尚未批准的本地修订候选，
 不声明为稳定发布。候选批准不等于 Release Skill 计划批准、生产发布确认
 或任何远端写入授权。候选标记只说明品质与批准状态，不阻止可用的只读检查；
 真实依赖缺失、输入不合法或适用结论缺失仍如实报告。
+
+## 本地准备说明（1.1.10）
+
+文首版本标记随清单版本派生。`1.1.5` 的差异、16 个文件和 43 处派生计数保留在
+「发布说明（1.1.5）」，只描述当时的结果。
+`1.1.7` 候选及其评估保留为先前本地证据，不用于证明本版载荷。
+
+本候选承接已经接入的专业证明消费。清单中的专业基准仍是 Foundation 0.22.0、
+Release 0.9.23 和 Artifact Graph 0.14.0。Graph 0.14 接入现有的能力文件、
+两份方法合同、注册边界，以及当前候选发行与两个审计方法的关系。四平台能力
+说明已与投影合同对齐：合同状态是 candidate，blocked 为 false，静态投影不阻断；
+宿主验证、批准和正式分发仍未获证。
+`dist/candidate/1.1.10` 已生成，但只是本地候选，尚未批准或发布；真实宿主仍未验证。
+对这个候选的发行制品范围检查处理了 282 条规则，其中 279 条不适用，
+`SFA-NETSEC-001`、`SFA-WIRING-001` 与 `SFA-WIRING-002` 缺证或缺执行载体，领域结论为
+`BLOCKED`，没有运行模型语义审阅。Task 是执行后按同一公开函数和参数重构的，
+未在执行时直接保存。这次检查还绑定了跨仓许可证实体政策的原文件与摘要，但没有把该输入记作规则通过。
+Task 与 Result 已关联到当前发行制品；只有规范检查方法实际执行，发布审计方法未执行。
+这次检查不能证明完整产品或源码符合性。
+
+上面是 `1.1.10` 候选当时的评估。当前源码里，`SFA-WIRING-001` 的静态专业结论消费已经接线，`SFA-NETSEC-001` 的静态引用核读也已经接线。本次没有实际验证这两条的语义审阅，还不能记成完整规则通过。
+`SFA-WIRING-002` 仍未实现。
+适用性依次取决于目标是否出现外部网络行为、是否采用 Foundation 公共能力、
+是否采用 Loop Agent 编排。规则未激活时保持不适用，不把该状态记成目标违规。
 
 ## 当前能力
 
 该候选提供 `help`、`setup` 和 `quickstart` 入口，并包含一致性与发布
 两类审计方法。两个方法可以直接调用，不必先经过 `quickstart`；`quickstart`
-只做分诊和输入绑定。Claude Code、Codex、Kimi Code 和
+只做分诊、输入绑定和完整档审阅衔接。对明确路径做完整规范检查时，直接说明
+目标和意图即可，不必准备证据 JSON 或选择临时目录。普通「规范检查」未写完整
+或精确组时直接走经济档，不必再问档位。Claude Code、Codex、Kimi Code 和
 WorkBuddy 使用各自的静态平台投影。平台清单与资源闭包通过构建检查，
-宿主安装和调用由消费者人工验证。
+宿主安装和调用由消费者人工验证。本轮完整检查的真实宿主试用尚未完成，
+夹具通过不代表生产已验收。
 
 本版本泛化了受检对象侧的目标身份绑定：一致性与发布审计方法现在原生支持
 任意 PluginProject 的 1..N 个 logicalSkills（N=1 是
 正常路径，不是兼容模式）。marketplace 名、plugin selector 和入口路径
 从目标观察结果读取，不再硬编码为 Audit 自身身份。
 
-两个方法通过受管 Foundation 0.15.0 Quickstart Profile v2 Bundle 创建 Task、
-包装 Result 并校验消费者 Schema；领域语义仍由 Audit 拥有，Foundation 只
-处理结构合同与绑定。运行时只使用随包投影的 Bundle，不依赖 Foundation
-工作区、npm cache、store 或网络。候选不含旧 `mechanisms-cli.mjs` 或
-Bundle 内 `node_modules`。
+两个方法通过受管 Foundation 0.22.0 Quickstart Profile v2 Bundle 创建 Task、
+包装 Result 并校验消费者 Schema；实际 Contracts 公开合同版本为 1.20.0。
+领域语义仍由 Audit 拥有。专业提供方描述以当前平台或源码清单为唯一来源；
+已有证明交专业方 reader，刷新由专业方另写新证明。Audit 用随包投影的
+`semver@7.8.5` `valid/compare` 比较证明文件中的技能族版本与清单基准，
+不从本机缓存或环境模块回退。运行时只使用随包投影的 Bundle
+与 `shared/vendor/semver`，不依赖 Foundation 工作区、npm cache、store 或网络。
 
 ## 发布说明（1.1.5）
 
@@ -119,10 +148,11 @@ codex plugin add skill-family-audit@skill-family-hub --json
 # 安装后先在 Codex 中调用 skill-family-audit 的 help 技能。
 ```
 
-在正式发布完成前，只能从本仓库冻结的候选目录进行隔离验证：
+版本标记与清单一致。下面的路径表示已生成的本地候选四平台静态投影，
+可用于检查载荷；候选尚未获批准或发布，不能据此安装公开版本：
 
 ```text
-dist/candidate/1.1.5/platforms/<platform>
+dist/candidate/1.1.14/platforms/<platform>
 ```
 
 四个平台目录都是静态、自包含投影。Kimi 只支持人工安装或会话级

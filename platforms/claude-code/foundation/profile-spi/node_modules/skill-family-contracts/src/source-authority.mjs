@@ -1,4 +1,5 @@
 import { validateDocument } from "./validator.mjs";
+import { preflightJsonData } from "./inert-json.mjs";
 
 export const SOURCE_AUTHORITY_RECEIPT_SCHEMA_ID =
   "https://contracts.skill-family.example/v1/source-authority-receipt.json";
@@ -29,107 +30,6 @@ function semanticFailure(message, instancePath, params = {}) {
   };
 }
 
-function pointerSegment(value) {
-  return String(value).replaceAll("~", "~0").replaceAll("/", "~1");
-}
-
-function copyInertJsonData(value, instancePath, ancestors) {
-  if (value === null || typeof value === "string" || typeof value === "boolean") {
-    return { valid: true, data: value };
-  }
-  if (typeof value === "number") {
-    return Number.isFinite(value)
-      ? { valid: true, data: value }
-      : semanticFailure("source authority input numbers must be finite", instancePath);
-  }
-  if (typeof value !== "object") {
-    return semanticFailure("source authority input must contain JSON data only", instancePath, {
-      valueType: typeof value,
-    });
-  }
-  if (ancestors.has(value)) {
-    return semanticFailure("source authority input must not contain cycles", instancePath);
-  }
-
-  const array = Array.isArray(value);
-  const prototype = Object.getPrototypeOf(value);
-  if (array ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null) {
-    return semanticFailure("source authority input must use plain object and array prototypes", instancePath);
-  }
-
-  const ownKeys = Reflect.ownKeys(value);
-  if (ownKeys.some((key) => typeof key === "symbol")) {
-    return semanticFailure("source authority input must not contain symbol keys", instancePath);
-  }
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  ancestors.add(value);
-  try {
-    if (array) {
-      const length = descriptors.length?.value;
-      if (!Number.isSafeInteger(length) || length < 0) {
-        return semanticFailure("source authority arrays must have a valid length", instancePath);
-      }
-      for (const key of ownKeys) {
-        if (key === "length") continue;
-        const index = Number(key);
-        if (!Number.isSafeInteger(index) || index < 0 || index >= length || String(index) !== key) {
-          return semanticFailure("source authority arrays must not contain named properties", `${instancePath}/${pointerSegment(key)}`);
-        }
-      }
-      const copy = new Array(length);
-      for (let index = 0; index < length; index += 1) {
-        const descriptor = descriptors[String(index)];
-        const itemPath = `${instancePath}/${index}`;
-        if (!descriptor) {
-          return semanticFailure("source authority arrays must not contain sparse entries", itemPath);
-        }
-        if (!descriptor.enumerable || !("value" in descriptor)) {
-          return semanticFailure("source authority input properties must be enumerable data properties", itemPath);
-        }
-        const item = copyInertJsonData(descriptor.value, itemPath, ancestors);
-        if (!item.valid) return item;
-        Object.defineProperty(copy, String(index), {
-          value: item.data,
-          enumerable: true,
-          writable: true,
-          configurable: true,
-        });
-      }
-      return { valid: true, data: copy };
-    }
-
-    const copy = Object.create(null);
-    for (const key of ownKeys) {
-      const descriptor = descriptors[key];
-      const propertyPath = `${instancePath}/${pointerSegment(key)}`;
-      if (!descriptor.enumerable || !("value" in descriptor)) {
-        return semanticFailure("source authority input properties must be enumerable data properties", propertyPath);
-      }
-      const property = copyInertJsonData(descriptor.value, propertyPath, ancestors);
-      if (!property.valid) return property;
-      Object.defineProperty(copy, key, {
-        value: property.data,
-        enumerable: true,
-        writable: true,
-        configurable: true,
-      });
-    }
-    return { valid: true, data: copy };
-  } finally {
-    ancestors.delete(value);
-  }
-}
-
-function preflightJsonData(value, instancePath) {
-  try {
-    return copyInertJsonData(value, instancePath, new Set());
-  } catch (error) {
-    return semanticFailure("source authority input could not be inspected as inert JSON data", instancePath, {
-      errorName: typeof error?.name === "string" ? error.name : "Error",
-    });
-  }
-}
-
 function validateCanonicalSubjects(subjects) {
   for (let index = 1; index < subjects.length; index += 1) {
     const previous = subjects[index - 1].packageName;
@@ -155,7 +55,11 @@ function validateCanonicalSubjects(subjects) {
  * validation result and SFC1001 error code.
  */
 export function validateSourceAuthorityReceipt(receipt) {
-  const preflight = preflightJsonData(receipt, "");
+  const preflight = preflightJsonData(receipt, "", {
+    keyword: "sourceAuthority",
+    schemaId: SOURCE_AUTHORITY_RECEIPT_SCHEMA_ID,
+    label: "source authority",
+  });
   if (!preflight.valid) return preflight;
   const result = validateDocument(preflight.data, {
     schemaId: SOURCE_AUTHORITY_RECEIPT_SCHEMA_ID,
@@ -167,7 +71,11 @@ export function validateSourceAuthorityReceipt(receipt) {
 }
 
 function validateActualSubjects(actualSubjects) {
-  const preflight = preflightJsonData(actualSubjects, "/actualSubjects");
+  const preflight = preflightJsonData(actualSubjects, "/actualSubjects", {
+    keyword: "sourceAuthority",
+    schemaId: SOURCE_AUTHORITY_RECEIPT_SCHEMA_ID,
+    label: "source authority",
+  });
   if (!preflight.valid) return preflight;
   const safeSubjects = preflight.data;
   if (!Array.isArray(safeSubjects) || safeSubjects.length === 0) {

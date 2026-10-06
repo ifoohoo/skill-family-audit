@@ -2459,9 +2459,26 @@ def check_bytechain_001(ctx: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _identity_root(ctx: dict[str, Any]) -> Path:
+    """Current product root when declared; otherwise the audited target."""
+    raw = ctx.get("product_root")
+    if isinstance(raw, str) and raw:
+        path = Path(raw)
+        if path.is_dir() and not path.is_symlink():
+            return path
+    return Path(ctx["target"])
+
+
 def _target_file(ctx: dict[str, Any], relative: str) -> Path | None:
     """目标真实文件（只读）；不存在或不可读返回 None。"""
     path = Path(ctx["target"], *relative.split("/"))
+    if not path.is_file() or path.is_symlink():
+        return None
+    return path
+
+
+def _file_under(root: Path, relative: str) -> Path | None:
+    path = Path(root, *relative.split("/"))
     if not path.is_file() or path.is_symlink():
         return None
     return path
@@ -2480,9 +2497,19 @@ def _read_target_text(ctx: dict[str, Any], relative: str) -> str | None:
 
 
 def _read_json_file(ctx: dict[str, Any], relative: str) -> dict[str, Any] | None:
-    text = _read_target_text(ctx, relative)
-    if text is None:
+    return _read_json_under(Path(ctx["target"]), relative)
+
+
+def _read_json_under(root: Path, relative: str) -> dict[str, Any] | None:
+    path = _file_under(root, relative)
+    if path is None:
         return None
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ExecutorEvidenceError(
+            "TARGET_FILE_UNREADABLE", f"目标文件无法读取: {relative}: {exc}"
+        ) from exc
     try:
         value = json.loads(text)
     except json.JSONDecodeError as exc:
@@ -2506,6 +2533,8 @@ PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS = {
     ".git",
     ".pytest_cache",
     "__pycache__",
+    ".codex",
+    ".release-skill",
     "artifacts",
     "control",
     "dist",
@@ -2520,13 +2549,13 @@ _AUTHOR_FIELDS = ("name", "email", "url")
 
 
 def _plugin_manifest_paths(ctx: dict[str, Any]) -> list[str]:
-    """发现目标树中的真实宿主插件清单，不依赖目标自填治理文档。"""
-    target = Path(ctx["target"])
+    """发现当前产品树中的真实宿主插件清单，不依赖目标自填治理文档。"""
+    root = _identity_root(ctx)
     paths: list[str] = []
-    for path in target.rglob("plugin.json"):
+    for path in root.rglob("plugin.json"):
         if not path.is_file() or path.is_symlink():
             continue
-        relative = path.relative_to(target)
+        relative = path.relative_to(root)
         if any(part in PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS for part in relative.parts):
             continue
         if not any(part in _PLUGIN_MANIFEST_DIRECTORIES for part in relative.parts):
@@ -2555,7 +2584,11 @@ def _metadata_fields(value: dict[str, Any]) -> list[str]:
 
 
 def _verified_derived_from(
-    ctx: dict[str, Any], row: dict[str, Any], package: dict[str, Any]
+    ctx: dict[str, Any],
+    row: dict[str, Any],
+    package: dict[str, Any],
+    *,
+    root: Path | None = None,
 ) -> bool:
     """仅接受可读取、可解析且内容确实等于 package 真源的派生声明。
 
@@ -2565,7 +2598,7 @@ def _verified_derived_from(
     derived_from = row.get("derived_from")
     if not _nonempty_str(derived_from):
         return False
-    source = _read_json_file(ctx, derived_from)
+    source = _read_json_under(root or Path(ctx["target"]), derived_from)
     if source is None:
         return False
     for field in row.get("fields", []):
@@ -3854,7 +3887,8 @@ def check_publish_013(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：五类字段（name/version/author/license/description）只由
     package.json 真源承载；其余元数据载体与真源一致或声明派生来源。
     """
-    package = _read_json_file(ctx, "package.json")
+    root = _identity_root(ctx)
+    package = _read_json_under(root, "package.json")
     if package is None or not _nonempty_str(package.get("version")):
         return _finish(
             [_schema_row("NOT_APPLICABLE", reason="no_release_unit")],
@@ -3871,7 +3905,7 @@ def check_publish_013(ctx: dict[str, Any]) -> dict[str, Any]:
             declared_path_indexes.setdefault(path, []).append(index)
         rows.append(dict(row))
     for path in discovered_paths:
-        manifest = _read_json_file(ctx, path)
+        manifest = _read_json_under(root, path)
         if manifest is None:
             continue
         fields = _metadata_fields(manifest)
@@ -3909,7 +3943,7 @@ def check_publish_013(ctx: dict[str, Any]) -> dict[str, Any]:
         unknown = [field for field in fields if field not in _METADATA_FIELDS]
         if unknown:
             problems.append(f"unknown_metadata_field:{','.join(unknown)}")
-        surface = _read_json_file(ctx, path)
+        surface = _read_json_under(root, path)
         if surface is None:
             problems.append("metadata_surface_missing")
         for field in fields:
@@ -3929,7 +3963,9 @@ def check_publish_013(ctx: dict[str, Any]) -> dict[str, Any]:
                 continue
             elif surface is not None and _metadata_value(field, surface.get(field)) != _metadata_value(field, value):
                 problems.append(f"metadata_drift:{field}")
-                if _nonempty_str(row.get("derived_from")) and not _verified_derived_from(ctx, row, package):
+                if _nonempty_str(row.get("derived_from")) and not _verified_derived_from(
+                    ctx, row, package, root=root
+                ):
                     problems.append("derived_from_unverified")
         if problems:
             violations.append({"index": index, "path": path, "problems": problems})

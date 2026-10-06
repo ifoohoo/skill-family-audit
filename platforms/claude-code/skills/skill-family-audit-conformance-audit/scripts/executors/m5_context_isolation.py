@@ -966,10 +966,27 @@ def check_harness_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = load_governance_document(ctx, "harness-interfaces")
     if document is None:
-        return result("PASS", harness_declared=False, mechanical_half=True)
+        return _finish(
+            [
+                _schema_row("PASS", reason="harness_not_declared"),
+                _static_row("PASS", reason="harness_not_declared"),
+            ],
+            harness_declared=False,
+            mechanical_half=True,
+        )
     binding = document.get("observer_binding_interface")
     if not isinstance(binding, dict):
-        return result("FAIL", reason="observer_binding_interface_missing", mechanical_half=True)
+        return _finish(
+            [
+                _schema_row("FAIL", reason="observer_binding_interface_missing"),
+                _static_row(
+                    "EVIDENCE_MISSING",
+                    reason="observer_binding_fields_unscannable",
+                ),
+            ],
+            reason="observer_binding_interface_missing",
+            mechanical_half=True,
+        )
     required = {
         "version",
         "observer_provider",
@@ -981,8 +998,30 @@ def check_harness_005(ctx: dict[str, Any]) -> dict[str, Any]:
     }
     missing = sorted(required - set(binding))
     if missing:
-        return result("FAIL", observer_binding_fields_missing=missing, mechanical_half=True)
-    return result("PASS", observer_binding_version=binding.get("version"), mechanical_half=True)
+        return _finish(
+            [
+                _schema_row("PASS", reason="observer_binding_interface_object"),
+                _static_row(
+                    "FAIL",
+                    reason="observer_binding_fields_missing",
+                    observer_binding_fields_missing=missing,
+                ),
+            ],
+            observer_binding_fields_missing=missing,
+            mechanical_half=True,
+        )
+    return _finish(
+        [
+            _schema_row("PASS", reason="observer_binding_interface_object"),
+            _static_row(
+                "PASS",
+                reason="observer_binding_fields_complete",
+                observer_binding_version=binding.get("version"),
+            ),
+        ],
+        observer_binding_version=binding.get("version"),
+        mechanical_half=True,
+    )
 
 
 def check_harness_007(ctx: dict[str, Any]) -> dict[str, Any]:

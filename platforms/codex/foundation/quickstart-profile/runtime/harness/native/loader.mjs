@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const PACKAGE_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const MANIFEST_PATH = path.join(PACKAGE_ROOT, "prebuild-manifest.json");
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
-const EXPECTED_EXPORTS = Object.freeze(["closeParentDirectory", "observeFilesystemTreeNative", "openParentDirectory", "platform", "readFileBoundNative", "renameDirectoryNoReplace"]);
+const EXPECTED_EXPORTS = Object.freeze(["closeParentDirectory", "exchangeDirectories", "observeFilesystemTreeNative", "openParentDirectory", "platform", "readFileBoundNative", "renameDirectoryNoReplace"]);
 const PLATFORM_KEYS = Object.freeze(["darwin-arm64", "darwin-x64", "linux-arm64-gnu", "linux-x64-gnu"]);
 
 function fail(message) {
@@ -20,11 +20,15 @@ function digest(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-function platformKey() {
-  if (process.platform === "darwin" && ["arm64", "x64"].includes(process.arch)) return `darwin-${process.arch}`;
-  if (process.platform === "linux" && ["arm64", "x64"].includes(process.arch) &&
-      typeof process.report?.getReport?.()?.header?.glibcVersionRuntime === "string") {
-    return `linux-${process.arch}-gnu`;
+export function stableNativePlatformKey({
+  platform = process.platform,
+  arch = process.arch,
+  glibcVersionRuntime = process.report?.getReport?.()?.header?.glibcVersionRuntime,
+} = {}) {
+  if (platform === "darwin" && ["arm64", "x64"].includes(arch)) return `darwin-${arch}`;
+  if (platform === "linux" && ["arm64", "x64"].includes(arch) &&
+      typeof glibcVersionRuntime === "string") {
+    return `linux-${arch}-gnu`;
   }
   return null;
 }
@@ -65,7 +69,7 @@ export async function loadNativeBoundReadAddon() {
   if (FS_CONSTANTS.O_NOFOLLOW === undefined || FS_CONSTANTS.O_DIRECTORY === undefined) fail("required no-follow flags are unavailable");
   const entries = await parseManifest();
   await verifyClosure(entries);
-  const key = platformKey();
+  const key = stableNativePlatformKey();
   const entry = entries.find((candidate) => candidate.platformKey === key);
   if (!entry) fail(`UNSUPPORTED: fixed platform matrix has no runtime ${process.platform}-${process.arch}`);
   const binaryPath = path.join(PACKAGE_ROOT, entry.binary);
@@ -84,7 +88,8 @@ export async function loadNativeBoundReadAddon() {
   try { addon = createRequire(import.meta.url)(binaryReal); } catch (cause) { throw new Error(`filesystemBoundRead: native load failed: ${cause?.message ?? "unknown"}`, { cause }); }
   if (JSON.stringify(Object.keys(addon).sort()) !== JSON.stringify([...EXPECTED_EXPORTS].sort()) || addon.platform !== entry.os ||
       typeof addon.readFileBoundNative !== "function" || typeof addon.openParentDirectory !== "function" ||
-      typeof addon.closeParentDirectory !== "function" || typeof addon.renameDirectoryNoReplace !== "function") {
+      typeof addon.closeParentDirectory !== "function" || typeof addon.exchangeDirectories !== "function" ||
+      typeof addon.renameDirectoryNoReplace !== "function") {
     fail("native exports do not match the fixed manifest");
   }
   const after = await lstat(binaryPath);

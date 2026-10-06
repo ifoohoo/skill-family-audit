@@ -634,6 +634,48 @@
       }
     },
     {
+      "canonical_id": "SFA-ARTMETHOD-003",
+      "revision_digest": "2c4f3d227a3efe1c53c53c6e45e2093ad8eb7f94e53787e9ccfe7cd2c4bcc2ea",
+      "required_evidence_roles": {
+        "artifact_governance_scope": [
+          "policy",
+          "source_file"
+        ],
+        "informal_capability_boundary": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTMETHOD-007",
+      "revision_digest": "d5ef0bdac86eddda3748fc42c49894324be0d2b7819d599aa5bbdfb4c8cee36a",
+      "required_evidence_roles": {
+        "conversion_contract_limits": [
+          "policy",
+          "source_file"
+        ],
+        "original_input_preservation": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTMETHOD-015",
+      "revision_digest": "092c695765133f280c5af31ae2ca35cd7de15c36ebd10c4883629ecbf5d126b0",
+      "required_evidence_roles": {
+        "mandatory_check_binding": [
+          "policy",
+          "source_file"
+        ],
+        "nonconforming_input_instruction": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
       "canonical_id": "SFA-AUDITINTERNAL-001",
       "revision_digest": "f3da31cd34938b62991eebe9f4d623e60de638b20d27a0b6dc3944885a70f025",
       "required_evidence_roles": {
@@ -1295,6 +1337,25 @@
           "source_file"
         ],
         "state_mutual_exclusion_check": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-COMPAT-005",
+      "revision_digest": "ae08e6680422064b3a500396f4054b7bd0ecef634cb3e25953ce214af00033aa",
+      "required_evidence_roles": {
+        "compatibility_state_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "independent_verification_tier_evidence": [
+          "log",
+          "receipt"
+        ],
+        "state_tier_non_substitution_comparison": [
           "log",
           "receipt"
         ]
@@ -2205,7 +2266,7 @@
     },
     {
       "canonical_id": "SFA-DATASEC-001",
-      "revision_digest": "f75b25d58bec148c610b599317f9dac4a06f2f219d8eb508ae5b431f0cc24d79",
+      "revision_digest": "e42691904a8d45ab4652438eceab7dcdd75890ada1314616a87d3d1132e2ae0c",
       "required_evidence_roles": {
         "data_boundary_evidence": [
           "policy",
@@ -3233,6 +3294,72 @@
       }
     },
     {
+      "canonical_id": "SFA-EXTENSION-001",
+      "revision_digest": "393aeeb7b865f204fd560b5309f22d51d2a48d45396cb9884a66437c106adb4d",
+      "required_evidence_roles": {
+        "extension_carrier_selection_rationale": [
+          "policy",
+          "receipt",
+          "source_file"
+        ],
+        "extension_governance_requirements": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-EXTENSION-002",
+      "revision_digest": "daeef415a680bdc860e5afb6cfc8d2ba6ac20cfc73a651622cfd1711a981d0aa",
+      "required_evidence_roles": {
+        "optional_unknown_extension_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "optional_unknown_extension_preservation_comparison": [
+          "log",
+          "receipt"
+        ],
+        "optional_unknown_extension_roundtrip_observation": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-EXTENSION-003",
+      "revision_digest": "674040703a0431870d70a1d800a94a48e8bd62294e980c790e4c402314fc4ca6",
+      "required_evidence_roles": {
+        "required_unknown_extension_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "unsupported_extension_block_observation": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-EXTENSION-004",
+      "revision_digest": "803cf73a19280b3d63ea48ed2cb0a0bd9122e395c15e70f870a5711d7625e1af",
+      "required_evidence_roles": {
+        "core_contract_before_after": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "extension_monotonicity_observation": [
+          "log",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
       "canonical_id": "SFA-FAMILY-001",
       "revision_digest": "1f9871eba0bfd5626e9c950f4080c82c0957048cf36a9ad73f95179198f9aa84",
       "required_evidence_roles": {
@@ -3490,7 +3617,7 @@
     },
     {
       "canonical_id": "SFA-FOUNDATION-012",
-      "revision_digest": "3b343656c648f7128cd033797eeff72db681ab8354ca405cdfb8ae39384998b0",
+      "revision_digest": "2d0a9a58645ae76d928b8a9c0dfad75d8d8d00b8f7a769a666eeebbc64d98fb5",
       "required_evidence_roles": {
         "foundation_authority": [
           "manifest",
@@ -3499,6 +3626,9 @@
         "harness_consumer_source": [
           "source_file",
           "source_tree"
+        ],
+        "professional_proof": [
+          "receipt"
         ],
         "token_estimate_record": [
           "log",
@@ -3527,7 +3657,7 @@
     },
     {
       "canonical_id": "SFA-FOUNDATION-014",
-      "revision_digest": "e98f2ec151cb8a187a09f9e09f078195373fe0dbd898b959f87d2a4e5f469dbc",
+      "revision_digest": "003d49f85cffc984732d820666b0af300e58da44af5a3b09539154b753abb878",
       "required_evidence_roles": {
         "consumer_parameters_and_mapping": [
           "manifest",
@@ -3537,6 +3667,9 @@
         ],
         "contracts_authority": [
           "manifest",
+          "receipt"
+        ],
+        "professional_proof": [
           "receipt"
         ],
         "registry_check_output": [
@@ -3728,6 +3861,26 @@
       }
     },
     {
+      "canonical_id": "SFA-GOVERNANCE-001",
+      "revision_digest": "399652418f39dd06b17df4789e2bda07b3d7703e5fe547c2754cc63fdff32875",
+      "required_evidence_roles": {
+        "declared_target_surfaces": [
+          "manifest",
+          "policy",
+          "source_tree"
+        ],
+        "deterministic_gate_commands": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "deterministic_gate_run_results": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
       "canonical_id": "SFA-GOVERNANCE-002",
       "revision_digest": "93a187e133a9e8f05903916056712355f2fe336fc0136b34921f523eb2ff452c",
       "required_evidence_roles": {
@@ -3790,6 +3943,106 @@
           "policy",
           "source_file",
           "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-HARNESS-002",
+      "revision_digest": "b25ea60b8c7ef276de4221ac8e5a777dfd4b745c45a917c3fad0afec82df5c28",
+      "required_evidence_roles": {
+        "harness_business_dataflow": [
+          "policy",
+          "source_file",
+          "source_tree"
+        ],
+        "harness_readonly_boundary_observation": [
+          "log",
+          "receipt"
+        ],
+        "method_contract_authority": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-HARNESS-003",
+      "revision_digest": "d9fef09b3e3b30b0730f81e30859a2d3abc5f06682cd375e7cdf50ad7c9abc19",
+      "required_evidence_roles": {
+        "pre_post_recovery_acceptance_definition": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "recovery_policy_surface": [
+          "policy",
+          "source_file"
+        ],
+        "recovery_revalidation_observation": [
+          "log",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-HARNESS-005",
+      "revision_digest": "23a164787ee78f8dd9ff18b67f12c2cdff7d85128c2e658bf6789b36dd303565",
+      "required_evidence_roles": {
+        "observer_binding_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "observer_integration_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "observer_unavailability_disposition": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-HARNESS-006",
+      "revision_digest": "1ddbfcaf73848e78e8515da5b6e18971d5e621e710c023d6c55250499ee9340d",
+      "required_evidence_roles": {
+        "initial_harness_capability_boundary": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "interface_generation_validation_consumption": [
+          "log",
+          "receipt",
+          "source_file"
+        ],
+        "tier3_nonclaim_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-HARNESS-007",
+      "revision_digest": "77a78002f2a9f075afa7c9a371aa846f238e8d9ffeee4debf1912d3022bc8b66",
+      "required_evidence_roles": {
+        "behavior_verification_run_records": [
+          "jsonl_conversation",
+          "log",
+          "receipt"
+        ],
+        "sample_repeat_model_decision": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "verification_risk_classification": [
+          "policy",
+          "source_file"
         ]
       }
     },
@@ -4717,6 +4970,51 @@
       }
     },
     {
+      "canonical_id": "SFA-MIGRATE-012",
+      "revision_digest": "eb85a480f69a83a02cf77f75d354999f1d5aedfa01ed6a739ce540024065d78d",
+      "required_evidence_roles": {
+        "common_outer_contract_adoption": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "new_or_major_upgrade_identity": [
+          "manifest",
+          "source_file"
+        ],
+        "public_entry_contract_correspondence": [
+          "log",
+          "manifest",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-013",
+      "revision_digest": "d380a6df5b39c9c5caad06f4fd98bdee8d6af959837f09af49f7bfaeeb375318",
+      "required_evidence_roles": {
+        "affected_migration_scope": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "change_impact_analysis": [
+          "manifest",
+          "policy",
+          "receipt"
+        ],
+        "current_spec_conformance": [
+          "log",
+          "receipt"
+        ],
+        "unaffected_scope_rationale": [
+          "policy",
+          "receipt"
+        ]
+      }
+    },
+    {
       "canonical_id": "SFA-MIGRATE-014",
       "revision_digest": "ee0106b33f86bbc1826c725628c944e0087b3171e7cb50e7bcec05d822528bdd",
       "required_evidence_roles": {
@@ -5133,15 +5431,29 @@
     },
     {
       "canonical_id": "SFA-NETSEC-001",
-      "revision_digest": "5ab28293b8c7eb476613228d9301d864dfc62720e4ba58ebef191b8c2c96500d",
+      "revision_digest": "96d3cbf0d9cd6b85ff8c5070f85473b46192534cac274de8649fe2aad7aa13d1",
       "required_evidence_roles": {
-        "network_authorization_evidence": [
-          "policy",
-          "receipt"
-        ],
         "network_behavior_declaration": [
           "manifest",
           "policy"
+        ],
+        "network_failure_handling": [
+          "policy",
+          "source_file"
+        ],
+        "network_permission": [
+          "policy",
+          "receipt"
+        ],
+        "network_target_service": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "network_transmitted_data": [
+          "manifest",
+          "policy",
+          "source_file"
         ]
       }
     },
@@ -6499,6 +6811,31 @@
       }
     },
     {
+      "canonical_id": "SFA-PROFILE-009",
+      "revision_digest": "7eeefbabf1254b56462e1d603c58526db2c6348f5faf22f99b91eb6381f88095",
+      "required_evidence_roles": {
+        "composer_rejection_observation": [
+          "log",
+          "receipt"
+        ],
+        "conflict_source_trace": [
+          "manifest",
+          "receipt",
+          "source_file"
+        ],
+        "conflict_vectors": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "participating_spec_identities": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
       "canonical_id": "SFA-PROFILE-010",
       "revision_digest": "e0e08610fef761229599726f4f2cb8097563aa1c0ba36790ff25689ceb45ff5c",
       "required_evidence_roles": {
@@ -7012,7 +7349,7 @@
     },
     {
       "canonical_id": "SFA-PUBLISH-014",
-      "revision_digest": "527f2b17f3df3dc3d0af2e6ac1475cdd3d1ff5a7ca754eafb6f49543c4c5f556",
+      "revision_digest": "cc1b608c7af46719469d817d3fce5ef3cd3c5ecb10e0a19096c91577b778fcd7",
       "required_evidence_roles": {
         "authorization_policy": [
           "exception",
@@ -7216,6 +7553,24 @@
           "manifest",
           "receipt",
           "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-QUALIFY-002",
+      "revision_digest": "b73c654273d36d3984a5bd61cc1f3b7f4e577bca836abcbac83869d314cc0c46",
+      "required_evidence_roles": {
+        "platform_commitment_surface": [
+          "manifest",
+          "platform_support"
+        ],
+        "stability_scope_declaration": [
+          "policy",
+          "source_file"
+        ],
+        "uncommitted_scope_statement": [
+          "source_file",
+          "source_tree"
         ]
       }
     },
@@ -7540,6 +7895,62 @@
         ],
         "placeholder_marking": [
           "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-002",
+      "revision_digest": "65a4d0fa8bace7873a7bd98f655c1b18098a6d6f1b604ec8677aceba06abb2b9",
+      "required_evidence_roles": {
+        "public_contract_reference": [
+          "manifest",
+          "policy"
+        ],
+        "published_version_dependency": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-006",
+      "revision_digest": "984a3a54e0be1f47134b9e00cf707ce50b673c92f6ccbb6e23b44321bc43d402",
+      "required_evidence_roles": {
+        "business_object_semantics": [
+          "source_file",
+          "source_tree"
+        ],
+        "input_output_convention": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-007",
+      "revision_digest": "a78595916f4642b0c6de266b78ca020c269bc63b6b21d03fce8dc0b3a0467e65",
+      "required_evidence_roles": {
+        "expression_limitation_disclosure": [
+          "source_file",
+          "source_tree"
+        ],
+        "upstream_extension_request": [
+          "exception",
+          "policy"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-009",
+      "revision_digest": "376038ea0eb36c5b7ef008fba03f99d7783b08dbc90d273a7089cb386b725907",
+      "required_evidence_roles": {
+        "provider_resolution_boundary": [
+          "policy",
+          "source_file"
+        ],
+        "traceability_relation_map": [
+          "manifest",
           "source_file"
         ]
       }
@@ -9248,6 +9659,20 @@
       }
     },
     {
+      "canonical_id": "SFA-TEMPLATE-005",
+      "revision_digest": "54e6cd45a18cf6c714dd96d1009363fa51caca3930d60cca7de4e2a5603180a3",
+      "required_evidence_roles": {
+        "applicable_version_statement": [
+          "policy",
+          "source_file"
+        ],
+        "template_contract_alignment": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
       "canonical_id": "SFA-TIER1-001",
       "revision_digest": "e99360aaa65249f0a43077835f444413ee2bc3cdf3aeea81911214d4a394fb77",
       "required_evidence_roles": {
@@ -9913,6 +10338,54 @@
       }
     },
     {
+      "canonical_id": "SFA-WIRING-001",
+      "revision_digest": "d8f9c47ecfbbefa628c1effde45a0602a1fff9ed6c96f9784fc93fc6df9588d2",
+      "required_evidence_roles": {
+        "foundation_adoption_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "foundation_call_sites": [
+          "source_file",
+          "source_tree"
+        ],
+        "foundation_parameter_sources": [
+          "policy",
+          "source_file"
+        ],
+        "foundation_professional_entry_or_conclusion": [
+          "policy",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WIRING-002",
+      "revision_digest": "70813862dd382153ec9f7bdf4674ac2d72f8bd979a09cdca390e2e2bba9972f0",
+      "required_evidence_roles": {
+        "loop_adoption_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "loop_professional_entry_or_conclusion": [
+          "policy",
+          "receipt",
+          "source_file"
+        ],
+        "loop_public_contract_reference": [
+          "policy",
+          "source_file"
+        ],
+        "loop_task_retry_resume_cancel_sites": [
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
       "canonical_id": "SFA-WORKER-001",
       "revision_digest": "46ffc2ab2d82ff3884350eeaa540f5ff4a1ea50a2eed9f16b99c88b471065166",
       "required_evidence_roles": {
@@ -10273,411 +10746,6 @@
         "write_set_declaration": [
           "policy",
           "receipt",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-COMPAT-005",
-      "revision_digest": "ae08e6680422064b3a500396f4054b7bd0ecef634cb3e25953ce214af00033aa",
-      "required_evidence_roles": {
-        "compatibility_state_declaration": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "independent_verification_tier_evidence": [
-          "log",
-          "receipt"
-        ],
-        "state_tier_non_substitution_comparison": [
-          "log",
-          "receipt"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-EXTENSION-001",
-      "revision_digest": "393aeeb7b865f204fd560b5309f22d51d2a48d45396cb9884a66437c106adb4d",
-      "required_evidence_roles": {
-        "extension_carrier_selection_rationale": [
-          "policy",
-          "receipt",
-          "source_file"
-        ],
-        "extension_governance_requirements": [
-          "manifest",
-          "policy",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-EXTENSION-002",
-      "revision_digest": "daeef415a680bdc860e5afb6cfc8d2ba6ac20cfc73a651622cfd1711a981d0aa",
-      "required_evidence_roles": {
-        "optional_unknown_extension_declaration": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "optional_unknown_extension_preservation_comparison": [
-          "log",
-          "receipt"
-        ],
-        "optional_unknown_extension_roundtrip_observation": [
-          "log",
-          "receipt"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-EXTENSION-003",
-      "revision_digest": "674040703a0431870d70a1d800a94a48e8bd62294e980c790e4c402314fc4ca6",
-      "required_evidence_roles": {
-        "required_unknown_extension_declaration": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "unsupported_extension_block_observation": [
-          "log",
-          "receipt"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-EXTENSION-004",
-      "revision_digest": "803cf73a19280b3d63ea48ed2cb0a0bd9122e395c15e70f870a5711d7625e1af",
-      "required_evidence_roles": {
-        "core_contract_before_after": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "extension_monotonicity_observation": [
-          "log",
-          "receipt",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-GOVERNANCE-001",
-      "revision_digest": "399652418f39dd06b17df4789e2bda07b3d7703e5fe547c2754cc63fdff32875",
-      "required_evidence_roles": {
-        "declared_target_surfaces": [
-          "manifest",
-          "policy",
-          "source_tree"
-        ],
-        "deterministic_gate_commands": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "deterministic_gate_run_results": [
-          "log",
-          "receipt"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-HARNESS-002",
-      "revision_digest": "b25ea60b8c7ef276de4221ac8e5a777dfd4b745c45a917c3fad0afec82df5c28",
-      "required_evidence_roles": {
-        "harness_business_dataflow": [
-          "policy",
-          "source_file",
-          "source_tree"
-        ],
-        "harness_readonly_boundary_observation": [
-          "log",
-          "receipt"
-        ],
-        "method_contract_authority": [
-          "manifest",
-          "policy",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-HARNESS-003",
-      "revision_digest": "d9fef09b3e3b30b0730f81e30859a2d3abc5f06682cd375e7cdf50ad7c9abc19",
-      "required_evidence_roles": {
-        "pre_post_recovery_acceptance_definition": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "recovery_policy_surface": [
-          "policy",
-          "source_file"
-        ],
-        "recovery_revalidation_observation": [
-          "log",
-          "receipt"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-HARNESS-005",
-      "revision_digest": "23a164787ee78f8dd9ff18b67f12c2cdff7d85128c2e658bf6789b36dd303565",
-      "required_evidence_roles": {
-        "observer_binding_contract": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "observer_integration_declaration": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "observer_unavailability_disposition": [
-          "policy",
-          "receipt"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-HARNESS-006",
-      "revision_digest": "1ddbfcaf73848e78e8515da5b6e18971d5e621e710c023d6c55250499ee9340d",
-      "required_evidence_roles": {
-        "initial_harness_capability_boundary": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "interface_generation_validation_consumption": [
-          "log",
-          "receipt",
-          "source_file"
-        ],
-        "tier3_nonclaim_declaration": [
-          "manifest",
-          "policy",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-HARNESS-007",
-      "revision_digest": "77a78002f2a9f075afa7c9a371aa846f238e8d9ffeee4debf1912d3022bc8b66",
-      "required_evidence_roles": {
-        "behavior_verification_run_records": [
-          "jsonl_conversation",
-          "log",
-          "receipt"
-        ],
-        "sample_repeat_model_decision": [
-          "manifest",
-          "policy",
-          "receipt"
-        ],
-        "verification_risk_classification": [
-          "policy",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-MIGRATE-012",
-      "revision_digest": "eb85a480f69a83a02cf77f75d354999f1d5aedfa01ed6a739ce540024065d78d",
-      "required_evidence_roles": {
-        "common_outer_contract_adoption": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "new_or_major_upgrade_identity": [
-          "manifest",
-          "source_file"
-        ],
-        "public_entry_contract_correspondence": [
-          "log",
-          "manifest",
-          "receipt",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-MIGRATE-013",
-      "revision_digest": "d380a6df5b39c9c5caad06f4fd98bdee8d6af959837f09af49f7bfaeeb375318",
-      "required_evidence_roles": {
-        "affected_migration_scope": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "change_impact_analysis": [
-          "manifest",
-          "policy",
-          "receipt"
-        ],
-        "current_spec_conformance": [
-          "log",
-          "receipt"
-        ],
-        "unaffected_scope_rationale": [
-          "policy",
-          "receipt"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-PROFILE-009",
-      "revision_digest": "7eeefbabf1254b56462e1d603c58526db2c6348f5faf22f99b91eb6381f88095",
-      "required_evidence_roles": {
-        "composer_rejection_observation": [
-          "log",
-          "receipt"
-        ],
-        "conflict_source_trace": [
-          "manifest",
-          "receipt",
-          "source_file"
-        ],
-        "conflict_vectors": [
-          "manifest",
-          "policy",
-          "source_file"
-        ],
-        "participating_spec_identities": [
-          "manifest",
-          "policy",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-ARTMETHOD-003",
-      "revision_digest": "2c4f3d227a3efe1c53c53c6e45e2093ad8eb7f94e53787e9ccfe7cd2c4bcc2ea",
-      "required_evidence_roles": {
-        "artifact_governance_scope": [
-          "policy",
-          "source_file"
-        ],
-        "informal_capability_boundary": [
-          "source_file",
-          "source_tree"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-ARTMETHOD-007",
-      "revision_digest": "d5ef0bdac86eddda3748fc42c49894324be0d2b7819d599aa5bbdfb4c8cee36a",
-      "required_evidence_roles": {
-        "conversion_contract_limits": [
-          "policy",
-          "source_file"
-        ],
-        "original_input_preservation": [
-          "source_file",
-          "source_tree"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-ARTMETHOD-015",
-      "revision_digest": "092c695765133f280c5af31ae2ca35cd7de15c36ebd10c4883629ecbf5d126b0",
-      "required_evidence_roles": {
-        "mandatory_check_binding": [
-          "policy",
-          "source_file"
-        ],
-        "nonconforming_input_instruction": [
-          "source_file",
-          "source_tree"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-QUALIFY-002",
-      "revision_digest": "b73c654273d36d3984a5bd61cc1f3b7f4e577bca836abcbac83869d314cc0c46",
-      "required_evidence_roles": {
-        "platform_commitment_surface": [
-          "manifest",
-          "platform_support"
-        ],
-        "stability_scope_declaration": [
-          "policy",
-          "source_file"
-        ],
-        "uncommitted_scope_statement": [
-          "source_file",
-          "source_tree"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-REGISTRY-002",
-      "revision_digest": "65a4d0fa8bace7873a7bd98f655c1b18098a6d6f1b604ec8677aceba06abb2b9",
-      "required_evidence_roles": {
-        "public_contract_reference": [
-          "manifest",
-          "policy"
-        ],
-        "published_version_dependency": [
-          "manifest",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-REGISTRY-006",
-      "revision_digest": "984a3a54e0be1f47134b9e00cf707ce50b673c92f6ccbb6e23b44321bc43d402",
-      "required_evidence_roles": {
-        "business_object_semantics": [
-          "source_file",
-          "source_tree"
-        ],
-        "input_output_convention": [
-          "policy",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-REGISTRY-007",
-      "revision_digest": "a78595916f4642b0c6de266b78ca020c269bc63b6b21d03fce8dc0b3a0467e65",
-      "required_evidence_roles": {
-        "expression_limitation_disclosure": [
-          "source_file",
-          "source_tree"
-        ],
-        "upstream_extension_request": [
-          "exception",
-          "policy"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-REGISTRY-009",
-      "revision_digest": "376038ea0eb36c5b7ef008fba03f99d7783b08dbc90d273a7089cb386b725907",
-      "required_evidence_roles": {
-        "provider_resolution_boundary": [
-          "policy",
-          "source_file"
-        ],
-        "traceability_relation_map": [
-          "manifest",
-          "source_file"
-        ]
-      }
-    },
-    {
-      "canonical_id": "SFA-TEMPLATE-005",
-      "revision_digest": "54e6cd45a18cf6c714dd96d1009363fa51caca3930d60cca7de4e2a5603180a3",
-      "required_evidence_roles": {
-        "applicable_version_statement": [
-          "policy",
-          "source_file"
-        ],
-        "template_contract_alignment": [
-          "manifest",
           "source_file"
         ]
       }

@@ -142,6 +142,93 @@
         "pattern": "^SFA-[A-Z0-9]+-[0-9]{3}$"
       },
       "description": "仅 targeted 允许的非空、唯一 canonical rule ID 数组；与 semantic_group_ids 互斥。规则存在性与当前 scope 由运行时 canonical inventory 校验。"
+    },
+    "professional_consumption": {
+      "$ref": "#/$defs/professionalConsumption",
+      "description": "宿主选择、可定位证明和提供方读取器原始返回；进入同一次 Task。基准由清单派生。未知字段拒绝。不得携带待执行命令，不得填写 status、version_relation、reader_status 等最终策略摘要。"
+    }
+  },
+  "$defs": {
+    "professionalConsumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "provider_id",
+              "selected",
+              "applicable",
+              "entry_available",
+              "action"
+            ],
+            "properties": {
+              "provider_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "selected": {
+                "type": "boolean"
+              },
+              "applicable": {
+                "type": "boolean"
+              },
+              "entry_available": {
+                "type": "boolean"
+              },
+              "action": {
+                "enum": [
+                  "none",
+                  "refresh",
+                  "reuse",
+                  "scan"
+                ]
+              },
+              "proof_root": {
+                "type": "string",
+                "minLength": 1
+              },
+              "proof_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reader_result": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "pass",
+                      "not_pass",
+                      "unavailable"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "conclusion": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "required": [

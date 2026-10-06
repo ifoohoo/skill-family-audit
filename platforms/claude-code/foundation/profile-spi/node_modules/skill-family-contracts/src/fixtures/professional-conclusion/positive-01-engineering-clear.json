@@ -1,0 +1,39 @@
+{
+  "fixtureId": "professional-conclusion.positive.engineering-clear",
+  "contract": "professional-conclusion",
+  "class": "positive",
+  "description": "A fictional completed engineering check keeps its provider-owned code and detailed result.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/professional-conclusion.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.professional-conclusion",
+    "provider": {
+      "id": "fictional-engineering-checker",
+      "version": "7.4.2",
+      "entry": "check --policy declared --only version"
+    },
+    "subject": {
+      "ref": "/fictional/projects/orchid",
+      "revision": "revision-17"
+    },
+    "scope": {
+      "checked": ["release-unit:core"],
+      "limitations": ["Only declared version references were checked."]
+    },
+    "outcome": {
+      "completion": "complete",
+      "code": "ENGINEERING_CLEAR",
+      "summary": "All declared versions matched."
+    },
+    "details": {
+      "selected": ["version"],
+      "completed": ["release-unit:core"],
+      "findings": []
+    }
+  }
+}

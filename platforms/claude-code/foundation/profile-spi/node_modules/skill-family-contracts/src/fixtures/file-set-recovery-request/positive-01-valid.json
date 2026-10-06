@@ -1,0 +1,82 @@
+{
+  "fixtureId": "file-set-recovery-request.positive.valid",
+  "contract": "file-set-recovery-request",
+  "class": "positive",
+  "description": "Fictional file-set-recovery-request: valid.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/file-set-recovery-request.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": true
+  },
+  "data": {
+    "schemaVersion": 1,
+    "operationId": "00000000-0000-4000-8000-000000000001",
+    "root": "/tmp/fictional-file-set",
+    "rootBinding": {
+      "kind": "trusted-filesystem-root-binding",
+      "digestAlgorithm": "sha256",
+      "basis": "canonical-realpath-device-inode-type-mode-v1",
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "recoveryRelPath": ".foundation-file-apply",
+    "environment": {
+      "filesystem": "apfs",
+      "cooperativeWriters": true
+    },
+    "kind": "skill-family.file-set-recovery-request",
+    "allowAdjacentStaging": true,
+    "maintenance": {
+      "observation": {
+        "schemaVersion": 1,
+        "kind": "skill-family.state-store-recovery-observation",
+        "root": "/tmp/fictional-file-set/.foundation-file-apply/journal",
+        "directories": [
+          {
+            "path": ".",
+            "exists": true,
+            "identity": {
+              "device": "1",
+              "inode": "2",
+              "mode": 16832,
+              "type": "directory"
+            }
+          }
+        ],
+        "controls": [
+          {
+            "path": "writer.lock",
+            "exists": false,
+            "identity": null,
+            "nlink": null,
+            "size": null,
+            "sha256": null,
+            "record": null
+          },
+          {
+            "path": "writer-mutation.lock",
+            "exists": false,
+            "identity": null,
+            "nlink": null,
+            "size": null,
+            "sha256": null,
+            "record": null
+          },
+          {
+            "path": "writer-recovery.lock",
+            "exists": false,
+            "identity": null,
+            "nlink": null,
+            "size": null,
+            "sha256": null,
+            "record": null
+          }
+        ]
+      },
+      "confirmAllParticipantsStopped": true,
+      "confirmExclusiveMaintenance": true
+    }
+  }
+}

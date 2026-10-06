@@ -390,6 +390,7 @@
     "SFA-NAM-022",
     "SFA-NAM-023",
     "SFA-NAM-024",
+    "SFA-NETSEC-001",
     "SFA-NODE-001",
     "SFA-NODE-002",
     "SFA-NONWAIVE-001",
@@ -758,6 +759,7 @@
     "SFA-TOPOLOGY-006",
     "SFA-TOPOLOGY-007",
     "SFA-TOPOLOGY-008",
+    "SFA-WIRING-001",
     "SFA-WORKER-001",
     "SFA-WORKER-002",
     "SFA-WORKER-003",
@@ -1646,7 +1648,7 @@
       "baselineRevisionDigest": "d3cf9e6ed0c35b9539804d4c2f782679d885b56ea0211661bbc558c0c8feeca4",
       "baselineRuleId": "semantic:SFA-DATASEC-001@2",
       "canonicalId": "SFA-DATASEC-001",
-      "canonicalRevisionDigest": "f75b25d58bec148c610b599317f9dac4a06f2f219d8eb508ae5b431f0cc24d79"
+      "canonicalRevisionDigest": "e42691904a8d45ab4652438eceab7dcdd75890ada1314616a87d3d1132e2ae0c"
     },
     {
       "baselineRevisionDigest": "a5f99e3780803c7e173959dd4457f2dfd780d9928f01625ac81efe7553ff9e48",
@@ -2186,7 +2188,7 @@
       "baselineRevisionDigest": "fef0ac1722d3822aa37ba36321ca08a2867b2ac016ab279dac846379380a0887",
       "baselineRuleId": "w2b2:SFA-FOUNDATION-012",
       "canonicalId": "SFA-FOUNDATION-012",
-      "canonicalRevisionDigest": "3b343656c648f7128cd033797eeff72db681ab8354ca405cdfb8ae39384998b0"
+      "canonicalRevisionDigest": "2d0a9a58645ae76d928b8a9c0dfad75d8d8d00b8f7a769a666eeebbc64d98fb5"
     },
     {
       "baselineRevisionDigest": "aab6c9bbb6e3f14833438b2586674e9554475fc0f69be60d1d0e57f50dc433cf",
@@ -2198,7 +2200,7 @@
       "baselineRevisionDigest": "fef0ac1722d3822aa37ba36321ca08a2867b2ac016ab279dac846379380a0887",
       "baselineRuleId": "w2b2:SFA-FOUNDATION-014",
       "canonicalId": "SFA-FOUNDATION-014",
-      "canonicalRevisionDigest": "e98f2ec151cb8a187a09f9e09f078195373fe0dbd898b959f87d2a4e5f469dbc"
+      "canonicalRevisionDigest": "003d49f85cffc984732d820666b0af300e58da44af5a3b09539154b753abb878"
     },
     {
       "baselineRevisionDigest": "fef0ac1722d3822aa37ba36321ca08a2867b2ac016ab279dac846379380a0887",
@@ -3101,6 +3103,12 @@
       "canonicalRevisionDigest": "e5c9b7d6e5f44a45b8886ecd011cdf45d985474959a66ea0bdbf6f89de7b562d"
     },
     {
+      "baselineRevisionDigest": "01fe25a4eb477a1535cfb4ec895282ccf944641044f2e207c1bbbfb47dadac9a",
+      "baselineRuleId": "w2b2:SFA-NETSEC-001",
+      "canonicalId": "SFA-NETSEC-001",
+      "canonicalRevisionDigest": "96d3cbf0d9cd6b85ff8c5070f85473b46192534cac274de8649fe2aad7aa13d1"
+    },
+    {
       "baselineRevisionDigest": "d504e50059d255d244e06238aebc0849ae08a34eae1ffeb54ffd73b94f94e463",
       "baselineRuleId": "semantic:SFA-NODE-001@2",
       "canonicalId": "SFA-NODE-001",
@@ -3827,10 +3835,10 @@
       "canonicalRevisionDigest": "e12c5bd961497368113067795149531fd85f927d01b3971d56683a7402b1d297"
     },
     {
-      "baselineRevisionDigest": "b67c35d601c3a6c1b026e5b0f6b576bef32a1598089d0dde2153829d4d0a4b82",
+      "baselineRevisionDigest": "4f3041e8d4daed88bfb5a9d9ce33b1dc2d47ffbb821fc8e2cb00e21ffde39477",
       "baselineRuleId": "semantic:SFA-PUBLISH-014@4",
       "canonicalId": "SFA-PUBLISH-014",
-      "canonicalRevisionDigest": "527f2b17f3df3dc3d0af2e6ac1475cdd3d1ff5a7ca754eafb6f49543c4c5f556"
+      "canonicalRevisionDigest": "cc1b608c7af46719469d817d3fce5ef3cd3c5ecb10e0a19096c91577b778fcd7"
     },
     {
       "baselineRevisionDigest": "3661dedba7c3be461b7ec8fbbfc7213b21849846c0f78cdad2abcd9237ca4949",
@@ -5309,6 +5317,12 @@
       "canonicalRevisionDigest": "c707642805ca9dab0dc62eb92c68756b23f4752b8cb580926788c2a68ca723be"
     },
     {
+      "baselineRevisionDigest": "437e53aeb7044e34d3ab1ff9f6a6dd9e83cdfea72501e492a0c68f2962a19b05",
+      "baselineRuleId": "w2b2:SFA-WIRING-001",
+      "canonicalId": "SFA-WIRING-001",
+      "canonicalRevisionDigest": "d8f9c47ecfbbefa628c1effde45a0602a1fff9ed6c96f9784fc93fc6df9588d2"
+    },
+    {
       "canonicalId": "SFA-WORKER-001",
       "canonicalRevisionDigest": "46ffc2ab2d82ff3884350eeaa540f5ff4a1ea50a2eed9f16b99c88b471065166",
       "baselineRuleId": "semantic:SFA-WORKER-001@3",
@@ -5840,6 +5854,7 @@
     "SFA-NAM-022",
     "SFA-NAM-023",
     "SFA-NAM-024",
+    "SFA-NETSEC-001",
     "SFA-NODE-001",
     "SFA-NODE-002",
     "SFA-NONWAIVE-001",
@@ -6208,6 +6223,7 @@
     "SFA-TOPOLOGY-006",
     "SFA-TOPOLOGY-007",
     "SFA-TOPOLOGY-008",
+    "SFA-WIRING-001",
     "SFA-WORKER-001",
     "SFA-WORKER-002",
     "SFA-WORKER-003",
@@ -8145,7 +8161,7 @@
       "description": "Execute terminal governance SFA-PUBLISH-014",
       "failureImpact": "error",
       "remediation": "Supply the evidence required by SFA-PUBLISH-014",
-      "revisionDigest": "b67c35d601c3a6c1b026e5b0f6b576bef32a1598089d0dde2153829d4d0a4b82",
+      "revisionDigest": "4f3041e8d4daed88bfb5a9d9ce33b1dc2d47ffbb821fc8e2cb00e21ffde39477",
       "ruleId": "semantic:SFA-PUBLISH-014@4"
     },
     {
@@ -10959,6 +10975,15 @@
     {
       "applicability": "project_adoption",
       "checkType": "static",
+      "description": "Execute first-tier mechanical executor SFA-NETSEC-001",
+      "failureImpact": "error",
+      "remediation": "恢复 SFA-NETSEC-001 声明的治理事实或整改其机械违反项",
+      "revisionDigest": "01fe25a4eb477a1535cfb4ec895282ccf944641044f2e207c1bbbfb47dadac9a",
+      "ruleId": "w2b2:SFA-NETSEC-001"
+    },
+    {
+      "applicability": "project_adoption",
+      "checkType": "static",
       "description": "Execute first-tier mechanical executor SFA-NONWAIVE-001",
       "failureImpact": "error",
       "remediation": "恢复 SFA-NONWAIVE-001 声明的治理事实或整改其机械违反项",
@@ -12957,6 +12982,15 @@
     {
       "applicability": "project_adoption",
       "checkType": "static",
+      "description": "Execute first-tier mechanical executor SFA-WIRING-001",
+      "failureImpact": "warning",
+      "remediation": "恢复 SFA-WIRING-001 声明的治理事实或整改其机械违反项",
+      "revisionDigest": "437e53aeb7044e34d3ab1ff9f6a6dd9e83cdfea72501e492a0c68f2962a19b05",
+      "ruleId": "w2b2:SFA-WIRING-001"
+    },
+    {
+      "applicability": "project_adoption",
+      "checkType": "static",
       "description": "Execute first-tier mechanical executor SFA-WRITE-001",
       "failureImpact": "error",
       "remediation": "恢复 SFA-WRITE-001 声明的治理事实或整改其机械违反项",
@@ -13319,12 +13353,12 @@
         },
         {
           "ruleId": "scope:release-artifact-complete",
-          "description": "发布产物目标必须包含 package.json、candidate-summary.json 和有效引用闭包",
+          "description": "发布候选目标必须有候选摘要；其四类载荷根中的实际文件须匹配载荷摘要且公开引用闭合。package.json 是可选发行包装，存在时身份须与候选摘要一致",
           "applicability": "release_artifact",
           "checkType": "static",
           "failureImpact": "high",
-          "remediation": "确保发布产物目录包含完整包清单、候选摘要和闭合引用",
-          "revisionDigest": "a438b5d48af906269d45054e87b98bba53a136f4854781b50e218d7195609593"
+          "remediation": "补齐候选摘要，修复四类载荷根中的实际文件、载荷摘要及公开引用；若提供 package.json，确保名称与版本匹配候选摘要",
+          "revisionDigest": "df1b4553ba53f7c50049a8828515b97eec7715b8ac2b9fb4ee185090c757d4fd"
         },
         {
           "ruleId": "scope:project-adoption-present",
@@ -13414,6 +13448,6 @@
     }
   ],
   "baselineRuleCount": 773,
-  "totalRules": 778,
+  "totalRules": 780,
   "tier": "first-tier"
 }

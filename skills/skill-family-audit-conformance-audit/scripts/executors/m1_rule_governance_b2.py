@@ -4464,412 +4464,658 @@ def check_foundation_008(ctx: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def check_foundation_012(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Harness 公开能力权威（已注册 w2b2 CHECKS；M1 实现批激活 ACTIVE_MECHANICAL，静态半区真实字节执行）。
+_PROFESSIONAL_FOUNDATION_PROVIDER = "foundation"
 
-    机械断言（static_scan）：公开根导入检查与真实 estimateTokens 重放。
-    - 目标源码引用 Harness 包或产生 token estimate 记录时触发；
-    - 导入私有 ``/src/`` 路径为 FAIL；
-    - 每条估算记录用真实 estimateTokens 重放输入，估算器身份（id/version）、
-      算法与 tokens 必须与真实输出一致，伪造或漂移为 FAIL；
-    - 触发后缺源码或估算记录为 EVIDENCE_MISSING；
-    - 未消费相关能力时为 NOT_APPLICABLE。
-    不复制能力或排除项数组，不扫描硬编码的 21/6 项列表。
-    """
+
+def _professional_consumption_item(
+    ctx: dict[str, Any], provider_id: str
+) -> dict[str, Any] | None:
+    payload = ctx.get("professional_consumption")
+    if not isinstance(payload, dict):
+        return None
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return None
+    matches = [
+        item
+        for item in items
+        if isinstance(item, dict) and item.get("provider_id") == provider_id
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
+def _professional_original_conclusion(item: dict[str, Any]) -> dict[str, Any] | None:
+    conclusion = item.get("conclusion")
+    if not isinstance(conclusion, dict):
+        return None
+    if not isinstance(conclusion.get("subject"), dict):
+        return None
+    if not isinstance(conclusion.get("scope"), dict):
+        return None
+    if not isinstance(conclusion.get("outcome"), dict):
+        return None
+    return conclusion
+
+
+def _professional_issue(item: dict[str, Any]) -> str:
+    if item.get("status") == "pass":
+        return "professional_pass"
+    if item.get("reader_status") == "unavailable":
+        return "reader_unavailable"
+    mode = item.get("mode")
+    if mode in {"missing_entry", "missing_proof", "version_policy", "not_selected"}:
+        return str(mode)
+    conclusion = _professional_original_conclusion(item)
+    outcome = conclusion.get("outcome") if conclusion is not None else None
+    completion = outcome.get("completion") if isinstance(outcome, dict) else None
+    if isinstance(completion, str) and completion != "complete":
+        return "professional_incomplete"
+    if (
+        item.get("reader_status") == "not_pass"
+        and mode in {"reused_proof", "scanned"}
+        and conclusion is not None
+        and completion == "complete"
+    ):
+        return "professional_findings"
+    return "missing_proof"
+
+
+def _professional_pass_verified(item: dict[str, Any]) -> bool:
+    if item.get("status") != "pass":
+        return False
+    baseline = item.get("baseline_version")
+    if not isinstance(baseline, str) or not baseline:
+        return False
+    relation = item.get("version_relation")
+    proof_version = item.get("proof_version")
+    if relation == "higher" and isinstance(proof_version, str) and proof_version:
+        return True
+    if relation == "same" and item.get("reader_status") == "pass":
+        return _professional_original_conclusion(item) is not None
+    if relation == "absent" and item.get("mode") == "not_selected":
+        return True
+    return False
+
+
+def _finish_professional_consumption(
+    ctx: dict[str, Any], item: dict[str, Any] | None, *, mechanical: str
+) -> dict[str, Any]:
+    """Map Foundation professional consumption onto the remaining mechanical half."""
+    row_fn = _static_row if mechanical == "static_scan" else _schema_row
     target = ctx.get("target")
-    if not target or not Path(target).is_dir():
+    if not isinstance(target, (str, Path)) or not str(target):
         return _finish(
-            [_static_row("NOT_APPLICABLE", reason="target_not_observable")],
+            [row_fn("EVIDENCE_MISSING", reason="target_unavailable")],
             mechanical_half=True,
         )
-    target_root = Path(target)
-    source_files = _target_source_files(target_root)
-    governance = load_governance_document(ctx, "token-estimation")
-    references = [
-        {
-            "file": str(path.relative_to(target_root)),
-            "specifier": specifier,
-        }
-        for path in source_files
-        for specifier in _foundation_reference_specifiers(
-            path, path.read_text(encoding="utf8", errors="replace")
-        )
-        if any(package in specifier for package in _FOUNDATION_PACKAGE_NAMES)
-    ]
-    harness_root_references = [
-        reference
-        for reference in references
-        if reference["specifier"] == "skill-family-harness-node"
-    ]
-    harness_subpath_references = [
-        reference
-        for reference in references
-        if reference["specifier"].startswith("skill-family-harness-node/")
-    ]
-    named_harness_exports = [
-        {
-            "file": str(path.relative_to(target_root)),
-            "specifier": binding["specifier"],
-            "export_name": binding["export_name"],
-        }
-        for path in source_files
-        for binding in _foundation_named_export_references(
-            path,
-            path.read_text(encoding="utf8", errors="replace"),
-            ("HARNESS_CAPABILITIES", "HARNESS_EXCLUSIONS", "estimateTokens"),
-        )
-        if binding["specifier"].startswith("skill-family-harness-node")
-    ]
-    named_subpath_references = [
-        reference
-        for reference in named_harness_exports
-        if reference["specifier"] != "skill-family-harness-node"
-    ]
-    private_imports = [
-        reference
-        for reference in harness_subpath_references
-        if "/src/" in reference["specifier"]
-    ]
-    bypassed_exports = [
-        reference
-        for reference in named_harness_exports
-        if reference["specifier"] != "skill-family-harness-node"
-    ]
-    if private_imports or bypassed_exports:
+    if item is None:
         return _finish(
             [
-                _static_row(
-                    "FAIL",
-                    reason="private_source_path_import",
-                    private_imports=private_imports,
-                    bypassed_exports=bypassed_exports,
-                )
-            ],
-            private_imports=private_imports,
-            bypassed_exports=bypassed_exports,
-            mechanical_half=True,
-        )
-    if not harness_root_references and not named_subpath_references and governance is None:
-        return _finish(
-            [
-                _static_row(
-                    "NOT_APPLICABLE",
-                    reason="no_harness_capability_or_estimate_consumption",
-                )
-            ],
-            mechanical_half=True,
-        )
-    if not source_files:
-        return _finish(
-            [_static_row("EVIDENCE_MISSING", reason="harness_consumer_source_missing")],
-            mechanical_half=True,
-        )
-    if governance is None:
-        return _finish(
-            [_static_row("EVIDENCE_MISSING", reason="token_estimate_record_missing")],
-            mechanical_half=True,
-        )
-    if not harness_root_references:
-        return _finish(
-            [_static_row("EVIDENCE_MISSING", reason="harness_public_root_reference_missing")],
-            mechanical_half=True,
-        )
-    records = rows_of(governance, "estimates", "token-estimation")
-    if not records:
-        return _finish(
-            [
-                _static_row(
+                row_fn(
                     "EVIDENCE_MISSING",
-                    reason="token_estimates_array_empty",
+                    reason="professional_proof_missing",
+                    next_step=(
+                        "由宿主发现 Foundation 公开读取或扫描入口，"
+                        "将专业消费结果纳入同一次 Task；"
+                        "Audit 不再重复执行专业机械检查。"
+                    ),
                 )
             ],
             mechanical_half=True,
         )
-    replay_failures: list[dict[str, Any]] = []
-    for index, record in enumerate(records):
-        input_text = record.get("input")
-        estimator_id = record.get("estimatorId")
-        estimator_version = record.get("estimatorVersion")
-        declared_tokens = record.get("tokens")
-        if (
-            not isinstance(input_text, str)
-            or not input_text
-            or not isinstance(estimator_id, str)
-            or not estimator_id
-            or not isinstance(estimator_version, str)
-            or not estimator_version
-            or not isinstance(declared_tokens, int)
-            or not isinstance(record.get("algorithm"), str)
-            or not record.get("algorithm")
-        ):
-            return _finish(
-                [
-                    _static_row(
-                        "EVIDENCE_MISSING",
-                        reason="token_estimate_identity_incomplete",
-                        record=index,
-                    )
-                ],
-                mechanical_half=True,
-            )
-        replay = fal.estimate_tokens(input_text)
-        if not isinstance(replay, dict) or replay.get("authority_ok") is not True:
-            code = replay.get("code") if isinstance(replay, dict) else "UNKNOWN"
-            if code in _FOUNDATION_VERIFICATION_INFRA_CODES:
-                return _finish(
-                    [
-                        _static_row(
-                            "EVIDENCE_MISSING",
-                            reason="foundation_estimation_unavailable",
-                            code=code,
-                        )
-                    ],
-                    mechanical_half=True,
-                )
-            return _finish(
-                [
-                    _static_row(
-                        "FAIL",
-                        reason="estimate_replay_unavailable",
-                        code=code,
-                    )
-                ],
-                mechanical_half=True,
-            )
-        estimator = replay.get("estimator")
-        mismatches = []
-        if not isinstance(estimator, dict) or estimator.get("id") != estimator_id:
-            mismatches.append("estimatorId")
-        if not isinstance(estimator, dict) or estimator.get("version") != estimator_version:
-            mismatches.append("estimatorVersion")
-        if replay.get("tokens") != declared_tokens:
-            mismatches.append("tokens")
-        declared_algorithm = record["algorithm"]
-        if replay.get("algorithm") != declared_algorithm:
-            mismatches.append("algorithm")
-        if mismatches:
-            replay_failures.append({"record": index, "mismatches": mismatches})
-    if replay_failures:
-        return _finish(
-            [
-                _static_row(
-                    "FAIL",
-                    reason="token_estimate_replay_mismatch",
-                    failures=replay_failures,
-                )
-            ],
-            replay_failures=replay_failures,
-            mechanical_half=True,
-        )
+    reason = (
+        item.get("reason")
+        if isinstance(item.get("reason"), str) and item.get("reason")
+        else "professional_consumption"
+    )
+    issue = _professional_issue(item)
+    verified = _professional_pass_verified(item)
+    mechanical_status = "PASS" if verified else "EVIDENCE_MISSING"
+    conclusion = _professional_original_conclusion(item)
+    evidence = {
+        "reason": reason,
+        "professional_mode": item.get("mode"),
+        "professional_issue": issue,
+        "version_relation": item.get("version_relation"),
+        "reader_status": item.get("reader_status"),
+        "does_not_certify_author": item.get("does_not_certify_author") is True,
+        "does_not_mean_rescan": item.get("does_not_mean_rescan") is True,
+        "refresh_suggested": item.get("refresh_suggested") is True,
+    }
+    if conclusion is not None:
+        evidence["conclusion"] = conclusion
     return _finish(
-        [
-            _static_row(
-                "PASS",
-                reason="static_checks_passed",
-                source_files=len(source_files),
-                records_replayed=len(records),
-            )
-        ],
-        source_files=len(source_files),
-        records_replayed=len(records),
+        [row_fn(mechanical_status, **evidence)],
         mechanical_half=True,
+        professional_consumption=item,
+    )
+
+
+def check_foundation_012(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Harness 公开能力权威。重复专业机械判断已由 Foundation 证明消费替代。
+
+    机械半区消费同一次 Task 中唯一的 Foundation 结果。政策或同版 reader 通过
+    为 PASS。完整、匹配且 completion=complete 的原生 not_pass 标记为
+    professional_findings，机械聚合保持可校验的 EVIDENCE_MISSING，由工作流
+    呈现为 REVIEW_REQUIRED。缺证、未完成和不可读取保持 EVIDENCE_MISSING，
+    并保留各自原因。不把四字段手填通过摘要放行，也不把专业发现写成 Audit
+    独立查实的违规。不再独立重放 estimateTokens。
+    """
+    return _finish_professional_consumption(
+        ctx,
+        _professional_consumption_item(ctx, _PROFESSIONAL_FOUNDATION_PROVIDER),
+        mechanical="static_scan",
     )
 
 
 def check_foundation_014(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Contracts registry 与 mandatory rules 权威（已注册 w2b2 CHECKS）。
+    """Contracts registry 与 mandatory rules 权威。重复专业判断已由证明消费替代。
 
-    机械断言（schema_validation）：调用公开 Contracts registry/check 并比较
-    真实调用参数，不复制对象清单或 mandatory rules：
-    - 消费者声明的 objectRefs 必须都在真实 registry 中（对象来源错误为 FAIL）；
-    - appliedMandatoryRuleIds 必须与真实 mandatory rules 精确一致
-      （必选规则减少为 FAIL）；
-    - checkCalls 逐条调用真实 checkOperation，参数漂移为 FAIL；
-    - 触发后缺真实输出或消费者参数为 EVIDENCE_MISSING；
-    - 未消费 Contracts 时为 NOT_APPLICABLE。
+    机械半区消费同一次 Task 中的 Foundation professional_consumption，
+    不再独立调用 Contracts registry/check 或复制 mandatory rules。
     """
+    return _finish_professional_consumption(
+        ctx,
+        _professional_consumption_item(ctx, _PROFESSIONAL_FOUNDATION_PROVIDER),
+        mechanical="schema_validation",
+    )
+
+
+_WIRING_001_NEXT_STEP = (
+    "由宿主调用公开入口 foundation-adoption-review:foundation-engineering-check，"
+    "将专业消费结果纳入同一次 Task；Audit 不再重复执行专业机械检查。"
+)
+_FOUNDATION_ADOPTION_EVIDENCE_FLAGS = (
+    "profile_carrier",
+    "foundation_consumption",
+    "capability_need",
+    "candidate_only_adoption",
+)
+def _foundation_checks_all_not_applicable(conclusion: dict[str, Any]) -> bool:
+    """完整 checks 逐行判断。畸形行不滤除，任一不成立则不是未采用事实。"""
+    checks = conclusion.get("checks")
+    if not isinstance(checks, list) or not checks:
+        return False
+    for row in checks:
+        if not isinstance(row, dict) or row.get("status") != "not_applicable":
+            return False
+    return True
+
+
+def _foundation_native_not_applicable(item: dict[str, Any] | None) -> bool:
+    """有依据的有效未采用：既有消费合同可用，且原结论完整、checks 全部不适用。
+
+    沿 ``_professional_pass_verified`` 与 ``_professional_original_conclusion``
+    确认消费可用。低版本、reader 不可用、同版不一致、partial，以及缺少
+    subject/scope/outcome 的裸摘要，都不在这里成立。
+    """
+    if not isinstance(item, dict) or not _professional_pass_verified(item):
+        return False
+    conclusion = _professional_original_conclusion(item)
+    if conclusion is None:
+        return False
+    outcome = conclusion.get("outcome")
+    if not isinstance(outcome, dict) or outcome.get("completion") != "complete":
+        return False
+    return _foundation_checks_all_not_applicable(conclusion)
+
+
+def _wiring_001_has_adoption_declaration(ctx: dict[str, Any]) -> bool:
+    root = _observable_target_root(ctx)
+    if root is not None:
+        adoption, _carrier = _adoption_declaration(ctx, root)
+        if isinstance(adoption, dict) and adoption:
+            return True
+    evidence = _scope(ctx).get("project_adoption_evidence")
+    if not isinstance(evidence, dict):
+        return False
+    for name in _FOUNDATION_ADOPTION_EVIDENCE_FLAGS:
+        value = evidence.get(name)
+        if value is True or (isinstance(value, str) and value):
+            return True
+    return False
+
+
+def _wiring_001_adoption_state(
+    ctx: dict[str, Any], item: dict[str, Any] | None
+) -> str:
+    """adopted | not_adopted | undetermined。未选扫描不能单独推断未采用。"""
+    declared = _wiring_001_has_adoption_declaration(ctx)
+    if _foundation_native_not_applicable(item) and not declared:
+        return "not_adopted"
+    if declared:
+        return "adopted"
+    if item is None:
+        return "undetermined"
+    mode = item.get("mode")
+    if mode in {
+        "reused_proof",
+        "scanned",
+        "version_policy",
+        "missing_proof",
+        "missing_entry",
+    }:
+        return "adopted"
+    if _professional_original_conclusion(item) is not None:
+        return "adopted"
+    return "undetermined"
+
+
+def _annotate_wiring_mechanical(result: dict[str, Any]) -> dict[str, Any]:
+    """专业 PASS 只覆盖本机械半区，不扩大为语义接线 PASS。"""
+    evidence = result.setdefault("evidence", {})
+    evidence["semantic_wiring_not_certified"] = True
+    evidence["mechanical_half"] = True
+    rows = result.get("check_method_subresults")
+    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+        row_evidence = rows[0].setdefault("evidence", {})
+        row_evidence["semantic_wiring_not_certified"] = True
+        if (
+            result.get("status") == "EVIDENCE_MISSING"
+            and not row_evidence.get("next_step")
+        ):
+            row_evidence["next_step"] = _WIRING_001_NEXT_STEP
+    return result
+
+
+def check_wiring_001(ctx: dict[str, Any]) -> dict[str, Any]:
+    """SFA-WIRING-001 机械半区候选：消费同 Task 唯一 Foundation 专业结果。
+
+    适用性看目标采用声明或真实专业证据。未选扫描、缺 manifest、未提供证明
+    不能单独推断未采用。真正未采用为 NOT_APPLICABLE；适用而缺结论为
+    EVIDENCE_MISSING，并指向 foundation-engineering-check。partial /
+    unavailable / findings 保留原义。专业 PASS 只覆盖本机械半区。
+    static_scan 机械半区已登记 CHECKS。semantic_review 不在本登记内，未执行不得计为通过。
+    """
+    item = _professional_consumption_item(ctx, _PROFESSIONAL_FOUNDATION_PROVIDER)
     target = ctx.get("target")
-    if not target or not Path(target).is_dir():
+    if not isinstance(target, (str, Path)) or not str(target):
         return _finish(
-            [_schema_row("NOT_APPLICABLE", reason="target_not_observable")],
+            [_static_row("EVIDENCE_MISSING", reason="target_unavailable")],
             mechanical_half=True,
         )
-    target_root = Path(target)
-    governance = load_governance_document(ctx, "contracts-consumption")
-    source_refs = [
-        specifier
-        for path in _target_source_files(target_root)
-        for specifier in _foundation_reference_specifiers(
-            path, path.read_text(encoding="utf8", errors="replace")
-        )
-        if "skill-family-contracts" in specifier
-    ]
-    if governance is None and not source_refs:
+    adoption = _wiring_001_adoption_state(ctx, item)
+    if adoption == "not_adopted":
         return _finish(
             [
-                _schema_row(
+                _static_row(
                     "NOT_APPLICABLE",
-                    reason="no_contracts_consumption_declared",
+                    reason="foundation_public_capability_not_adopted",
                 )
             ],
             mechanical_half=True,
         )
-    if governance is None:
+    if item is None or item.get("mode") == "not_selected":
+        reason = (
+            "professional_proof_missing"
+            if item is None
+            else "professional_scan_not_selected"
+        )
         return _finish(
             [
-                _schema_row(
+                _static_row(
                     "EVIDENCE_MISSING",
-                    reason="contracts_consumption_declaration_missing",
+                    reason=reason,
+                    next_step=_WIRING_001_NEXT_STEP,
+                    does_not_infer_not_adopted_from_unselected_scan=True,
+                    semantic_wiring_not_certified=True,
                 )
             ],
             mechanical_half=True,
         )
-    parameters = governance.get("consumerParameters")
-    if not isinstance(parameters, dict):
-        return _finish(
-            [_schema_row("FAIL", reason="consumer_parameters_shape_invalid")],
-            mechanical_half=True,
-        )
-    object_refs = parameters.get("objectRefs")
-    applied = parameters.get("appliedMandatoryRuleIds")
-    check_calls = parameters.get("checkCalls")
-    groups = [object_refs, applied, check_calls]
-    group_names = ("objectRefs", "appliedMandatoryRuleIds", "checkCalls")
-    shape_violations = [
-        {"kind": "parameter_group_shape_invalid", "group": name}
-        for name, group in zip(group_names, groups)
-        if group is not None and not isinstance(group, list)
-    ]
-    missing_groups = [
-        name
-        for name, group in zip(group_names, groups)
-        if group is None or not group
-    ]
-    violations: list[dict[str, Any]] = list(shape_violations)
-    mechanism_errors: list[dict[str, Any]] = []
-    # 只有存在可核对的非空组时才调用 authority；纯缺组输入直接缺证，避免
-    # 为无法形成判断的载体启动 Foundation。
-    if not violations and not any(isinstance(group, list) and group for group in groups):
-        return _finish(
-            [_schema_row("EVIDENCE_MISSING", reason="consumer_parameters_missing")],
-            missing_groups=missing_groups,
-            mechanical_half=True,
-        )
-    authority: dict[str, Any] | None = None
-    try:
-        observed_authority = fal.contracts_authority()
-    except Exception as exc:
-        observed_authority = None
-        mechanism_errors.append({
-            "phase": "contracts_authority",
-            "reason": "contracts_authority_exception",
-            "error_type": type(exc).__name__,
-        })
-    if isinstance(observed_authority, dict) and observed_authority.get("authority_ok") is True:
-        authority = observed_authority
-    elif not mechanism_errors:
-        code = observed_authority.get("code") if isinstance(observed_authority, dict) else "UNKNOWN"
-        if code in _FOUNDATION_VERIFICATION_INFRA_CODES:
-            mechanism_errors.append({"phase": "contracts_authority", "reason": "contracts_authority_unavailable", "code": code})
-        else:
-            violations.append({"kind": "contracts_authority_call_failed", "code": code})
-    if authority is not None:
-        real_schemas = {
-            entry.get("object"): entry
-            for entry in authority.get("schemas", [])
-            if isinstance(entry, dict)
-        }
-        real_mandatory = set(authority.get("mandatoryRuleIds", []))
-        if isinstance(object_refs, list):
-            if not all(isinstance(item, str) for item in object_refs):
-                violations.append({"kind": "object_refs_shape_invalid"})
-            for ref in (item for item in object_refs if isinstance(item, str)):
-                if ref not in real_schemas:
-                    violations.append({"kind": "unknown_registry_object", "object": ref})
-        if isinstance(applied, list):
-            if not all(isinstance(item, str) for item in applied):
-                violations.append({"kind": "applied_mandatory_rule_ids_shape_invalid"})
-            else:
-                applied_set = set(applied)
-                if applied_set != real_mandatory:
-                    violations.append({
-                        "kind": "mandatory_rules_drift",
-                        "missing": sorted(real_mandatory - applied_set),
-                        "extra": sorted(applied_set - real_mandatory),
-                    })
-        if isinstance(check_calls, list):
-            for index, call in enumerate(check_calls):
-                if not isinstance(call, dict):
-                    violations.append({"kind": "check_call_shape_invalid", "index": index})
-                    continue
-                operation = call.get("operation")
-                params = call.get("params")
-                if not isinstance(operation, str) or not operation or not isinstance(params, dict):
-                    violations.append({"kind": "check_call_shape_invalid", "index": index})
-                    continue
-                try:
-                    observed = fal.check_contracts_operation(operation, params)
-                except Exception as exc:
-                    mechanism_errors.append({
-                        "phase": "check_contracts_operation",
-                        "index": index,
-                        "reason": "contracts_check_exception",
-                        "error_type": type(exc).__name__,
-                    })
-                    continue
-                if not isinstance(observed, dict) or observed.get("authority_ok") is not True:
-                    code = observed.get("code") if isinstance(observed, dict) else "UNKNOWN"
-                    if code in _FOUNDATION_VERIFICATION_INFRA_CODES:
-                        mechanism_errors.append({"phase": "check_contracts_operation", "index": index, "reason": "contracts_check_unavailable", "code": code})
-                    else:
-                        violations.append({"kind": "contracts_check_call_failed", "index": index, "code": code})
-                    continue
-                if observed.get("ok") is not True:
-                    violations.append({"kind": "check_parameter_drift", "index": index, "operation": operation, "code": observed.get("code")})
-    if violations:
-        return _finish(
-            [
-                _schema_row(
-                    "FAIL",
-                    reason="contracts_authority_mismatch",
-                    violations=violations,
-                    mechanism_errors=mechanism_errors,
-                    missing_groups=missing_groups,
-                )
-            ],
-            violations=violations,
-            missing_groups=missing_groups,
-            mechanism_errors=mechanism_errors,
-            mechanical_half=True,
-        )
-    if mechanism_errors:
-        mechanism_reason = (
-            "contracts_check_unavailable"
-            if any(item.get("phase") == "check_contracts_operation" for item in mechanism_errors)
-            else "contracts_authority_unavailable"
-        )
-        return _finish(
-            [_schema_row("EVIDENCE_MISSING", reason=mechanism_reason, mechanism_errors=mechanism_errors)],
-            missing_groups=missing_groups,
-            mechanism_errors=mechanism_errors,
-            mechanical_half=True,
-        )
-    if missing_groups:
-        return _finish(
-            [_schema_row("EVIDENCE_MISSING", reason="consumer_parameters_missing")],
-            missing_groups=missing_groups,
-            mechanical_half=True,
-        )
+    return _annotate_wiring_mechanical(
+        _finish_professional_consumption(ctx, item, mechanical="static_scan")
+    )
+
+
+def _netsec_unavailable() -> dict[str, Any]:
     return _finish(
         [
-            _schema_row(
-                "PASS",
-                reason="schema_checks_passed",
-                contractsVersion=authority.get("contractsVersion"),
-                mandatoryRules=len(real_mandatory),
+            _static_row(
+                "EVIDENCE_MISSING",
+                reason="network_role_references_unavailable",
+                role_references_unavailable=True,
+                network_call_is_not_violation=True,
+                missing_materials_do_not_mean_no_network=True,
+                semantic_sufficiency_not_certified=True,
             )
         ],
         mechanical_half=True,
+    )
+
+
+def _netsec_missing(reason: str, **evidence: Any) -> dict[str, Any]:
+    return _finish(
+        [
+            _static_row(
+                "EVIDENCE_MISSING",
+                reason=reason,
+                network_call_is_not_violation=True,
+                missing_materials_do_not_mean_no_network=True,
+                semantic_sufficiency_not_certified=True,
+                **evidence,
+            )
+        ],
+        mechanical_half=True,
+    )
+
+
+def _netsec_ref_channel(ctx: dict[str, Any]) -> list[Any] | None:
+    """只认 ctx 上的已验证引用。缺省、空表和非列表都保持原缺证，不读 scope。"""
+    if "verified_evidence_refs" not in ctx:
+        return None
+    raw = ctx.get("verified_evidence_refs")
+    if not isinstance(raw, list) or not raw:
+        return None
+    return raw
+
+
+def _netsec_contract() -> dict[str, Any] | None:
+    """当前 SFA-NETSEC-001 的角色契约只来自 load_bindings 验证后的投影。"""
+    try:
+        import semantic_review
+    except Exception:
+        return None
+    try:
+        projection_path = semantic_review.BINDINGS_PATH.with_name(
+            "canonical-rule-projection.json"
+        )
+        document = json.loads(projection_path.read_text(encoding="utf-8"))
+        rules = document.get("rules") if isinstance(document, dict) else None
+        if not isinstance(rules, list):
+            return None
+        bindings = semantic_review.load_bindings(rules)
+        matches = [
+            item
+            for (canonical_id, _digest), item in bindings.items()
+            if canonical_id == "SFA-NETSEC-001" and isinstance(item, dict)
+        ]
+        if len(matches) != 1:
+            return None
+        binding = matches[0]
+        roles = binding.get("required_evidence_roles")
+        if (
+            not isinstance(roles, dict)
+            or not roles
+            or not isinstance(binding.get("canonical_id"), str)
+            or not is_hex64(binding.get("revision_digest"))
+        ):
+            return None
+        return binding
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        TypeError,
+        ValueError,
+        semantic_review.SemanticReviewError,
+    ):
+        return None
+
+
+def _netsec_route_matches(ctx: dict[str, Any], binding: dict[str, Any]) -> bool:
+    route = ctx.get("method_route")
+    if route is None:
+        return True
+    if not isinstance(route, dict):
+        return False
+    return (
+        route.get("canonical_id") == binding["canonical_id"]
+        and route.get("revision_digest") == binding["revision_digest"]
+    )
+
+
+def _netsec_frozen_index(ctx: dict[str, Any]) -> dict[str, dict[str, str]]:
+    raw = ctx.get("evidence_set")
+    if not isinstance(raw, list):
+        return {}
+    index: dict[str, dict[str, str]] = {}
+    duplicates: set[str] = set()
+    fields = {"evidence_id", "kind", "path", "sha256"}
+    for entry in raw:
+        if (
+            not isinstance(entry, dict)
+            or set(entry) != fields
+            or any(not isinstance(entry[key], str) or not entry[key] for key in fields)
+            or not is_hex64(entry["sha256"])
+        ):
+            continue
+        evidence_id = entry["evidence_id"]
+        if evidence_id in duplicates:
+            continue
+        if evidence_id in index:
+            duplicates.add(evidence_id)
+            del index[evidence_id]
+            continue
+        index[evidence_id] = entry
+    return index
+
+
+def _netsec_ref_fields(ref: Any) -> dict[str, str] | None:
+    if not isinstance(ref, dict):
+        return None
+    values: dict[str, str] = {}
+    for key in ("evidence_id", "sha256", "locator", "role"):
+        value = ref.get(key)
+        if not isinstance(value, str) or not value:
+            return None
+        values[key] = value
+    if not is_hex64(values["sha256"]):
+        return None
+    return values
+
+
+def _netsec_failure(ref: Any, reason: str) -> dict[str, Any]:
+    role = ref.get("role") if isinstance(ref, dict) else None
+    evidence_id = ref.get("evidence_id") if isinstance(ref, dict) else None
+    return {
+        "role": role if isinstance(role, str) else None,
+        "evidence_id": evidence_id if isinstance(evidence_id, str) else None,
+        "reason": reason,
+    }
+
+
+def _netsec_exact_frozen_path(path: str) -> bool:
+    """既有 locator 合同是绝对规范路径。不解析符号链接，也不接受相对路径。"""
+    if "\0" in path or not os.path.isabs(path) or os.path.normpath(path) != path:
+        return False
+    file_path = Path(path)
+    name = file_path.name
+    parent = file_path.parent
+    if not name or name in {".", ".."} or parent == file_path:
+        return False
+    return str(parent / name) == path
+
+
+def _netsec_canonical_path_matches(path: str) -> bool | None:
+    """证据集合的既有判定：解析后的路径必须仍是冻结路径。
+
+    父目录换成符号链接时，严格读取会把新根 realpath 到另一份同名文件。
+    这里只比较解析结果是否偏离冻结路径，不另立读取根。路径不存在时返回
+    None，仍交给原严格读取区分缺文件。
+    """
+    candidate = Path(path)
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError:
+        return None
+    return resolved == candidate
+
+
+def _netsec_read_failure(exc: BaseException) -> str:
+    """把 Foundation 严格读取的稳定 kind 收成缺证原因，不把失败当成通过。"""
+    message = str(exc)
+    if "unexpected digest" in message:
+        return "evidence_digest_mismatch"
+    _out_of_bounds = {
+        "path-traversal",
+        "symlink-escape",
+        "realpath-escape",
+        "absolute-path",
+        "invalid-path",
+        "windows-drive-path",
+        "windows-path",
+        "unc-path",
+        "unsafe-state-entry",
+    }
+    _unreadable = {"missing-resource", "read-failed", "invalid-root"}
+    examined: list[BaseException] = [exc]
+    cause = exc.__cause__
+    if isinstance(cause, BaseException) and cause is not exc:
+        examined.append(cause)
+    saw_kind = False
+    for item in examined:
+        _code, kind = _foundation_error_details(item)
+        if kind is None:
+            continue
+        saw_kind = True
+        if kind in _out_of_bounds:
+            return "evidence_out_of_bounds"
+        if kind == "content-guard-rejected":
+            return "evidence_digest_mismatch"
+        if kind in _unreadable:
+            return "evidence_unreadable"
+    if "invalid response" in message:
+        return "evidence_unreadable"
+    if saw_kind:
+        return "evidence_unreadable"
+    return "foundation_strict_read_unavailable"
+
+
+def _netsec_strict_read(
+    cache: dict[tuple[str, str], str | None],
+    path: str,
+    expected_sha256: str,
+) -> str | None:
+    """成功只表示冻结文件可读且摘要一致。缓存不保留文件正文。"""
+    key = (path, expected_sha256)
+    if key in cache:
+        return cache[key]
+    if _netsec_canonical_path_matches(path) is False:
+        cache[key] = "evidence_out_of_bounds"
+        return "evidence_out_of_bounds"
+    import conformance_workflow
+
+    reason: str | None
+    try:
+        receipt = conformance_workflow.foundation_read_file_strict(
+            Path(path).parent,
+            Path(path).name,
+            expected_sha256,
+        )
+    except conformance_workflow.WorkflowError as exc:
+        reason = _netsec_read_failure(exc)
+    except Exception:
+        reason = "foundation_strict_read_unavailable"
+    else:
+        if (
+            isinstance(receipt, dict)
+            and receipt.get("sha256") == expected_sha256
+            and isinstance(receipt.get("content"), str)
+        ):
+            reason = None
+        elif isinstance(receipt, dict) and receipt.get("sha256") != expected_sha256:
+            reason = "evidence_digest_mismatch"
+        else:
+            reason = "evidence_unreadable"
+    cache[key] = reason
+    return reason
+
+
+def check_netsec_001(ctx: dict[str, Any]) -> dict[str, Any]:
+    """SFA-NETSEC-001 机械半区候选：核已验证角色引用与冻结材料是否一致。
+
+    覆盖的角色只来自实际严格读取成功的引用。载体 kind 不自动补齐角色。
+    语义状态、理由和 scope 注入不参与结论。全角色可读只表示机械引用成立，
+    不认证语义充分。没有同规则引用时保持缺证。本函数不登记 CHECKS。
+    """
+    if _observable_target_root(ctx) is None:
+        return _finish(
+            [_static_row("EVIDENCE_MISSING", reason="target_unavailable")],
+            mechanical_half=True,
+        )
+    refs = _netsec_ref_channel(ctx)
+    if refs is None:
+        return _netsec_unavailable()
+    binding = _netsec_contract()
+    if binding is None:
+        return _netsec_missing("network_role_contract_unavailable")
+    if not _netsec_route_matches(ctx, binding):
+        return _netsec_missing("network_role_identity_mismatch")
+    required = binding["required_evidence_roles"]
+    frozen = _netsec_frozen_index(ctx)
+    covered: set[str] = set()
+    failures: list[dict[str, Any]] = []
+    cache: dict[tuple[str, str], str | None] = {}
+    for ref in refs:
+        fields = _netsec_ref_fields(ref)
+        if fields is None:
+            failures.append(_netsec_failure(ref, "evidence_reference_invalid"))
+            continue
+        allowed = required.get(fields["role"])
+        if not isinstance(allowed, list):
+            failures.append(_netsec_failure(ref, "role_not_in_contract"))
+            continue
+        entry = frozen.get(fields["evidence_id"])
+        if entry is None:
+            failures.append(_netsec_failure(ref, "evidence_not_in_frozen_set"))
+            continue
+        if fields["sha256"] != entry["sha256"]:
+            failures.append(_netsec_failure(ref, "evidence_digest_mismatch"))
+            continue
+        if entry["kind"] not in allowed:
+            failures.append(_netsec_failure(ref, "evidence_kind_not_allowed"))
+            continue
+        if fields["locator"] != entry["path"] or not _netsec_exact_frozen_path(
+            entry["path"]
+        ):
+            failures.append(_netsec_failure(ref, "locator_not_frozen_path"))
+            continue
+        read_failure = _netsec_strict_read(cache, entry["path"], entry["sha256"])
+        if read_failure is not None:
+            failures.append(_netsec_failure(ref, read_failure))
+            continue
+        covered.add(fields["role"])
+    missing = sorted(set(required) - covered)
+    if not failures and not missing:
+        return _finish(
+            [
+                _static_row(
+                    "PASS",
+                    reason="network_role_references_verified",
+                    covered_roles=sorted(covered),
+                    semantic_sufficiency_not_certified=True,
+                    network_call_is_not_violation=True,
+                )
+            ],
+            mechanical_half=True,
+        )
+    if not failures:
+        return _netsec_missing(
+            "network_role_references_incomplete",
+            covered_roles=sorted(covered),
+            missing_roles=missing,
+        )
+    reasons = {item["reason"] for item in failures}
+    reason = (
+        next(iter(reasons))
+        if len(reasons) == 1
+        else "network_role_reference_unverifiable"
+    )
+    failures.sort(
+        key=lambda item: (
+            "" if not isinstance(item["role"], str) else item["role"],
+            "" if not isinstance(item["evidence_id"], str) else item["evidence_id"],
+            item["reason"],
+        )
+    )
+    return _netsec_missing(
+        reason,
+        covered_roles=sorted(covered),
+        missing_roles=missing,
+        reference_failures=failures,
     )
 
 
@@ -5292,6 +5538,30 @@ def _observable_target_root(ctx: dict[str, Any]) -> Path | None:
     except (OSError, TypeError, ValueError):
         return None
     return root
+
+
+def _observable_declared_root(raw: Any) -> Path | None:
+    if not isinstance(raw, (str, os.PathLike)):
+        return None
+    try:
+        root = Path(raw)
+        if root.is_symlink() or not root.is_dir() or not os.access(root, os.R_OK | os.X_OK):
+            return None
+    except (OSError, TypeError, ValueError):
+        return None
+    return root
+
+
+def _foundation_007_root(ctx: dict[str, Any]) -> tuple[Path | None, str]:
+    """FOUNDATION-007 reads the declared product root when present.
+
+    Missing product_root keeps the old target compatibility path.  An explicit
+    invalid product_root does not fall back to target.
+    """
+    if "product_root" not in ctx:
+        return _observable_target_root(ctx), "target_not_observable"
+    root = _observable_declared_root(ctx.get("product_root"))
+    return root, "product_root_not_observable"
 
 
 def _foundation_error_details(exc: Exception) -> tuple[str | None, str | None]:
@@ -8320,12 +8590,12 @@ def check_foundation_006(ctx: dict[str, Any]) -> dict[str, Any]:
 
 def check_foundation_007(ctx: dict[str, Any]) -> dict[str, Any]:
     """机械面只校验 candidate Profile SPI 结果与真实 profile 摘要绑定。"""
-    target_root = _observable_target_root(ctx)
+    target_root, missing_reason = _foundation_007_root(ctx)
     if target_root is None:
         return _finish_validated(
             [
-                _schema_row("EVIDENCE_MISSING", reason="target_not_observable"),
-                _digest_row("EVIDENCE_MISSING", reason="target_not_observable"),
+                _schema_row("EVIDENCE_MISSING", reason=missing_reason),
+                _digest_row("EVIDENCE_MISSING", reason=missing_reason),
             ],
             ["schema_validation", "digest_verification"],
             mechanical_half=True,
@@ -9258,4 +9528,8 @@ CHECKS = {
     # ---------------------------------------------------------------------------
     "SFA-FOUNDATION-017": check_foundation_017,
     "SFA-FOUNDATION-018": check_foundation_018,
+    # SFA-WIRING-001 只登记已核收的 static_scan。semantic_review 不在本登记内。
+    "SFA-WIRING-001": check_wiring_001,
+    # SFA-NETSEC-001 只登记已核收的 static_scan。semantic_review 不在本登记内。
+    "SFA-NETSEC-001": check_netsec_001,
 }

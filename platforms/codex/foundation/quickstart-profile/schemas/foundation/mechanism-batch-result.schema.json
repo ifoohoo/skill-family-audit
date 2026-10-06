@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.skill-family.example/foundation-mechanisms/v1/mechanism-batch-result.json",
+  "title": "Candidate bounded mechanism batch result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["results"],
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["inputIndex", "exitCode", "response"],
+        "properties": {
+          "inputIndex": { "type": "integer", "minimum": 0 },
+          "exitCode": { "enum": [0, 2] },
+          "response": {}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "exitCode": { "const": 0 } },
+              "required": ["exitCode"]
+            },
+            "then": { "properties": { "response": { "$ref": "#/$defs/successResponse" } } },
+            "else": { "properties": { "response": { "$ref": "#/$defs/errorResponse" } } }
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "successResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" }
+      }
+    },
+    "errorResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "error"],
+      "properties": {
+        "ok": { "const": false },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "message"],
+          "properties": {
+            "name": { "type": "string" },
+            "message": {},
+            "code": { "type": "string" },
+            "details": {}
+          }
+        }
+      }
+    }
+  }
+}

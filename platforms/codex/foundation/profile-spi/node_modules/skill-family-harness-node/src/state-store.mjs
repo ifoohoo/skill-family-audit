@@ -9,7 +9,7 @@ import {
   rename,
   unlink,
 } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import process from "node:process";
 import {
@@ -49,6 +49,16 @@ const ROOT_NAMES = new Set([
 ]);
 
 const TEST_HOOKS = new WeakMap();
+const ROOT_TEST_HOOKS = new Map();
+const OBSERVATION_SCHEMA = findSchemaByObject("state-store-recovery-observation");
+const CONTROL_NAMES = [LOCK_FILE, MUTATION_FILE, RECOVERY_FILE];
+const CONTROL_VALIDATORS = new Map(CONTROL_NAMES.map((name, index) => [
+  name,
+  compileSchema({ schema: {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $ref: `${OBSERVATION_SCHEMA.$id}#/$defs/${["writerRecord", "mutationRecord", "recoveryRecord"][index]}`,
+  } }, { dialect: "2020-12", policy: "strict" }),
+]));
 
 function failure(kind, message, details) {
   return mechanismError(kind, message, details);
@@ -161,6 +171,136 @@ async function readSafeFile(file, { optional = false, label = "state entry" } = 
   }
 }
 
+function recoveryMismatch(message) {
+  return failure(HARNESS_ERROR_KINDS.LOCK_RECOVERY_REFUSED, message);
+}
+
+function observationIdentity(stats) {
+  return {
+    device: String(stats.dev),
+    inode: String(stats.ino),
+    mode: Number(stats.mode),
+    type: stats.isDirectory() ? "directory" : "file",
+  };
+}
+
+function sameFileObservation(left, right) {
+  return sameIdentity(left, right) && left.mode === right.mode && left.nlink === right.nlink &&
+    left.size === right.size && left.mtimeNs === right.mtimeNs && left.ctimeNs === right.ctimeNs;
+}
+
+async function readFromStart(handle) {
+  const chunks = [];
+  let position = 0;
+  for (;;) {
+    const buffer = Buffer.alloc(65536);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
+    if (bytesRead === 0) return Buffer.concat(chunks);
+    chunks.push(buffer.subarray(0, bytesRead));
+    position += bytesRead;
+  }
+}
+
+async function readObservedFile(file, { optional = false, allowDoubleLink = false } = {}) {
+  const before = await lstat(file, { bigint: true }).catch((cause) => {
+    if (optional && cause?.code === "ENOENT") return null;
+    throw cause;
+  });
+  if (before === null) return null;
+  if (!before.isFile() || (before.nlink !== 1n && !(allowDoubleLink && before.nlink === 2n))) {
+    throw failure(HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY, `${path.basename(file)} is not a safe ordinary file`);
+  }
+  const handle = await open(file, FS_CONSTANTS.O_RDONLY | (FS_CONSTANTS.O_NOFOLLOW ?? 0));
+  try {
+    const opened = await handle.stat({ bigint: true });
+    if (!sameFileObservation(before, opened)) throw recoveryMismatch("file changed while opening observation");
+    const bytes = await readFromStart(handle);
+    await runRootTestHook(path.dirname(file), "afterObservationRead", { file });
+    const repeated = await readFromStart(handle);
+    const after = await handle.stat({ bigint: true });
+    const named = await lstat(file, { bigint: true });
+    if (!sameFileObservation(opened, after) || !sameFileObservation(after, named) ||
+      BigInt(bytes.length) !== after.size || !bytes.equals(repeated)) {
+      throw recoveryMismatch("file changed during observation");
+    }
+    return { bytes, stats: after, sha256: createHash("sha256").update(bytes).digest("hex") };
+  } finally {
+    await handle.close();
+  }
+}
+
+function observedRecord(name, bytes) {
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return { status: "unsupported", value: null };
+  }
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (cause) {
+    // Only syntactically valid prefixes are partial writes, not malformed JSON.
+    const position = /at position (\d+)/.exec(cause.message);
+    const partial = /Unexpected end of JSON input|Unterminated string in JSON/.test(cause.message) ||
+      (position !== null && Number(position[1]) === text.length);
+    return { status: partial ? "partial" : "unsupported", value: null };
+  }
+  const record = { status: "valid", value };
+  return CONTROL_VALIDATORS.get(name)(record) ? record : { status: "unsupported", value: null };
+}
+
+async function observeControl(root, name) {
+  const observed = await readObservedFile(path.join(root, name), { optional: true });
+  if (observed === null) {
+    return { path: name, exists: false, identity: null, nlink: null, size: null, sha256: null, record: null };
+  }
+  return {
+    path: name,
+    exists: true,
+    identity: observationIdentity(observed.stats),
+    nlink: Number(observed.stats.nlink),
+    size: observed.bytes.length,
+    sha256: observed.sha256,
+    record: observedRecord(name, observed.bytes),
+  };
+}
+
+async function observeDirectories(root) {
+  await inspectLayoutReadOnly(root);
+  const directories = [];
+  for (const name of [".", EVENTS_DIR, SNAPSHOTS_DIR]) {
+    const stats = await lstat(path.join(root, name), { bigint: true }).catch((cause) => {
+      if (name !== "." && cause?.code === "ENOENT") return null;
+      throw cause;
+    });
+    if (stats !== null) assertSafeDirectory(stats, name);
+    directories.push({ path: name, exists: stats !== null, identity: stats === null ? null : observationIdentity(stats) });
+  }
+  return directories;
+}
+
+async function observeRecovery(root) {
+  const safeRoot = await prepareRoot(root, { create: false });
+  const directories = await observeDirectories(safeRoot);
+  const controls = [];
+  for (const name of CONTROL_NAMES) controls.push(await observeControl(safeRoot, name));
+  for (const control of controls) {
+    if (canonicalJson(control) !== canonicalJson(await observeControl(safeRoot, control.path))) {
+      throw recoveryMismatch("control changed during observation");
+    }
+  }
+  if (canonicalJson(directories) !== canonicalJson(await observeDirectories(safeRoot))) {
+    throw recoveryMismatch("directories changed during observation");
+  }
+  return { schemaVersion: 1, kind: "skill-family.state-store-recovery-observation", root: safeRoot, directories, controls };
+}
+
+async function assertRecoveryObservation(root, expected) {
+  const actual = await observeRecovery(root);
+  if (canonicalJson(actual) !== canonicalJson(expected)) throw recoveryMismatch("recovery observation no longer matches the store");
+}
+
 async function readSafeJson(file, options) {
   const result = await readSafeFile(file, options);
   if (result === null) return null;
@@ -194,8 +334,18 @@ async function writeExclusive(file, bytes, mode = 0o600) {
       FS_CONSTANTS.O_WRONLY | FS_CONSTANTS.O_CREAT | FS_CONSTANTS.O_EXCL | noFollow,
       mode,
     );
-    await handle.writeFile(bytes);
+    await runRootTestHook(path.dirname(file), "afterExclusiveOpen", { file });
+    if (ROOT_TEST_HOOKS.get(path.dirname(file))?.afterExclusivePartial) {
+      const buffer = Buffer.from(bytes);
+      const split = Math.max(1, Math.floor(buffer.length / 2));
+      await handle.writeFile(buffer.subarray(0, split));
+      await runRootTestHook(path.dirname(file), "afterExclusivePartial", { file });
+      await handle.writeFile(buffer.subarray(split));
+    } else {
+      await handle.writeFile(bytes);
+    }
     await handle.sync();
+    await runRootTestHook(path.dirname(file), "afterExclusiveWrite", { file });
     const stats = await handle.stat();
     assertSafeRegular(stats, path.basename(file));
     return stats;
@@ -211,7 +361,9 @@ async function atomicReplace(file, bytes, prefix = "control") {
   const temp = path.join(dir, `.${prefix}-${randomId()}.tmp`);
   try {
     await writeExclusive(temp, bytes);
+    await runRootTestHook(dir, "beforeControlRename", { file, temp });
     await rename(temp, file);
+    await runRootTestHook(dir, "afterControlRename", { file, temp });
     await syncDirectory(dir);
   } catch (cause) {
     await unlink(temp).catch(() => {});
@@ -226,7 +378,9 @@ async function appendExclusiveEvent(dir, file, bytes) {
     await writeExclusive(temp, bytes);
     await link(temp, file); // atomic create-if-absent; never replaces history
     linked = true;
+    await runRootTestHook(path.dirname(dir), "afterEventLink", { file, temp });
     await unlink(temp);
+    await runRootTestHook(path.dirname(dir), "afterEventTempUnlink", { file, temp });
     await syncDirectory(dir);
   } catch (cause) {
     if (!linked) await unlink(temp).catch(() => {});
@@ -316,9 +470,11 @@ async function assertLayoutIdentity(store) {
     try {
       stats = await lstat(target);
     } catch (cause) {
+      if (expected === null && cause?.code === "ENOENT") continue;
       throw failure(HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY, `${label} cannot be revalidated`, { code: cause?.code });
     }
     assertSafeDirectory(stats, label);
+    if (expected === null) throw recoveryMismatch(`${label} appeared during recovery`);
     if (!sameIdentity(stats, expected)) {
       throw failure(HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY, `${label} was replaced after the state store opened`);
     }
@@ -385,10 +541,11 @@ function recordDigest(record) {
   return digestDocument(unsigned);
 }
 
-async function readEvent(file, sequence, validators) {
+async function readEvent(file, sequence, validators, observed) {
   let parsed;
   try {
-    parsed = await readSafeJson(file, { label: `event ${sequence}` });
+    parsed = observed ? { value: JSON.parse(observed.bytes.toString("utf8")) } :
+      await readSafeJson(file, { label: `event ${sequence}` });
   } catch (cause) {
     if (cause?.details?.kind === HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY) throw cause;
     throw failure(HARNESS_ERROR_KINDS.CHAIN_BROKEN, `event ${sequence} is unreadable`, { position: sequence });
@@ -402,13 +559,30 @@ async function readEvent(file, sequence, validators) {
   return record;
 }
 
-async function scanEvents(store) {
+async function scanEvents(store, { recovery = false } = {}) {
   await assertLayoutIdentity(store);
-  const entries = await readdir(store.eventsDir, { withFileTypes: true });
+  const entries = store.identities.events === null ? [] : await readdir(store.eventsDir, { withFileTypes: true });
+  const observed = new Map();
+  const aliases = [];
+  if (recovery) {
+    for (const entry of entries) {
+      observed.set(entry.name, await readObservedFile(path.join(store.eventsDir, entry.name), { allowDoubleLink: true }));
+    }
+    for (const [name, file] of observed) {
+      if (file.stats.nlink !== 2n) continue;
+      const peers = [...observed].filter(([, peer]) => sameIdentity(file.stats, peer.stats));
+      const formal = peers.find(([candidate]) => EVENT_NAME.test(candidate));
+      const temporary = peers.find(([candidate]) => /^\.event-[0-9a-f]{24}\.tmp$/.test(candidate));
+      if (peers.length !== 2 || !formal || !temporary || !formal[1].bytes.equals(temporary[1].bytes)) {
+        throw failure(HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY, "event double link has no exact known alias pair");
+      }
+      if (name === formal[0]) aliases.push({ formal: formal[0], temporary: temporary[0], observed: file });
+    }
+  }
   const sequences = [];
   for (const entry of entries) {
     if (TEMP_NAME.test(entry.name)) {
-      await readSafeFile(path.join(store.eventsDir, entry.name), { label: "event staging file" });
+      if (!recovery) await readSafeFile(path.join(store.eventsDir, entry.name), { label: "event staging file" });
       continue;
     }
     const match = EVENT_NAME.exec(entry.name);
@@ -427,7 +601,8 @@ async function scanEvents(store) {
     if (sequences[index] !== expected) {
       throw failure(HARNESS_ERROR_KINDS.CHAIN_BROKEN, `event sequence gap at ${expected}`, { position: expected });
     }
-    const record = await readEvent(path.join(store.eventsDir, `${String(expected).padStart(6, "0")}.json`), expected, store.validators);
+    const name = `${String(expected).padStart(6, "0")}.json`;
+    const record = await readEvent(path.join(store.eventsDir, name), expected, store.validators, observed.get(name));
     if (record.sequence !== expected || record.prevDigest !== previousDigest || record.recordDigest !== recordDigest(record)) {
       throw failure(HARNESS_ERROR_KINDS.CHAIN_BROKEN, `event chain breaks at ${expected}`, { position: expected });
     }
@@ -448,7 +623,38 @@ async function scanEvents(store) {
     previousDigest = record.recordDigest;
     previousFencing = record.writerFencing;
   }
-  return { records, eventCount: records.length, headDigest: previousDigest, maxFencing: previousFencing };
+  return { records, eventCount: records.length, headDigest: previousDigest, maxFencing: previousFencing, aliases };
+}
+
+async function syncRecoveryDirectory(dir) {
+  const handle = await open(dir, FS_CONSTANTS.O_RDONLY | (FS_CONSTANTS.O_NOFOLLOW ?? 0));
+  try {
+    await runRootTestHook(path.dirname(dir), "beforeRecoveryDirectorySync", { dir });
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+async function cleanEventAliases(store, scan) {
+  for (const alias of scan.aliases) {
+    await runRootTestHook(store.root, "beforeEventAliasUnlink", alias);
+    await assertLayoutIdentity(store);
+    for (const name of [alias.formal, alias.temporary]) {
+      const current = await readObservedFile(path.join(store.eventsDir, name), { allowDoubleLink: true });
+      if (!sameFileObservation(current.stats, alias.observed.stats) || !current.bytes.equals(alias.observed.bytes)) {
+        throw recoveryMismatch("event alias changed before cleanup");
+      }
+    }
+    await unlink(path.join(store.eventsDir, alias.temporary));
+    await runRootTestHook(store.root, "afterEventAliasUnlink", alias);
+    const formal = await readObservedFile(path.join(store.eventsDir, alias.formal));
+    if (!sameIdentity(formal.stats, alias.observed.stats) || !formal.bytes.equals(alias.observed.bytes)) {
+      throw recoveryMismatch("formal event changed during alias cleanup");
+    }
+  }
+  // Also covers re-entry after unlink succeeded but its directory sync did not.
+  await syncRecoveryDirectory(store.eventsDir);
 }
 
 function lockRecord({ owner, fencing, acquisitionId, acquiredAt }) {
@@ -598,6 +804,7 @@ async function releaseMutation(guard) {
     throw failure(HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY, "state-store mutation guard was replaced before release");
   }
   await unlink(guard.file);
+  await runRootTestHook(path.dirname(guard.file), "afterMutationUnlink", { file: guard.file });
   await syncDirectory(path.dirname(guard.file));
 }
 
@@ -639,6 +846,12 @@ async function withWriterMutation(store, operation, action) {
 
 /** Test-only hook registry. It is deliberately not re-exported by index.mjs. */
 export function __setStateStoreTestHooks(store, hooks) {
+  if (typeof store === "string") {
+    if (hooks === null) ROOT_TEST_HOOKS.delete(path.resolve(store));
+    else if (hooks && typeof hooks === "object" && !Array.isArray(hooks)) ROOT_TEST_HOOKS.set(path.resolve(store), hooks);
+    else throw new TypeError("state-store test hooks must be an object or null");
+    return;
+  }
   assertStore(store);
   if (hooks === null) {
     TEST_HOOKS.delete(store);
@@ -655,7 +868,13 @@ async function runTestHook(store, name) {
   if (hook !== undefined) await hook();
 }
 
-export async function inspectStateStoreLock(root, { clock } = {}) {
+async function runRootTestHook(root, name, context = {}) {
+  const hook = ROOT_TEST_HOOKS.get(root)?.[name];
+  if (hook !== undefined) await hook(context);
+}
+
+export async function inspectStateStoreLock(root, { clock, recoveryObservation = false } = {}) {
+  if (recoveryObservation === true) return observeRecovery(root);
   if (typeof root !== "string" || root.length === 0) {
     throw new TypeError("state store root must be a non-empty path");
   }
@@ -719,7 +938,115 @@ export async function openStateStore(root, { owner, payloadSchemas, clock } = {}
   }
 }
 
-export async function recoverStateStoreLock(root, {
+async function recoverObservedStore(root, options) {
+  const { observation, confirmAllParticipantsStopped, confirmExclusiveMaintenance, newOwner, payloadSchemas, clock } = options;
+  if (confirmAllParticipantsStopped !== true || confirmExclusiveMaintenance !== true ||
+    !validateContractDocument(observation, { schemaId: OBSERVATION_SCHEMA.$id }).valid) {
+    throw recoveryMismatch("recovery requires a valid observation and both maintenance confirmations");
+  }
+  const expected = structuredClone(observation);
+  const safeRoot = await prepareRoot(root, { create: false });
+  const validators = normalizePayloadSchemas(payloadSchemas);
+  await assertRecoveryObservation(safeRoot, expected);
+  if (expected.controls.some((control) => control.record?.status === "unsupported")) {
+    throw failure(HARNESS_ERROR_KINDS.LOCK_CORRUPT, "unsupported control record cannot be reclaimed");
+  }
+  const owner = typeof newOwner === "string" && newOwner.length > 0 ? newOwner : `recovery-${process.pid}-${randomId()}`;
+  const acquisitionId = randomId();
+  const identities = {};
+  for (const [name, key] of [[".", "root"], [EVENTS_DIR, "events"], [SNAPSHOTS_DIR, "snapshots"]]) {
+    const directory = expected.directories.find((entry) => entry.path === name);
+    identities[key] = directory.exists ? await lstat(path.join(safeRoot, name)) : null;
+  }
+  const probe = {
+    __stateStore: true, root: safeRoot, validators, identities, closed: false,
+    eventsDir: path.join(safeRoot, EVENTS_DIR), snapshotsDir: path.join(safeRoot, SNAPSHOTS_DIR),
+  };
+  const scan = await scanEvents(probe, { recovery: true });
+  const counterPath = path.join(safeRoot, FENCING_FILE);
+  const counter = await readObservedFile(counterPath, { optional: true });
+  let lastFencing = 0;
+  if (counter !== null) {
+    let value;
+    try { value = JSON.parse(counter.bytes.toString("utf8")); } catch {
+      throw failure(HARNESS_ERROR_KINDS.LOCK_CORRUPT, "fencing counter is malformed");
+    }
+    if (!value || Object.keys(value).sort().join(",") !== "lastFencing,schemaVersion" || value.schemaVersion !== 1 ||
+      !Number.isSafeInteger(value.lastFencing) || value.lastFencing < 0) {
+      throw failure(HARNESS_ERROR_KINDS.LOCK_CORRUPT, "fencing counter is malformed");
+    }
+    lastFencing = value.lastFencing;
+  }
+  const lowerBound = Math.max(lastFencing, scan.maxFencing,
+    ...expected.controls.map((control) => control.record?.value?.fencing ?? 0));
+  if (!Number.isSafeInteger(lowerBound) || lowerBound >= Number.MAX_SAFE_INTEGER) {
+    throw failure(HARNESS_ERROR_KINDS.LOCK_CORRUPT, "fencing space is exhausted");
+  }
+  await runRootTestHook(safeRoot, "beforeRecoveryChanges");
+  await assertRecoveryObservation(safeRoot, expected);
+  const currentCounter = await readObservedFile(counterPath, { optional: true });
+  if ((counter === null) !== (currentCounter === null) || (counter !== null &&
+    (!sameFileObservation(counter.stats, currentCounter.stats) || !counter.bytes.equals(currentCounter.bytes)))) {
+    throw recoveryMismatch("fencing counter changed before recovery");
+  }
+  const store = await buildStore(safeRoot, owner, 0, acquisitionId, validators, clock);
+  await cleanEventAliases(store, scan);
+  // Persist every observed generation before removing any of its records. A
+  // crash during cleanup must not lose the maximum of an otherwise orphan guard.
+  const fencing = await allocateFencing(store, lowerBound);
+  await syncRecoveryDirectory(safeRoot);
+  await runRootTestHook(safeRoot, "afterRecoveryFencing");
+  for (const control of expected.controls) {
+    await runRootTestHook(safeRoot, "beforeRecoveryControlUnlink", { file: path.join(safeRoot, control.path) });
+    await assertLayoutIdentity(store);
+    if (canonicalJson(control) !== canonicalJson(await observeControl(safeRoot, control.path))) {
+      throw recoveryMismatch("control changed before recovery cleanup");
+    }
+    if (control.exists) {
+      await unlink(path.join(safeRoot, control.path));
+      await runRootTestHook(safeRoot, "afterRecoveryControlUnlink", { file: path.join(safeRoot, control.path) });
+      await syncRecoveryDirectory(safeRoot);
+    }
+  }
+  const mutation = await acquireMutation(safeRoot, mutationRecord({ owner, fencing, acquisitionId }, "recover"));
+  const recoveryPath = path.join(safeRoot, RECOVERY_FILE);
+  await writeExclusive(recoveryPath, `${canonicalJson({ schemaVersion: 1, recoveryId: randomId() })}\n`);
+  const claimedRecovery = await observeControl(safeRoot, RECOVERY_FILE);
+  const claimedMutation = await observeControl(safeRoot, MUTATION_FILE);
+  await atomicReplace(path.join(safeRoot, HEAD_FILE), `${canonicalJson({ lastSequence: scan.eventCount, headDigest: scan.headDigest })}\n`);
+  await writeExclusive(path.join(safeRoot, LOCK_FILE), `${canonicalJson(lockRecord({
+    owner, fencing, acquisitionId, acquiredAt: new Date(clockMillis(clock)).toISOString(),
+  }))}\n`);
+  store.fencing = fencing;
+  await syncRecoveryDirectory(safeRoot);
+  await assertLayoutIdentity(store);
+  await assertWriter(store);
+  if (canonicalJson(claimedRecovery) !== canonicalJson(await observeControl(safeRoot, RECOVERY_FILE))) {
+    throw recoveryMismatch("claimed recovery control changed before release");
+  }
+  await unlink(recoveryPath);
+  await runRootTestHook(safeRoot, "afterRecoveryGuardUnlink");
+  await assertLayoutIdentity(store);
+  if (canonicalJson(claimedMutation) !== canonicalJson(await observeControl(safeRoot, MUTATION_FILE))) {
+    throw recoveryMismatch("claimed mutation control changed before release");
+  }
+  await releaseMutation(mutation);
+  await syncRecoveryDirectory(safeRoot);
+  return store;
+}
+
+export async function recoverStateStoreLock(root, options = {}) {
+  const modern = ["observation", "confirmAllParticipantsStopped", "confirmExclusiveMaintenance"].some((key) => Object.hasOwn(options, key));
+  if (modern) {
+    if (["expectedOwner", "expectedFencing", "confirmOwnerTerminated"].some((key) => Object.hasOwn(options, key))) {
+      throw recoveryMismatch("legacy and maintenance recovery options cannot be mixed");
+    }
+    return recoverObservedStore(root, options);
+  }
+  return recoverLegacyStore(root, options);
+}
+
+async function recoverLegacyStore(root, {
   expectedOwner,
   expectedFencing,
   confirmOwnerTerminated,
@@ -850,7 +1177,15 @@ export async function appendEvent(store, event, { beforeCommit } = {}) {
     await runTestHook(store, "beforeAuthoritativeEventWrite");
     await assertMutationGuard(guard);
     await assertWriter(store);
-    await appendExclusiveEvent(store.eventsDir, path.join(store.eventsDir, `${String(sequence).padStart(6, "0")}.json`), `${canonicalJson(record)}\n`);
+    try {
+      await appendExclusiveEvent(store.eventsDir, path.join(store.eventsDir, `${String(sequence).padStart(6, "0")}.json`), `${canonicalJson(record)}\n`);
+    } catch (cause) {
+      await assertMutationGuard(guard);
+      await assertWriter(store);
+      const recoveryScan = await scanEvents(store, { recovery: true });
+      if (recoveryScan.aliases.length > 0) await cleanEventAliases(store, recoveryScan);
+      throw cause;
+    }
     await assertWriter(store);
     await atomicReplace(path.join(store.root, HEAD_FILE), `${canonicalJson({ lastSequence: sequence, headDigest: record.recordDigest })}\n`);
     return { appended: true, record };
@@ -1051,6 +1386,7 @@ export async function closeStateStore(store) {
     store.closed = true;
     TEST_HOOKS.delete(store);
     await removeSameFile(path.join(store.root, LOCK_FILE), lock.stats);
+    await runRootTestHook(store.root, "afterCloseWriterUnlink");
     await syncDirectory(store.root);
   } catch (cause) {
     closeFailed = true;

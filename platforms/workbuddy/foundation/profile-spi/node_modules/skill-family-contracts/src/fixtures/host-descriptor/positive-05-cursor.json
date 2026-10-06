@@ -1,0 +1,7 @@
+{
+  "fixtureId": "host-descriptor.positive.cursor", "contract": "host-descriptor", "class": "positive",
+  "description": "Cursor descriptor carries the frozen cursor-agent-print-v1 verification tuple under manual developer-preview support.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/host-descriptor.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": { "schemaVersion": 1, "kind": "skill-family.host-descriptor", "hostId": "cursor", "displayName": "Cursor", "support": "manual", "maturity": "developer-preview", "sourceAliases": [], "verification": { "driverId": "cursor-agent-print-v1", "authStrategy": "existing-user-state", "credentialMutation": "host-managed" }, "pathCategories": [ { "id": "cursor-project-skills", "role": "skill-root", "scope": "project", "anchor": "project-root", "relPath": ".cursor/skills" } ], "probeCapabilities": ["cli", "version", "payload", "registry", "discover", "enabled", "reload", "smoke", "uninstall"] }
+}

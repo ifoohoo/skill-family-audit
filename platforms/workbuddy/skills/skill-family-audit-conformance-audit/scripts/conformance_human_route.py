@@ -53,9 +53,11 @@ profile 选择优先级与 journey-contract.json selection_precedence 一致：
 含语义组的选择解析为 targeted（是否属语义组以 group_registry 登记为准）。
 
 choose_primary_next_action 只对 domain_result 已有事实返回唯一主动作。发布意图、
-机械影响是否未知和下一批准组通过可选 journey_facts 传入：journey_facts 只接受
-intent（四值枚举）/ mechanical_impact_unknown（布尔）/
-next_approved_targeted_group_id（非空字符串或 None）三字段，对象结构、字段类型、
+机械影响是否未知和下一批准组通过可选 journey_facts 传入：journey_facts 必选字段
+仍是 intent（四值枚举）/ mechanical_impact_unknown（布尔）/
+next_approved_targeted_group_id（非空字符串或 None）。可选字段只接受宿主实际观察
+的 semantic_model_call_count / semantic_context_count /
+semantic_rules_sent_to_model_count（非负整数或 None）。对象结构、字段类型、
 未知字段和 intent 枚举非法一律失败关闭。缺少 journey_facts 时保留现有保守默认：
 不猜测用户意图、不自动执行下一 profile。下一步严格按 journey-contract.json
 next_action_precedence 的九级顺序返回唯一 primary_action；任何分支都只返回动作，
@@ -63,22 +65,48 @@ next_action_precedence 的九级顺序返回唯一 primary_action；任何分支
 
 render_human_summary 输出固定六段（列表，顺序即呈现顺序）：
 run_identity → decision_scope → coverage → semantic_cost →
-blocking_findings → next_action。PARTIAL 的 decision_scope 固定携带首句：
-"本次为部分检查，不能证明项目完整符合，也不能单独作为发布资格。"
-journey_facts 原样传给 choose_primary_next_action 并用于渲染 next_action 段。
+blocking_findings → next_action。PARTIAL 已开始检查时的 decision_scope 首句为：
+"本次是部分检查，不能证明项目完整符合，也不能单独作为发布资格。"
+零执行时明确说明尚未检查任何规则。
+decision_scope.completion_state 区分尚未开始、检查未完成、选定范围已处理。
+coverage 列出尚未审阅的规则。semantic_cost 优先使用 journey_facts 中的宿主观察；
+领域 execution_metrics 里值为 None 的不可观察计数渲染为 unknown。不要用上下文数
+或结果数量推算 semantic_model_call_count。缺失或 None 按现有合同表示为 unknown，
+不用估算冒充实际调用。journey_facts 原样传给 choose_primary_next_action 并用于
+渲染 next_action 段。
 """
 
 _INTENTS = ("ordinary_conformance", "deterministic_only", "complete_audit", "release_preparation")
 _EXECUTION_PROFILES = ("mechanical", "economy", "targeted", "full")
 
-_PARTIAL_FIRST_SENTENCE = "本次为部分检查，不能证明项目完整符合，也不能单独作为发布资格。"
+_PARTIAL_FIRST_SENTENCE = "本次是部分检查，不能证明项目完整符合，也不能单独作为发布资格。"
+_PARTIAL_NOT_STARTED_FIRST_SENTENCE = "本次没有检查任何规则，不能证明项目完整符合，也不能单独作为发布资格。"
+
+_COMPLETION_NOT_STARTED = "not_started"
+_COMPLETION_INCOMPLETE = "incomplete"
+_COMPLETION_SCOPE_PROCESSED = "scope_processed"
+_COMPLETION_MEANING = {
+    _COMPLETION_NOT_STARTED: "尚未开始检查",
+    _COMPLETION_INCOMPLETE: "已经检查了一部分，但还没有完成",
+    _COMPLETION_SCOPE_PROCESSED: "这次选定的范围已经处理完，发现了符合、不符合或缺证",
+}
+_HOST_OBSERVATION_FIELDS = (
+    "semantic_model_call_count",
+    "semantic_context_count",
+    "semantic_rules_sent_to_model_count",
+)
 
 # 11-result-presentation.md 状态含义表（人类摘要必须使用的含义）。
 _STATUS_MEANING = {
-    "SUCCEEDED": "完整符合性审计已通过；仍需独立核对发布门禁和授权",
-    "PARTIAL": "选定范围已经完成；没有形成全量符合性结论",
-    "FAILED": "已证明至少一条所选规则违规",
-    "BLOCKED": "所选范围存在缺证、待审或执行合同问题",
+    "SUCCEEDED": "完整符合性审计已经通过。发布门禁和授权仍要单独核对。",
+    "PARTIAL": "选定范围已经完成，但没有形成全量符合性结论。",
+    "FAILED": "已证明至少有一条所选规则违规。",
+    "BLOCKED": "所选范围里有缺证、待审，或执行合同上的问题。",
+}
+_PARTIAL_STATUS_MEANING = {
+    _COMPLETION_NOT_STARTED: "本次还没有检查任何规则，也没有形成符合性结论。",
+    _COMPLETION_INCOMPLETE: "本次检查还没完成，没有形成全量符合性结论。",
+    _COMPLETION_SCOPE_PROCESSED: _STATUS_MEANING["PARTIAL"],
 }
 
 # blocking_findings 按状态排序：失败规则、缺证角色、仍需审阅。
@@ -142,7 +170,7 @@ def _interpret_source_numbers(source_ids, table):
                 "successors": carried_by,
                 "runnable": True,
                 "detail": (
-                    "来源编号 {} 已合并到 {}；本次按承接规则执行，"
+                    "来源编号 {} 已合并到 {}。这次按承接规则执行，"
                     "不运行旧编号检查。".format(source_id, "、".join(carried_by))
                 ),
             })
@@ -156,8 +184,8 @@ def _interpret_source_numbers(source_ids, table):
                 "successors": carried_by,
                 "runnable": False,
                 "detail": (
-                    "来源编号 {} 的合并承接尚未生效（状态：{}，候选承接：{}）；"
-                    "本次不承接，也不运行旧检查。".format(
+                    "来源编号 {} 的合并承接还没生效（状态：{}，候选承接：{}）。"
+                    "这次不承接，也不运行旧检查。".format(
                         source_id,
                         row.get("carried_by_status") or "unknown",
                         "、".join(carried_by) or "无",
@@ -183,7 +211,7 @@ def _interpret_source_numbers(source_ids, table):
             "successors": [],
             "runnable": False,
             "detail": (
-                "来源编号 {} 已不在当前规则集合（去向：{}）；"
+                "来源编号 {} 已不在当前规则集合（去向：{}）。"
                 "不运行旧检查，也不计入符合率。".format(source_id, label)
             ),
         })
@@ -315,12 +343,13 @@ def resolve_human_route(
     return _route("economy", [], "ordinary_conformance", explanations=explanations)
 
 
-def choose_primary_next_action(domain_result, journey_facts=None):
+def _primary_next_action_body(domain_result, journey_facts=None):
     """按 journey-contract next_action_precedence 返回唯一主动作（普通字典）。
 
     domain_result 是 conformance-result 合同中的 conformance_result 领域对象。
-    journey_facts 可选；只接受 intent / mechanical_impact_unknown /
-    next_approved_targeted_group_id 三字段，结构、类型与枚举非法一律失败关闭
+    journey_facts 可选；必选字段仍是 intent / mechanical_impact_unknown /
+    next_approved_targeted_group_id，并可带宿主观察的实际模型执行指标。
+    结构、类型与枚举非法一律失败关闭
     （ValueError，消息以 "invalid_journey_facts" 开头）。
     缺少 journey_facts 时保持现有保守默认，不猜测意图、不自动执行下一 profile。
     """
@@ -334,11 +363,27 @@ def choose_primary_next_action(domain_result, journey_facts=None):
         return {"primary_action": "fix_failed_rules", "rule_ids": fail_ids}
 
     missing_ids = _rule_ids_with_status(rule_rows, "EVIDENCE_MISSING")
-    if missing_ids:
+    internal_ids = [
+        rule_id
+        for rule_id in missing_ids
+        if _is_audit_internal_missing(_rule_row_by_id(rule_rows, rule_id))
+    ]
+    external_ids = [
+        rule_id for rule_id in missing_ids if rule_id not in set(internal_ids)
+    ]
+    if external_ids:
         return {
             "primary_action": "supply_missing_evidence",
-            "rule_ids": missing_ids,
-            "missing_evidence_roles": _missing_roles_by_rule(domain_result, missing_ids),
+            "rule_ids": external_ids,
+            "missing_evidence_roles": _missing_roles_by_rule(
+                domain_result, external_ids
+            ),
+        }
+    if internal_ids:
+        return {
+            "primary_action": "complete_or_rebind_pending_review",
+            "rule_ids": internal_ids,
+            "reason": "audit_executor_contract_failure",
         }
 
     review_ids = _rule_ids_with_status(rule_rows, "REVIEW_REQUIRED")
@@ -356,6 +401,17 @@ def choose_primary_next_action(domain_result, journey_facts=None):
         group_ids = _recommended_group_ids(domain_result)
         if group_ids:
             return {"primary_action": "run_recommended_targeted_groups", "group_ids": group_ids}
+
+    professional_followup = _professional_followup_action(domain_result)
+    if professional_followup is not None:
+        return professional_followup
+
+    if status == "PARTIAL" and _completion_state(domain_result) == _COMPLETION_NOT_STARTED:
+        return {
+            "primary_action": "complete_or_rebind_pending_review",
+            "rule_ids": [],
+            "reason": "no_rules_executed",
+        }
 
     if journey_facts is None:
         return {"primary_action": "no_additional_audit_for_current_daily_scope"}
@@ -386,7 +442,20 @@ def choose_primary_next_action(domain_result, journey_facts=None):
         # 第 8 项：release preparation 意图且当前结果仍为部分 profile
         return {"primary_action": "run_full_on_frozen_candidate_when_release_is_intended"}
 
+    professional_followup = _professional_followup_action(domain_result)
+    if professional_followup is not None:
+        return professional_followup
     return {"primary_action": "no_additional_audit_for_current_daily_scope"}
+
+
+def choose_primary_next_action(domain_result, journey_facts=None):
+    """Keep the existing precedence and attach professional next steps."""
+    action = _primary_next_action_body(domain_result, journey_facts)
+    followup = _professional_followup_action(domain_result)
+    steps = None if followup is None else followup.get("professional_next_steps")
+    if steps and "professional_next_steps" not in action:
+        action = {**action, "professional_next_steps": steps}
+    return action
 
 
 def render_human_summary(domain_result, group_registry, journey_facts=None):
@@ -395,10 +464,12 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
     每段为 {"section": <段名>, ...}；group_registry 仅用于把 group ID 映射为
     显示名称，解析失败时宽限为 None，不影响呈现。journey_facts 原样传给
     choose_primary_next_action 并用于渲染 next_action 段；非法结构由该函数失败关闭。
+    宿主观察的实际模型执行指标若出现在 journey_facts 中，semantic_cost 优先使用它们。
+    领域指标为 None 时渲染 unknown；semantic_model_call_count 不得用上下文数或
+    结果数量代替。
     """
     status = domain_result.get("status")
     coverage = domain_result.get("coverage") or {}
-    preflight = domain_result.get("semantic_preflight") or {}
     semantic_binding = domain_result.get("semantic_review_binding") or {}
     metrics = domain_result.get("execution_metrics") or {}
     requested_groups = coverage.get("requested_semantic_group_ids") or []
@@ -410,11 +481,19 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
         _unselected_requested_group_explanation(domain_result)
         if unselected_requested_groups else None
     )
+    unreviewed_rule_ids = _unreviewed_rule_ids(domain_result)
+    completion_state = _completion_state(domain_result)
+    observed = _validate_journey_facts(journey_facts) or {}
 
     decision_scope = {
         "section": "decision_scope",
         "status": status,
-        "status_meaning": _STATUS_MEANING.get(status),
+        "status_meaning": (
+            _PARTIAL_STATUS_MEANING[completion_state]
+            if status == "PARTIAL" else _STATUS_MEANING.get(status)
+        ),
+        "completion_state": completion_state,
+        "completion_meaning": _COMPLETION_MEANING[completion_state],
         "can_prove_complete_conformance": bool(
             status == "SUCCEEDED"
             and coverage.get("coverage_complete") is True
@@ -422,7 +501,11 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
         ),
     }
     if status == "PARTIAL":
-        decision_scope["first_sentence"] = _PARTIAL_FIRST_SENTENCE
+        decision_scope["first_sentence"] = (
+            _PARTIAL_NOT_STARTED_FIRST_SENTENCE
+            if completion_state == _COMPLETION_NOT_STARTED
+            else _PARTIAL_FIRST_SENTENCE
+        )
 
     next_section = {"section": "next_action"}
     next_section.update(choose_primary_next_action(domain_result, journey_facts))
@@ -439,8 +522,8 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
             "target_digest": domain_result.get("target_digest"),
             "evidence_set_digest": semantic_binding.get("evidence_set_digest"),
             "freshness_statement": (
-                "本次结论只绑定当前目标摘要与证据摘要；"
-                "材料字节变化后，旧结论不能沿用。"
+                "本次结论只绑定当前的目标摘要和证据摘要；"
+                "材料字节一变，旧结论就不能沿用。"
             ),
         },
         decision_scope,
@@ -458,16 +541,24 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
             "selected_rule_count": coverage.get("selected_count"),
             "attempted_count": coverage.get("attempted_count"),
             "not_run_count": coverage.get("not_run_count"),
+            "not_applicable_count": _status_count(domain_result, "NOT_APPLICABLE"),
+            "scope_rule_label": "范围内规则",
+            "unreviewed_rule_ids": unreviewed_rule_ids,
             "coverage_complete": coverage.get("coverage_complete"),
+            "professional_items": _professional_summary_items(domain_result),
         },
         {
             "section": "semantic_cost",
-            "semantic_model_call_count": (
-                "unknown"
-                if metrics.get("semantic_model_call_count") is None
-                else metrics.get("semantic_model_call_count", 0)
+            "semantic_model_call_count": _observed_metric(
+                observed, metrics, "semantic_model_call_count", default_unknown=True
             ),
-            "semantic_context_count": metrics.get("semantic_context_count", 0),
+            "semantic_context_count": _observed_metric(
+                observed, metrics, "semantic_context_count"
+            ),
+            "semantic_rules_sent_to_model_count": _observed_metric(
+                observed, metrics, "semantic_rules_sent_to_model_count",
+                default_unknown=True,
+            ),
             "estimated_input_tokens": metrics.get("estimated_input_tokens", 0),
         },
         {
@@ -484,16 +575,24 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
 def _validate_journey_facts(journey_facts):
     """失败关闭校验 journey_facts；None 原样返回（保守默认）。
 
-    只接受 intent / mechanical_impact_unknown / next_approved_targeted_group_id
-    三字段：对象结构、字段类型、未知字段和 intent 枚举非法一律抛 ValueError，
-    消息以 "invalid_journey_facts" 开头。缺失字段使用保守默认值；
-    校验通过后返回包含三个规范值的新字典，不修改原字典，也不要求三字段全部出现。
+    必选字段仍是 intent / mechanical_impact_unknown /
+    next_approved_targeted_group_id。可选字段只接受宿主实际观察的
+    semantic_model_call_count / semantic_context_count /
+    semantic_rules_sent_to_model_count。对象结构、字段类型、未知字段和
+    intent 枚举非法一律抛 ValueError，消息以 "invalid_journey_facts" 开头。
+    缺失的必选字段使用保守默认值；可选观察字段仅在调用方给出时原样保留。
+    校验通过后返回新字典，不修改原字典，也不要求全部字段出现。
     """
     if journey_facts is None:
         return None
     if not isinstance(journey_facts, dict):
         raise ValueError("invalid_journey_facts: journey_facts 必须是普通字典")
-    allowed = {"intent", "mechanical_impact_unknown", "next_approved_targeted_group_id"}
+    allowed = {
+        "intent",
+        "mechanical_impact_unknown",
+        "next_approved_targeted_group_id",
+        *_HOST_OBSERVATION_FIELDS,
+    }
     unknown = sorted(set(journey_facts) - allowed)
     if unknown:
         raise ValueError("invalid_journey_facts: 未知字段 {}".format(unknown))
@@ -517,11 +616,75 @@ def _validate_journey_facts(journey_facts):
             "invalid_journey_facts: next_approved_targeted_group_id 必须是非空字符串或 "
             "None，got {!r}".format(approved_group_id)
         )
-    return {
+    normalized = {
         "intent": intent,
         "mechanical_impact_unknown": mechanical_impact_unknown,
         "next_approved_targeted_group_id": approved_group_id,
     }
+    for name in _HOST_OBSERVATION_FIELDS:
+        if name not in journey_facts:
+            continue
+        value = journey_facts[name]
+        if value is None:
+            normalized[name] = None
+            continue
+        if (
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value < 0
+        ):
+            raise ValueError(
+                "invalid_journey_facts: {} 必须是非负整数或 None，got {!r}".format(
+                    name, value
+                )
+            )
+        normalized[name] = value
+    return normalized
+
+
+def _completion_state(domain_result):
+    """区分尚未开始、检查未完成、选定范围已处理。"""
+    if domain_result.get("failure_stage") == "before_rule_selection":
+        return _COMPLETION_NOT_STARTED
+    rules = domain_result.get("rule_results") or []
+    coverage = domain_result.get("coverage") or {}
+    attempted = coverage.get("attempted_count")
+    selected = coverage.get("selected_count")
+    if not rules:
+        if attempted in (None, 0):
+            return _COMPLETION_NOT_STARTED
+    if any(row.get("status") == "REVIEW_REQUIRED" for row in rules):
+        return _COMPLETION_INCOMPLETE
+    if (
+        isinstance(attempted, int)
+        and not isinstance(attempted, bool)
+        and isinstance(selected, int)
+        and not isinstance(selected, bool)
+        and attempted < selected
+    ):
+        return _COMPLETION_INCOMPLETE
+    if not rules:
+        return _COMPLETION_NOT_STARTED
+    return _COMPLETION_SCOPE_PROCESSED
+
+
+def _unreviewed_rule_ids(domain_result):
+    return sorted(
+        row["rule_id"]
+        for row in domain_result.get("rule_results") or []
+        if row.get("status") == "REVIEW_REQUIRED"
+        and isinstance(row.get("rule_id"), str)
+    )
+
+
+def _observed_metric(observed, metrics, name, *, default_unknown=False):
+    if name in observed:
+        value = observed[name]
+        return "unknown" if value is None else value
+    if name in metrics:
+        value = metrics[name]
+        return "unknown" if value is None else value
+    return "unknown" if default_unknown else 0
 
 
 def _route(profile, group_ids, reason, canonical_rule_ids=None, *, explanations=None):
@@ -878,10 +1041,43 @@ def _resolve_selectors(
     return resolved_groups
 
 
+_AUDIT_INTERNAL_EVIDENCE_REASONS = {
+    "executor_method_subresults_invalid",
+    "executor_evidence_invalid",
+}
+
+
 def _rule_ids_with_status(rule_rows, status):
     return sorted(
         r["rule_id"] for r in rule_rows
         if r.get("status") == status and isinstance(r.get("rule_id"), str)
+    )
+
+
+def _rule_row_by_id(rule_rows, rule_id):
+    for row in rule_rows:
+        if row.get("rule_id") == rule_id:
+            return row
+    return {}
+
+
+def _is_audit_internal_missing(row):
+    if not isinstance(row, dict):
+        return False
+    evidence = row.get("evidence")
+    if not isinstance(evidence, dict):
+        return False
+    return (
+        evidence.get("reason") in _AUDIT_INTERNAL_EVIDENCE_REASONS
+        or evidence.get("reason_code") == "CANONICAL_EXECUTION_CARRIER_MISSING"
+    )
+
+
+def _status_count(domain_result, status):
+    return sum(
+        1
+        for row in domain_result.get("rule_results") or []
+        if row.get("status") == status
     )
 
 
@@ -929,8 +1125,18 @@ def _blocking_findings(domain_result):
             }
             if isinstance(canonical_id, str):
                 finding["canonical_id"] = canonical_id
+            if _is_audit_internal_missing(row):
+                finding["issue_type"] = "audit_executor_contract_failure"
+                evidence = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
+                finding["reason"] = evidence.get("reason")
             findings.append(finding)
-    findings.sort(key=lambda f: (_FINDING_STATUS_ORDER[f["status"]], f["rule_id"]))
+    findings.extend(_professional_blocking_findings(domain_result))
+    findings.sort(
+        key=lambda f: (
+            _FINDING_STATUS_ORDER.get(f["status"], 9),
+            f.get("rule_id") or f.get("provider_id") or "",
+        )
+    )
     if not findings and domain_result.get("status") == "BLOCKED":
         findings.append({
             "status": "BLOCKED",
@@ -941,10 +1147,171 @@ def _blocking_findings(domain_result):
     return findings
 
 
+def _professional_issue_type(item):
+    mode = item.get("mode")
+    reader_status = item.get("reader_status")
+    if item.get("status") == "pass":
+        return "professional_pass"
+    if mode == "missing_entry":
+        return "missing_entry"
+    if mode == "missing_proof":
+        return "missing_proof"
+    if reader_status == "unavailable":
+        return "reader_unavailable"
+    if mode == "version_policy":
+        return "version_policy"
+    if mode == "not_selected":
+        return "not_selected"
+    conclusion = item.get("conclusion") if isinstance(item.get("conclusion"), dict) else {}
+    outcome = conclusion.get("outcome") if isinstance(conclusion.get("outcome"), dict) else {}
+    completion = outcome.get("completion")
+    if isinstance(completion, str) and completion != "complete":
+        return "professional_incomplete"
+    if (
+        reader_status == "not_pass"
+        and mode in {"reused_proof", "scanned"}
+        and conclusion
+        and completion == "complete"
+    ):
+        return "professional_findings"
+    return "missing_proof"
+
+
+def _professional_next_step(item):
+    issue = _professional_issue_type(item)
+    entry = item.get("entry_ref") if isinstance(item.get("entry_ref"), str) else ""
+    provider = item.get("provider_id") if isinstance(item.get("provider_id"), str) else ""
+    if issue == "professional_pass":
+        return "这个专业项已按证明或版本政策通过，并不表示其他领域通过。"
+    if issue == "missing_entry":
+        return (
+            "等宿主找到 {} 的公开入口后，再扫描或读取。登记不等于已经安装或已经发布。"
+            .format(entry or provider)
+        )
+    if issue == "reader_unavailable":
+        reason = str(item.get("reason") or "")
+        if reason.startswith("严格读取失败：证明不是合法 JSON"):
+            return (
+                "由 {} 修复或刷新损坏的证明，再从公开读取入口取得原始结果。"
+                .format(provider or entry)
+            )
+        if reason.startswith("严格读取失败："):
+            return (
+                "由宿主核对证明的路径和能否读取，再经 {} 取得原始结果。"
+                .format(entry or provider)
+            )
+        return (
+            "由宿主找到 {} 的读取入口，并取得原始结果。Audit 不重做专业检查。"
+            .format(entry or provider)
+        )
+    if issue == "professional_incomplete":
+        return (
+            "由 {} 完成未完成的范围，或刷新证明。Audit 不把未完成写成已证违规。"
+            .format(provider or entry)
+        )
+    if issue == "professional_findings":
+        return (
+            "由 {} 按其发现处理。Audit 沿用原结论，不重做专业检查，也不鉴伪。"
+            .format(provider or entry)
+        )
+    if issue == "version_policy":
+        return "建议使用更新版本刷新证明，不强制升级。"
+    return (
+        "由宿主按 {} 取得能定位的证明或扫描结果。适用项缺证时，仍然未通过。"
+        .format(entry or provider)
+    )
+
+
+def _professional_summary_items(domain_result):
+    payload = domain_result.get("professional_consumption")
+    if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+        return []
+    items = []
+    for item in payload["items"]:
+        if not isinstance(item, dict):
+            continue
+        issue = _professional_issue_type(item)
+        conclusion = item.get("conclusion") if isinstance(item.get("conclusion"), dict) else None
+        outcome = conclusion.get("outcome") if isinstance(conclusion, dict) else None
+        scope = conclusion.get("scope") if isinstance(conclusion, dict) else None
+        items.append({
+            "provider_id": item.get("provider_id"),
+            "status": item.get("status"),
+            "mode": item.get("mode"),
+            "reason": item.get("reason"),
+            "issue_type": issue,
+            "passed": item.get("status") == "pass",
+            "version_relation": item.get("version_relation"),
+            "reader_status": item.get("reader_status"),
+            "entry_ref": item.get("entry_ref"),
+            "refresh_suggested": item.get("refresh_suggested") is True,
+            "next_step": _professional_next_step(item),
+            "conclusion": conclusion,
+            "subject": None if conclusion is None else conclusion.get("subject"),
+            "scope": scope,
+            "outcome": outcome,
+            "findings": None if not isinstance(outcome, dict) else outcome.get("findings"),
+            "limitations": None if not isinstance(scope, dict) else scope.get("limitations"),
+        })
+    return items
+
+
+def _professional_followup_action(domain_result):
+    items = [
+        item
+        for item in _professional_summary_items(domain_result)
+        if item.get("status") == "not_pass"
+    ]
+    if not items:
+        return None
+    issues = {item.get("issue_type") for item in items}
+    primary = (
+        "complete_or_rebind_pending_review"
+        if issues == {"professional_findings"}
+        else "supply_missing_evidence"
+    )
+    return {
+        "primary_action": primary,
+        "rule_ids": [],
+        "missing_evidence_roles": {},
+        "professional_next_steps": [
+            {
+                "provider_id": item.get("provider_id"),
+                "issue_type": item.get("issue_type"),
+                "next_step": item.get("next_step"),
+            }
+            for item in items
+        ],
+    }
+
+
+def _professional_blocking_findings(domain_result):
+    findings = []
+    for item in _professional_summary_items(domain_result):
+        if item.get("status") == "pass":
+            continue
+        issue = item.get("issue_type")
+        findings.append({
+            "status": (
+                "REVIEW_REQUIRED"
+                if issue == "professional_findings"
+                else "EVIDENCE_MISSING"
+            ),
+            "issue_type": issue,
+            "provider_id": item.get("provider_id"),
+            "reason": item.get("reason"),
+            "refresh_suggested": item.get("refresh_suggested") is True,
+            "next_step": item.get("next_step"),
+            "reader_status": item.get("reader_status"),
+            "mode": item.get("mode"),
+        })
+    return findings
+
+
 def _unselected_requested_group_explanation(domain_result):
     return (
-        "已识别请求组，但当前生产生命周期没有 executable 成员；"
-        "本次未执行这些组；不能判断这些组或对应整改包的语义结论是否已收敛。"
+        "已识别请求组，但当前生产生命周期里没有 executable 成员。"
+        "这次未执行这些组，也不能判断这些组或对应整改包的语义结论是否已经收敛。"
     )
 
 

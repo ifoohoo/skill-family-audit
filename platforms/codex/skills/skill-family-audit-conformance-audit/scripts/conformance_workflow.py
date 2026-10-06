@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import conformance_check as checker
+import resolve_spec_release as spec_release_resolver
 import conformance_human_route
 import conformance_profiles
 import executors
@@ -267,9 +268,18 @@ def canonical_rule_execution_route(
 
 
 class WorkflowError(RuntimeError):
-    def __init__(self, code: str, detail: str):
+    def __init__(
+        self,
+        code: str,
+        detail: str,
+        *,
+        failure_stage: str | None = None,
+    ):
         super().__init__(detail)
         self.code = code
+        self.failure_stage = failure_stage
+        self.evidence_set: list[dict[str, Any]] | None = None
+        self.result: dict[str, Any] | None = None
 
 
 def _foundation(request: dict[str, Any]) -> dict[str, Any]:
@@ -1230,7 +1240,10 @@ def _semantic_profile_preflight(
                 "SEMANTIC_PREFLIGHT_BINDING_MISSING",
                 f"语义预筛规则缺少精确 evidence-role binding: {canonical_id}",
             )
-        if applicability.get("disposition") == "not_applicable":
+        if canonical.get("lifecycle_status") == "RETAINED_UNIMPLEMENTED" and applicability.get("scope_disposition") in {"APPLICABLE", "NOT_APPLICABLE", "UNDETERMINED"}:
+            scope_disposition = applicability["scope_disposition"]
+            citable_scope_facts = applicability.get("citable_scope_facts", [])
+        elif applicability.get("disposition") == "not_applicable":
             scope_disposition = "NOT_APPLICABLE"
             citable_scope_facts = [
                 f"canonical_applicability.rules[{canonical_id}].disposition=not_applicable"
@@ -1370,6 +1383,7 @@ def _semantic_review_candidate_descriptors(
     preflight: dict[str, Any],
     descriptors: list[dict[str, Any]],
     evidence_set: list[dict[str, Any]],
+    canonical_applicability: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Select only rules that may enter a semantic model context.
 
@@ -1384,6 +1398,10 @@ def _semantic_review_candidate_descriptors(
         return []
     selected = set(plan["selected_rule_ids"])
     selected.update(plan.get("retained_trial_rule_ids", []))
+    not_applicable = {
+        row["canonical_id"] for row in (canonical_applicability or {}).get("rules", [])
+        if row.get("disposition") == "not_applicable"
+    }
     ready_group_rules = {
         row["canonical_id"]
         for row in preflight["records"]
@@ -1405,6 +1423,8 @@ def _semantic_review_candidate_descriptors(
     candidates: list[dict[str, Any]] = []
     for descriptor in descriptors:
         canonical_id = descriptor["canonical_id"]
+        if canonical_id in not_applicable:
+            continue
         evidence_refs = _descriptor_evidence_refs(descriptor, evidence_set)
         covered_roles = {row["role"] for row in evidence_refs}
         required_roles = set(descriptor["required_evidence_roles"])
@@ -1501,10 +1521,15 @@ def _selected_semantic_missing_evidence_roles(
     preflight: dict[str, Any],
     descriptors: list[dict[str, Any]],
     evidence_set: list[dict[str, Any]],
+    canonical_applicability: dict[str, Any] | None = None,
 ) -> dict[str, list[str]]:
     """Derive missing evidence for every selected executable semantic rule."""
     selected = set(plan["selected_rule_ids"])
     selected.update(plan.get("retained_trial_rule_ids", []))
+    not_applicable = {
+        row["canonical_id"] for row in (canonical_applicability or {}).get("rules", [])
+        if row.get("disposition") == "not_applicable"
+    }
     grouped_selected = {
         row["canonical_id"]
         for row in preflight["records"]
@@ -1521,7 +1546,7 @@ def _selected_semantic_missing_evidence_roles(
     missing_by_id: dict[str, list[str]] = {}
     for descriptor in descriptors:
         canonical_id = descriptor["canonical_id"]
-        if canonical_id not in selected_semantic:
+        if canonical_id not in selected_semantic or canonical_id in not_applicable:
             continue
         covered_roles = {
             row["role"]
@@ -1987,6 +2012,14 @@ def _semantic_schema_errors(value: Any) -> list[str]:
     return _foundation_schema_errors(value, SEMANTIC_SCHEMA_ID)
 
 
+def _load_formal_release_object(path: Path) -> dict[str, Any] | None:
+    if path.is_symlink():
+        raise WorkflowError("INPUT_INVALID", f"{path}: 拒绝符号链接")
+    if not path.exists():
+        return None
+    return load_json(path)
+
+
 def load_rules(
     package: Path, allow_test_fixture: bool
 ) -> tuple[dict[str, Any], dict[str, Any], bool, dict[str, Any]]:
@@ -1997,6 +2030,30 @@ def load_rules(
     if is_fixture and not allow_test_fixture:
         raise WorkflowError("TEST_FIXTURE_NOT_ALLOWED", "生产路径拒绝测试规范包")
     trust_policy = load_json(TRUST_POLICY)
+    # 自审与显式测试夹具保留原分支，不借此取得正式可发布性。
+    if is_fixture or index.get("selfAudit") is True:
+        return index, manifest, is_fixture, trust_policy
+    # --spec-package 仍是消费方 spec 目录；release_root 只由其外层显式推导。
+    release_root = package.resolve().parent
+    release_index = _load_formal_release_object(
+        release_root / spec_release_resolver.EXTERNAL_RELEASE_INDEX_PATH
+    )
+    receipt = _load_formal_release_object(
+        release_root / spec_release_resolver.GOVERNANCE_APPROVAL_RECEIPT_PATH
+    )
+    resolved = spec_release_resolver.resolve_spec_release(
+        release_index or {}, receipt, release_root
+    )
+    binding_error = checker.external_consumer_binding_error(package, resolved)
+    if binding_error:
+        if (
+            resolved.get("status") != "active"
+            or not isinstance(resolved.get("active_release"), dict)
+        ):
+            detail = "正式外部规范未通过批准链，规则运行前拒绝"
+        else:
+            detail = "正式外部规范的消费目录或 scope 不符合外部消费者前提，规则运行前拒绝"
+        raise WorkflowError(binding_error, detail)
     return index, manifest, is_fixture, trust_policy
 
 
@@ -2063,6 +2120,7 @@ def canonical_rule_applicability(
     platform: str = "all",
     projection: dict[str, Any] | None = None,
     projection_sha256: str | None = None,
+    retained_scope_observations: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """逐条分类信任策略钉扎的全量规则；终态记录是候选投影的唯一运行覆盖。"""
     if projection is None:
@@ -2084,6 +2142,7 @@ def canonical_rule_applicability(
         projection_sha256,
     )
     rows: list[dict[str, Any]] = []
+    retained_scope_observations = retained_scope_observations or {}
     seen: set[str] = set()
     for rule in projection["rules"]:
         canonical_id = rule.get("canonical_id")
@@ -2129,6 +2188,11 @@ def canonical_rule_applicability(
         }
         candidate_undetermined = candidate_label or lifecycle_unfrozen
         retained_unimplemented = lifecycle_status == "RETAINED_UNIMPLEMENTED"
+        retained_scope = retained_scope_observations.get(canonical_id, {})
+        scope_disposition = retained_scope.get("scope_disposition", "UNDETERMINED")
+        if scope_disposition not in {"APPLICABLE", "UNDETERMINED"}:
+            raise WorkflowError("CANONICAL_RULE_APPLICABILITY_INVALID",
+                                f"保留规则范围观察非法: {canonical_id}")
         active = lifecycle_status in {"ACTIVE_MECHANICAL", "ACTIVE_SEMANTIC"}
         executable = active and (
             target_type == "project_adoption"
@@ -2143,7 +2207,7 @@ def canonical_rule_applicability(
                 "CANONICAL_RULE_APPLICABILITY_INVALID",
                 f"生命周期冻结状态与执行路由不一致，禁止静默: {canonical_id}",
             )
-        rows.append({
+        row = {
             "canonical_id": canonical_id,
             "revision": revision,
             "revision_digest": revision_digest,
@@ -2171,7 +2235,13 @@ def canonical_rule_applicability(
                 if candidate_undetermined else
                 "终态规则不适用于当前目标"
             ),
-        })
+        }
+        if retained_unimplemented:
+            row.update({
+                "scope_disposition": scope_disposition,
+                "citable_scope_facts": retained_scope.get("citable_scope_facts", []),
+            })
+        rows.append(row)
     expected_total_rules = summary["total_rules"]
     if len(rows) != expected_total_rules or len(seen) != expected_total_rules:
         raise WorkflowError(
@@ -2603,21 +2673,18 @@ def _canonical_coverage_from_results(
     }
 
 
-def _release_reference_values(value: Any) -> list[str]:
-    refs: list[str] = []
+def _release_file_references(value: Any) -> list[str]:
     if isinstance(value, dict):
-        for key, child in value.items():
-            if (
-                isinstance(child, str)
-                and child.split("#", 1)[0].endswith(".json")
-                and (key == "$ref" or key.endswith("Ref") or key.endswith("_ref"))
-            ):
-                refs.append(child)
-            refs.extend(_release_reference_values(child))
-    elif isinstance(value, list):
+        refs = [value["methodContractRef"]] if "methodContractRef" in value else []
+        for child in value.values():
+            refs.extend(_release_file_references(child))
+        return refs
+    if isinstance(value, list):
+        refs = []
         for child in value:
-            refs.extend(_release_reference_values(child))
-    return refs
+            refs.extend(_release_file_references(child))
+        return refs
+    return []
 
 
 def _validate_release_closure(root: Path) -> list[str]:
@@ -2629,33 +2696,86 @@ def _validate_release_closure(root: Path) -> list[str]:
             )
         if path.is_file():
             files.append(path.relative_to(root).as_posix())
+    schema_entries: list[dict[str, Any]] = []
+    file_references: list[tuple[str, str]] = []
     for relative in files:
         path = root / relative
         if path.suffix != ".json":
             continue
         value = load_json(path)
-        for reference in _release_reference_values(value):
-            resource = reference.split("#", 1)[0]
-            if not resource:
-                continue
-            candidate = (
-                root / resource
-                if resource.startswith(("spec/", "platforms/"))
-                else path.parent / resource
-            )
-            try:
-                resolved = candidate.resolve(strict=True)
-                resolved.relative_to(root.resolve())
-            except (OSError, ValueError) as exc:
+        if path.name.endswith(".schema.json"):
+            if not isinstance(value, dict) or not isinstance(value.get("$id"), str) or not value["$id"]:
                 raise WorkflowError(
                     "RELEASE_ARTIFACT_CLOSURE_INVALID",
-                    f"未闭合或越界引用: {relative} -> {reference}",
-                ) from exc
-            if candidate.is_symlink() or not resolved.is_file():
-                raise WorkflowError(
-                    "RELEASE_ARTIFACT_CLOSURE_INVALID",
-                    f"引用不是普通文件: {relative} -> {reference}",
+                    f"Schema 缺少有效 $id: {relative}",
                 )
+            schema_entries.append({"$id": value["$id"], "document": value})
+        else:
+            for reference in _release_file_references(value):
+                if not isinstance(reference, str) or not reference:
+                    raise WorkflowError(
+                        "RELEASE_ARTIFACT_CLOSURE_INVALID",
+                        f"文件引用不是非空字符串: {relative}",
+                    )
+                file_references.append((relative, reference))
+    if schema_entries:
+        try:
+            runner = checker.foundation_runner()
+            result = adoption_verifier._invoke_closure_entry(
+                "import { collectUnresolvedRefs } from 'skill-family-contracts'; "
+                "process.stdin.setEncoding('utf8'); "
+                "let raw = ''; for await (const chunk of process.stdin) raw += chunk; "
+                "process.stdout.write(JSON.stringify({unresolved: "
+                "collectUnresolvedRefs(JSON.parse(raw))}));",
+                [],
+                payload=json.dumps(schema_entries, ensure_ascii=False),
+                profile_spi_root=runner.parent.parent / "profile-spi",
+            )
+        except (RuntimeError, adoption_verifier.VerificationError) as exc:
+            raise WorkflowError(
+                "RELEASE_ARTIFACT_CLOSURE_INVALID",
+                f"受管 Foundation Schema 引用检查不可用: {exc}",
+            ) from exc
+        unresolved = result.get("unresolved")
+        if not isinstance(unresolved, list) or any(not isinstance(item, dict) for item in unresolved):
+            raise WorkflowError(
+                "RELEASE_ARTIFACT_CLOSURE_INVALID",
+                "受管 Foundation Schema 引用检查返回无效结果",
+            )
+        if unresolved:
+            first = unresolved[0]
+            raise WorkflowError(
+                "RELEASE_ARTIFACT_CLOSURE_INVALID",
+                f"未闭合 Schema 引用: {first.get('$id')} -> {first.get('ref')}: {first.get('reason')}",
+            )
+    for relative, reference in file_references:
+        resource = reference.split("#", 1)[0]
+        if not resource:
+            continue
+        if ":" in resource or resource.startswith("//"):
+            raise WorkflowError(
+                "RELEASE_ARTIFACT_CLOSURE_INVALID",
+                f"未闭合或越界引用: {relative} -> {reference}",
+            )
+        path = root / relative
+        candidate = (
+            root / resource
+            if resource.startswith(("spec/", "platforms/"))
+            else path.parent / resource
+        )
+        try:
+            resolved = candidate.resolve(strict=True)
+            resolved.relative_to(root.resolve())
+        except (OSError, ValueError) as exc:
+            raise WorkflowError(
+                "RELEASE_ARTIFACT_CLOSURE_INVALID",
+                f"未闭合或越界引用: {relative} -> {reference}",
+            ) from exc
+        if candidate.is_symlink() or not resolved.is_file():
+            raise WorkflowError(
+                "RELEASE_ARTIFACT_CLOSURE_INVALID",
+                f"引用不是普通文件: {relative} -> {reference}",
+            )
     return files
 
 
@@ -2676,6 +2796,8 @@ PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS = {
     ".git",
     ".pytest_cache",
     "__pycache__",
+    ".codex",
+    ".release-skill",
     "artifacts",
     "control",
     "dist",
@@ -2977,15 +3099,21 @@ def validate_plugin_project_observation(observation: dict[str, Any]) -> None:
         for item in skills or []
         if isinstance(item, dict) and isinstance(item.get("id"), str)
     }
-    mapped_ids = {
-        mapping.get("skillId")
-        for projection in projections or []
-        if isinstance(projection, dict)
-        for mapping in projection.get("mappings", [])
-        if isinstance(mapping, dict)
-        and isinstance(mapping.get("skillId"), str)
-    }
-    unmapped = sorted(mapped_ids - observed_ids)
+    mapped_physical_names = set()
+    for projection in projections or []:
+        if not isinstance(projection, dict):
+            continue
+        for mapping in projection.get("mappings", []):
+            if not isinstance(mapping, dict) or any(
+                not isinstance(mapping.get(field), str) or not mapping[field]
+                for field in ("skillId", "physicalName", "path")
+            ):
+                raise WorkflowError(
+                    "PROJECTION_LOGICAL_SKILL_UNMAPPED",
+                    "平台投影映射缺少逻辑技能、物理技能名或路径",
+                )
+            mapped_physical_names.add(mapping["physicalName"])
+    unmapped = sorted(mapped_physical_names - observed_ids)
     if unmapped:
         raise WorkflowError(
             "PROJECTION_LOGICAL_SKILL_UNMAPPED",
@@ -3031,6 +3159,347 @@ def _is_platform_distribution_skill_copy(path: Path, root: Path) -> bool:
     )
 
 
+SOURCE_AUTHORITY_FILENAME = "skill-family.source-authority.json"
+SOURCE_AUTHORITY_KIND = "skill-family.source-authority-declaration"
+RELEASE_PROJECT_RELATIVE = ".release-skill/project.yaml"
+BEFORE_RULE_SELECTION = "before_rule_selection"
+
+
+class DeclaredProduct:
+    """Workspace vs current product declaration resolved from the audited tree."""
+
+    __slots__ = (
+        "observation_root",
+        "workspace_root",
+        "product_root",
+        "generated_roots",
+        "release_units",
+    )
+
+    def __init__(
+        self,
+        observation_root: Path,
+        workspace_root: Path | None,
+        product_root: Path,
+        generated_roots: tuple[Path, ...],
+        release_units: tuple[dict[str, str], ...] = (),
+    ) -> None:
+        self.observation_root = observation_root
+        self.workspace_root = workspace_root
+        self.product_root = product_root
+        self.generated_roots = generated_roots
+        self.release_units = release_units
+
+
+class _WorkflowStage:
+    """Actual control-flow marker; never derived from caller-supplied stage flags."""
+
+    __slots__ = ("rule_scope_resolved", "evidence_set", "after_scope")
+
+    def __init__(self) -> None:
+        self.rule_scope_resolved = False
+        self.evidence_set: list[dict[str, Any]] | None = None
+        self.after_scope: dict[str, Any] | None = None
+
+
+def _record_after_scope(stage: _WorkflowStage, **fields: Any) -> None:
+    if stage.after_scope is None:
+        stage.after_scope = {}
+    stage.after_scope.update(fields)
+
+
+def _strip_yaml_scalar(value: str) -> str:
+    text = value.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        return text[1:-1]
+    return text.split(" #", 1)[0].strip()
+
+
+def _parse_release_unit_sources(text: str) -> list[dict[str, str]]:
+    """Read releaseUnits[].id and unit-level source from release-skill YAML.
+
+    Nested keys such as version.source are ignored by indent.  This parser
+    only consumes the current product locator; it does not interpret the
+    rest of the publish configuration.
+    """
+    units: list[dict[str, str]] = []
+    in_units = False
+    units_indent: int | None = None
+    item_indent: int | None = None
+    current: dict[str, str] | None = None
+    for raw in text.splitlines():
+        stripped = raw.split("#", 1)[0].rstrip()
+        if not stripped.strip():
+            continue
+        indent = len(stripped) - len(stripped.lstrip(" "))
+        body = stripped.strip()
+        if not in_units:
+            if body.rstrip(":") == "releaseUnits":
+                in_units = True
+                units_indent = indent
+            continue
+        if units_indent is not None and indent <= units_indent and not body.startswith("-"):
+            break
+        if body.startswith("-"):
+            if item_indent is not None and indent > item_indent:
+                continue
+            if current is not None:
+                units.append(current)
+            current = {}
+            item_indent = indent
+            rest = body[1:].strip()
+            if rest:
+                key, _, value = rest.partition(":")
+                key = key.strip()
+                if key in {"id", "source"} and key not in current:
+                    current[key] = _strip_yaml_scalar(value)
+            continue
+        if current is None or item_indent is None:
+            continue
+        if indent > item_indent + 2:
+            continue
+        key, _, value = body.partition(":")
+        key = key.strip()
+        if key in {"id", "source"} and key not in current:
+            current[key] = _strip_yaml_scalar(value)
+    if current is not None:
+        units.append(current)
+    return units
+
+
+def _contained_existing_dir(root: Path, relative: str, *, code: str) -> Path:
+    """Resolve a POSIX relative directory inside root without following symlinks."""
+    _validate_posix_relative_path(relative, "declared product path", code=code)
+    current = root
+    for part in relative.split("/"):
+        current = current / part
+        if current.is_symlink():
+            raise WorkflowError(
+                code,
+                f"声明路径链中存在符号链接: {relative}",
+            )
+    try:
+        resolved = current.resolve(strict=True)
+        resolved.relative_to(root.resolve())
+    except (FileNotFoundError, ValueError) as exc:
+        raise WorkflowError(
+            code,
+            f"声明路径不在目标内或不存在: {relative}",
+        ) from exc
+    if not resolved.is_dir():
+        raise WorkflowError(
+            code,
+            f"声明路径不是目录: {relative}",
+        )
+    return resolved
+
+
+def _read_source_authority(product_root: Path) -> dict[str, Any] | None:
+    path = product_root / SOURCE_AUTHORITY_FILENAME
+    if not path.is_file():
+        return None
+    if path.is_symlink():
+        raise WorkflowError(
+            "SOURCE_AUTHORITY_SYMLINK",
+            f"{SOURCE_AUTHORITY_FILENAME} 不得是符号链接",
+        )
+    value = load_json(path)
+    if value.get("kind") != SOURCE_AUTHORITY_KIND:
+        raise WorkflowError(
+            "SOURCE_AUTHORITY_INVALID",
+            f"{SOURCE_AUTHORITY_FILENAME} kind 不是 {SOURCE_AUTHORITY_KIND}",
+        )
+    mappings = value.get("mappings")
+    if mappings is None:
+        return value
+    if not isinstance(mappings, list):
+        raise WorkflowError(
+            "SOURCE_AUTHORITY_INVALID",
+            f"{SOURCE_AUTHORITY_FILENAME} mappings 必须是数组",
+        )
+    return value
+
+
+def _generated_roots_from_authority(
+    product_root: Path, authority: dict[str, Any] | None
+) -> tuple[Path, ...]:
+    if not isinstance(authority, dict):
+        return ()
+    mappings = authority.get("mappings")
+    if not isinstance(mappings, list):
+        return ()
+    roots: list[Path] = []
+    seen: set[Path] = set()
+    for mapping in mappings:
+        if not isinstance(mapping, dict):
+            continue
+        declared = mapping.get("generatedRoots")
+        if not isinstance(declared, list):
+            continue
+        for relative in declared:
+            if not isinstance(relative, str) or not relative:
+                raise WorkflowError(
+                    "SOURCE_AUTHORITY_INVALID",
+                    "generatedRoots 必须是非空相对路径字符串",
+                )
+            generated = product_root / relative
+            if generated.is_symlink():
+                raise WorkflowError(
+                    "SOURCE_AUTHORITY_INVALID",
+                    f"当前生成投影根不得是符号链接: {relative}",
+                )
+            if not generated.is_dir():
+                continue
+            resolved = _contained_existing_dir(
+                product_root,
+                relative,
+                code="SOURCE_AUTHORITY_INVALID",
+            )
+            if resolved not in seen:
+                seen.add(resolved)
+                roots.append(resolved)
+    return tuple(roots)
+
+
+def _platform_manifests_under(generated_root: Path) -> list[Path]:
+    found: list[Path] = []
+    direct = generated_root / "platform-manifest.json"
+    if direct.is_file() and not direct.is_symlink():
+        found.append(direct)
+    if not generated_root.is_dir() or generated_root.is_symlink():
+        return found
+    for child in sorted(generated_root.iterdir()):
+        if not child.is_dir() or child.is_symlink():
+            continue
+        candidate = child / "platform-manifest.json"
+        if candidate.is_file() and not candidate.is_symlink():
+            found.append(candidate)
+    return found
+
+
+def _release_project_path(root: Path) -> Path | None:
+    path = root / RELEASE_PROJECT_RELATIVE
+    if not path.is_file():
+        return None
+    if path.is_symlink() or any(
+        (root / part).is_symlink()
+        for part in Path(RELEASE_PROJECT_RELATIVE).parts[:-1]
+    ):
+        raise WorkflowError(
+            "RELEASE_PROJECT_SYMLINK",
+            f"{RELEASE_PROJECT_RELATIVE} 不得是符号链接",
+        )
+    return path
+
+
+def _workspace_root_declaring(product_root: Path) -> Path | None:
+    """If the audited product is declared by a containing workspace, return that root.
+
+    Only reads a `.release-skill/project.yaml` whose unit source resolves to this
+    product.  Does not walk the checker install layout.
+    """
+    parent = product_root.parent
+    if parent == product_root:
+        return None
+    workspace = parent.parent
+    if workspace == parent:
+        return None
+    yaml_path = _release_project_path(workspace)
+    if yaml_path is None:
+        return None
+    units = _parse_release_unit_sources(yaml_path.read_text(encoding="utf-8"))
+    for unit in units:
+        source = unit.get("source")
+        if not isinstance(source, str) or not source:
+            continue
+        try:
+            resolved = _contained_existing_dir(
+                workspace, source, code="RELEASE_UNIT_SOURCE_INVALID"
+            )
+        except WorkflowError:
+            continue
+        if resolved == product_root.resolve():
+            return workspace
+    return None
+
+
+def declared_product_observation(root: Path) -> DeclaredProduct:
+    """Locate the current product from the audited tree without guessing install layout.
+
+    Direct product directories keep existing identification.  A workspace with
+    `.release-skill/project.yaml` uses the unique release unit `source`.  Multiple
+    units are an entry question, not a default-first choice.
+    """
+    observation_root = root.resolve()
+    project_yaml = _release_project_path(observation_root)
+    if project_yaml is not None:
+        units = _parse_release_unit_sources(
+            project_yaml.read_text(encoding="utf-8")
+        )
+        valid = [
+            {"id": unit["id"], "source": unit["source"]}
+            for unit in units
+            if unit.get("id") and unit.get("source")
+        ]
+        incomplete = [
+            unit for unit in units
+            if unit.get("id") and not unit.get("source")
+        ]
+        if incomplete:
+            raise WorkflowError(
+                "RELEASE_PROJECT_INVALID",
+                "releaseUnits 条目必须同时具有 id 与 source",
+            )
+        if valid:
+            if len(valid) > 1:
+                options = ", ".join(
+                    f"{item['id']} ({item['source']})" for item in valid
+                )
+                raise WorkflowError(
+                    "RELEASE_UNIT_AMBIGUOUS",
+                    "工作区声明了多个发布单元，不能默认取第一个；请选择要检查的产品: "
+                    + options,
+                )
+            product_root = _contained_existing_dir(
+                observation_root,
+                valid[0]["source"],
+                code="RELEASE_UNIT_SOURCE_INVALID",
+            )
+            product_authority = _read_source_authority(product_root)
+            return DeclaredProduct(
+                observation_root=observation_root,
+                workspace_root=observation_root,
+                product_root=product_root,
+                generated_roots=_generated_roots_from_authority(
+                    product_root, product_authority
+                ),
+                release_units=tuple(valid),
+            )
+    authority = _read_source_authority(observation_root)
+    if authority is not None:
+        return DeclaredProduct(
+            observation_root=observation_root,
+            workspace_root=_workspace_root_declaring(observation_root),
+            product_root=observation_root,
+            generated_roots=_generated_roots_from_authority(
+                observation_root, authority
+            ),
+        )
+    return DeclaredProduct(
+        observation_root=observation_root,
+        workspace_root=None,
+        product_root=observation_root,
+        generated_roots=(),
+    )
+
+
+def _identity_scan_root(root: Path, target_type: str) -> tuple[Path, DeclaredProduct]:
+    declared = declared_product_observation(root)
+    if target_type == "project_adoption" and declared.workspace_root is None:
+        return root, declared
+    return declared.product_root, declared
+
+
 def observe_plugin_project(
     target: Path,
     target_type: str,
@@ -3041,8 +3510,9 @@ def observe_plugin_project(
     """Normalize N=1 and N>1 targets through the same PluginProject path."""
     del install_digests
     root = target.parent if target.is_file() else target
-    package_path = root / "package.json"
-    candidate_summary_path = root / "candidate-summary.json"
+    identity_root, declared = _identity_scan_root(root, target_type)
+    package_path = identity_root / "package.json"
+    candidate_summary_path = identity_root / "candidate-summary.json"
 
     host_manifest_relatives = (
         ".codex-plugin/plugin.json",
@@ -3061,20 +3531,30 @@ def observe_plugin_project(
         )
     )
     for relative in identity_relatives:
-        path = root / relative
+        path = identity_root / relative
         if path.is_file() and not path.is_symlink():
             manifest_paths.add(path)
     if target_type != "project_adoption":
-        manifest_paths.update(
-            path
-            for path in root.rglob("platform-manifest.json")
-            if path.is_file()
-            and not path.is_symlink()
-            and not any(
-                part in PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS
-                for part in path.relative_to(root).parts
+        source_scan = identity_root / "plugin-src"
+        if source_scan.is_dir() and not source_scan.is_symlink():
+            manifest_paths.update(
+                path
+                for path in source_scan.rglob("platform-manifest.json")
+                if path.is_file() and not path.is_symlink()
             )
-        )
+        elif not declared.generated_roots:
+            manifest_paths.update(
+                path
+                for path in identity_root.rglob("platform-manifest.json")
+                if path.is_file()
+                and not path.is_symlink()
+                and not any(
+                    part in PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS
+                    for part in path.relative_to(identity_root).parts
+                )
+            )
+        for generated_root in declared.generated_roots:
+            manifest_paths.update(_platform_manifests_under(generated_root))
     manifest_identities = [
         _manifest_identity(
             path,
@@ -3124,13 +3604,13 @@ def observe_plugin_project(
     projections = []
     projected_skill_paths: set[Path] = set()
     managed_template_paths: set[Path] = set()
-    for manifest_path in sorted(root.rglob("platform-manifest.json")):
+    for manifest_path in sorted(identity_root.rglob("platform-manifest.json")):
         if (
             not manifest_path.is_file()
             or manifest_path.is_symlink()
             or any(
                 part in PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS
-                for part in manifest_path.relative_to(root).parts
+                for part in manifest_path.relative_to(identity_root).parts
             )
         ):
             continue
@@ -3141,11 +3621,29 @@ def observe_plugin_project(
                 "PLUGIN_PROJECT_OBSERVATION_INVALID",
                 f"平台投影 logicalMappings 不是数组: {_relative_path(manifest_path, root)}",
             )
-        managed_template = _managed_platform_source_template(
-            root, manifest_path, manifest, raw_mappings
+        source_manifest = (
+            target_type == "family_source"
+            and manifest_path.is_relative_to(identity_root / "plugin-src" / "platforms")
+        )
+        managed_template = (
+            _managed_platform_source_template(
+                identity_root, manifest_path, manifest, raw_mappings
+            )
+            if source_manifest else None
         )
         if managed_template is not None:
             managed_template_paths.add(managed_template)
+        elif source_manifest:
+            source_template = manifest_path.parent / "SKILL.md"
+            if (
+                source_template.is_file()
+                and not source_template.is_symlink()
+                and _frontmatter_identity(source_template) == SHARED_SKILL_NAME_TEMPLATE
+            ):
+                raise WorkflowError(
+                    "UNMANAGED_LOGICAL_SKILL_TEMPLATE",
+                    f"未由闭合平台投影认领的逻辑技能模板: {_relative_path(source_template, root)}",
+                )
         mappings = []
         for raw in raw_mappings:
             if not isinstance(raw, dict):
@@ -3165,13 +3663,63 @@ def observe_plugin_project(
                     "PROJECTION_LOGICAL_SKILL_UNMAPPED",
                     f"平台投影映射缺少 Skill 路径: {_relative_path(manifest_path, root)}",
                 )
-            if ".." not in Path(mapping_path).parts:
-                projected_skill_paths.add(
-                    (manifest_path.parent / mapping_path).resolve()
+            physical_name = raw.get("physicalName")
+            if not isinstance(physical_name, str) or not physical_name:
+                raise WorkflowError(
+                    "PROJECTION_LOGICAL_SKILL_UNMAPPED",
+                    f"平台投影映射缺少物理技能名: {_relative_path(manifest_path, root)}",
                 )
+            _validate_posix_relative_path(
+                mapping_path, "平台投影 Skill 路径",
+                code="PROJECTION_LOGICAL_SKILL_UNMAPPED",
+            )
+            mapped_path = manifest_path.parent / mapping_path
+            declared_source_mapping = (
+                source_manifest
+                and manifest.get("platformId") in MANAGED_PLATFORM_TEMPLATE_IDS
+                and manifest.get("projectionStatus") == "projection_complete"
+                and len(raw_mappings) == 1
+                and mapping_path == "skill/SKILL.md"
+                and logical_id == physical_name
+            )
+            if (
+                (managed_template is not None or declared_source_mapping)
+                and not mapped_path.exists()
+                and not mapped_path.is_symlink()
+            ):
+                # The source declaration precedes its generated platform Skill.
+                mappings.append({
+                    "skillId": logical_id,
+                    "physicalName": physical_name,
+                    "path": mapping_path,
+                })
+                continue
+            try:
+                resolved_mapping = mapped_path.resolve(strict=True)
+                resolved_mapping.relative_to(identity_root.resolve())
+            except (OSError, ValueError) as exc:
+                raise WorkflowError(
+                    "PROJECTION_LOGICAL_SKILL_UNMAPPED",
+                    f"平台投影 Skill 路径缺失或越界: {_relative_path(manifest_path, root)} -> {mapping_path}",
+                ) from exc
+            if resolved_mapping != mapped_path or not resolved_mapping.is_file():
+                raise WorkflowError(
+                    "PROJECTION_LOGICAL_SKILL_UNMAPPED",
+                    f"平台投影 Skill 路径不是候选内普通文件: {_relative_path(manifest_path, root)} -> {mapping_path}",
+                )
+            frontmatter, _ = checker._parse_frontmatter(
+                mapped_path.read_text(encoding="utf-8")
+            )
+            if not isinstance(frontmatter, dict) or frontmatter.get("name") != physical_name:
+                raise WorkflowError(
+                    "PROJECTION_LOGICAL_SKILL_UNMAPPED",
+                    f"平台投影 Skill 物理身份不符: {_relative_path(manifest_path, root)} -> {mapping_path}",
+                )
+            projected_skill_paths.add(resolved_mapping)
             mappings.append({
                 "skillId": logical_id,
-                "path": mapping_path if isinstance(mapping_path, str) else None,
+                "physicalName": physical_name,
+                "path": mapping_path,
             })
         platform_id = manifest.get("platformId")
         projections.append({
@@ -3185,14 +3733,19 @@ def observe_plugin_project(
             ),
         })
 
+    skill_root = (
+        identity_root
+        if declared.workspace_root is not None and declared.product_root != root
+        else root
+    )
     if target.is_file():
         skill_paths = [target]
     elif (
         target_type == "family_source"
-        and (root / "skills-src").is_dir()
-        and not (root / "skills-src").is_symlink()
+        and (skill_root / "skills-src").is_dir()
+        and not (skill_root / "skills-src").is_symlink()
     ):
-        source_root = root / "skills-src"
+        source_root = skill_root / "skills-src"
         skill_paths = [
             path
             for path in sorted({
@@ -3209,13 +3762,13 @@ def observe_plugin_project(
     else:
         skill_paths = [
             path
-            for path in sorted(root.rglob("SKILL.md"))
+            for path in sorted(skill_root.rglob("SKILL.md"))
             if path.is_file()
             and not path.is_symlink()
             and path.resolve() not in projected_skill_paths
             and not any(
                 part in PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS
-                for part in path.relative_to(root).parts
+                for part in path.relative_to(skill_root).parts
             )
         ]
         # 宿主 manifest 认领的平台分布拷贝豁免（仅 observe 区最小改动）。
@@ -3225,18 +3778,18 @@ def observe_plugin_project(
         distribution_copies = [
             path
             for path in skill_paths
-            if _is_platform_distribution_skill_copy(path, root)
+            if _is_platform_distribution_skill_copy(path, skill_root)
         ]
         if (
             distribution_copies
             and not target.is_file()
             and any(
-                (root / relative).is_file()
-                and not (root / relative).is_symlink()
+                (skill_root / relative).is_file()
+                and not (skill_root / relative).is_symlink()
                 for relative in host_manifest_relatives
             )
         ):
-            root_skills_dir = root / "skills"
+            root_skills_dir = skill_root / "skills"
             root_declared_ids: set[str] = set()
             if root_skills_dir.is_dir() and not root_skills_dir.is_symlink():
                 for declared in sorted(root_skills_dir.rglob("SKILL.md")):
@@ -3289,11 +3842,11 @@ def observe_plugin_project(
                     path.is_file()
                     and not path.is_symlink()
                     and (path == root or root in path.parents)
-                    and mapping["skillId"] not in seen_ids
+                    and mapping["physicalName"] not in seen_ids
                 ):
                     relative = _relative_path(path, root)
-                    seen_ids[mapping["skillId"]] = relative
-                    skills.append({"id": mapping["skillId"], "path": relative})
+                    seen_ids[mapping["physicalName"]] = relative
+                    skills.append({"id": mapping["physicalName"], "path": relative})
     if not skills:
         raise WorkflowError("FAMILY_SOURCE_EMPTY", "受检插件没有可观察逻辑技能")
 
@@ -3347,16 +3900,74 @@ def observe_plugin_project(
     return observation
 
 
+def _declared_product_payload(declared: DeclaredProduct) -> dict[str, Any]:
+    return {
+        "observation_root": str(declared.observation_root),
+        "workspace_root": (
+            str(declared.workspace_root) if declared.workspace_root is not None else None
+        ),
+        "product_root": str(declared.product_root),
+        "generated_roots": [str(path) for path in declared.generated_roots],
+    }
+
+
+def _observe_foundation_profile(root: Path) -> dict[str, Any]:
+    """Observe profile.json at the product root without blocking the audit.
+
+    Missing, invalid or unverified profiles stay observational.  Callers must
+    not treat an absent verification as a verified empty configuration.
+    """
+    project_profile_path = root / "profile.json"
+    profile_document: dict[str, Any] | None = None
+    profile_result: dict[str, Any] = {
+        "foundation_profile_complete": False,
+        "code": "PROJECT_PROFILE_MISSING",
+        "blockers": ["项目未提供 profile.json"],
+    }
+    profile_digest: str | None = None
+    if project_profile_path.is_symlink():
+        profile_result = {
+            "foundation_profile_complete": False,
+            "code": "PROJECT_PROFILE_SYMLINK",
+            "blockers": ["profile.json 不得是符号链接"],
+        }
+    elif project_profile_path.is_file():
+        try:
+            profile_document = load_json(project_profile_path)
+            profile_digest = foundation_file_digest(project_profile_path)
+            profile_result = adoption_verifier.verify_project_profile(root)
+            profile_result["foundation_profile_complete"] = (
+                profile_result.get("code") == "SPE0000"
+                and profile_result.get("foundation_profile_complete") is True
+            )
+        except WorkflowError as exc:
+            profile_result = {
+                "foundation_profile_complete": False,
+                "code": "PROJECT_PROFILE_INVALID",
+                "blockers": [str(exc)],
+            }
+    observed: dict[str, Any] = {"foundation_profile": profile_result}
+    if profile_document is not None:
+        observed.update({
+            "project_profile_document": profile_document,
+            "project_profile": "profile.json",
+            "project_profile_digest": profile_digest,
+        })
+    return observed
+
+
 def target_scope(target: Path, target_type: str) -> dict[str, Any]:
     if target_type == "single_skill":
         skill = target if target.name == "SKILL.md" else target / "SKILL.md"
         if not skill.is_file():
             raise WorkflowError("SINGLE_SKILL_MISSING", "单技能目标缺少 SKILL.md")
         observation = observe_plugin_project(skill, target_type)
+        declared = declared_product_observation(skill.parent)
         return {
             "skill_files": [skill.relative_to(target.parent).as_posix()],
             "plugin_project": observation,
             "logical_skill_count": len(observation["skills"]),
+            "declared_product": _declared_product_payload(declared),
         }
     if not target.is_dir():
         raise WorkflowError("TARGET_TYPE_MISMATCH", "该目标类型要求目录")
@@ -3364,12 +3975,24 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
         skills = sorted(
             path.relative_to(target).as_posix()
             for path in target.rglob("SKILL.md")
-            if path.is_file() and not path.is_symlink()
+            if path.is_file()
+            and not path.is_symlink()
+            and not any(
+                part in PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS
+                for part in path.relative_to(target).parts
+            )
         )
         if not skills:
             raise WorkflowError("FAMILY_SOURCE_EMPTY", "技能族源码没有 SKILL.md")
         observation = observe_plugin_project(target, target_type)
-        source_excluded_parts = {"__pycache__", ".pytest_cache", ".git", "node_modules"}
+        declared = declared_product_observation(target)
+        source_excluded_parts = {
+            "__pycache__",
+            ".pytest_cache",
+            ".git",
+            "node_modules",
+            *PLUGIN_PROJECT_SCAN_EXCLUDED_PARTS,
+        }
         source_excluded_suffixes = {".pyc", ".pyo"}
         source_files = sorted(
             path.relative_to(target).as_posix()
@@ -3380,39 +4003,56 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
             and not any(part in source_excluded_parts for part in path.relative_to(target).parts)
             and path.suffix not in source_excluded_suffixes
         )
-        return {
+        scope = {
             "skill_files": skills,
             "source_files": source_files,
             "source_tree_digest": foundation_tree_digest(target),
             "plugin_project": observation,
             "logical_skill_count": len(observation["skills"]),
+            "declared_product": _declared_product_payload(declared),
         }
+        scope.update(_observe_foundation_profile(declared.product_root))
+        return scope
     if target_type == "release_artifact":
-        required = ["package.json", "candidate-summary.json"]
-        missing = [name for name in required if not (target / name).is_file()]
-        if missing:
+        payload_roots = ("platforms", "spec", ".claude-plugin", "skills")
+        if not (target / "candidate-summary.json").is_file():
             raise WorkflowError(
-                "RELEASE_ARTIFACT_INCOMPLETE", f"缺失: {missing}"
+                "RELEASE_ARTIFACT_INCOMPLETE", "缺失: ['candidate-summary.json']"
             )
-        package_json = load_json(target / "package.json")
         summary = load_json(target / "candidate-summary.json")
         release_files = _validate_release_closure(target)
-        plugin_name = package_json.get("name")
-        version = package_json.get("version")
-        actual_payload = foundation_candidate_payload_digest(target)
+        payload_files = [
+            relative for relative in release_files
+            if relative.startswith(tuple(f"{name}/" for name in payload_roots))
+        ]
+        actual_payload = str(
+            foundation_resource_closure(target, payload_files)["digest"]
+        )
+        plugin_name = summary.get("familyId")
+        version = summary.get("version")
+        package_path = target / "package.json"
+        package_json = load_json(package_path) if package_path.is_file() else None
         if (
             not isinstance(plugin_name, str)
             or not plugin_name
             or not isinstance(version, str)
-            or summary.get("version") != version
+            or not version
             or summary.get("candidateId") != f"{plugin_name}:{version}"
             or summary.get("candidatePayloadDigest") != actual_payload
+            or (
+                package_json is not None
+                and (
+                    package_json.get("name") != plugin_name
+                    or package_json.get("version") != version
+                )
+            )
         ):
             raise WorkflowError(
                 "RELEASE_ARTIFACT_IDENTITY_INVALID",
                 "发行包身份、版本或 payload 摘要不闭合",
             )
         observation = observe_plugin_project(target, target_type)
+        declared = declared_product_observation(target)
         return {
             "plugin_name": plugin_name,
             "release_files": release_files,
@@ -3420,6 +4060,7 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
             "candidate_payload_digest": actual_payload,
             "plugin_project": observation,
             "logical_skill_count": len(observation["skills"]),
+            "declared_product": _declared_product_payload(declared),
         }
     # project_adoption 是审计范围，不是“目标已经合规”的前置断言。存在
     # profile.json 时通过 Foundation 0.12.0 公共 SPI 观察其有效性；缺失、非法
@@ -3442,34 +4083,9 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
             "项目同时声明多份 Foundation adoption exemption",
         )
 
-    profile_document: dict[str, Any] | None = None
-    profile_result: dict[str, Any] = {
-        "foundation_profile_complete": False,
-        "code": "PROJECT_PROFILE_MISSING",
-        "blockers": ["项目未提供 profile.json"],
-    }
-    profile_digest: str | None = None
-    if project_profile_path.is_symlink():
-        profile_result = {
-            "foundation_profile_complete": False,
-            "code": "PROJECT_PROFILE_SYMLINK",
-            "blockers": ["profile.json 不得是符号链接"],
-        }
-    elif project_profile_path.is_file():
-        try:
-            profile_document = load_json(project_profile_path)
-            profile_digest = foundation_file_digest(project_profile_path)
-            profile_result = adoption_verifier.verify_project_profile(target)
-            profile_result["foundation_profile_complete"] = (
-                profile_result.get("code") == "SPE0000"
-                and profile_result.get("foundation_profile_complete") is True
-            )
-        except WorkflowError as exc:
-            profile_result = {
-                "foundation_profile_complete": False,
-                "code": "PROJECT_PROFILE_INVALID",
-                "blockers": [str(exc)],
-            }
+    profile_observation = _observe_foundation_profile(target)
+    profile_result = profile_observation["foundation_profile"]
+    profile_document = profile_observation.get("project_profile_document")
 
     exemption_document: dict[str, Any] | None = None
     exemption_relative: str | None = None
@@ -3515,8 +4131,9 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
             "profileKind": profile_kind,
         },
     )
+    declared = declared_product_observation(target)
     scope = {
-        "foundation_profile": profile_result,
+        **profile_observation,
         "project_adoption_evidence": {
             "reviewable": True,
             "profile_carrier": (
@@ -3529,13 +4146,8 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
         },
         "plugin_project": observation,
         "logical_skill_count": len(observation["skills"]),
+        "declared_product": _declared_product_payload(declared),
     }
-    if profile_document is not None:
-        scope.update({
-            "project_profile_document": profile_document,
-            "project_profile": "profile.json",
-            "project_profile_digest": profile_digest,
-        })
     if exemption_relative is not None:
         scope.update({
             "foundation_exemption": exemption_relative,
@@ -3782,23 +4394,22 @@ def _load_evidence_set(path: Path) -> list[dict[str, Any]]:
     return normalized
 
 
-FORMAL_ARTIFACT_INVENTORY_PATH = (
-    AUDIT_PACKAGE_ROOT / "spec/current-artifacts/formal-artifact-inventory.json"
-)
+def _workspace_evidence_selection_entries(
+    workspace_root: Path,
+    product_root: Path,
+) -> list[dict[str, Any]]:
+    """从已选产品根的正式制品清单读取 workspace_evidence_selection。
 
-
-def _workspace_evidence_selection_entries() -> list[dict[str, Any]]:
-    """从当前正式制品清单读取 workspace_evidence_selection，经 Foundation 严格读取派生证据项。
-
-    清单路径由 Audit 包真源固定；所选根文件路径相对 Audit 工作区根
-    （``AUDIT_PACKAGE_ROOT.parents[1]``，即 ``packages/skill-family-audit`` 的
-    上一级 ``packages/`` 再上一级）。SHA-256 必须由 Foundation 在运行时
-    严格读取派生，不采用清单中的任何硬编码摘要。
+    清单位于被审产品根；所选文件相对被审工作区根读取。不从安装缓存父目录
+    猜测工作区。SHA-256 必须由 Foundation 在运行时严格读取派生。
     """
-    if not FORMAL_ARTIFACT_INVENTORY_PATH.is_file():
+    inventory_path = (
+        product_root / "spec/current-artifacts/formal-artifact-inventory.json"
+    )
+    if not inventory_path.is_file() or inventory_path.is_symlink():
         return []
     try:
-        inventory = load_json(FORMAL_ARTIFACT_INVENTORY_PATH)
+        inventory = load_json(inventory_path)
     except (OSError, json.JSONDecodeError) as exc:
         raise WorkflowError(
             "FORMAL_ARTIFACT_INVENTORY_INVALID",
@@ -3812,7 +4423,6 @@ def _workspace_evidence_selection_entries() -> list[dict[str, Any]]:
             "FORMAL_ARTIFACT_INVENTORY_INVALID",
             "workspace_evidence_selection 必须是数组",
         )
-    workspace_root = AUDIT_PACKAGE_ROOT.parents[1]
     entries: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     for index, item in enumerate(selection):
@@ -3863,20 +4473,48 @@ def _workspace_evidence_selection_entries() -> list[dict[str, Any]]:
     return entries
 
 
-def _is_audit_self_audit_target(target_arg: str | None) -> bool:
-    """受检目标是否即 Audit 产品自身（自审）。
+def _declared_product_for_target(target: Path) -> DeclaredProduct | None:
+    root = target if target.is_dir() else target.parent
+    try:
+        return declared_product_observation(root)
+    except WorkflowError:
+        return None
 
-    工作区级图配置/关系锁只描述本仓，仅当受检目标位于 Audit 工作区内时
-    才把清单声明的工作区证据选择注入 evidence set；外部目标不携带本仓图事实。
+
+def _is_audit_self_audit_target(target_arg: str | None) -> DeclaredProduct | None:
+    """受检目标是否声明为当前 Audit 产品或其工作区。
+
+    只读取被审目录上的发布单元与源码权威，不从安装缓存父目录猜测工作区。
+    外部目标不携带本仓图事实。
     """
     if not target_arg:
-        return False
+        return None
     try:
         resolved = Path(target_arg).resolve()
     except OSError:
-        return False
-    workspace_root = AUDIT_PACKAGE_ROOT.parents[1]
-    return resolved == workspace_root or workspace_root in resolved.parents
+        return None
+    declared = _declared_product_for_target(resolved)
+    if declared is None:
+        return None
+    product_name = None
+    package_path = declared.product_root / "package.json"
+    if package_path.is_file() and not package_path.is_symlink():
+        try:
+            name = load_json(package_path).get("name")
+        except WorkflowError:
+            name = None
+        if isinstance(name, str) and name:
+            product_name = name
+    if product_name != "skill-family-audit":
+        return None
+    if resolved == declared.product_root or resolved == declared.workspace_root:
+        return declared
+    if declared.workspace_root is not None and (
+        resolved == declared.workspace_root
+        or declared.workspace_root in resolved.parents
+    ):
+        return declared
+    return None
 
 
 def _augment_evidence_set_with_workspace_selection(
@@ -3884,17 +4522,104 @@ def _augment_evidence_set_with_workspace_selection(
     target_arg: str | None,
 ) -> list[dict[str, Any]]:
     """自审时把清单声明的工作区证据选择补充进 evidence set，避免重复。"""
-    if not _is_audit_self_audit_target(target_arg):
+    declared = _is_audit_self_audit_target(target_arg)
+    if declared is None or declared.workspace_root is None:
         return evidence_set
     existing_ids = {entry.get("evidence_id") for entry in evidence_set}
-    for entry in _workspace_evidence_selection_entries():
+    for entry in _workspace_evidence_selection_entries(
+        declared.workspace_root, declared.product_root
+    ):
         if entry["evidence_id"] not in existing_ids:
             evidence_set.append(entry)
     return evidence_set
 
 
+_PRODUCT_METADATA_MATERIALS = (
+    ("package.json", "manifest"),
+    ("plugin-src/manifest.json", "manifest"),
+    ("spec/platforms/support-matrix.json", "platform_support"),
+    (".skill-family-audit/governance/runtime-layout.json", "policy"),
+)
+_PLUGIN_SRC_MANIFEST = "plugin-src/manifest.json"
+
+
+def _declared_skill_source_files(product_root: Path) -> list[str]:
+    """Follow the selected product's existing entry and method declarations.
+
+    sourceDir values are POSIX paths relative to plugin-src.  Absolute,
+    traversing, missing, unreadable, or non-object declarations yield no
+    skill files rather than a rewritten relative twin or a new discovery
+    scan.
+    """
+    manifest_path = product_root / _PLUGIN_SRC_MANIFEST
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        return []
+    try:
+        receipt = foundation_read_file_strict(product_root, _PLUGIN_SRC_MANIFEST)
+        declared = json.loads(receipt["content"])
+    except (WorkflowError, json.JSONDecodeError, TypeError, ValueError):
+        return []
+    if not isinstance(declared, dict):
+        return []
+    relatives: list[str] = []
+    seen: set[str] = set()
+    for collection in ("entrySkills", "internalSkills"):
+        rows = declared.get(collection)
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            source_dir = row.get("sourceDir")
+            if not isinstance(source_dir, str) or not source_dir.strip():
+                continue
+            declared_dir = source_dir.strip()
+            try:
+                _validate_posix_relative_path(declared_dir, "manifest.sourceDir")
+            except WorkflowError:
+                continue
+            relative = f"plugin-src/{declared_dir}/SKILL.md"
+            if relative in seen:
+                continue
+            seen.add(relative)
+            relatives.append(relative)
+    return relatives
+
+
+def _product_direct_evidence_entries(product_root: Path) -> list[dict[str, Any]]:
+    """Bind selected-product metadata, entry/method text, and support matrix.
+
+    Only existing regular files under the already selected product root are
+    bound.  Kinds stay the declared evidence kinds; missing files are omitted
+    rather than relabeled.
+    """
+    materials: list[tuple[str, str]] = list(_PRODUCT_METADATA_MATERIALS)
+    for relative in _declared_skill_source_files(product_root):
+        materials.append((relative, "source_file"))
+    entries: list[dict[str, Any]] = []
+    bound: set[str] = set()
+    for relative, kind in materials:
+        if relative in bound:
+            continue
+        path = product_root / relative
+        if path.is_symlink() or not path.is_file():
+            continue
+        try:
+            receipt = foundation_read_file_strict(product_root, relative)
+        except WorkflowError:
+            continue
+        bound.add(relative)
+        entries.append({
+            "evidence_id": f"product-direct:{relative}",
+            "kind": kind,
+            "path": str(path),
+            "sha256": receipt["sha256"],
+        })
+    return entries
+
+
 def _derived_evidence_set(target: Path) -> list[dict[str, Any]]:
-    """--evidence-set 缺省时从只读目标派生单条源码证据。
+    """--evidence-set 缺省时从只读目标派生源码证据及 Task 前直接材料。
 
     派生只是诚实描述既有输入（目标字节即证据），不合成任何通过结论。
     """
@@ -3904,12 +4629,30 @@ def _derived_evidence_set(target: Path) -> list[dict[str, Any]]:
         if target.is_dir()
         else foundation_file_digest(target)
     )
-    return [{
+    entries: list[dict[str, Any]] = [{
         "evidence_id": f"derived-{kind}:{digest_value}",
         "kind": kind,
         "path": str(target),
         "sha256": digest_value,
     }]
+    declared = _declared_product_for_target(target)
+    if declared is not None:
+        entries.extend(_product_direct_evidence_entries(declared.product_root))
+        if declared.workspace_root is not None:
+            entries.extend(
+                _workspace_evidence_selection_entries(
+                    declared.workspace_root, declared.product_root
+                )
+            )
+    seen_ids: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for entry in entries:
+        evidence_id = entry["evidence_id"]
+        if evidence_id in seen_ids:
+            continue
+        seen_ids.add(evidence_id)
+        unique.append(entry)
+    return unique
 
 
 def _evidence_set_digest(entries: list[dict[str, Any]]) -> str:
@@ -4026,12 +4769,18 @@ def _evidence_only_results(
 def _validate_method_parameters(
     parameters: dict[str, Any],
 ) -> None:
-    """Draft 2020-12 校验 Audit 领域参数。"""
-    errors = _foundation_schema_errors(
-        parameters,
-        "https://contracts.skill-family.example/skill-family-audit/"
-        "candidate/v2/methods/conformance/parameters.json",
-    )
+    """Draft 2020-12 校验 Audit 领域参数，含 professional_consumption。"""
+    try:
+        errors = _foundation_schema_errors(
+            parameters,
+            "https://contracts.skill-family.example/skill-family-audit/"
+            "candidate/v2/methods/conformance/parameters.json",
+        )
+    except TypeError as exc:
+        raise WorkflowError(
+            "METHOD_PARAMETER_SCHEMA_INVALID",
+            f"Conformance 领域参数不符合 parameterSchema: {exc}",
+        ) from exc
     if errors:
         raise WorkflowError(
             "METHOD_PARAMETER_SCHEMA_INVALID",
@@ -4093,8 +4842,21 @@ def _gmin_static_outcome(
             ],
         }
     if rule_id == "gmin:harness-authority-dependencies":
+        profile_code = profile_result.get("code")
+        profile_observed = profile_code not in (None, "PROJECT_PROFILE_MISSING")
+        if not profile_observed:
+            return {
+                "status": "EVIDENCE_MISSING",
+                "evidence": {
+                    "reason": "foundation_profile_not_verified",
+                    "inventory_verified": False,
+                    "owner_count": 0,
+                },
+            }
         packages = (
             profile_document.get("adoption", {}).get("foundation_pin", {}).get("packages", {})
+            if isinstance(profile_document, dict)
+            else {}
         )
         owners = []
         if isinstance(packages, dict):
@@ -4247,6 +5009,83 @@ def _method_assurance_gated_status(
     return provisional_status
 
 
+def _verified_static_evidence_refs(
+    internal_semantic_reviews: dict[Any, Any] | None,
+    internal_semantic_binding: dict[str, Any] | None,
+    internal_review_request: dict[str, Any] | None,
+    foundation_task_digest: str | None,
+    canonical_id: str,
+    revision_digest: str,
+) -> list[dict[str, str]]:
+    """取同一次 Task、同一条已终审规则的证据引用，只留四个定位字段。
+
+    finalize_review 已经核对过请求、证据集和审阅规则集合。这里再要求
+    binding 与当前请求的四份摘要一致，并且键精确为
+    (canonical_id, revision_digest, semantic_review)。状态、理由和说明
+    不进入机械执行器。任一引用形状不合法时整表失败关闭。
+    """
+    if (
+        not isinstance(internal_semantic_reviews, dict)
+        or not isinstance(internal_semantic_binding, dict)
+        or not isinstance(internal_review_request, dict)
+        or not isinstance(foundation_task_digest, str)
+        or not isinstance(canonical_id, str)
+        or not canonical_id
+        or not isinstance(revision_digest, str)
+        or not revision_digest
+        or internal_semantic_binding.get("foundation_task_digest")
+        != foundation_task_digest
+        or internal_semantic_binding.get("review_request_digest")
+        != internal_review_request.get("review_request_digest")
+        or internal_semantic_binding.get("evidence_set_digest")
+        != internal_review_request.get("evidence_set_digest")
+        or internal_semantic_binding.get("reviewed_rule_set_digest")
+        != internal_review_request.get("reviewed_rule_set_digest")
+    ):
+        return []
+    review = internal_semantic_reviews.get(
+        (canonical_id, revision_digest, "semantic_review")
+    )
+    refs = review.get("evidence_refs") if isinstance(review, dict) else None
+    if not isinstance(refs, list):
+        return []
+    copied: list[dict[str, str]] = []
+    for ref in refs:
+        if not isinstance(ref, dict):
+            return []
+        row: dict[str, str] = {}
+        for key in ("evidence_id", "sha256", "locator", "role"):
+            value = ref.get(key)
+            if not isinstance(value, str) or not value:
+                return []
+            row[key] = value
+        if not re.fullmatch(r"[0-9a-f]{64}", row["sha256"]):
+            return []
+        copied.append(row)
+    return copied
+
+
+def _static_evidence_ref_rows(refs: Any) -> list[dict[str, str]]:
+    """执行上下文只保留四字段引用；多余键和坏引用都不能变成静态结论。"""
+    if not isinstance(refs, (list, tuple)):
+        return []
+    rows: list[dict[str, str]] = []
+    for ref in refs:
+        if not isinstance(ref, dict):
+            continue
+        row: dict[str, str] = {}
+        valid = True
+        for key in ("evidence_id", "sha256", "locator", "role"):
+            value = ref.get(key)
+            if not isinstance(value, str) or not value:
+                valid = False
+                break
+            row[key] = value
+        if valid and re.fullmatch(r"[0-9a-f]{64}", row["sha256"]):
+            rows.append(row)
+    return rows
+
+
 def _w2b1_executor_outcome(
     rule_id: str,
     scope: dict[str, Any],
@@ -4258,6 +5097,7 @@ def _w2b1_executor_outcome(
     frozen_receipts: list[dict[str, Any]] = (),
     evidence_set: list[dict[str, Any]] = (),
     expected_binding: dict[str, Any] | None = None,
+    verified_evidence_refs: Any = (),
 ) -> dict[str, Any]:
     """Execute one W2-B1 first-tier mechanical rule through the executor package.
 
@@ -4265,8 +5105,15 @@ def _w2b1_executor_outcome(
     executors never mutate the target. Declared-evidence shape failures are
     fail-closed as EVIDENCE_MISSING findings, never silent passes.
     """
+    declared = scope.get("declared_product")
+    product_root = (
+        declared.get("product_root")
+        if isinstance(declared, dict) and isinstance(declared.get("product_root"), str)
+        else None
+    )
     ctx: dict[str, Any] = {
         "target": target,
+        "product_root": product_root or str(target),
         "target_type": args.target_type,
         "scope": scope,
         "manifest": manifest,
@@ -4281,6 +5128,9 @@ def _w2b1_executor_outcome(
         "evidence_set": evidence_set,
         "gate_binding": expected_binding,
         "foundation_task_digest": getattr(args, "foundation_task_digest", None),
+        "professional_consumption": getattr(args, "professional_consumption_document", None),
+        # 来源只限已终审的同身份引用。scope 和 args 上的审阅原文不在这里读取。
+        "verified_evidence_refs": _static_evidence_ref_rows(verified_evidence_refs),
     }
     installed = scope.get("installed_root")
     if isinstance(installed, str) and installed:
@@ -4541,30 +5391,99 @@ def _combine_route_status(statuses: set[str]) -> str:
 
 
 def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
+    """Execute the domain workflow.  Signature and raise/return contract are unchanged.
+
+    Input, authority, and target-binding failures are tagged
+    ``failure_stage=before_rule_selection`` on the raised WorkflowError.
+    Callers such as ``main`` may project that into the mutually exclusive
+    early-exit result; after rule scope is resolved the exception is not tagged
+    and cannot select the early-exit branch.  Post-scope failures still raise,
+    with a complete result envelope attached on ``exc.result`` when the selected
+    scope is available.
+    """
+    stage = _WorkflowStage()
+    try:
+        return _execute_conformance_workflow(args, stage)
+    except WorkflowError as exc:
+        if not stage.rule_scope_resolved:
+            exc.failure_stage = BEFORE_RULE_SELECTION
+            if stage.evidence_set is not None:
+                exc.evidence_set = stage.evidence_set
+        else:
+            _attach_after_scope_failure_result(exc, stage)
+        raise
+    except (OSError, ValueError) as exc:
+        if stage.rule_scope_resolved:
+            _attach_after_scope_failure_result(exc, stage)
+            raise
+        wrapped = WorkflowError(type(exc).__name__, str(exc))
+        wrapped.failure_stage = BEFORE_RULE_SELECTION
+        if stage.evidence_set is not None:
+            wrapped.evidence_set = stage.evidence_set
+        raise wrapped from exc
+
+
+def _selected_product_root(target: Path | None) -> Path | None:
+    if target is None:
+        return None
+    root = target if target.is_dir() else target.parent
+    return declared_product_observation(root).product_root
+
+
+def _discover_self_audit_spec_package(product_root: Path | None) -> str:
+    if product_root is None:
+        raise WorkflowError(
+            "NO_ACTIVE_APPROVED_SPEC",
+            "未找到自审规范包：没有已选产品根可供发现 spec/self-audit/；"
+            "外部规范需要显式 --spec-package。"
+            "不会从安装目录或当前目录猜测工作区，审计路径也不会运行目标生成器补齐。",
+        )
+    default_spec = checker.self_audit_spec_package_default(product_root)
+    if default_spec is None:
+        location = (
+            str(product_root / "spec" / "self-audit")
+            if product_root is not None
+            else "已选产品根"
+        )
+        raise WorkflowError(
+            "NO_ACTIVE_APPROVED_SPEC",
+            "未找到自审规范包：自审只从已明确选中的产品根读取 "
+            f"{location}；外部规范需要显式 --spec-package。"
+            "不会从安装目录或当前目录猜测工作区，审计路径也不会运行目标生成器补齐。",
+        )
+    freshness_error = checker.verify_self_audit_freshness(default_spec)
+    if freshness_error:
+        raise WorkflowError(
+            freshness_error,
+            "自审规范包陈旧或非法，不能用于本次审计。"
+            "原因由新鲜度检查给出；审计路径不会运行目标生成器补齐规范包。",
+        )
+    return str(default_spec)
+
+
+def _execute_conformance_workflow(
+    args: argparse.Namespace, stage: _WorkflowStage
+) -> dict[str, Any]:
     if not args.run_id:
         raise WorkflowError(
             "WORKFLOW_ARGS_MISSING",
             "完整工作流需要 --run-id；规范包可省略（默认自审规范包）或显式 --spec-package",
         )
     _reset_run_fact_cache()
+    target_hint: Path | None = None
+    if args.target:
+        try:
+            target_hint = Path(args.target).resolve(strict=True)
+        except OSError as exc:
+            raise WorkflowError(
+                "TARGET_NOT_FOUND",
+                f"受检目标不存在: {args.target}",
+            ) from exc
     spec_package = args.spec_package
-    if not spec_package:
-        # D2 自审默认发现路径：无显式规范包时只接受本仓裁决权威派生的
-        # 自审规范包（selfAudit: true，摘要新鲜性逐条校验）；外部规范必须
-        # 显式 --spec-package 提供。自审包缺失时维持失败关闭结论。
-        default_spec = checker.self_audit_spec_package_default()
-        if default_spec is None:
-            raise WorkflowError(
-                "NO_ACTIVE_APPROVED_SPEC",
-                "未找到批准规范包：自审需要仓内 spec/self-audit/，外部规范需要显式 --spec-package",
-            )
-        freshness_error = checker.verify_self_audit_freshness(default_spec)
-        if freshness_error:
-            raise WorkflowError(
-                freshness_error,
-                "自审规范包陈旧或非法；运行 scripts/spec/build_self_audit_spec_package.py 重建",
-            )
-        spec_package = str(default_spec)
+    if not spec_package and target_hint is not None:
+        spec_package = _discover_self_audit_spec_package(
+            _selected_product_root(target_hint)
+        )
     evidence_set: list[dict[str, Any]]
     if args.evidence_set:
         evidence_set = _load_evidence_set(Path(args.evidence_set))
@@ -4578,7 +5497,7 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
     target: Path | None
     evidence_only = False
     if not evidence_set:
-        target = Path(args.target).resolve(strict=True)
+        target = target_hint if target_hint is not None else Path(args.target).resolve(strict=True)
         evidence_set = _derived_evidence_set(target)
     else:
         source_trees = [
@@ -4611,6 +5530,11 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
     evidence_set = _augment_evidence_set_with_workspace_selection(
         evidence_set, args.target
     )
+    stage.evidence_set = evidence_set
+    if not spec_package:
+        spec_package = _discover_self_audit_spec_package(
+            _selected_product_root(target)
+        )
     evidence_set_digest = _evidence_set_digest(evidence_set)
     index, manifest, is_fixture, trust_policy = load_rules(
         Path(spec_package).resolve(strict=True), args.allow_test_fixture
@@ -4694,6 +5618,8 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         semantic_group_registry,
         semantic_group_registry_digest,
     )
+    stage.rule_scope_resolved = True
+    _record_after_scope(stage, args=args, profile_plan=profile_plan)
     retained_trial_ids = _retained_targeted_trial_ids(
         profile_plan, assurance_canonical_projection
     )
@@ -4737,7 +5663,13 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         parameters["semantic_group_ids"] = args.semantic_group_ids
     if getattr(args, "canonical_rule_ids", None) is not None:
         parameters["canonical_rule_ids"] = args.canonical_rule_ids
+    professional_consumption = _load_professional_consumption(args)
+    if professional_consumption is not None:
+        parameters["professional_consumption"] = professional_consumption
     _validate_method_parameters(parameters)
+    if professional_consumption is not None:
+        professional_consumption = _consume_professional_inputs(professional_consumption)
+        args.professional_consumption_document = professional_consumption
     semantic_target_digest = (
         evidence_set_digest
         if evidence_only or args.target_type == "project_adoption"
@@ -4748,6 +5680,13 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         "target_type": args.target_type,
         "rule_set_digest": rule_set_digest,
     })
+    _record_after_scope(
+        stage,
+        profile_plan=profile_plan,
+        rule_set_digest=rule_set_digest,
+        semantic_target_digest=semantic_target_digest,
+        semantic_request_digest=semantic_request_digest,
+    )
     all_semantic_descriptors = semantic_review.bound_rule_descriptors(
         rules,
         canonical_lineage,
@@ -4815,6 +5754,7 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         semantic_profile_preflight,
         all_semantic_descriptors,
         evidence_set,
+        canonical_applicability,
     )
     semantic_missing_evidence_roles = (
         _selected_semantic_missing_evidence_roles(
@@ -4822,7 +5762,15 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
             semantic_profile_preflight,
             all_semantic_descriptors,
             evidence_set,
+            canonical_applicability,
         )
+    )
+    _record_after_scope(
+        stage,
+        semantic_preflight=semantic_profile_preflight,
+        semantic_rules_skipped_missing_evidence_count=len(
+            semantic_missing_evidence_roles
+        ),
     )
     if semantic_descriptors:
         try:
@@ -4905,6 +5853,7 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         "estimated_input_tokens": 0,
         "semantic_rules_sent_to_model_count": 0,
     }
+    _record_after_scope(stage, semantic_context_metrics=semantic_context_metrics)
     if internal_payload is not None and internal_context_results is not None:
         raise WorkflowError(
             "SEMANTIC_REVIEW_INPUT_AMBIGUOUS",
@@ -4929,11 +5878,31 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
                 internal_context_results,
             )
         )
+        _record_after_scope(
+            stage, semantic_context_metrics=semantic_context_metrics
+        )
     if internal_payload is not None:
         if internal_review_request is None:
             raise WorkflowError(
                 "SEMANTIC_REVIEW_UNEXPECTED",
                 "当前适用规则没有可接受内部审阅的精确 binding",
+            )
+        if internal_context_results is None:
+            # Bound v2 payload proves reviews were consumed, not how many
+            # host model calls produced them.  Do not infer call counts
+            # from review or result cardinality.
+            semantic_context_metrics = {
+                "semantic_model_call_count": None,
+                "semantic_context_count": semantic_context_metrics[
+                    "semantic_context_count"
+                ],
+                "estimated_input_tokens": semantic_context_metrics[
+                    "estimated_input_tokens"
+                ],
+                "semantic_rules_sent_to_model_count": None,
+            }
+            _record_after_scope(
+                stage, semantic_context_metrics=semantic_context_metrics
             )
         validation_errors = _semantic_schema_errors(internal_payload)
         if validation_errors:
@@ -4961,6 +5930,10 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         row["canonical_id"]: row
         for row in semantic_profile_preflight.get("records", [])
     }
+    applicability_by_id = {
+        row["canonical_id"]: row
+        for row in canonical_applicability.get("rules", [])
+    }
     retained_by_id: dict[str, list[dict[str, Any]]] = {}
     for descriptor in retained_descriptors:
         retained_by_id.setdefault(descriptor["canonical_id"], []).append(
@@ -4971,7 +5944,13 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         methods = selected_nonmechanical_obligations.get(
             (canonical_id, revision_digest), []
         )
-        preflight_row = preflight_by_id.get(canonical_id, {})
+        preflight_row = preflight_by_id.get(canonical_id)
+        if preflight_row is None:
+            scope_row = applicability_by_id.get(canonical_id, {})
+            preflight_row = {
+                "applicability_preflight": scope_row.get("scope_disposition", "UNDETERMINED"),
+                "citable_scope_facts": scope_row.get("citable_scope_facts", []),
+            }
         missing_roles = semantic_missing_evidence_roles.get(canonical_id, [])
         method_statuses = _nonmechanical_obligation_statuses(
             canonical_id,
@@ -4988,11 +5967,6 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         # missing mechanical method in the same rule aggregation so a semantic
         # PASS or NOT_APPLICABLE cannot hide the unimplemented half.
         method_statuses.update(mechanical_gap_statuses)
-        if preflight_row.get("applicability_preflight") == "NOT_APPLICABLE":
-            method_statuses = {
-                method: "NOT_APPLICABLE"
-                for method in sorted(set(methods) | set(mechanical_gap_statuses))
-            }
         status = _combine_route_status(set(method_statuses.values()))
         semantic_internal = internal_semantic_reviews.get((
             canonical_id,
@@ -5017,6 +5991,8 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
             if status == "NOT_APPLICABLE"
             else "REQUIRED_EVIDENCE_ROLE_MISSING"
             if missing_roles
+            else "RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED"
+            if mechanical_gap_statuses
             else "SEMANTIC_REVIEW_PENDING"
         )
         row = {
@@ -5197,6 +6173,14 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
                             else None
                         ),
                     },
+                    verified_evidence_refs=_verified_static_evidence_refs(
+                        internal_semantic_reviews,
+                        internal_semantic_binding,
+                        internal_review_request,
+                        foundation_task_digest,
+                        lineage["canonical_id"],
+                        lineage["canonical_revision_digest"],
+                    ),
                 )
                 outcome["worker"] = "deterministic-first-tier-executor"
                 result = {
@@ -5348,6 +6332,7 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
             finalized_semantic_reviews=method_assurance_semantic_reviews,
         )
     )
+    _record_after_scope(stage, method_assurance=method_assurance)
     method_records = {
         rule_method_assurance.obligation_identity(record): record
         for record in method_assurance["records"]
@@ -5388,7 +6373,7 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
                 ),
             ).values())
         else:
-            combined_results.append(item)
+            combined_results.append(_present_professional_finding(item))
             continue
         combined_status = _combine_route_status(statuses)
         combined = {**item, "status": combined_status}
@@ -5399,7 +6384,7 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         ))
         if internal is not None:
             combined["semantic_review"] = internal
-        combined_results.append(combined)
+        combined_results.append(_present_professional_finding(combined))
     results = combined_results + _profile_not_run_results(
         profile_plan,
         canonical_lineage,
@@ -5415,6 +6400,7 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         )
     except ValueError as exc:
         raise WorkflowError("CONFORMANCE_PROFILE_RESULT_INVALID", str(exc)) from exc
+    _record_after_scope(stage, canonical_results=canonical_results)
     failed = [
         item
         for item in canonical_results
@@ -5614,6 +6600,8 @@ def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
         "canonical_executable_coverage": canonical_coverage,
         "canonical_guidance": canonical_guidance,
     }
+    if professional_consumption is not None:
+        domain["professional_consumption"] = professional_consumption
     domain["method_assurance"] = method_assurance
     domain["status"] = _method_assurance_gated_status(
         domain["status"], domain["method_assurance"]
@@ -5711,24 +6699,335 @@ def parser() -> argparse.ArgumentParser:
         choices=["all", "claude-code", "codex", "kimi-code", "workbuddy"],
     )
     value.add_argument("--allow-test-fixture", action="store_true")
+    value.add_argument(
+        "--professional-consumption",
+        help="专业消费 JSON；进入同一次 Task 与符合性结果，不得携带待执行命令",
+    )
     return value
+
+
+def _load_professional_consumption(args: argparse.Namespace) -> dict[str, Any] | None:
+    raw = getattr(args, "professional_consumption", None)
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, str) or not raw:
+        return None
+    path = Path(raw)
+    if path.is_symlink() or not path.is_file():
+        raise WorkflowError(
+            "PROFESSIONAL_CONSUMPTION_INVALID",
+            "professional_consumption 必须是真实普通文件",
+        )
+    document = load_json(path)
+    if not isinstance(document, dict) or "command" in document:
+        raise WorkflowError(
+            "PROFESSIONAL_CONSUMPTION_INVALID",
+            "professional_consumption 不得携带命令或非对象根",
+        )
+    return document
+
+
+def _present_professional_finding(item: dict[str, Any]) -> dict[str, Any]:
+    """Show a complete Foundation finding as REVIEW_REQUIRED on the domain row.
+
+    The executor aggregate stays in the legal mechanical vocabulary. This copy
+    is the rule view; the trusted observation keeps the original payload.
+    """
+    rows = item.get("check_method_subresults")
+    if not isinstance(rows, list):
+        return item
+    promoted: list[Any] = []
+    changed = False
+    for row in rows:
+        evidence = row.get("evidence") if isinstance(row, dict) else None
+        if (
+            isinstance(row, dict)
+            and row.get("check_method") in {"static_scan", "schema_validation"}
+            and row.get("status") == "EVIDENCE_MISSING"
+            and isinstance(evidence, dict)
+            and evidence.get("professional_issue") == "professional_findings"
+        ):
+            promoted.append({**row, "status": "REVIEW_REQUIRED"})
+            changed = True
+        else:
+            promoted.append(row)
+    if not changed:
+        return item
+    return {**item, "status": "REVIEW_REQUIRED", "check_method_subresults": promoted}
+
+
+def _consume_professional_inputs(document: dict[str, Any]) -> dict[str, Any]:
+    """Call the existing proof consumer from validated host inputs."""
+    items = document.get("items")
+    if not isinstance(items, list):
+        raise WorkflowError(
+            "PROFESSIONAL_CONSUMPTION_INVALID",
+            "professional_consumption.items 必须是数组",
+        )
+    consumed: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise WorkflowError(
+                "PROFESSIONAL_CONSUMPTION_INVALID",
+                "professional_consumption.items 项必须是对象",
+            )
+        try:
+            result = checker.consume_professional_proof(item)
+        except (RuntimeError, TypeError) as exc:
+            raise WorkflowError("PROFESSIONAL_PROOF_FAILED", str(exc)) from exc
+        if not isinstance(result, dict) or "command" in result:
+            raise WorkflowError(
+                "PROFESSIONAL_PROOF_FAILED",
+                "专业消费结果非法",
+            )
+        consumed.append(result)
+    return {"items": consumed}
+
+
+def _caller_evidence_list(
+    evidence_set: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "kind": "caller-evidence",
+            "evidence_id": item["evidence_id"],
+            "path": item["path"],
+            "sha256": item["sha256"],
+            "source": "caller-evidence-set",
+        }
+        for item in evidence_set or []
+        if isinstance(item, dict)
+        and isinstance(item.get("evidence_id"), str)
+        and isinstance(item.get("path"), str)
+        and isinstance(item.get("sha256"), str)
+    ]
+
+
+def _canonical_id_from_result_row(row: dict[str, Any]) -> str | None:
+    lineage = row.get("canonical_lineage")
+    if isinstance(lineage, dict) and isinstance(lineage.get("canonical_id"), str):
+        return lineage["canonical_id"]
+    if row.get("canonical_only") is True and isinstance(row.get("canonical_id"), str):
+        return row["canonical_id"]
+    return None
+
+
+def _unexecuted_in_scope_rule_results(
+    plan: dict[str, Any],
+    existing: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    covered: set[str] = set()
+    rows: list[dict[str, Any]] = []
+    in_scope = set(plan["in_scope_rule_ids"])
+    for row in existing or []:
+        if not isinstance(row, dict):
+            continue
+        canonical_id = _canonical_id_from_result_row(row)
+        if (
+            canonical_id is None
+            or canonical_id not in in_scope
+            or canonical_id in covered
+        ):
+            continue
+        covered.add(canonical_id)
+        rows.append(row)
+    revision_by_canonical = plan["revision_by_canonical"]
+    for canonical_id in plan["in_scope_rule_ids"]:
+        if canonical_id in covered:
+            continue
+        rows.append({
+            "rule_id": canonical_id,
+            "rule_revision_digest": revision_by_canonical[canonical_id],
+            "canonical_id": canonical_id,
+            "canonical_only": True,
+            "status": "NOT_RUN",
+        })
+    return rows
+
+
+def after_scope_failure_result(
+    exc: BaseException,
+    stage: _WorkflowStage,
+) -> dict[str, Any]:
+    """Project a post-scope failure into the original complete result contract.
+
+    Reuses the selected profile plan and any already assembled rule results.
+    Unexecuted in-scope rules stay NOT_RUN.  Does not select the early-exit
+    branch.
+    """
+    after_scope = stage.after_scope or {}
+    plan = after_scope.get("profile_plan")
+    if not isinstance(plan, dict):
+        raise ValueError("after-scope failure requires a selected profile plan")
+    args = after_scope.get("args")
+    rule_results = _unexecuted_in_scope_rule_results(
+        plan, after_scope.get("canonical_results")
+    )
+    status_by_canonical: dict[str, str] = {}
+    for row in rule_results:
+        canonical_id = _canonical_id_from_result_row(row)
+        if canonical_id is not None:
+            status_by_canonical[canonical_id] = row["status"]
+    coverage_core = conformance_profiles.derive_coverage(
+        plan["in_scope_rule_ids"],
+        plan["selected_rule_ids"],
+        status_by_canonical,
+    )
+
+    def identity_rows(canonical_ids: list[str]) -> list[dict[str, str]]:
+        return [
+            {
+                "canonical_id": canonical_id,
+                "revision_digest": plan["revision_by_canonical"][canonical_id],
+            }
+            for canonical_id in sorted(canonical_ids)
+        ]
+
+    coverage = {
+        "in_scope_rule_set_digest": plan["in_scope_rule_set_digest"],
+        "in_scope_count": coverage_core["in_scope_count"],
+        "selected_rule_set_digest": plan["selected_rule_set_digest"],
+        "selected_count": coverage_core["selected_count"],
+        "attempted_rule_set_digest": foundation_document_digest(
+            identity_rows(coverage_core["attempted"])
+        ),
+        "attempted_count": coverage_core["attempted_count"],
+        "not_run_count": coverage_core["not_run_count"],
+        "coverage_complete": coverage_core["coverage_complete"],
+        "conclusion_complete": coverage_core["conclusion_complete"],
+        "requested_semantic_group_ids": plan["requested_semantic_group_ids"],
+        "requested_canonical_rule_ids": plan["requested_canonical_rule_ids"],
+        "selected_semantic_group_ids": plan["selected_semantic_group_ids"],
+        "selected_deterministic_rule_count": plan[
+            "selected_deterministic_rule_count"
+        ],
+        "semantic_group_registry_digest": plan["semantic_group_registry_digest"],
+    }
+    preflight = after_scope.get("semantic_preflight")
+    if isinstance(preflight, dict) and "performed" in preflight:
+        semantic_preflight = _semantic_profile_preflight_result(preflight)
+    else:
+        semantic_preflight = {
+            "performed": plan["execution_profile"] != "mechanical",
+            "groups": [],
+        }
+    observed_metrics = after_scope.get("semantic_context_metrics")
+    skipped = after_scope.get("semantic_rules_skipped_missing_evidence_count", 0)
+    if (
+        isinstance(observed_metrics, dict)
+        and "semantic_model_call_count" in observed_metrics
+        and "semantic_context_count" in observed_metrics
+        and "estimated_input_tokens" in observed_metrics
+        and "semantic_rules_sent_to_model_count" in observed_metrics
+    ):
+        execution_metrics = {
+            "semantic_model_call_count": observed_metrics[
+                "semantic_model_call_count"
+            ],
+            "semantic_context_count": observed_metrics["semantic_context_count"],
+            "estimated_input_tokens": observed_metrics["estimated_input_tokens"],
+            "semantic_rules_sent_to_model_count": observed_metrics[
+                "semantic_rules_sent_to_model_count"
+            ],
+            "semantic_rules_skipped_missing_evidence_count": skipped,
+        }
+    else:
+        execution_metrics = {
+            "semantic_model_call_count": 0,
+            "semantic_context_count": 0,
+            "estimated_input_tokens": 0,
+            "semantic_rules_sent_to_model_count": 0,
+            "semantic_rules_skipped_missing_evidence_count": skipped,
+        }
+    statuses = {row["status"] for row in rule_results}
+    status = "FAILED" if "FAIL" in statuses else "BLOCKED"
+    domain: dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "status": status,
+        "reason_code": getattr(exc, "code", type(exc).__name__),
+        "summary": str(exc),
+        "execution_profile": plan["execution_profile"],
+        "coverage": coverage,
+        "semantic_preflight": semantic_preflight,
+        "execution_metrics": execution_metrics,
+        "rule_results": rule_results,
+    }
+    method_assurance = after_scope.get("method_assurance")
+    if status == "FAILED" and isinstance(method_assurance, dict):
+        domain["method_assurance"] = method_assurance
+    if args is not None:
+        run_id = getattr(args, "run_id", None)
+        if isinstance(run_id, str) and run_id:
+            domain["run_id"] = run_id
+        target_type = getattr(args, "target_type", None)
+        if target_type in TARGET_TYPES:
+            domain["target_type"] = target_type
+        platform = getattr(args, "platform", None)
+        if platform in {"all", "claude-code", "codex", "kimi-code", "workbuddy"}:
+            domain["platform"] = platform
+    for field in (
+        "semantic_target_digest",
+        "rule_set_digest",
+        "semantic_request_digest",
+    ):
+        digest = after_scope.get(field)
+        if isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest):
+            domain_key = (
+                "target_digest" if field == "semantic_target_digest" else field
+            )
+            domain[domain_key] = digest
+    return {
+        "conformance_result": domain,
+        "rule_findings": [],
+        "evidence_list": _caller_evidence_list(stage.evidence_set),
+        "remediation_plan": [],
+    }
+
+
+def _attach_after_scope_failure_result(
+    exc: BaseException, stage: _WorkflowStage
+) -> None:
+    if getattr(exc, "result", None) is not None:
+        return
+    try:
+        exc.result = after_scope_failure_result(exc, stage)
+    except Exception:
+        return
+
+
+def before_rule_selection_result(
+    exc: BaseException,
+    *,
+    evidence_set: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Project a pre-scope failure into the mutually exclusive early-exit result.
+
+    The stage is taken from actual control flow (the exception), not from a
+    caller-supplied failure declaration.  Coverage, rule results, registry
+    summaries and completion ratios are omitted rather than fabricated.
+    """
+    return {
+        "conformance_result": {
+            "status": "BLOCKED",
+            "failure_stage": BEFORE_RULE_SELECTION,
+            "reason_code": getattr(exc, "code", type(exc).__name__),
+            "summary": str(exc),
+        },
+        "rule_findings": [],
+        "evidence_list": _caller_evidence_list(evidence_set),
+        "remediation_plan": [],
+    }
 
 
 def main() -> int:
     args = parser().parse_args()
     if args.semantic_review_stdin:
-        result = {
-            "conformance_result": {
-                "status": "BLOCKED",
-                "reason_code": "SEMANTIC_REVIEW_PRODUCER_UNTRUSTED",
-                "summary": (
-                    "生产 CLI 不接受调用方通过 --semantic-review-stdin 提升语义审阅结论"
-                ),
-            },
-            "rule_findings": [],
-            "evidence_list": [],
-            "remediation_plan": [],
-        }
+        result = before_rule_selection_result(
+            WorkflowError(
+                "SEMANTIC_REVIEW_PRODUCER_UNTRUSTED",
+                "生产 CLI 不接受调用方通过 --semantic-review-stdin 提升语义审阅结论",
+            )
+        )
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 2
     else:
@@ -5740,16 +7039,24 @@ def main() -> int:
             return 0
         return 0 if result["conformance_result"]["status"] == "SUCCEEDED" else 1
     except (WorkflowError, OSError, ValueError) as exc:
-        result = {
-            "conformance_result": {
-                "status": "BLOCKED",
-                "reason_code": getattr(exc, "code", type(exc).__name__),
-                "summary": str(exc),
-            },
-            "rule_findings": [],
-            "evidence_list": [],
-            "remediation_plan": [],
-        }
+        if getattr(exc, "failure_stage", None) == BEFORE_RULE_SELECTION:
+            result = before_rule_selection_result(
+                exc,
+                evidence_set=getattr(exc, "evidence_set", None),
+            )
+        elif getattr(exc, "result", None) is not None:
+            result = exc.result
+        else:
+            result = {
+                "conformance_result": {
+                    "status": "BLOCKED",
+                    "reason_code": getattr(exc, "code", type(exc).__name__),
+                    "summary": str(exc),
+                },
+                "rule_findings": [],
+                "evidence_list": [],
+                "remediation_plan": [],
+            }
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 2
 

@@ -1,0 +1,31 @@
+{
+  "fixtureId": "file-set-prune-request.positive.valid",
+  "contract": "file-set-prune-request",
+  "class": "positive",
+  "description": "Fictional file-set-prune-request: valid.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/file-set-prune-request.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": true
+  },
+  "data": {
+    "schemaVersion": 1,
+    "operationId": "00000000-0000-4000-8000-000000000001",
+    "root": "/tmp/fictional-file-set",
+    "rootBinding": {
+      "kind": "trusted-filesystem-root-binding",
+      "digestAlgorithm": "sha256",
+      "basis": "canonical-realpath-device-inode-type-mode-v1",
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "recoveryRelPath": ".foundation-file-apply",
+    "environment": {
+      "filesystem": "apfs",
+      "cooperativeWriters": true
+    },
+    "kind": "skill-family.file-set-prune-request"
+  }
+}

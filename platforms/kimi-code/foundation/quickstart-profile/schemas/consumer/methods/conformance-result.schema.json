@@ -96,19 +96,12 @@
       ]
     }
   },
-  "description": "规范符合性检查方法的领域结果合同。full 单次覆盖 canonical inventory 全部 814 条规则：已激活规则保留 baseline lineage，保留规则使用不伪造基线载体的 canonical-only 试运行。逐规则结果以 EVIDENCE_MISSING/REVIEW_REQUIRED 表示未获证；外部语义审阅仅作为待审证据，其中任何状态（含 PASS）不直接改变顶层结论。",
+  "description": "规范符合性检查方法的领域结果合同。full 单次覆盖 canonical inventory 全部 814 条规则：已激活规则保留 baseline lineage，保留规则使用不伪造基线载体的 canonical-only 试运行。逐规则结果以 EVIDENCE_MISSING/REVIEW_REQUIRED 表示未获证；外部语义审阅仅作为待审证据，其中任何状态（含 PASS）不直接改变顶层结论。规则选择前的输入/权威/目标绑定失败使用互斥早退分支（status=BLOCKED 且 failure_stage=before_rule_selection），不得输出假的规则集合、注册表摘要或完成比例；该分支只能由实际控制流设置，调用方不能选择。范围已经解析后的失败仍满足原完整字段。",
   "type": "object",
   "properties": {
     "conformance_result": {
       "type": "object",
-      "description": "符合性审计领域结论",
-      "required": [
-        "status",
-        "execution_profile",
-        "coverage",
-        "semantic_preflight",
-        "execution_metrics"
-      ],
+      "description": "符合性审计领域结论。正常路径与已选出规则的失败保持原必填字段；仅尚未形成规则范围的失败可走 failure_stage=before_rule_selection 早退分支。",
       "properties": {
         "schema_version": {
           "const": "1.0.0"
@@ -153,6 +146,10 @@
             "BLOCKED",
             "PARTIAL"
           ]
+        },
+        "failure_stage": {
+          "const": "before_rule_selection",
+          "description": "仅由实际控制流在规则范围尚未形成时设置；表示输入、权威或目标绑定失败。调用方不得通过参数选择该分支，正常结果出现该字段仍被拒绝。"
         },
         "execution_profile": {
           "type": "string",
@@ -628,6 +625,101 @@
             }
           },
           "additionalProperties": true
+        },
+        "professional_consumption": {
+          "type": "object",
+          "description": "本次专业扫描、历史证明复用、版本政策与缺证汇总；与 Audit 自身规则发现分开。",
+          "additionalProperties": false,
+          "required": [
+            "items"
+          ],
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "provider_id",
+                  "mode",
+                  "status",
+                  "reason"
+                ],
+                "properties": {
+                  "provider_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "scanned",
+                      "reused_proof",
+                      "version_policy",
+                      "missing_proof",
+                      "missing_entry",
+                      "not_selected"
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "pass",
+                      "not_pass"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version_relation": {
+                    "enum": [
+                      "higher",
+                      "lower",
+                      "same",
+                      "invalid",
+                      "absent"
+                    ]
+                  },
+                  "baseline_version": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "proof_version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "reader_status": {
+                    "enum": [
+                      "pass",
+                      "not_pass",
+                      "unavailable",
+                      null
+                    ]
+                  },
+                  "entry_ref": {
+                    "type": "string"
+                  },
+                  "does_not_certify_author": {
+                    "type": "boolean"
+                  },
+                  "does_not_mean_rescan": {
+                    "type": "boolean"
+                  },
+                  "refresh_suggested": {
+                    "type": "boolean"
+                  },
+                  "conclusion": {
+                    "description": "未经改写的原共同证明，含 subject、scope、outcome 及原发现与 limitations。",
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
         }
       },
       "allOf": [
@@ -635,464 +727,533 @@
           "if": {
             "properties": {
               "status": {
-                "enum": [
-                  "SUCCEEDED",
-                  "FAILED",
-                  "PARTIAL"
-                ]
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          "then": {
-            "properties": {
-              "schema_version": {},
-              "run_id": {},
-              "target_digest": {},
-              "target_type": {},
-              "platform": {},
-              "rule_set_digest": {},
-              "semantic_request_digest": {},
-              "rule_results": {},
-              "method_assurance": {},
-              "execution_profile": {},
-              "coverage": {},
-              "semantic_preflight": {},
-              "execution_metrics": {}
-            },
-            "required": [
-              "schema_version",
-              "run_id",
-              "target_digest",
-              "target_type",
-              "platform",
-              "rule_set_digest",
-              "semantic_request_digest",
-              "rule_results",
-              "method_assurance",
-              "execution_profile",
-              "coverage",
-              "semantic_preflight",
-              "execution_metrics"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "status": {
                 "const": "BLOCKED"
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          "then": {
-            "properties": {
-              "rule_results": {}
-            },
-            "required": [
-              "rule_results"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "execution_profile": {
-                "enum": [
-                  "mechanical",
-                  "economy"
-                ]
-              }
-            },
-            "required": [
-              "execution_profile"
-            ]
-          },
-          "then": {
-            "properties": {
-              "coverage": {
-                "type": "object",
-                "properties": {
-                  "selected_semantic_group_ids": {
-                    "type": "array",
-                    "maxItems": 0
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "rule_results": {
-                "type": "array",
-                "contains": {
-                  "type": "object",
-                  "required": [
-                    "status"
-                  ],
-                  "properties": {
-                    "status": {
-                      "const": "FAIL"
-                    }
-                  }
-                }
-              }
-            },
-            "required": [
-              "rule_results"
-            ]
-          },
-          "then": {
-            "properties": {
-              "status": {
-                "const": "FAILED"
-              }
-            },
-            "required": [
-              "status"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "status": {
-                "const": "SUCCEEDED"
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          "then": {
-            "properties": {
-              "execution_profile": {
-                "const": "full"
               },
-              "coverage": {
-                "type": "object",
-                "properties": {
-                  "coverage_complete": {
-                    "const": true
-                  },
-                  "conclusion_complete": {
-                    "const": true
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "status": {
-                "const": "FAILED"
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          "then": {
-            "properties": {
-              "rule_results": {
-                "type": "array",
-                "contains": {
-                  "type": "object",
-                  "required": [
-                    "status"
-                  ],
-                  "properties": {
-                    "status": {
-                      "const": "FAIL"
-                    }
-                  }
-                }
-              }
-            },
-            "required": [
-              "rule_results"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "execution_profile": {
-                "const": "targeted"
-              }
-            },
-            "required": [
-              "execution_profile"
-            ]
-          },
-          "then": {
-            "properties": {
-              "coverage": {
-                "type": "object",
-                "oneOf": [
-                  {
-                    "properties": {
-                      "requested_semantic_group_ids": {
-                        "type": "array",
-                        "minItems": 1
-                      },
-                      "requested_canonical_rule_ids": {
-                        "type": "array",
-                        "maxItems": 0
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "requested_semantic_group_ids": {
-                        "type": "array",
-                        "maxItems": 0
-                      },
-                      "requested_canonical_rule_ids": {
-                        "type": "array",
-                        "minItems": 1
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "execution_profile": {
-                "enum": [
-                  "mechanical",
-                  "economy",
-                  "full"
-                ]
-              }
-            },
-            "required": [
-              "execution_profile"
-            ]
-          },
-          "then": {
-            "properties": {
-              "coverage": {
-                "type": "object",
-                "properties": {
-                  "requested_semantic_group_ids": {
-                    "type": "array",
-                    "maxItems": 0
-                  },
-                  "requested_canonical_rule_ids": {
-                    "type": "array",
-                    "maxItems": 0
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "status": {
-                "not": {
-                  "const": "PARTIAL"
-                }
-              },
-              "rule_results": {
-                "type": "array",
-                "contains": {
-                  "type": "object",
-                  "required": [
-                    "status"
-                  ],
-                  "properties": {
-                    "status": {
-                      "enum": [
-                        "FAIL",
-                        "EVIDENCE_MISSING",
-                        "REVIEW_REQUIRED",
-                        "NOT_RUN"
-                      ]
-                    }
-                  }
-                }
+              "failure_stage": {
+                "const": "before_rule_selection"
               }
             },
             "required": [
               "status",
-              "rule_results"
+              "failure_stage"
             ]
           },
           "then": {
+            "required": [
+              "status",
+              "failure_stage",
+              "reason_code",
+              "summary"
+            ],
             "properties": {
               "status": {
-                "enum": [
-                  "FAILED",
-                  "BLOCKED"
-                ]
-              }
-            },
-            "required": [
-              "status"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "status": {
-                "const": "PARTIAL"
-              }
-            },
-            "required": [
-              "status"
-            ]
+                "const": "BLOCKED"
+              },
+              "failure_stage": {
+                "const": "before_rule_selection"
+              },
+              "reason_code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "execution_profile": false,
+              "coverage": false,
+              "semantic_preflight": false,
+              "execution_metrics": false,
+              "rule_results": false,
+              "canonical_rule_summary": false,
+              "canonical_rule_applicability": false,
+              "baseline_rule_set": false,
+              "canonical_executable_coverage": false,
+              "canonical_guidance": false,
+              "method_assurance": false,
+              "semantic_review_binding": false,
+              "external_semantic_reviews": false
+            }
           },
-          "then": {
-            "properties": {
-              "rule_results": {
-                "type": "array",
-                "not": {
-                  "contains": {
-                    "type": "object",
-                    "required": [
-                      "status"
-                    ],
-                    "properties": {
-                      "status": {
-                        "enum": [
-                          "FAIL",
-                          "EVIDENCE_MISSING",
-                          "REVIEW_REQUIRED"
-                        ]
+          "else": {
+            "required": [
+              "status",
+              "execution_profile",
+              "coverage",
+              "semantic_preflight",
+              "execution_metrics"
+            ],
+            "not": {
+              "required": [
+                "failure_stage"
+              ]
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "SUCCEEDED",
+                        "FAILED",
+                        "PARTIAL"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "schema_version": {},
+                    "run_id": {},
+                    "target_digest": {},
+                    "target_type": {},
+                    "platform": {},
+                    "rule_set_digest": {},
+                    "semantic_request_digest": {},
+                    "rule_results": {},
+                    "method_assurance": {},
+                    "execution_profile": {},
+                    "coverage": {},
+                    "semantic_preflight": {},
+                    "execution_metrics": {}
+                  },
+                  "required": [
+                    "schema_version",
+                    "run_id",
+                    "target_digest",
+                    "target_type",
+                    "platform",
+                    "rule_set_digest",
+                    "semantic_request_digest",
+                    "rule_results",
+                    "method_assurance",
+                    "execution_profile",
+                    "coverage",
+                    "semantic_preflight",
+                    "execution_metrics"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "BLOCKED"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "rule_results": {}
+                  },
+                  "required": [
+                    "rule_results"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "execution_profile": {
+                      "enum": [
+                        "mechanical",
+                        "economy"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "execution_profile"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "coverage": {
+                      "type": "object",
+                      "properties": {
+                        "selected_semantic_group_ids": {
+                          "type": "array",
+                          "maxItems": 0
+                        }
                       }
                     }
                   }
                 }
               },
-              "execution_profile": {
-                "not": {
-                  "const": "full"
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "execution_profile": {
-                "const": "mechanical"
-              }
-            },
-            "required": [
-              "execution_profile"
-            ]
-          },
-          "then": {
-            "properties": {
-              "semantic_preflight": {
-                "type": "object",
-                "properties": {
-                  "performed": {
-                    "const": false
+              {
+                "if": {
+                  "properties": {
+                    "rule_results": {
+                      "type": "array",
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "const": "FAIL"
+                          }
+                        }
+                      }
+                    }
                   },
-                  "groups": {
-                    "type": "array",
-                    "maxItems": 0
+                  "required": [
+                    "rule_results"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "status": {
+                      "const": "FAILED"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "SUCCEEDED"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "execution_profile": {
+                      "const": "full"
+                    },
+                    "coverage": {
+                      "type": "object",
+                      "properties": {
+                        "coverage_complete": {
+                          "const": true
+                        },
+                        "conclusion_complete": {
+                          "const": true
+                        }
+                      }
+                    }
                   }
                 }
               },
-              "execution_metrics": {
-                "type": "object",
-                "properties": {
-                  "semantic_model_call_count": {
-                    "const": 0
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "FAILED"
+                    }
                   },
-                  "semantic_context_count": {
-                    "const": 0
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "rule_results": {
+                      "type": "array",
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "const": "FAIL"
+                          }
+                        }
+                      }
+                    }
                   },
-                  "estimated_input_tokens": {
-                    "const": 0
+                  "required": [
+                    "rule_results"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "execution_profile": {
+                      "const": "targeted"
+                    }
                   },
-                  "semantic_rules_sent_to_model_count": {
-                    "const": 0
+                  "required": [
+                    "execution_profile"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "coverage": {
+                      "type": "object",
+                      "oneOf": [
+                        {
+                          "properties": {
+                            "requested_semantic_group_ids": {
+                              "type": "array",
+                              "minItems": 1
+                            },
+                            "requested_canonical_rule_ids": {
+                              "type": "array",
+                              "maxItems": 0
+                            }
+                          }
+                        },
+                        {
+                          "properties": {
+                            "requested_semantic_group_ids": {
+                              "type": "array",
+                              "maxItems": 0
+                            },
+                            "requested_canonical_rule_ids": {
+                              "type": "array",
+                              "minItems": 1
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "execution_profile": {
+                      "enum": [
+                        "mechanical",
+                        "economy",
+                        "full"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "execution_profile"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "coverage": {
+                      "type": "object",
+                      "properties": {
+                        "requested_semantic_group_ids": {
+                          "type": "array",
+                          "maxItems": 0
+                        },
+                        "requested_canonical_rule_ids": {
+                          "type": "array",
+                          "maxItems": 0
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "not": {
+                        "const": "PARTIAL"
+                      }
+                    },
+                    "rule_results": {
+                      "type": "array",
+                      "contains": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "FAIL",
+                              "EVIDENCE_MISSING",
+                              "REVIEW_REQUIRED",
+                              "NOT_RUN"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "rule_results"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "FAILED",
+                        "BLOCKED"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "PARTIAL"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "rule_results": {
+                      "type": "array",
+                      "not": {
+                        "contains": {
+                          "type": "object",
+                          "required": [
+                            "status"
+                          ],
+                          "properties": {
+                            "status": {
+                              "enum": [
+                                "FAIL",
+                                "EVIDENCE_MISSING",
+                                "REVIEW_REQUIRED"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "execution_profile": {
+                      "not": {
+                        "const": "full"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "execution_profile": {
+                      "const": "mechanical"
+                    }
+                  },
+                  "required": [
+                    "execution_profile"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "semantic_preflight": {
+                      "type": "object",
+                      "properties": {
+                        "performed": {
+                          "const": false
+                        },
+                        "groups": {
+                          "type": "array",
+                          "maxItems": 0
+                        }
+                      }
+                    },
+                    "execution_metrics": {
+                      "type": "object",
+                      "properties": {
+                        "semantic_model_call_count": {
+                          "const": 0
+                        },
+                        "semantic_context_count": {
+                          "const": 0
+                        },
+                        "estimated_input_tokens": {
+                          "const": 0
+                        },
+                        "semantic_rules_sent_to_model_count": {
+                          "const": 0
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "execution_profile": {
+                      "enum": [
+                        "economy",
+                        "targeted",
+                        "full"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "execution_profile"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "semantic_preflight": {
+                      "type": "object",
+                      "properties": {
+                        "performed": {
+                          "const": true
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "execution_profile": {
+                      "const": "economy"
+                    }
+                  },
+                  "required": [
+                    "execution_profile"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "execution_metrics": {
+                      "type": "object",
+                      "properties": {
+                        "semantic_model_call_count": {
+                          "const": 0
+                        },
+                        "semantic_context_count": {
+                          "const": 0
+                        },
+                        "estimated_input_tokens": {
+                          "const": 0
+                        },
+                        "semantic_rules_sent_to_model_count": {
+                          "const": 0
+                        }
+                      }
+                    }
                   }
                 }
               }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "execution_profile": {
-                "enum": [
-                  "economy",
-                  "targeted",
-                  "full"
-                ]
-              }
-            },
-            "required": [
-              "execution_profile"
             ]
-          },
-          "then": {
-            "properties": {
-              "semantic_preflight": {
-                "type": "object",
-                "properties": {
-                  "performed": {
-                    "const": true
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "execution_profile": {
-                "const": "economy"
-              }
-            },
-            "required": [
-              "execution_profile"
-            ]
-          },
-          "then": {
-            "properties": {
-              "execution_metrics": {
-                "type": "object",
-                "properties": {
-                  "semantic_model_call_count": {
-                    "const": 0
-                  },
-                  "semantic_context_count": {
-                    "const": 0
-                  },
-                  "estimated_input_tokens": {
-                    "const": 0
-                  },
-                  "semantic_rules_sent_to_model_count": {
-                    "const": 0
-                  }
-                }
-              }
-            }
           }
         }
       ],

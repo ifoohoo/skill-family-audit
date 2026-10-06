@@ -1,6 +1,6 @@
 {
   "kind": "skill-family-audit.method-assurance-trust-projection",
-  "projection_digest": "e5436028f73a12f465673ad8f65d0a49d47112df7bb1fb83b8c22a94bb46077b",
+  "projection_digest": "06abbba1deadd0dee428ffb7dd512aad1e3e6a77caded91534559f1b190a8d31",
   "routing": {
     "first_tier_static": [
       {
@@ -314,7 +314,7 @@
         "required_mechanical_methods": [
           "static_scan"
         ],
-        "revision_digest": "3b343656c648f7128cd033797eeff72db681ab8354ca405cdfb8ae39384998b0"
+        "revision_digest": "2d0a9a58645ae76d928b8a9c0dfad75d8d8d00b8f7a769a666eeebbc64d98fb5"
       },
       {
         "baseline_rule_id": "w2b2:SFA-FOUNDATION-014",
@@ -326,7 +326,7 @@
         "required_mechanical_methods": [
           "schema_validation"
         ],
-        "revision_digest": "e98f2ec151cb8a187a09f9e09f078195373fe0dbd898b959f87d2a4e5f469dbc"
+        "revision_digest": "003d49f85cffc984732d820666b0af300e58da44af5a3b09539154b753abb878"
       },
       {
         "baseline_rule_id": "w2b2:SFA-GOVERNANCE-001",
@@ -559,6 +559,18 @@
           "schema_validation"
         ],
         "revision_digest": "f3172bd5edec039d08003a7fe5f86d6a73f7a1d7ee5e327a27664b5d8736c236"
+      },
+      {
+        "baseline_rule_id": "w2b2:SFA-NETSEC-001",
+        "canonical_id": "SFA-NETSEC-001",
+        "check_methods": [
+          "semantic_review",
+          "static_scan"
+        ],
+        "required_mechanical_methods": [
+          "static_scan"
+        ],
+        "revision_digest": "96d3cbf0d9cd6b85ff8c5070f85473b46192534cac274de8649fe2aad7aa13d1"
       },
       {
         "baseline_rule_id": "w2b2:SFA-PACKAGE-001",
@@ -1302,13 +1314,25 @@
           "schema_validation"
         ],
         "revision_digest": "d567ca5c6baa0952e88090f7ee57d266d64068dfcafba1be85c6a1e06415e787"
+      },
+      {
+        "baseline_rule_id": "w2b2:SFA-WIRING-001",
+        "canonical_id": "SFA-WIRING-001",
+        "check_methods": [
+          "semantic_review",
+          "static_scan"
+        ],
+        "required_mechanical_methods": [
+          "static_scan"
+        ],
+        "revision_digest": "d8f9c47ecfbbefa628c1effde45a0602a1fff9ed6c96f9784fc93fc6df9588d2"
       }
     ],
     "source": "skills/skill-family-audit-conformance-audit/refs/first-tier-execution-routing.json"
   },
   "schema_version": "1.0.0",
   "source_closure": {
-    "digest": "e8d2dad760854229cddae6c5e72d518b7e2b931fefc4a64c89e5477c9f20692c",
+    "digest": "27901505d9769c089de13e7f587ef924259ab93329e1ee067fc280abdf22bdcf",
     "digestAlgorithm": "sha256",
     "kind": "skill-family.resource-closure",
     "resources": [
@@ -1316,13 +1340,13 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/refs/canonical-rule-projection.json",
         "role": "input",
-        "sha256": "e6931673810a3870cc6c37f97356dea83b4212e25db71869fe6b2e0706252c04"
+        "sha256": "3d39309e0faed655554de72b8f8948214dcfceffa12ca4b2e0db08e447699bcc"
       },
       {
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/refs/first-tier-execution-routing.json",
         "role": "input",
-        "sha256": "9ac7b6b0b61064acd462bf72ffe7261229b52b9d1796d02ad9c5e775bb7475c2"
+        "sha256": "266bf79672567308d596725d508e7f0656baa5b37cbec497a081b6cbd4612723"
       },
       {
         "exists": true,
@@ -1334,7 +1358,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/conformance_workflow.py",
         "role": "input",
-        "sha256": "4ec412b6e3f677eaf1462e78f3892433a5e3be6ed711eb028db091729272969a"
+        "sha256": "c9480b0947ca642bfd8198ff2ba4e48ac9ed8fbfc471658feb7b8923c24e031e"
       },
       {
         "exists": true,
@@ -1358,7 +1382,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m1_rule_governance_b2.py",
         "role": "input",
-        "sha256": "709210c1c4d9a4f92521c69a25c58faa7a432b276c8a6f11ec6215d3b52759d4"
+        "sha256": "01fe25a4eb477a1535cfb4ec895282ccf944641044f2e207c1bbbfb47dadac9a"
       },
       {
         "exists": true,
@@ -1382,7 +1406,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m2_entry_platform_b2.py",
         "role": "input",
-        "sha256": "7de8c41ae1f030951b83b61898cc41d1e4078720132092b60b70b0431076d30c"
+        "sha256": "142608ec4b5e39cc49ec7330c665af565495e49bc6ac561ea01e40a9a7672991"
       },
       {
         "exists": true,
@@ -1400,7 +1424,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m3_path_program_b2.py",
         "role": "input",
-        "sha256": "60f30612c2eaea9d945a6d9560d44acf58706bb1a9682e753ffd3ffcf6832c70"
+        "sha256": "6288aabb5f861fa8e3ea41da7ade0199c84ae65af747c93055e9c1afd3893935"
       },
       {
         "exists": true,
@@ -1418,13 +1442,13 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m4_eval_evidence_b2.py",
         "role": "input",
-        "sha256": "195373c0861337f75df152e2d04b7f8d1b2ccb1f88bc714c3b67436c23869eb4"
+        "sha256": "693bc21781b44583fa9b18058e4b5b6a730eaf2347b2093e108b30c874833c2a"
       },
       {
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m5_context_isolation.py",
         "role": "input",
-        "sha256": "90b04c3cda3346e275b26246703ad7f47e592b6f7aa3df0654bacf30f4484730"
+        "sha256": "4e84c71ce7892589c7777074a0e3022a39ba890e643bb024d1b9c65fe5356a1b"
       },
       {
         "exists": true,
@@ -1442,7 +1466,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m7_registry.py",
         "role": "input",
-        "sha256": "54fa366aefc0b13d75139996c940d500441f2fd159a4953110156b0ebba3ca78"
+        "sha256": "e41b2f746fe254b5c1044cad63c6385b3fb4536c88ddc7b3bdf9b0fe384b4c44"
       },
       {
         "exists": true,
@@ -1454,7 +1478,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m7_registry_b3.py",
         "role": "input",
-        "sha256": "fb301cb875c3b712347c0c800137861964eea1ebc2ab90649b08a2e648bc09bc"
+        "sha256": "94949e8c9f74815fcea8caff69fea8ff47dc57493975b5a86be934f4b0a3b808"
       },
       {
         "exists": true,

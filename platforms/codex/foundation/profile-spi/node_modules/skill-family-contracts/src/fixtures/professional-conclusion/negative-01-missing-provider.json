@@ -1,0 +1,23 @@
+{
+  "fixtureId": "professional-conclusion.negative.missing-provider",
+  "contract": "professional-conclusion",
+  "class": "negative",
+  "description": "The common provider locator is mandatory.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/professional-conclusion.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.professional-conclusion",
+    "subject": { "ref": "fixture:subject" },
+    "scope": { "checked": ["fixture-check"], "limitations": [] },
+    "outcome": {
+      "completion": "complete",
+      "code": "FIXTURE_CLEAR",
+      "summary": "The fictional check completed."
+    }
+  }
+}

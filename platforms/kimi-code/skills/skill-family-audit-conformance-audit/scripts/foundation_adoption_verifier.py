@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Foundation Profile SPI 验证器：进程外调用 Foundation 0.15.0 verifyProjectProfile。
+"""Foundation Profile SPI 验证器：进程外调用 Foundation 公共入口 verifyProjectProfile。
 
 职责：
 - 项目根 profile.json 只通过公共入口
@@ -223,15 +223,7 @@ def _validate_profile_spi_authority(platform_root: Path, root: Path) -> None:
         or not isinstance(receipt_sha256, str)
         or not HEX64.fullmatch(receipt_sha256)
         or source.get("receiptSha256") != receipt_sha256
-        or not isinstance(packages, list)
-        or [item.get("name") for item in packages if isinstance(item, dict)]
-        != sorted(REQUIRED_FOUNDATION_PACKAGES)
-        or any(
-            not isinstance(item, dict)
-            or item.get("version") != "0.15.0"
-            or not HEX64.fullmatch(str(item.get("sha256", "")))
-            for item in packages
-        )
+        or not _foundation_package_records_well_formed(packages)
     ):
         raise VerificationError(
             "FOUNDATION_PROFILE_SPI_AUTHORITY_INVALID",
@@ -294,6 +286,63 @@ def _validate_profile_spi_authority(platform_root: Path, root: Path) -> None:
             "FOUNDATION_PROFILE_SPI_AUTHORITY_INVALID",
             "Profile SPI 闭包清单摘要漂移",
         )
+    _validate_closure_package_identity(platform_root, packages, expected)
+
+
+def _foundation_package_records_well_formed(packages: object) -> bool:
+    """Require the complete package set, unique names, field types, and digest shape.
+
+    Version equality is not decided here. The same verified closure's
+    package.json is the identity source.
+    """
+    if not isinstance(packages, list):
+        return False
+    names = [item.get("name") for item in packages if isinstance(item, dict)]
+    if names != sorted(REQUIRED_FOUNDATION_PACKAGES):
+        return False
+    for item in packages:
+        if (
+            not isinstance(item, dict)
+            or not isinstance(item.get("name"), str)
+            or not isinstance(item.get("version"), str)
+            or not isinstance(item.get("sha256"), str)
+            or not HEX64.fullmatch(item["sha256"])
+        ):
+            return False
+    return True
+
+
+def _validate_closure_package_identity(
+    platform_root: Path,
+    packages: list[dict[str, Any]],
+    closure_files: dict[str, str],
+) -> None:
+    """Match each declared package to node_modules/<name>/package.json.
+
+    The read uses the existing strict-read entry and that member's closure
+    digest. A missing record, digest drift, or name/version mismatch fails
+    closed. This does not consult foundation-pin.json, environment variables,
+    or a caller-supplied version.
+    """
+    for item in packages:
+        name = item["name"]
+        relative = f"node_modules/{name}/package.json"
+        digest = closure_files.get(relative)
+        if not isinstance(digest, str):
+            raise VerificationError(
+                "FOUNDATION_PROFILE_SPI_AUTHORITY_INVALID",
+                f"闭包缺少包身份文件: {relative}",
+            )
+        document = _strict_read_json(
+            platform_root,
+            f"{PROFILE_SPI_ROOT_RELATIVE}/{relative}",
+            digest,
+        )
+        if document.get("name") != name or document.get("version") != item["version"]:
+            raise VerificationError(
+                "FOUNDATION_PROFILE_SPI_AUTHORITY_INVALID",
+                "闭包内 package.json 身份与声明不一致: " + name,
+            )
 
 
 def _validate_foundation_bundle_authority(
@@ -673,7 +722,7 @@ def estimate_tokens(
 
 
 def contracts_authority(*, profile_spi_root: Path | None = None) -> dict[str, Any]:
-    """Contracts 0.15.0 根导出的真实 registry、mandatory rules 与检查入口。
+    """Contracts 根导出的真实 registry、mandatory rules 与检查入口。
 
     只投影 registry 的对象身份（object/$id/file）与协议、mandatory 规则 ID、
     检查类型和合同版本；不复制完整对象清单，完整 schema 由 Foundation 闭包
@@ -770,7 +819,7 @@ def describe_baseline_pin(
     """用真实 ``describeBaselinePin`` 物化预期 baseline pin。
 
     枚举字段（frozenAt/note/supersedes/provenance）与默认值语义由 Foundation
-    0.15.0 决定；摘要由 Foundation 计算。frozenAt 或 note 非法时 Foundation
+    公共入口决定；摘要由 Foundation 计算。frozenAt 或 note 非法时 Foundation
     抛出 TypeError，本函数以 FOUNDATION_PROFILE_SPI_FAILED 失败关闭返回。
     """
     script = (

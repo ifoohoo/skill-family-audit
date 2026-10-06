@@ -1,0 +1,23 @@
+{
+  "fixtureId": "file-set-event-payload.negative.unknown-field",
+  "contract": "file-set-event-payload",
+  "class": "negative",
+  "description": "Fictional file-set-event-payload: unknown-field.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/file-set-event-payload.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1001"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.file-set-event-payload",
+    "operationId": "00000000-0000-4000-8000-000000000001",
+    "type": "apply-intent",
+    "index": 0,
+    "force": true
+  }
+}

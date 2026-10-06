@@ -2,10 +2,10 @@
   "schemaVersion": "1.0.0-candidate",
   "methodId": "skill-family-audit:release-audit",
   "name": "发布门禁检查",
-  "description": "汇总已审发布评估，并用调用方显式提供、精确字节锁定的 Release Skill 0.9.17 公共 CLI 核验发布记录；Node 22 由既有 Foundation host 提供，不接受调用方选择解释器。不声明远端当前状态，也不重新执行符合性审计、行为验证、运行评估或 Release Skill 的计划/运行/批准算法。方法只绑定一个 release-audit-input Resource，不接受调用方内嵌验证器 JSON 形成成功结果。",
+  "description": "汇总已审发布评估，并用调用方显式提供、精确字节锁定的 Release Skill 0.9.17 公共 CLI 核验发布记录；Node 22 由既有 Foundation host 提供，不接受调用方选择解释器。不声明远端当前状态，也不重新执行符合性审计、行为验证、运行评估或 Release Skill 的计划/运行/批准算法。方法只绑定一个 release-audit-input Resource，不接受调用方内嵌验证器 JSON 形成成功结果。业务验收引用族能力 cap:skill-family-audit.family 的 business_result 共用可观察验收；下列 acceptanceCriteria 的特有标准是补充要求。同一冻结输入重复调用时只做只读重算；输入变化时重新评估；重复调用不重放批准或发布。",
   "capability": {
     "capabilityRef": "cap:skill-family-audit.family",
-    "capabilityDigest": "sha256:b8985167dd3005687d9feb48b482b5dc434cd4891ef8efc4556b6b1c23cdfedc",
+    "capabilityDigest": "sha256:9010b74dedab3cb0cc24d5b3a9ca18f13f0f67cc635d52d366fc37397b3ba6d3",
     "methodSlice": "发布治理材料的静态检查：消费调用方记录与既有权威结论逐项判定发布门禁，不判断目标运行是否有效，不代替用户批准发布"
   },
   "accepts": [
@@ -41,6 +41,8 @@
   "maturity": "experimental",
   "status": "candidate",
   "acceptanceCriteria": [
+    "业务验收引用 cap:skill-family-audit.family 的 business_result 共用可观察验收；以下各项是本方法补充要求，不降低原标准",
+    "同一冻结输入的重复调用只做只读重算，不重放批准或发布；输入变化时重新评估",
     "只汇总发布评估，并执行 Release Skill 0.9.17 公共 verify-records 命令",
     "CLI 与自包含 bundle 在执行前后都必须匹配固定公开字节锁",
     "Node 22 由既有 Foundation host 提供，CLI 由调用方显式提供绝对路径，不接受解释器输入或 PATH fallback",

@@ -3,7 +3,8 @@ import { constants as FS_CONSTANTS } from "node:fs";
 import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson, digestDocument } from "skill-family-contracts";
-import { loadNativeAddon } from "./fixed-set-publication-loader.mjs";
+import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";
+import { loadNativeAddon, stableNativePlatformKey } from "./fixed-set-publication-loader.mjs";
 
 const MANIFEST_KIND = "skill-family.fixed-set-publication-manifest";
 const RECEIPT_KIND = "skill-family.fixed-set-publication-receipt";
@@ -47,10 +48,15 @@ function directoryIdentity(stats) {
   };
 }
 
-async function canonicalDirectory(input, label) {
+function assertNormalizedAbsolutePath(input, label) {
   if (typeof input !== "string" || !path.isAbsolute(input) || input.includes("\0") || path.normalize(input) !== input) {
     throw new TypeError(`${label} must be a normalized absolute path`);
   }
+  return input;
+}
+
+async function canonicalDirectory(input, label) {
+  assertNormalizedAbsolutePath(input, label);
   const before = await lstat(input, { bigint: true });
   if (before.isSymbolicLink() || !before.isDirectory()) throw new TypeError(`${label} must be a real directory`);
   const canonical = await realpath(input);
@@ -69,7 +75,7 @@ function assertSegment(value, label) {
   return value;
 }
 
-async function scanDirectory(root) {
+async function scanDirectory(root, { requireMember = true } = {}) {
   if (FS_CONSTANTS.O_NOFOLLOW === undefined) throw new Error("O_NOFOLLOW is required");
   const directories = [];
   const members = [];
@@ -109,7 +115,7 @@ async function scanDirectory(root) {
     }
   }
   await walk("");
-  if (members.length === 0) throw new TypeError("fixed-set source must contain at least one regular file");
+  if (requireMember && members.length === 0) throw new TypeError("fixed-set source must contain at least one regular file");
   return { directories, members };
 }
 
@@ -123,6 +129,137 @@ async function describeSource(sourceRoot) {
     closureDigest: digestDocument({ root: root.identity, directories: closure.directories, members: closure.members }),
   };
   return { root, source, members: closure.members };
+}
+
+async function describeTree(rootPath, label, { requireMember = true } = {}) {
+  const root = await canonicalDirectory(rootPath, label);
+  const closure = await scanDirectory(root.path, { requireMember });
+  return {
+    root,
+    snapshot: {
+      root: root.identity,
+      directories: closure.directories,
+      members: closure.members,
+      closureDigest: digestDocument({
+        root: root.identity,
+        directories: closure.directories,
+        members: closure.members,
+      }),
+    },
+  };
+}
+
+function sameIdentity(left, right) {
+  return left?.type === "directory" && right?.type === "directory" &&
+    left.device === right.device && left.inode === right.inode && left.mode === right.mode;
+}
+
+function sameSnapshot(left, right) {
+  return left?.closureDigest === right?.closureDigest && canonicalJson(left) === canonicalJson(right);
+}
+
+function replacementTuple({
+  phase,
+  publicationState,
+  commitState,
+  verification,
+  durability,
+}) {
+  return { phase, publicationState, commitState, verification, durability };
+}
+
+const PRE_COMMIT_NOT_RUN = Object.freeze(replacementTuple({
+  phase: "pre-commit",
+  publicationState: "not-published",
+  commitState: "not-committed",
+  verification: "not-run",
+  durability: "not-requested",
+}));
+
+const PRE_COMMIT_VERIFIED = Object.freeze(replacementTuple({
+  phase: "pre-commit",
+  publicationState: "not-published",
+  commitState: "not-committed",
+  verification: "original-mapping-verified",
+  durability: "not-requested",
+}));
+
+const POST_COMMIT_PUBLISHED = Object.freeze(replacementTuple({
+  phase: "post-commit",
+  publicationState: "published",
+  commitState: "exchange-committed",
+  verification: "verified",
+  durability: "indeterminate",
+}));
+
+const POST_COMMIT_INDETERMINATE = Object.freeze(replacementTuple({
+  phase: "post-commit",
+  publicationState: "indeterminate",
+  commitState: "indeterminate",
+  verification: "failed",
+  durability: "indeterminate",
+}));
+
+function replacementError(message, tuple, cause, kind = HARNESS_ERROR_KINDS.ATOMIC_REPLACE_FAILED) {
+  const diagnostic = cause?.code ?? cause?.message;
+  return mechanismError(
+    kind,
+    diagnostic ? `${message}: ${diagnostic}` : message,
+    { ...tuple },
+  );
+}
+
+async function observeReplacementMapping({ sourceRoot, targetPath, targetParent, parent, source, target }) {
+  try {
+    const liveParent = await canonicalDirectory(targetParent, "targetParent");
+    if (!sameIdentity(liveParent.identity, parent.identity)) return "other";
+    const liveSource = await describeTree(sourceRoot, "sourceRoot", { requireMember: false });
+    const liveTarget = await describeTree(targetPath, "target", { requireMember: false });
+    if (sameSnapshot(liveSource.snapshot, source.snapshot) && sameSnapshot(liveTarget.snapshot, target.snapshot)) {
+      return "original";
+    }
+    if (sameSnapshot(liveSource.snapshot, target.snapshot) && sameSnapshot(liveTarget.snapshot, source.snapshot)) {
+      return "exchanged";
+    }
+  } catch {
+    // An unobservable side is neither a proved original nor exchanged mapping.
+  }
+  return "other";
+}
+
+async function syncDirectoryBound(directory, expectedIdentity) {
+  if (FS_CONSTANTS.O_NOFOLLOW === undefined || FS_CONSTANTS.O_DIRECTORY === undefined) {
+    throw new Error("O_NOFOLLOW and O_DIRECTORY are required for directory synchronization");
+  }
+  const handle = await open(
+    directory,
+    FS_CONSTANTS.O_RDONLY | FS_CONSTANTS.O_DIRECTORY | FS_CONSTANTS.O_NOFOLLOW,
+  );
+  try {
+    const current = await handle.stat({ bigint: true });
+    if (!current.isDirectory() || !sameIdentity(directoryIdentity(current), expectedIdentity)) {
+      throw new Error("directory identity changed before synchronization");
+    }
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+function trustedNativeResult(value, expectedPlatform) {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      !Number.isInteger(value.status) || typeof value.committed !== "boolean" ||
+      value.platform !== expectedPlatform) {
+    return null;
+  }
+  const keys = Object.keys(value).sort().join(",");
+  if (value.status === 0) {
+    if (value.committed !== true || keys !== "committed,platform,status") return null;
+  } else if (keys !== "committed,error,platform,status" ||
+      typeof value.error !== "string" || value.error.length === 0) {
+    return null;
+  }
+  return value;
 }
 
 /** Mechanically freezes one sibling-directory publication manifest. */
@@ -285,5 +422,146 @@ export async function publishFixedSet({ sourceRoot, targetParent, targetSegment,
     status: "succeeded", targetState: "published", commitState: "rename-committed",
     verification: "verified", durability: "synced", publishedClosureDigest: manifest.digest,
     memberCount: manifest.members.length,
+  });
+}
+
+/**
+ * Atomically exchanges one complete staged fixed set with one existing target.
+ * A successful call leaves the displaced target at sourceRoot. This operation
+ * never deletes either side, retries the exchange, or attempts rollback.
+ */
+export async function replaceFixedSetAtomic({ sourceRoot, targetParent, targetSegment } = {}) {
+  assertNormalizedAbsolutePath(sourceRoot, "sourceRoot");
+  assertNormalizedAbsolutePath(targetParent, "targetParent");
+  const segment = assertSegment(targetSegment, "targetSegment");
+
+  let parent;
+  let sourceRootIdentity;
+  try {
+    parent = await canonicalDirectory(targetParent, "targetParent");
+    sourceRootIdentity = await canonicalDirectory(sourceRoot, "sourceRoot");
+  } catch (cause) {
+    throw replacementError("fixed-set replacement input cannot be observed", PRE_COMMIT_NOT_RUN, cause);
+  }
+  if (path.dirname(sourceRootIdentity.path) !== parent.path) {
+    throw new TypeError("sourceRoot and target must share the same canonical parent");
+  }
+  const sourceSegment = path.basename(sourceRootIdentity.path);
+  if (sourceSegment === segment) throw new TypeError("source and target segments must differ");
+  const targetPath = path.join(parent.path, segment);
+
+  let source;
+  let target;
+  try {
+    source = await describeTree(sourceRootIdentity.path, "sourceRoot");
+    target = await describeTree(targetPath, "target", { requireMember: false });
+  } catch (cause) {
+    throw replacementError("fixed-set replacement trees are unsafe", PRE_COMMIT_NOT_RUN, cause);
+  }
+  const context = {
+    sourceRoot: sourceRootIdentity.path,
+    targetPath,
+    targetParent: parent.path,
+    parent,
+    source,
+    target,
+  };
+
+  const runtimePlatform = stableNativePlatformKey();
+  if (runtimePlatform === null) {
+    throw replacementError(
+      "fixed-set replacement is unsupported on this runtime",
+      PRE_COMMIT_NOT_RUN,
+      null,
+      HARNESS_ERROR_KINDS.UNSUPPORTED_PLATFORM,
+    );
+  }
+
+  let loaded;
+  try {
+    loaded = await loadNativeAddon();
+    if (loaded?.platform !== runtimePlatform) {
+      throw new Error("stable native closure platform does not match the runtime");
+    }
+  } catch (cause) {
+    throw replacementError("stable native closure cannot be loaded", PRE_COMMIT_NOT_RUN, cause);
+  }
+
+  if ((await observeReplacementMapping(context)) !== "original") {
+    throw replacementError("fixed-set replacement input drifted before commit", PRE_COMMIT_NOT_RUN);
+  }
+
+  const addon = loaded?.addon;
+  let parentHandle = null;
+  let nativeResult;
+  let exchangeFailure = null;
+  let closeFailure = null;
+  try {
+    if (!addon || typeof addon.openParentDirectory !== "function" ||
+        typeof addon.closeParentDirectory !== "function" ||
+        typeof addon.exchangeDirectories !== "function") {
+      throw new Error("stable native addon does not expose the directory exchange closure");
+    }
+    parentHandle = addon.openParentDirectory(parent.path);
+    if (parentHandle?.status) {
+      throw new Error(parentHandle.error ?? "parent directory could not be opened");
+    }
+    nativeResult = addon.exchangeDirectories(
+      parentHandle,
+      sourceSegment,
+      segment,
+      parent.identity,
+      source.snapshot.root,
+      target.snapshot.root,
+    );
+  } catch (cause) {
+    exchangeFailure = cause;
+  } finally {
+    if (parentHandle && !parentHandle.status && typeof addon?.closeParentDirectory === "function") {
+      try {
+        const closed = addon.closeParentDirectory(parentHandle);
+        if (closed !== true) throw new Error(closed?.error ?? "parent directory handle did not close cleanly");
+      } catch (cause) {
+        closeFailure = cause;
+      }
+    }
+  }
+
+  const trusted = exchangeFailure === null
+    ? trustedNativeResult(nativeResult, runtimePlatform.startsWith("darwin-") ? "darwin" : "linux")
+    : null;
+  const mapping = await observeReplacementMapping(context);
+  const successfulExchange = closeFailure === null && trusted?.status === 0 &&
+    trusted.committed === true && mapping === "exchanged";
+
+  if (!successfulExchange) {
+    const cause = exchangeFailure ?? closeFailure ??
+      new Error(trusted?.error ?? "native directory exchange result is not trustworthy");
+    if (mapping === "original" && trusted?.committed !== true) {
+      throw replacementError("directory exchange did not commit", PRE_COMMIT_VERIFIED, cause);
+    }
+    if (mapping === "exchanged") {
+      throw replacementError("directory exchange committed without a trustworthy success result", POST_COMMIT_PUBLISHED, cause);
+    }
+    throw replacementError("directory exchange state is indeterminate", POST_COMMIT_INDETERMINATE, cause);
+  }
+
+  try {
+    await syncDirectoryBound(targetPath, source.snapshot.root);
+    await syncDirectoryBound(sourceRootIdentity.path, target.snapshot.root);
+    await syncDirectoryBound(parent.path, parent.identity);
+  } catch (cause) {
+    throw replacementError("directory exchange synchronization failed", POST_COMMIT_PUBLISHED, cause);
+  }
+
+  return Object.freeze({
+    path: targetPath,
+    displacedTargetPath: sourceRootIdentity.path,
+    publicationState: "published",
+    commitState: "exchange-committed",
+    verification: "verified",
+    durability: "namespace-synced",
+    publishedClosureDigest: source.snapshot.closureDigest,
+    displacedClosureDigest: target.snapshot.closureDigest,
   });
 }

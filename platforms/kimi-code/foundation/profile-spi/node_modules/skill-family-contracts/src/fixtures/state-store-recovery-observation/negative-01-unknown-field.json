@@ -1,0 +1,62 @@
+{
+  "fixtureId": "state-store-recovery-observation.negative.unknown-field",
+  "contract": "state-store-recovery-observation",
+  "class": "negative",
+  "description": "Fictional state-store-recovery-observation: unknown-field.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/state-store-recovery-observation.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1001"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.state-store-recovery-observation",
+    "root": "/tmp/fictional-file-set/.foundation-file-apply/journal",
+    "directories": [
+      {
+        "path": ".",
+        "exists": true,
+        "identity": {
+          "device": "1",
+          "inode": "2",
+          "mode": 16832,
+          "type": "directory"
+        }
+      }
+    ],
+    "controls": [
+      {
+        "path": "writer.lock",
+        "exists": false,
+        "identity": null,
+        "nlink": null,
+        "size": null,
+        "sha256": null,
+        "record": null
+      },
+      {
+        "path": "writer-mutation.lock",
+        "exists": false,
+        "identity": null,
+        "nlink": null,
+        "size": null,
+        "sha256": null,
+        "record": null
+      },
+      {
+        "path": "writer-recovery.lock",
+        "exists": false,
+        "identity": null,
+        "nlink": null,
+        "size": null,
+        "sha256": null,
+        "record": null
+      }
+    ],
+    "force": true
+  }
+}

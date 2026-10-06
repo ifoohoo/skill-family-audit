@@ -1,0 +1,21 @@
+{
+  "fixtureId": "file-set-event-payload.positive.valid",
+  "contract": "file-set-event-payload",
+  "class": "positive",
+  "description": "Fictional file-set-event-payload: valid.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/file-set-event-payload.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": true
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.file-set-event-payload",
+    "operationId": "00000000-0000-4000-8000-000000000001",
+    "type": "apply-intent",
+    "index": 0
+  }
+}

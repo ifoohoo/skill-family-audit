@@ -1,0 +1,39 @@
+{
+  "fixtureId": "professional-conclusion.positive.graph-findings",
+  "contract": "professional-conclusion",
+  "class": "positive",
+  "description": "A second fictional provider uses a different domain code and details while sharing the public structure.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/professional-conclusion.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.professional-conclusion",
+    "provider": {
+      "id": "fictional-graph-review",
+      "version": "ruleset-2026-09",
+      "entry": "review-graph"
+    },
+    "subject": {
+      "ref": "artifact-set:sample"
+    },
+    "scope": {
+      "checked": ["graph:nodes"],
+      "limitations": ["Edge checks were interrupted."]
+    },
+    "outcome": {
+      "completion": "partial",
+      "code": "GRAPH_FINDINGS",
+      "summary": "A fictional orphan node requires review."
+    },
+    "details": {
+      "issues": [
+        { "id": "fictional-orphan", "severity": "medium" }
+      ],
+      "remediation": "Link the node to its fictional parent."
+    }
+  }
+}

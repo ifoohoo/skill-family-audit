@@ -1,0 +1,16 @@
+{
+  "fixtureId": "engineering-baseline.dialect-boundary.unsupported",
+  "contract": "engineering-baseline",
+  "class": "dialect-boundary",
+  "description": "The baseline document is rejected before validation under an unsupported schema dialect.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/engineering-baseline.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.engineering-baseline"
+  }
+}

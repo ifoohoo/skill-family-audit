@@ -188,8 +188,9 @@ def validate_child_result_rows(parent_rows, child_result_rows):
     - child 的 (canonical_id, revision_digest, check_method) 集合必须与
       parent 完全相等、每项恰好一次；
       遗漏、重复、越界/未知 → ValueError；
-    - 每条 child 行的 revision_digest、binding_id、evidence_refs 必须与
-      parent 对应行一致（evidence_refs 按完全相等比较，顺序敏感）；
+    - 每条 child 行的 revision_digest、binding_id 必须与 parent 对应行
+      一致；evidence_refs 可以是冻结候选的无重复子集，顺序不影响合法性，
+      全量回显仍兼容。未知、重复、或任一身份字段变化 → ValueError；
     - 成功后只返回按 canonical_id 排序的 child 行本身，不附加字段、不
       构建 internalReviewV2、不计算任何摘要；结构违约一律 ValueError。
     """
@@ -229,8 +230,9 @@ def validate_child_result_rows(parent_rows, child_result_rows):
                              % child["canonical_id"])
         if child["binding_id"] != parent["binding_id"]:
             raise ValueError("binding_id 不一致：%s" % child["canonical_id"])
-        if child["evidence_refs"] != parent["evidence_refs"]:
-            raise ValueError("evidence_refs 不一致：%s" % child["canonical_id"])
+        _validate_evidence_ref_subset(
+            parent["evidence_refs"], child["evidence_refs"], child["canonical_id"]
+        )
     return sorted(
         child_result_rows,
         key=lambda row: (
@@ -393,6 +395,18 @@ def _validate_preflight_row(row):
         raise ValueError("semantic_review_required 必须是 bool")
     _require_string_list(row["missing_evidence_roles"],
                          "missing_evidence_roles")
+
+
+def _validate_evidence_ref_subset(parent_refs, child_refs, canonical_id):
+    """Child refs must be a unique subset of frozen parent identities."""
+    parent_set = set(parent_refs)
+    if len(parent_set) != len(parent_refs):
+        raise ValueError("parent evidence_refs 重复：%s" % canonical_id)
+    if len(set(child_refs)) != len(child_refs):
+        raise ValueError("evidence_refs 重复：%s" % canonical_id)
+    unknown = [ref for ref in child_refs if ref not in parent_set]
+    if unknown:
+        raise ValueError("evidence_refs 不是冻结候选子集：%s" % canonical_id)
 
 
 def _validate_result_rows(rows, what):

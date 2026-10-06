@@ -1,6 +1,6 @@
 {
   "bundle": {
-    "payloadSha256": "434905e1e7cf6e08247f168a3c705babf832311d3e67d93b0523676dbf773e24",
+    "payloadSha256": "b5882aade297deed6db0ae050e01fa06fa269a7179d4548bcea2d86f2dafddf7",
     "targetPrefix": "foundation/quickstart-profile"
   },
   "consumerSchemas": [
@@ -25,13 +25,13 @@
     {
       "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/parameters.json",
       "path": "methods/conformance-parameters.schema.json",
-      "sha256": "f7e9d484c2b13d3d270b664766286cbcda475ac537e7fc747e816b7b1eb541ef",
+      "sha256": "add0dd073d8f0761dcb23ea8b690f717582b1a52d4b485bda4326009be6918e5",
       "sourcePath": "spec/contracts/methods/conformance-parameters.schema.json"
     },
     {
       "$id": "https://contracts.skill-family.example/skill-family-audit/candidate/v2/methods/conformance/result.json",
       "path": "methods/conformance-result.schema.json",
-      "sha256": "3019f9959823ec41362f9ed3b3257a685147225a8809ad9f4ec290cf73994b24",
+      "sha256": "1b98804e55339a53b7db545d42d2ddbc9e56e345229b592436246cb416036e72",
       "sourcePath": "spec/contracts/methods/conformance-result.schema.json"
     },
     {
@@ -68,22 +68,22 @@
   "packages": [
     {
       "name": "skill-family-contracts",
-      "sha256": "7b4edcc5d94bdbfb36fbdb216f586a9c42b341a1228d017ed453766b84a75341",
-      "version": "0.15.0"
+      "sha256": "e7d8569b2b5d547c5ab4c08222448ff137d1e0f9bea34889d878d0c6da316c77",
+      "version": "0.22.0"
     },
     {
       "name": "skill-family-engineering-kit",
-      "sha256": "a0d6cbd65e753e4f69fd47277d7ab22053ebae170aca55f5fcf11730171a269d",
-      "version": "0.15.0"
+      "sha256": "9c680ea6bc5a357733f249edcd18fe533f260c7958a1e7a0a70bbd5ff01cae00",
+      "version": "0.22.0"
     },
     {
       "name": "skill-family-harness-node",
-      "sha256": "be878b27903ecfb015c0f1963f4507698df6bf34957cdaac71856f73a4cb8cf5",
-      "version": "0.15.0"
+      "sha256": "a1bd014a5863d8e9cf3e3e07c6baefbf8bb4c42ad2458c2cd9649929b49f93fb",
+      "version": "0.22.0"
     }
   ],
   "profile": {
-    "contractsVersion": "1.15.0",
+    "contractsVersion": "1.20.0",
     "id": "quickstart-profile",
     "stability": "candidate-only",
     "version": 2
@@ -94,7 +94,7 @@
   },
   "schemaVersion": "1.0",
   "source": {
-    "baseCommit": "1ff73112158258d0e3f28cef2567d45d028552a4",
+    "baseCommit": "f2ba5a3751823adf45c229cff27802a1e0d0f467",
     "repository": "ifoohoo/skill-family-foundation-workspace",
     "status": "VERIFIED"
   }

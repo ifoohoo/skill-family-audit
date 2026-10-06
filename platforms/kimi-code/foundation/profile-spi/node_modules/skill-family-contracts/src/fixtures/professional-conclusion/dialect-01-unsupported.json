@@ -1,0 +1,20 @@
+{
+  "fixtureId": "professional-conclusion.dialect-boundary.unsupported",
+  "contract": "professional-conclusion",
+  "class": "dialect-boundary",
+  "description": "An unsupported dialect is rejected before professional conclusion validation.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/professional-conclusion.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.professional-conclusion",
+    "provider": { "id": "fixture-provider", "version": "1", "entry": "check" },
+    "subject": { "ref": "fixture:subject" },
+    "scope": { "checked": ["fixture-check"], "limitations": [] },
+    "outcome": { "completion": "complete", "code": "FIXTURE_CLEAR", "summary": "Complete." }
+  }
+}

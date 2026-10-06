@@ -212,6 +212,62 @@ def collect_diagnostics(project_root: Path) -> dict[str, Any]:
     }
 
 
+def _unconfirmed_change_plan(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and bool(value)
+        and value.get("authorized") is not True
+    )
+
+
+def _actions_required_present(value: object) -> bool:
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple)):
+        return len(value) > 0
+    return False
+
+
+def present_setup_diagnosis(payload: dict[str, Any]) -> dict[str, Any]:
+    """只读归类已返回的诊断字典。不读盘，不安装，不起子进程，不跑被测业务。"""
+    if not isinstance(payload, dict):
+        raise ValueError("SETUP_DIAGNOSIS_UNCLASSIFIED")
+    if _unconfirmed_change_plan(payload.get("change_plan")):
+        conclusion = "change_needs_authorization"
+        basis = "诊断里已经有 change_plan，而且 authorized 不是 true。"
+        limits = "还没确认的变更计划不算执行授权。这次只做展示，不安装，也不改配置。"
+        next_step = "只向用户展示这份计划，并等待明确确认。确认之前停止。"
+    elif _actions_required_present(payload.get("actions_required")) or payload.get("status") == "BLOCKED":
+        actions = payload.get("actions_required")
+        if isinstance(actions, (list, tuple)) and actions:
+            basis = "actions_required：" + "、".join(str(item) for item in actions) + "。"
+        elif isinstance(actions, str) and actions.strip():
+            basis = "actions_required：" + actions.strip() + "。"
+        else:
+            basis = "status 为 BLOCKED。"
+        conclusion = "missing_prerequisite"
+        limits = "只读诊断不能补齐缺的前提，也不会把没检测到的客户端写成已经安装。"
+        next_step = "先处理依据里的关键事实，再重新运行只读诊断。不要打开 README、package.json 或 Help。"
+    elif payload.get("status") == "READY":
+        conclusion = "ready"
+        basis = "status 为 READY，而且没有未确认的 change_plan，也没有非空的 actions_required。"
+        warnings = payload.get("warnings")
+        if isinstance(warnings, (list, tuple)) and warnings:
+            basis += "非阻断警告：" + "、".join(str(item) for item in warnings) + "。"
+        limits = "就绪只说明这次的关键事实能读到。这不表示依赖已经安装，这次也不运行受检业务。"
+        next_step = "保持现状并停止。不要打开 README、package.json 或 Help。"
+    else:
+        raise ValueError("SETUP_DIAGNOSIS_UNCLASSIFIED")
+    return {
+        "conclusion": conclusion,
+        "basis": basis,
+        "limits": limits,
+        "next_step": next_step,
+        "installs": False,
+        "runs_target_business": False,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="只读诊断 skill-family-audit 当前运行环境"

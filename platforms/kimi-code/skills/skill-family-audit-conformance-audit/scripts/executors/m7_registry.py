@@ -40,6 +40,22 @@ def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[
     }
 
 
+def _mechanical_methods_to_run(ctx: dict[str, Any]) -> frozenset[str] | None:
+    """None means unmanaged compatibility; empty means semantic-only."""
+    route = ctx.get("method_route")
+    if not isinstance(route, dict):
+        return None
+    required = route.get("required_mechanical_methods")
+    if not isinstance(required, list):
+        return None
+    return frozenset(required)
+
+
+def _should_run(ctx: dict[str, Any], method: str) -> bool:
+    selected = _mechanical_methods_to_run(ctx)
+    return selected is None or method in selected
+
+
 def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
     """从逐方法行确定性推导聚合状态，与 contracts.validate_method_subresults 一致。"""
     statuses = {row["status"] for row in rows}
@@ -60,6 +76,12 @@ def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
         "evidence": dict(evidence),
         "check_method_subresults": rows,
     }
+
+
+def _completed(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    if not rows:
+        return {"status": "PASS", "evidence": dict(evidence)}
+    return _finish(rows, **evidence)
 
 
 def _schema_row(status: str, **evidence: Any) -> dict[str, Any]:
@@ -104,36 +126,43 @@ def check_registry_002(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：已声明注册条目引用协议来源为 draft 时，不得标记
     normative=true 或 stability=stable。
     """
+    run_schema = _should_run(ctx, "schema_validation")
+    run_digest = _should_run(ctx, "digest_verification")
+    if not run_schema and not run_digest:
+        return {"status": "PASS", "evidence": {"mechanical_methods_not_in_route": True}}
     rows = _registry_rows(ctx)
-    if rows is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_registry"),
-                _doc_digest_row(ctx, ("method-registry-projection",)),
-            ],
-            registry_declared=False,
-        )
-    violations = [
-        {"entry": row.get("method_id")}
-        for row in rows
-        if row.get("protocol_source") == "draft"
-        and (row.get("normative") is True or row.get("stability") == "stable")
-    ]
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("method-registry-projection",)),
-            ],
-            draft_protocol_used_as_normative=violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", entries_checked=len(rows)),
-            _doc_digest_row(ctx, ("method-registry-projection",)),
-        ],
-        entries_checked=len(rows),
-    )
+    result_rows: list[dict[str, Any]] = []
+    evidence: dict[str, Any] = {}
+    if run_schema:
+        if rows is None:
+            result_rows.append(_schema_row("PASS", reason="no_declared_registry"))
+            evidence["registry_declared"] = False
+        else:
+            violations = [
+                {"entry": row.get("method_id")}
+                for row in rows
+                if row.get("protocol_source") == "draft"
+                and (row.get("normative") is True or row.get("stability") == "stable")
+            ]
+            if violations:
+                result_rows.append(
+                    _schema_row("FAIL", reason="schema_violations", violations=violations)
+                )
+                evidence["draft_protocol_used_as_normative"] = violations
+            else:
+                result_rows.append(
+                    _schema_row(
+                        "PASS",
+                        reason="schema_checks_passed",
+                        entries_checked=len(rows),
+                    )
+                )
+                evidence["entries_checked"] = len(rows)
+    if run_digest:
+        result_rows.append(_doc_digest_row(ctx, ("method-registry-projection",)))
+        if rows is None:
+            evidence.setdefault("registry_declared", False)
+    return _completed(result_rows, **evidence)
 
 
 def check_registry_004(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -142,73 +171,78 @@ def check_registry_004(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：每个已登记方法的投影能力/输入/输出/副作用集合必须覆盖
     权威契约声明集合（按已声明契约消费声明比对）。
     """
+    run_schema = _should_run(ctx, "schema_validation")
+    run_digest = _should_run(ctx, "digest_verification")
+    if not run_schema and not run_digest:
+        return {"status": "PASS", "evidence": {"mechanical_methods_not_in_route": True}}
     rows = _registry_rows(ctx)
-    if rows is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_registry"),
-                _doc_digest_row(
-                    ctx, ("method-registry-projection", "authority-contracts")
-                ),
-            ],
-            registry_declared=False,
+    result_rows: list[dict[str, Any]] = []
+    evidence: dict[str, Any] = {}
+    if run_schema:
+        if rows is None:
+            result_rows.append(_schema_row("PASS", reason="no_declared_registry"))
+            evidence["registry_declared"] = False
+        else:
+            contracts_document = load_governance_document(ctx, "authority-contracts")
+            contracts = {}
+            if contracts_document is not None:
+                for row in rows_of(
+                    contracts_document, "contracts", "authority-contracts"
+                ):
+                    method_id = row.get("method_id")
+                    if not isinstance(method_id, str) or not method_id:
+                        raise ExecutorEvidenceError(
+                            "GOVERNANCE_DOCUMENT_INVALID",
+                            "authority-contracts.contracts.method_id 必须是非空字符串",
+                        )
+                    contracts[method_id] = row
+            violations = []
+            for row in rows:
+                contract = contracts.get(row.get("method_id"))
+                if contract is None:
+                    continue
+                for field in ("capabilities", "inputs", "outputs", "side_effects"):
+                    declared = set(contract.get(field) or [])
+                    projected = set(row.get(field) or [])
+                    if not isinstance(contract.get(field, []), list) or not isinstance(
+                        row.get(field, []), list
+                    ):
+                        raise ExecutorEvidenceError(
+                            "GOVERNANCE_DOCUMENT_INVALID",
+                            f"method-registry-projection {field} 必须是数组",
+                        )
+                    missing = sorted(declared - projected)
+                    if missing:
+                        violations.append(
+                            {
+                                "entry": row.get("method_id"),
+                                "field": field,
+                                "missing": missing,
+                            }
+                        )
+            if violations:
+                result_rows.append(
+                    _schema_row("FAIL", reason="schema_violations", violations=violations)
+                )
+                evidence["projection_underreports_contract"] = violations
+            else:
+                result_rows.append(
+                    _schema_row(
+                        "PASS",
+                        reason="schema_checks_passed",
+                        entries_checked=len(rows),
+                        contracts_bound=len(contracts),
+                    )
+                )
+                evidence["entries_checked"] = len(rows)
+                evidence["contracts_bound"] = len(contracts)
+    if run_digest:
+        result_rows.append(
+            _doc_digest_row(ctx, ("method-registry-projection", "authority-contracts"))
         )
-    contracts_document = load_governance_document(ctx, "authority-contracts")
-    contracts = {}
-    if contracts_document is not None:
-        for row in rows_of(contracts_document, "contracts", "authority-contracts"):
-            method_id = row.get("method_id")
-            if not isinstance(method_id, str) or not method_id:
-                raise ExecutorEvidenceError(
-                    "GOVERNANCE_DOCUMENT_INVALID",
-                    "authority-contracts.contracts.method_id 必须是非空字符串",
-                )
-            contracts[method_id] = row
-    violations = []
-    for row in rows:
-        contract = contracts.get(row.get("method_id"))
-        if contract is None:
-            continue
-        for field in ("capabilities", "inputs", "outputs", "side_effects"):
-            declared = set(contract.get(field) or [])
-            projected = set(row.get(field) or [])
-            if not isinstance(contract.get(field, []), list) or not isinstance(
-                row.get(field, []), list
-            ):
-                raise ExecutorEvidenceError(
-                    "GOVERNANCE_DOCUMENT_INVALID",
-                    f"method-registry-projection {field} 必须是数组",
-                )
-            missing = sorted(declared - projected)
-            if missing:
-                violations.append(
-                    {"entry": row.get("method_id"), "field": field, "missing": missing}
-                )
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(
-                    ctx, ("method-registry-projection", "authority-contracts")
-                ),
-            ],
-            projection_underreports_contract=violations,
-        )
-    return _finish(
-        [
-            _schema_row(
-                "PASS",
-                reason="schema_checks_passed",
-                entries_checked=len(rows),
-                contracts_bound=len(contracts),
-            ),
-            _doc_digest_row(
-                ctx, ("method-registry-projection", "authority-contracts")
-            ),
-        ],
-        entries_checked=len(rows),
-        contracts_bound=len(contracts),
-    )
+        if rows is None:
+            evidence.setdefault("registry_declared", False)
+    return _completed(result_rows, **evidence)
 
 
 def check_registry_007(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -217,36 +251,43 @@ def check_registry_007(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：声明 expressible_by_stable_protocol=false 的方法状态必须 ∈
     {unregistered, experimental}；伪造 registered/stable 即违反。
     """
+    run_schema = _should_run(ctx, "schema_validation")
+    run_digest = _should_run(ctx, "digest_verification")
+    if not run_schema and not run_digest:
+        return {"status": "PASS", "evidence": {"mechanical_methods_not_in_route": True}}
     rows = _registry_rows(ctx)
-    if rows is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_registry"),
-                _doc_digest_row(ctx, ("method-registry-projection",)),
-            ],
-            registry_declared=False,
-        )
-    violations = [
-        {"entry": row.get("method_id"), "status": row.get("status")}
-        for row in rows
-        if row.get("expressible_by_stable_protocol") is False
-        and row.get("status") not in {"unregistered", "experimental"}
-    ]
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("method-registry-projection",)),
-            ],
-            inexpressible_methods_registered=violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", entries_checked=len(rows)),
-            _doc_digest_row(ctx, ("method-registry-projection",)),
-        ],
-        entries_checked=len(rows),
-    )
+    result_rows: list[dict[str, Any]] = []
+    evidence: dict[str, Any] = {}
+    if run_schema:
+        if rows is None:
+            result_rows.append(_schema_row("PASS", reason="no_declared_registry"))
+            evidence["registry_declared"] = False
+        else:
+            violations = [
+                {"entry": row.get("method_id"), "status": row.get("status")}
+                for row in rows
+                if row.get("expressible_by_stable_protocol") is False
+                and row.get("status") not in {"unregistered", "experimental"}
+            ]
+            if violations:
+                result_rows.append(
+                    _schema_row("FAIL", reason="schema_violations", violations=violations)
+                )
+                evidence["inexpressible_methods_registered"] = violations
+            else:
+                result_rows.append(
+                    _schema_row(
+                        "PASS",
+                        reason="schema_checks_passed",
+                        entries_checked=len(rows),
+                    )
+                )
+                evidence["entries_checked"] = len(rows)
+    if run_digest:
+        result_rows.append(_doc_digest_row(ctx, ("method-registry-projection",)))
+        if rows is None:
+            evidence.setdefault("registry_declared", False)
+    return _completed(result_rows, **evidence)
 
 
 def check_registry_010(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -255,59 +296,59 @@ def check_registry_010(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：已声明的注册表消费契约摘要与制品图消费契约摘要必须一致，
     且均为 64 位十六进制；manual_second_source=true 即违反。
     """
+    run_schema = _should_run(ctx, "schema_validation")
+    run_digest = _should_run(ctx, "digest_verification")
+    if not run_schema and not run_digest:
+        return {"status": "PASS", "evidence": {"mechanical_methods_not_in_route": True}}
     document = load_governance_document(ctx, "method-registry-projection")
+    result_rows: list[dict[str, Any]] = []
+    evidence: dict[str, Any] = {}
+    digest_violations: list[str] = []
+    schema_violations: list[str] = []
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_registry"),
-                _doc_digest_row(ctx, ("method-registry-projection",)),
-            ],
-            registry_declared=False,
-        )
-    registry_digest = document.get("consumed_contract_digest")
-    graph_digest = document.get("artifact_graph_consumed_contract_digest")
-    digest_violations = []
-    if not is_hex64(registry_digest):
-        digest_violations.append("registry_contract_digest_invalid")
-    if not is_hex64(graph_digest):
-        digest_violations.append("artifact_graph_contract_digest_invalid")
-    if not digest_violations and registry_digest != graph_digest:
-        digest_violations.append("contract_digests_diverge")
-    schema_violations = []
-    if document.get("manual_second_source") is True:
-        schema_violations.append("manual_second_source")
-    if digest_violations or schema_violations:
-        return _finish(
-            [
-                _schema_row(
-                    "FAIL" if schema_violations else "PASS",
-                    reason=(
-                        "schema_violations" if schema_violations else "schema_checks_passed"
-                    ),
-                    violations=schema_violations,
-                ),
-                _digest_row(
-                    "FAIL" if digest_violations else "PASS",
-                    reason=(
-                        "digest_violations" if digest_violations else "digest_checks_passed"
-                    ),
-                    violations=digest_violations,
-                ),
-            ],
-            dual_source_contract_violations=digest_violations + schema_violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed"),
+        if run_schema:
+            result_rows.append(_schema_row("PASS", reason="no_declared_registry"))
+        if run_digest:
+            result_rows.append(_doc_digest_row(ctx, ("method-registry-projection",)))
+        return _completed(result_rows, registry_declared=False)
+    if run_digest:
+        registry_digest = document.get("consumed_contract_digest")
+        graph_digest = document.get("artifact_graph_consumed_contract_digest")
+        if not is_hex64(registry_digest):
+            digest_violations.append("registry_contract_digest_invalid")
+        if not is_hex64(graph_digest):
+            digest_violations.append("artifact_graph_contract_digest_invalid")
+        if not digest_violations and registry_digest != graph_digest:
+            digest_violations.append("contract_digests_diverge")
+        result_rows.append(
             _digest_row(
-                "PASS",
-                reason="digest_checks_passed",
+                "FAIL" if digest_violations else "PASS",
+                reason=(
+                    "digest_violations" if digest_violations else "digest_checks_passed"
+                ),
+                violations=digest_violations,
                 consumed_contract_digest=registry_digest,
                 documents=_documents_observed(ctx, ("method-registry-projection",)),
-            ),
-        ],
-        consumed_contract_digest=registry_digest,
-    )
+            )
+        )
+        if not digest_violations:
+            evidence["consumed_contract_digest"] = registry_digest
+    if run_schema:
+        if document.get("manual_second_source") is True:
+            schema_violations.append("manual_second_source")
+        result_rows.append(
+            _schema_row(
+                "FAIL" if schema_violations else "PASS",
+                reason=(
+                    "schema_violations" if schema_violations else "schema_checks_passed"
+                ),
+                violations=schema_violations,
+            )
+        )
+    combined = digest_violations + schema_violations
+    if combined:
+        evidence["dual_source_contract_violations"] = combined
+    return _completed(result_rows, **evidence)
 
 
 CHECKS = {

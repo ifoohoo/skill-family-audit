@@ -1,0 +1,9 @@
+{
+  "fixtureId": "file-set-apply-request.dialect-boundary.unsupported",
+  "contract": "file-set-apply-request",
+  "class": "dialect-boundary",
+  "description": "Unsupported dialects fail before validating the file-set request.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/file-set-apply-request.json", "dialect": "draft-04", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.file-set-apply-request" }
+}

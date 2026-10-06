@@ -131,6 +131,28 @@ def _method_row(method: str, status: str, source: str, **evidence: Any) -> dict[
     }
 
 
+def _mechanical_methods_to_run(ctx: dict[str, Any]) -> frozenset[str] | None:
+    """None means unmanaged compatibility; empty means semantic-only."""
+    route = ctx.get("method_route")
+    if not isinstance(route, dict):
+        return None
+    required = route.get("required_mechanical_methods")
+    if not isinstance(required, list):
+        return None
+    return frozenset(required)
+
+
+def _should_run(ctx: dict[str, Any], method: str) -> bool:
+    selected = _mechanical_methods_to_run(ctx)
+    return selected is None or method in selected
+
+
+def _completed(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
+    if not rows:
+        return {"status": "PASS", "evidence": dict(evidence)}
+    return _finish(rows, **evidence)
+
+
 def _finish(rows: list[dict[str, Any]], **evidence: Any) -> dict[str, Any]:
     """从逐方法行确定性推导聚合状态，与 contracts.validate_method_subresults 一致。"""
     statuses = {row["status"] for row in rows}
@@ -1911,41 +1933,53 @@ def check_qualify_001(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：仅达第一档的发布声明不得 claims_stable_support=true
     （实验/预览轨可以）。
     """
+    run_schema = _should_run(ctx, "schema_validation")
+    run_digest = _should_run(ctx, "digest_verification")
+    if not run_schema and not run_digest:
+        return {"status": "PASS", "evidence": {"mechanical_methods_not_in_route": True}}
     claims = _qualification(ctx)
+    result_rows: list[dict[str, Any]] = []
+    extra: dict[str, Any] = {}
     if claims is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_qualification"),
-                _doc_digest_row(ctx, ("qualification-claims",)),
-            ],
-            qualification_declared=False,
-        )
+        if run_schema:
+            result_rows.append(_schema_row("PASS", reason="no_declared_qualification"))
+        if run_digest:
+            result_rows.append(_doc_digest_row(ctx, ("qualification-claims",)))
+        return _completed(result_rows, qualification_declared=False)
     rows = rows_of(claims, "release_claims", "qualification-claims")
-    violations = []
-    for row in rows:
-        level = row.get("level")
-        if not isinstance(level, int):
-            violations.append({"family_version": row.get("family_version"), "reasons": ["level_invalid"]})
-            continue
-        if level <= 1 and row.get("claims_stable_support") is True:
-            violations.append({"family_version": row.get("family_version"), "level": level})
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("qualification-claims",)),
-            ],
-            tier1_claims_stable_support=violations,
-        )
-    return _finish(
-        [
-            _schema_row(
-                "PASS", reason="schema_checks_passed", release_claims_checked=len(rows)
-            ),
-            _doc_digest_row(ctx, ("qualification-claims",)),
-        ],
-        release_claims_checked=len(rows),
-    )
+    if run_schema:
+        violations = []
+        for row in rows:
+            level = row.get("level")
+            if not isinstance(level, int):
+                violations.append(
+                    {
+                        "family_version": row.get("family_version"),
+                        "reasons": ["level_invalid"],
+                    }
+                )
+                continue
+            if level <= 1 and row.get("claims_stable_support") is True:
+                violations.append(
+                    {"family_version": row.get("family_version"), "level": level}
+                )
+        if violations:
+            result_rows.append(
+                _schema_row("FAIL", reason="schema_violations", violations=violations)
+            )
+            extra["tier1_claims_stable_support"] = violations
+        else:
+            result_rows.append(
+                _schema_row(
+                    "PASS",
+                    reason="schema_checks_passed",
+                    release_claims_checked=len(rows),
+                )
+            )
+            extra["release_claims_checked"] = len(rows)
+    if run_digest:
+        result_rows.append(_doc_digest_row(ctx, ("qualification-claims",)))
+    return _completed(result_rows, **extra)
 
 
 def check_qualify_002(ctx: dict[str, Any]) -> dict[str, Any]:

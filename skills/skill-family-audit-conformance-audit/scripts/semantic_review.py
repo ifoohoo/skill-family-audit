@@ -259,14 +259,15 @@ def bound_rule_descriptors(
                 ),
                 "required_evidence_roles": binding["required_evidence_roles"],
                 "lifecycle_status": canonical_rule["lifecycle_status"],
-                # Formal scope fields are copied from the same canonical rule
-                # descriptor.  They are context for the reviewer only.
+                # Scope fields and exception_policy are copied verbatim from
+                # the same canonical rule.  They are reviewer context only.
                 "project_scope": canonical_rule["project_scope"],
                 "applicability": canonical_rule["applicability"],
                 "platform_scope": canonical_rule["platform_scope"],
                 "adoption_mode": canonical_rule["adoption_mode"],
                 "adjudication_note": canonical_rule["adjudication_note"],
                 "evidence_requirements": canonical_rule["evidence_requirements"],
+                "exception_policy": canonical_rule["exception_policy"],
             })
     return sorted(descriptors, key=review_identity)
 
@@ -324,6 +325,7 @@ def retained_trial_descriptors(
                 "adoption_mode": canonical_rule["adoption_mode"],
                 "adjudication_note": canonical_rule["adjudication_note"],
                 "evidence_requirements": canonical_rule["evidence_requirements"],
+                "exception_policy": canonical_rule["exception_policy"],
             })
     return sorted(descriptors, key=review_identity)
 

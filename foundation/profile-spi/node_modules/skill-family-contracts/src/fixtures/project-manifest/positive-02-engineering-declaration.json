@@ -1,0 +1,37 @@
+{
+  "fixtureId": "project-manifest.positive.engineering-declaration",
+  "contract": "project-manifest",
+  "class": "positive",
+  "description": "A fictional project declares text and JSON version sources, an optional mirror, independent release units, and both entry forms.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": { "id": "fictional-orchid", "name": "Fictional Orchid" },
+    "contracts": { "version": "1.19.0", "profile": "public-plugin" },
+    "engineering": {
+      "releaseUnits": [
+        {
+          "id": "core",
+          "versionSource": { "path": "VERSION", "format": "text" },
+          "versionMirrors": [
+            { "path": "packages/core/package.json", "format": "json", "jsonPointer": "/version" }
+          ]
+        },
+        {
+          "id": "plugin",
+          "versionSource": { "path": "plugin/package.json", "format": "json", "jsonPointer": "/release~1version" }
+        }
+      ],
+      "entries": [
+        { "name": "help", "form": "skill_md", "physicalRef": "skills/help/SKILL.md" },
+        { "name": "local-check", "form": "file", "physicalRef": "scripts/check.mjs" }
+      ]
+    }
+  }
+}

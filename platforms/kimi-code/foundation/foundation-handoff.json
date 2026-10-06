@@ -12,20 +12,20 @@
     "source-truth-declaration.schema.json"
   ],
   "kind": "skill-family-audit.foundation-handoff",
-  "payloadDigest": "434905e1e7cf6e08247f168a3c705babf832311d3e67d93b0523676dbf773e24",
+  "payloadDigest": "b5882aade297deed6db0ae050e01fa06fa269a7179d4548bcea2d86f2dafddf7",
   "profile": {
-    "contractsVersion": "1.15.0",
+    "contractsVersion": "1.20.0",
     "id": "quickstart-profile",
     "version": 2
   },
-  "provenanceDigest": "a8f73571db2010d1768552ddf54d4cbb28822d7776faac40e2fcb59f2b590a2f",
+  "provenanceDigest": "eae8a22e52affabcbdc1a52bc1e90e1eb4320653e1e47115deb05a3e89496200",
   "receipt": {
     "kind": "skill-family.source-authority-receipt",
-    "sha256": "a4f904323f9cefa9d36316ff5b406fb6050aa6a6fee8f52d390cab51af82ea89"
+    "sha256": "9a6ffadef519d41fb38c4c04693698eb5c9ab5641f45813454704ac99bcefe0a"
   },
   "schemaVersion": 2,
   "source": {
-    "baseCommit": "1ff73112158258d0e3f28cef2567d45d028552a4",
+    "baseCommit": "f2ba5a3751823adf45c229cff27802a1e0d0f467",
     "repository": "ifoohoo/skill-family-foundation-workspace"
   }
 }

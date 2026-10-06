@@ -1,0 +1,49 @@
+{
+  "fixtureId": "file-set-result.dialect-boundary.unsupported",
+  "contract": "file-set-result",
+  "class": "dialect-boundary",
+  "description": "Fictional file-set-result: unsupported.",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/file-set-result.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1006"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.file-set-result",
+    "operationId": "00000000-0000-4000-8000-000000000001",
+    "operation": "apply",
+    "outcome": "rejected",
+    "preflight": "failed",
+    "businessWrite": "none",
+    "validation": {
+      "status": "not-run",
+      "reason": null
+    },
+    "recovery": {
+      "attempted": false,
+      "status": "not-needed"
+    },
+    "paths": [],
+    "errors": [
+      {
+        "code": "SFC2004",
+        "message": "Fictional precondition mismatch.",
+        "details": {
+          "kind": "precondition-mismatch",
+          "phase": "preflight"
+        }
+      }
+    ],
+    "materials": {
+      "relPath": ".foundation-file-apply",
+      "status": "none",
+      "durable": false,
+      "adjacentStaging": "none-observed"
+    }
+  }
+}
