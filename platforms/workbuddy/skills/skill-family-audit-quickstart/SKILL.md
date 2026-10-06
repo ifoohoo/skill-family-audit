@@ -54,6 +54,7 @@ if decision.get("answer_state") == "empty" and decision.get("can_start_audit") i
         cspec = importlib.util.spec_from_file_location("conformance_check", checker)
         host = importlib.util.module_from_spec(cspec)
         sys.modules["conformance_check"] = host
+        sys.path.insert(0, str(checker.parent))
         cspec.loader.exec_module(host)
         target = Path(r"TARGET_ABSOLUTE_PATH")
         out["scope"] = mod.identified_scope_statement(str(target), "economy")
@@ -141,6 +142,7 @@ try:
     cspec = importlib.util.spec_from_file_location("conformance_check", checker)
     host = importlib.util.module_from_spec(cspec)
     sys.modules["conformance_check"] = host
+    sys.path.insert(0, str(checker.parent))
     cspec.loader.exec_module(host)
     rows = mod.load_professional_providers(manifest_path)
     entry_ref = "SELECTED_ENTRY_REF"

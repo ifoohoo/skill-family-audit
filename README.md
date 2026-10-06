@@ -2,7 +2,7 @@
 
 技能族静态规范审阅、两个审计方法和四平台投影的唯一公开发布源。
 
-当前版本 `1.1.14` 是尚未批准的本地修订候选，
+当前版本 `1.1.15` 是尚未批准的本地修订候选，
 不声明为稳定发布。候选批准不等于 Release Skill 计划批准、生产发布确认
 或任何远端写入授权。候选标记只说明品质与批准状态，不阻止可用的只读检查；
 真实依赖缺失、输入不合法或适用结论缺失仍如实报告。
@@ -152,7 +152,7 @@ codex plugin add skill-family-audit@skill-family-hub --json
 可用于检查载荷；候选尚未获批准或发布，不能据此安装公开版本：
 
 ```text
-dist/candidate/1.1.14/platforms/<platform>
+dist/candidate/1.1.15/platforms/<platform>
 ```
 
 四个平台目录都是静态、自包含投影。Kimi 只支持人工安装或会话级
