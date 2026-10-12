@@ -231,7 +231,7 @@
         {
           "canonical_id": "SFA-ARTIFACT-028",
           "revision": 2,
-          "revision_digest": "0166857b11fce7b5568f25e3e6b7de7a800f441958bc0bca84e590e87c8119f7",
+          "revision_digest": "7728cc510181e6372c7b5e5ff7bc7e55e1b6ac0eceaae6373fb235006a4351c9",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -299,7 +299,7 @@
         {
           "canonical_id": "SFA-ARTIFACT-002",
           "revision": 2,
-          "revision_digest": "21df1ef4abbae0e445d48c5100f5dc96788e7c0d88a3c9e01369243e659184d2",
+          "revision_digest": "4f518c35fb58dc2e944d54a2e233c14d10010c4720e8ed9b572eb932f547deac",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -364,7 +364,7 @@
         {
           "canonical_id": "SFA-ARTIFACT-024",
           "revision": 2,
-          "revision_digest": "433aedbbf00777c9908917ba0451be3bad15f13da267b7186cd17f3cf0ad04ea",
+          "revision_digest": "f5fdc80c14d2613a3e115b6ba50d61efc0092dbefa52c9748682567dc4fb1d31",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -388,7 +388,7 @@
         {
           "canonical_id": "SFA-ARTIFACT-005",
           "revision": 2,
-          "revision_digest": "b604b60b5f2e7bee2a76e986e4c1f7bb66504266c8397f711902e79752006c28",
+          "revision_digest": "32557a3f55fbe9244d989ca079fe0feee72271e5e6f709da18eabe079e403c2d",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -430,7 +430,7 @@
         {
           "canonical_id": "SFA-ARTIFACT-026",
           "revision": 2,
-          "revision_digest": "99fbcab6bd66de83c978818007f2eb9f456ad3dcbe4bd373e4abfd2b1c95127b",
+          "revision_digest": "040c674bcba8a6a20249828c886d2952b50f1e87de908d8d3c948d27e2288135",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -452,7 +452,7 @@
         {
           "canonical_id": "SFA-ARTMETHOD-007",
           "revision": 2,
-          "revision_digest": "d5ef0bdac86eddda3748fc42c49894324be0d2b7819d599aa5bbdfb4c8cee36a",
+          "revision_digest": "2519e3e3823da6b38f51c7df91b395043921a3b32b9418b6245e7bea48e510d2",
           "scan_packs": [
             "declaration",
             "source"
@@ -486,7 +486,7 @@
         {
           "canonical_id": "SFA-ARTIFACT-017",
           "revision": 2,
-          "revision_digest": "03cc9b08a6e696eef0ddfc8a76aac122bee2d7de2b0cfa8d2c213636ea6260b8",
+          "revision_digest": "2858dcdc35582057a9fd67e928590f9c95b5d16d9e2b0dbf783c5c6acd71c0ad",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -543,7 +543,7 @@
         {
           "canonical_id": "SFA-COMPOSE-012",
           "revision": 2,
-          "revision_digest": "c2bee13959f6a8fb1279ceee4eacbf1dcb1971eb62caafa690f9b58a832f393c",
+          "revision_digest": "8452832b831a261878e160adf8d32c894ba10a6cc19cb1344ba926bddfc74646",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -610,7 +610,7 @@
         {
           "canonical_id": "SFA-COMPOSE-004",
           "revision": 2,
-          "revision_digest": "5f7080a250c5de80ee62b9e44ea9117787c1f9f23ca3120fb68e856e387a0597",
+          "revision_digest": "71b2dcb061a7e326a26fa9f21a35289e0a3aa41651be804188f4a4b5fda25d9e",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -621,7 +621,7 @@
         {
           "canonical_id": "SFA-COMPOSE-015",
           "revision": 2,
-          "revision_digest": "bc18f963d67d07b3d62904d12969fb53facc6bdb4b8cb2a9bfbe67d92512b00d",
+          "revision_digest": "31a1665643a01620f97ecbb6eb557b687e961442a80c55870595ab5d979f6e5b",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -665,7 +665,7 @@
         {
           "canonical_id": "SFA-CONTEXT-004",
           "revision": 2,
-          "revision_digest": "013b269658121796ebabe90bb70e269255db046045bbfb5d3e482fa50a921db3",
+          "revision_digest": "bc35277d5c7a102f0e3a3555dfa8a21792097a276bb5129044bab33b639f1bb8",
           "scan_packs": [
             "execution_record",
             "source"
@@ -772,7 +772,7 @@
         {
           "canonical_id": "SFA-DEPEND-006",
           "revision": 2,
-          "revision_digest": "2f6f1339b1b092231c182872f78e1f1e3223a8c2f20041da1e30f6dd58d91b82",
+          "revision_digest": "44cd08c9e0d99840717ba32a9b62e97af47d9f5afd7430c20301af6f901ccdeb",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -1027,7 +1027,7 @@
         {
           "canonical_id": "SFA-ENTRY-006",
           "revision": 2,
-          "revision_digest": "1ac06dcc1075c6c16b0ba65f51f20f3391bd65029b83893291879e05e8da374b",
+          "revision_digest": "0caefbaf798c55b1fd75b76b4169ed89c185bcf9a4a128d2c6b168f98955caaa",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -1050,7 +1050,7 @@
         {
           "canonical_id": "SFA-ENTRY-008",
           "revision": 2,
-          "revision_digest": "db9c49bad0e4b889f27a59091731fd03b1600107c7834d6169c8411d624b45b3",
+          "revision_digest": "337b8b846202086923306a0d351f668709f220efe08feb1be93eeeb84b129caf",
           "scan_packs": [
             "conversation",
             "execution_record",
@@ -1106,7 +1106,7 @@
         {
           "canonical_id": "SFA-ENTRY-010",
           "revision": 2,
-          "revision_digest": "6dc45912575ac03916f2f3f8ed7419b4d3ccca5ef4e6d50137fe1b76bdcb5749",
+          "revision_digest": "e2288bf2b8d105e7bf36888c3f0974413d504b5041794be2648d60c2f5b3719d",
           "scan_packs": [
             "conversation",
             "declaration",
@@ -1118,7 +1118,7 @@
         {
           "canonical_id": "SFA-ENTRY-011",
           "revision": 2,
-          "revision_digest": "8824ca26f4d7510686eb418ae6dcf67ce69da1e53d7fc9ac6f27faa78b28b9c5",
+          "revision_digest": "bf0ac319c8881c7413fe306d1170f3c902a21391b893af49ca77a82fbfe97e15",
           "scan_packs": [
             "conversation",
             "declaration",
@@ -1141,7 +1141,7 @@
         {
           "canonical_id": "SFA-ENTRY-013",
           "revision": 2,
-          "revision_digest": "7890a08909a4dfe0cc7eb95cf6a4afe33f41f8004b560a111b319fc316d157ee",
+          "revision_digest": "889645c267696e9c9a6d52a400e68888425e10830eb7b4cfda6599be7b122fbf",
           "scan_packs": [
             "conversation",
             "declaration",
@@ -1261,7 +1261,7 @@
         {
           "canonical_id": "SFA-ENTRY-025",
           "revision": 2,
-          "revision_digest": "f1587a905e18d5922cc06ea200c6f31cd3bc207c5b8cb50348751d0975d61b16",
+          "revision_digest": "bbaedc37727a485723c4ea5e4b2111ae0babbfd7a3cadb1d59ab2909e101844d",
           "scan_packs": [
             "conversation",
             "declaration",
@@ -1438,7 +1438,7 @@
         {
           "canonical_id": "SFA-GOVERNANCE-002",
           "revision": 5,
-          "revision_digest": "93a187e133a9e8f05903916056712355f2fe336fc0136b34921f523eb2ff452c",
+          "revision_digest": "57792af8dbad7247da1429558281354a1465af46f300fb6917184dd1949d3993",
           "scan_packs": [
             "declaration",
             "source"
@@ -1448,7 +1448,7 @@
         {
           "canonical_id": "SFA-GOVERNANCE-004",
           "revision": 3,
-          "revision_digest": "a80113bff8a969ef5f03ff630e81a41a9fe8d9aeb26b1a0157920a6a0f4367e6",
+          "revision_digest": "1c89861aeabc2540a9fb26236027325d6a9c1f153f0fc44894323593b9de3623",
           "scan_packs": [
             "declaration",
             "source"
@@ -1594,7 +1594,7 @@
         {
           "canonical_id": "SFA-METHOD-013",
           "revision": 2,
-          "revision_digest": "73f4849d4c1e364ef8cafb5e86814697b6aa8c361b9a2342c586c82b3e6f85f0",
+          "revision_digest": "7493a8015e38780706823b371ac813088fc31687a5f26bcb0538e5bfcf9b03f9",
           "scan_packs": [
             "conversation",
             "declaration",
@@ -2071,7 +2071,7 @@
         {
           "canonical_id": "SFA-PUBLISH-014",
           "revision": 5,
-          "revision_digest": "cc1b608c7af46719469d817d3fce5ef3cd3c5ecb10e0a19096c91577b778fcd7",
+          "revision_digest": "0bb9787d233aa8aa96933a16679db1171b33cb79b083a37fafd287d3447053a3",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -2234,7 +2234,7 @@
         {
           "canonical_id": "SFA-PERM-007",
           "revision": 2,
-          "revision_digest": "4c1e8f3395cc794f5d9a21838d991180e31d2462e333b1aa7567ba953d3a10ad",
+          "revision_digest": "c55a2e05991b439b17e655ed55cde37e2867b5ad17fd2e069e451a19dfca6f40",
           "scan_packs": [
             "execution_record",
             "source"
@@ -2489,7 +2489,7 @@
         {
           "canonical_id": "SFA-FOUNDATION-022",
           "revision": 3,
-          "revision_digest": "de79aa646feeaaa4b9bc8518cb83ec16d9add46e73878b5c103b06f93f00e8a1",
+          "revision_digest": "7969431ef9c70aa87e9e853287810ae5e1e80cf7b70201e76bcde8ddb266cd54",
           "scan_packs": [
             "declaration",
             "execution_record",

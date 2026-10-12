@@ -28,6 +28,7 @@ from typing import Any
 
 from .contracts import (
     ExecutorEvidenceError,
+    governance_dir,
     is_hex64,
     load_governance_document,
     result,
@@ -2521,23 +2522,6 @@ def _digest_row(status: str, **evidence: Any) -> dict[str, Any]:
     )
 
 
-#: REPO-005：需收敛进运行/证据目录的宿主痕迹与运行时目录。
-_REPO_005_RUNTIME_DIR_NAMES = (
-    "dist/candidate",
-    "runs",
-    "evidence",
-    ".qoder",
-    ".workbuddy",
-    ".codex",
-    ".release-skill",
-    ".loop-agent-runs",
-    ".loop-agent-observations",
-    ".e2e-test-runs",
-    "isolated-runs",
-    "frozen-runs",
-)
-
-
 def _normalized_runtime_dir(value: str) -> str | None:
     """把治理声明归一成目标根下的 POSIX 相对目录；越界声明失败关闭。"""
     raw = value.replace("\\", "/").strip()
@@ -2625,229 +2609,122 @@ def _has_source_surface(target: Path) -> bool:
     return False
 
 
-def _repo_005_package_version(ctx: dict[str, Any]) -> str | None:
-    """版本真源 = 目标根 package.json 的 version 字段（版本真源载体钉扎规则）。
-
-    载体缺失、不可解析或字段缺失时返回 None——活动候选例外视为无效
-    （等同无例外），不因载体缺失而失败关闭。
-    """
-    text = _read_target_text(ctx, "package.json")
-    if text is None:
-        return None
-    try:
-        document = json.loads(text)
-    except ValueError:
-        return None
-    if not isinstance(document, dict):
-        return None
-    version = document.get("version")
-    return version if _nonempty_str(version) else None
-
-
-def _repo_005_active_candidate_exception_applies(
-    ctx: dict[str, Any],
-    layout: dict[str, Any],
-    runtime_tracked: list[str],
-) -> tuple[bool, str | None]:
-    """RB01.1 单一活动候选例外判定（SPEC §7.1 行为合同 1-6，逐字执行）。
-
-    runtime-layout ``active_candidate_exception`` 字段整体缺失时等同无例外；
-    声明形状非法（非对象、active_candidate_directory 缺失或不可规范化为
-    目标根下相对目录）失败关闭，绝不静默放行（沿用治理声明纪律）。例外
-    生效仅当全部成立：
-
-    - 声明目录规范化为 ``dist/candidate/<active-version>`` 且
-      ``<active-version>`` 与当前版本真源（目标根 package.json version）
-      一致（行为合同 1）；
-    - 例外目录在目标磁盘上存在（活动候选缺失 → 例外无效，行为合同 5）；
-    - Git 跟踪清单落在 runtime 目录内的全部路径都位于该活动候选目录内
-      ——第二个被跟踪候选、旧候选/陈旧树或其它运行/证据目录漂移都会使
-      例外无效（行为合同 2/4/5）。
-
-    例外无效时调用方回落既有“无例外”判定（runtime_tracked 非空 → FAIL
-    ``runtime_files_tracked_as_source``），与基线行为一致。发布后 prune
-    （删除声明并回到无被跟踪候选基线，行为合同 6）由治理条款执行；本
-    执行器只消费声明现态，不推断发布完成与否。无新状态枚举、无新 Schema。
-    """
-    exception = layout.get("active_candidate_exception")
-    if exception is None:
-        return False, None
-    if not isinstance(exception, dict):
-        raise ExecutorEvidenceError(
-            "GOVERNANCE_DOCUMENT_INVALID",
-            "runtime-layout.active_candidate_exception 必须是对象",
-        )
-    declared = exception.get("active_candidate_directory")
-    if not _nonempty_str(declared):
-        raise ExecutorEvidenceError(
-            "GOVERNANCE_DOCUMENT_INVALID",
-            "runtime-layout.active_candidate_exception.active_candidate_directory "
-            "必须是非空目录路径字符串",
-        )
-    active_dir = _normalized_runtime_dir(declared)
-    if active_dir is None:
-        raise ExecutorEvidenceError(
-            "GOVERNANCE_DOCUMENT_INVALID",
-            "runtime-layout.active_candidate_exception.active_candidate_directory "
-            "必须是目标根下的规范化相对目录",
-        )
-    version = _repo_005_package_version(ctx)
-    if (
-        version is None
-        or "/" in version
-        or "\\" in version
-        or active_dir != f"dist/candidate/{version}"
-    ):
-        return False, active_dir
-    if not (Path(ctx["target"]) / active_dir).is_dir():
-        return False, active_dir
-    inside = [
-        path
-        for path in runtime_tracked
-        if path == active_dir or path.startswith(active_dir + "/")
-    ]
-    if len(inside) != len(runtime_tracked):
-        return False, active_dir
-    return True, active_dir
-
-
 def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
-    """运行态与源码目录分离。
+    """核对已有角色声明；不把旧目录、Git 或单候选策略当作开发规范。
 
-    机械断言：运行态/证据/宿主痕迹产物必须收敛进专用运行/证据目录并由
-    gitignore 排除基线覆盖；混居仓库顶层且无排除基线为 FAIL；布局归属
-    与排除事实不可判定为 EVIDENCE_MISSING。RB01.1（SPEC §7.1）：存在与
-    版本真源一致的单一活动候选例外声明且全部 runtime tracked 落于其内时，
-    runtime_files_tracked_as_source 不成立；例外无效时行为等同无例外。
+    声明中的明确冲突可以判定；声明存在不证明原生闭包或公开边界已经检查。
+    消费已验证且实际覆盖本条具名范围的专业结论；总体专业 PASS 不填补范围。
     """
-    target = Path(ctx["target"])
-    found = sorted(name for name in _REPO_005_RUNTIME_DIR_NAMES if (target / name).is_dir())
+    target = governance_dir(ctx).parent.parent
+    product_ctx = {**ctx, "target": str(target)}
     layout = load_governance_document(ctx, "runtime-layout")
-    declared: list[str] = []
-    if layout is not None:
-        rows = rows_of(layout, "runtime_directories", "runtime-layout")
-        raw_declared = [row.get("path") for row in rows]
-        if not all(_nonempty_str(item) for item in raw_declared):
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                "runtime-layout.runtime_directories 每行必须含非空 path",
-            )
-        declared = [_normalized_runtime_dir(item) for item in raw_declared]
-        if any(item is None for item in declared):
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                "runtime-layout.runtime_directories.path 必须是目标根下的规范化相对目录",
-            )
-    declared_existing = sorted(name for name in declared if (target / name).is_dir())
-    # 声明可以把已知顶层容器收窄到其真实运行子目录；此时顶层 ``runs``
-    # 只是容器，不应再作为另一条“未声明运行目录”重复计算。
-    effective_found = [
-        name
-        for name in found
-        if not any(declared_name.startswith(name + "/") for declared_name in declared_existing)
-    ]
-    runtime_dirs = sorted(set(effective_found) | set(declared_existing))
-    if not runtime_dirs:
-        return _finish(
-            [_static_row("NOT_APPLICABLE", reason="no_runtime_artifacts")],
-            runtime_artifacts=0,
-        )
-    baseline_lines = _gitignore_lines(ctx)
-    tracked = _tracked_files(ctx)
-    covered = {name for name in runtime_dirs if _baseline_covers(baseline_lines, name)}
-    runtime_tracked = [] if tracked is None else [
-        path
-        for path in tracked
-        if any(path == directory or path.startswith(directory + "/") for directory in runtime_dirs)
-    ]
     if layout is None:
-        if found and not baseline_lines:
-            return _finish(
-                [
-                    _static_row(
-                        "FAIL",
-                        reason="runtime_artifacts_mixed_at_top_level_without_exclusion",
-                        runtime_dirs=found,
-                        tracked_runtime_file_count=len(runtime_tracked),
-                        tracked_runtime_file_samples=runtime_tracked[:20],
-                    )
-                ],
-                runtime_artifacts=len(found),
+        return _finish([_static_row(
+            "EVIDENCE_MISSING", reason="runtime_role_declaration_unavailable",
+        )])
+    rows = rows_of(layout, "runtime_directories", "runtime-layout")
+    declared = []
+    for row in rows:
+        path = row.get("path")
+        normalized = _normalized_runtime_dir(path) if _nonempty_str(path) else None
+        if normalized is None:
+            raise ExecutorEvidenceError(
+                "GOVERNANCE_DOCUMENT_INVALID",
+                "runtime-layout.runtime_directories.path 必须是目标根下的相对目录",
             )
-        return _finish(
-            [
-                _static_row(
-                    "EVIDENCE_MISSING",
-                    reason="runtime_layout_undeterminable",
-                    runtime_dirs=runtime_dirs,
-                )
-            ],
-            runtime_artifacts=len(runtime_dirs),
+        declared.append(normalized)
+    excluded = layout.get("source_count_excludes_runtime")
+    if excluded is not None and not isinstance(excluded, bool):
+        raise ExecutorEvidenceError(
+            "GOVERNANCE_DOCUMENT_INVALID",
+            "runtime-layout.source_count_excludes_runtime 必须是布尔值",
         )
-    violations = []
-    undeclared = sorted(set(effective_found) - set(declared))
-    if undeclared:
-        violations.append(
-            {"problem": "runtime_dir_not_converged_into_declared_layout", "dirs": undeclared}
+    if declared and excluded is False:
+        return _finish([_static_row(
+            "FAIL", reason="runtime_copies_declared_as_source", runtime_dirs=declared,
+        )])
+    missing = sorted(path for path in declared if not (target / path).is_dir())
+    if missing:
+        return _finish([_static_row(
+            "EVIDENCE_MISSING", reason="declared_runtime_dir_missing", dirs=missing,
+        )])
+    from .m2_entry_platform_b2 import _source_020_authority_scan
+
+    # 复用已有具名载体发现；不承接 SOURCE-020 的标题级别、唯一载体等格式政策。
+    scan = _source_020_authority_scan(product_ctx)
+    malformed = [
+        row for row in scan["violations"]
+        if {"prose_or_unparseable_declaration", "authority_fence_unclosed"}
+        .intersection(row.get("problems", []))
+    ]
+    if malformed:
+        raise ExecutorEvidenceError(
+            "GOVERNANCE_DOCUMENT_INVALID", "源码角色声明必须是可解析且闭合的 JSON 对象",
         )
-    missing_declared = sorted(set(declared) - set(declared_existing))
-    if missing_declared:
-        return _finish(
-            [
-                _static_row(
-                    "EVIDENCE_MISSING",
-                    reason="declared_runtime_dir_missing",
-                    dirs=missing_declared,
-                )
-            ],
-            runtime_artifacts=len(runtime_dirs),
-        )
-    uncovered = sorted(set(runtime_dirs) - covered)
-    if uncovered:
-        violations.append(
-            {"problem": "exclusion_baseline_missing_or_not_covering", "dirs": uncovered}
-        )
-    if layout.get("source_count_excludes_runtime") is not True:
-        violations.append({"problem": "runtime_copies_counted_as_source"})
-    # 一旦真实运行/证据/宿主目录存在，规则要求同时核对 Git 跟踪清单；
-    # 冻结副本没有目标自身 Git 元数据时，不能凭 .gitignore 推断“未计入源码”。
-    exception_applied = False
-    excepted_active_dir = None
-    if tracked is None:
-        return _finish(
-            [_static_row("EVIDENCE_MISSING", reason="tracked_source_inventory_unavailable")],
-            runtime_artifacts=len(runtime_dirs),
-        )
-    else:
-        if runtime_tracked:
-            # RB01.1 单一活动候选例外只豁免“活动候选目录自身被跟踪”这一项
-            # 违反事实；例外无效（漂移/版本不匹配/目录缺失/陈旧或第二候选
-            # 仍被跟踪）时回落既有判定：runtime_files_tracked_as_source → FAIL。
-            exception_applied, excepted_active_dir = (
-                _repo_005_active_candidate_exception_applies(ctx, layout, runtime_tracked)
+    if not scan["candidates"]:
+        return _finish([_static_row(
+            "EVIDENCE_MISSING", reason="source_role_declaration_unavailable",
+            runtime_dirs=declared,
+        )])
+    sources: set[str] = set()
+    generated: set[str] = set()
+    for _carrier, authority in scan["candidates"]:
+        if not isinstance(authority, dict) or not isinstance(authority.get("mappings"), list):
+            raise ExecutorEvidenceError(
+                "GOVERNANCE_DOCUMENT_INVALID", "source-authority.mappings 必须是数组",
             )
-            if not exception_applied:
-                violations.append({
-                    "problem": "runtime_files_tracked_as_source",
-                    "count": len(runtime_tracked),
-                    "path_samples": runtime_tracked[:20],
-                })
-    if violations:
-        return _finish(
-            [_static_row("FAIL", reason="runtime_layout_violations", violations=violations)],
-            runtime_artifacts=len(runtime_dirs),
-        )
-    pass_evidence = {
-        "reason": "runtime_artifacts_separated_and_excluded",
-        "runtime_dirs": runtime_dirs,
-    }
-    if exception_applied:
-        pass_evidence["active_candidate_exception_applied"] = True
-        pass_evidence["active_candidate_directory"] = excepted_active_dir
-    return _finish(
-        [_static_row("PASS", **pass_evidence)],
-        runtime_artifacts=len(runtime_dirs),
+        for mapping in authority["mappings"]:
+            if not isinstance(mapping, dict):
+                raise ExecutorEvidenceError("GOVERNANCE_DOCUMENT_INVALID", "source-authority mapping 必须是对象")
+            for field, roots in (("sourceRoots", sources), ("generatedRoots", generated)):
+                values = mapping.get(field)
+                if not isinstance(values, list) or not all(_nonempty_str(value) for value in values):
+                    raise ExecutorEvidenceError("GOVERNANCE_DOCUMENT_INVALID", f"source-authority.{field} 必须是路径数组")
+                for value in values:
+                    normalized = _normalized_runtime_dir(value)
+                    if normalized is None:
+                        raise ExecutorEvidenceError("GOVERNANCE_DOCUMENT_INVALID", f"source-authority.{field} 路径非法")
+                    roots.add(normalized)
+    # 只判同一声明位置被同时指定为源码和非源码；不推断目录祖先的排除策略。
+    conflicts = sorted(sources & (generated | set(declared)))
+    if conflicts:
+        return _finish([_static_row(
+            "FAIL", reason="source_generated_runtime_role_conflict", paths=conflicts,
+        )])
+    from .m1_rule_governance_b2 import (
+        _professional_consumption_item, _professional_original_conclusion,
+        _professional_pass_verified, _finish_professional_consumption,
     )
+
+    item = _professional_consumption_item(ctx, "foundation")
+    conclusion = _professional_original_conclusion(item) if isinstance(item, dict) else None
+    if conclusion is not None and _professional_pass_verified(item):
+        subject = conclusion["subject"].get("ref")
+        checked = conclusion["scope"].get("checked")
+        required = {"native_role_separation", "native_runtime_closure", "native_public_boundary"}
+        try:
+            same_subject = (
+                isinstance(subject, str)
+                and Path(subject).is_absolute()
+                and Path(subject).resolve(strict=True) == Path(ctx["target"]).resolve(strict=True)
+            )
+        except (OSError, RuntimeError, ValueError):
+            same_subject = False
+        if (
+            same_subject
+            and isinstance(checked, list)
+            and all(isinstance(check, str) for check in checked)
+            and required <= set(checked)
+            and conclusion["outcome"].get("completion") == "complete"
+        ):
+            # Reuse the already-consumed public result and version policy;
+            # neither a new reader nor a rescan is performed here.
+            return _finish_professional_consumption(ctx, item, mechanical="static_scan")
+    return _finish([_static_row(
+        "EVIDENCE_MISSING", reason="native_closure_public_boundary_coverage_unavailable",
+        source_roots=sorted(sources), generated_roots=sorted(generated), runtime_dirs=declared,
+        next_step="消费实际覆盖本条角色区分的原生闭包与公开边界材料；不以总体专业通过替代。",
+    )])
 
 
 def check_repo_006(ctx: dict[str, Any]) -> dict[str, Any]:

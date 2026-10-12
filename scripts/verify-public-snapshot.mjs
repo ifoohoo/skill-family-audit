@@ -152,6 +152,19 @@ export async function verify(root) {
   }
 
   const summary = await parseJson(root, "candidate-summary.json");
+  for (const [platform, descriptorPath] of [
+    ["claude-code", ".claude-plugin/plugin.json"],
+    ["codex", ".codex-plugin/plugin.json"],
+  ]) {
+    const descriptor = await tryParseJson(root, descriptorPath);
+    if (descriptor?.skills !== `./platforms/${platform}/skills/`) {
+      findings.push(`ROOT_SKILLS_PATH_MISMATCH:${platform}`);
+    }
+  }
+  if (allFiles.some((item) => item === "platform-manifest.json"
+      || ["skills/", "shared/", "foundation/"].some((prefix) => item.startsWith(prefix)))) {
+    findings.push("ROOT_RUNTIME_DUPLICATE");
+  }
   const packageJson = await tryParseJson(root, "package.json");
   if (summary.familyId !== FAMILY_ID
       || summary.candidateId !== `${FAMILY_ID}:${summary.version}`
@@ -183,11 +196,10 @@ export async function verify(root) {
     // only the candidate payload roots.  README, LICENSE, package metadata,
     // and this verifier are release-wrapper files; they must not silently
     // redefine the candidate approval subject.
-    // 1.1.0 起候选根级含 claude 双重映射（.claude-plugin/** 与 skills/**，
-    // A1 裁决），与生成器 _populate_candidate 的闭包集合对齐。
+    // 与生成器的四平台闭包和两个根宿主描述文件对齐。
     const payloadFiles = allFiles.filter(
       (item) => (item.startsWith("platforms/") || item.startsWith("spec/")
-        || item.startsWith(".claude-plugin/") || item.startsWith("skills/"))
+        || item.startsWith(".claude-plugin/") || item.startsWith(".codex-plugin/"))
         && !item.endsWith("#non-file"),
     );
     const payloadDigest = (await foundationClosure(runnerApi, root, payloadFiles)).digest;
@@ -204,7 +216,7 @@ async function rootArg(argv) {
   return path.join(packageRoot, "dist", "candidate", packageJson.version);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
     const result = await verify(path.resolve(await rootArg(process.argv.slice(2))));
     process.stdout.write(`${JSON.stringify(result)}\n`);

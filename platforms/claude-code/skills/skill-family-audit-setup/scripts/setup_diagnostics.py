@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import shutil
@@ -42,17 +43,13 @@ def load_json(path: Path) -> dict[str, Any]:
 def discover_project_root(explicit: str | None) -> Path:
     if explicit:
         return Path(explicit).expanduser().resolve(strict=True)
-    script = Path(__file__).resolve()
-    candidates = [Path.cwd().resolve(), *Path.cwd().resolve().parents]
-    candidates.extend(script.parents)
-    seen: set[Path] = set()
-    for candidate in candidates:
-        if candidate in seen:
-            continue
-        seen.add(candidate)
-        if (candidate / "spec/authority-index.json").is_file():
+    script = Path(__file__).absolute()
+    for candidate in script.parents:
+        if (candidate / "platform-manifest.json").exists():
             return candidate
-    return script.parents[5]
+        if candidate.name == "plugin-src" and (candidate / "manifest.json").exists():
+            return candidate.parent
+    raise ValueError("plugin_root_unavailable")
 
 
 def read_document_fact(path: Path) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -158,24 +155,80 @@ def collect_platforms(project_root: Path) -> tuple[list[dict[str, Any]], dict[st
     return platforms, matrix_fact
 
 
+def _bundled_rule_facts(project_root: Path, installed: bool) -> dict[str, Any]:
+    """Read the current payload's conformance rules without starting an audit."""
+    if installed:
+        manifest_path = project_root / "platform-manifest.json"
+        if any(path.is_symlink() for path in (manifest_path, *manifest_path.parents)):
+            raise ValueError("bundled_rules_unavailable")
+        identity = load_json(manifest_path)
+        mappings = identity.get("logicalMappings")
+        if not isinstance(mappings, list) or any(not isinstance(row, dict) for row in mappings):
+            raise ValueError("bundled_rules_unavailable")
+        entries = [row for row in mappings
+                   if row.get("logicalName") == "skill-family-audit:conformance-audit"]
+        if len(entries) != 1:
+            raise ValueError("bundled_rules_unavailable")
+        skill = project_root / entries[0]["path"]
+        script = skill.parent / "scripts/conformance_check.py"
+    else:
+        script = project_root / "plugin-src/skills/skill-family-audit-conformance/scripts/conformance_check.py"
+    if ".." in script.parts or any(path.is_symlink() for path in (script, *script.parents)):
+        raise ValueError("bundled_rules_unavailable")
+    script.relative_to(project_root)
+    spec = importlib.util.spec_from_file_location("setup_bundled_rules", script)
+    if spec is None or spec.loader is None:
+        raise ValueError("bundled_rules_unavailable")
+    module = importlib.util.module_from_spec(spec)
+    original_path = sys.path[:]
+    try:
+        sys.path.insert(0, str(script.parent))
+        spec.loader.exec_module(module)
+        index, _, _ = module._load_bundled_rules()
+    finally:
+        sys.path[:] = original_path
+    return {"status": "available", **index["bundledRules"]}
+
+
 def collect_diagnostics(project_root: Path) -> dict[str, Any]:
+    if project_root.name == "plugin-src" and (project_root / "manifest.json").is_file():
+        project_root = project_root.parent
+    installed = not (project_root / "plugin-src/manifest.json").is_file()
     authority_path = project_root / "spec/authority-index.json"
-    authority, authority_fact = read_document_fact(authority_path)
-    approval, approval_warnings = collect_approval(project_root)
-    platforms, matrix_fact = collect_platforms(project_root)
+    if installed:
+        authority, authority_fact = None, {"parse_status": "not_required"}
+        approval, approval_warnings = {"status": "not_required_for_bundled_rules"}, []
+        matrix_fact = {"parse_status": "not_required"}
+        platform, platform_fact = read_document_fact(project_root / "platform-manifest.json")
+        platform_id = (platform or {}).get("platformId")
+        config = PLATFORM_CLIENTS.get(platform_id)
+        resolved = shutil.which(config["command"]) if config else None
+        platforms = [{"platform_id": platform_id, "client_detected": resolved is not None,
+                      "client_path": resolved, "static_projection": platform_fact,
+                      "status": "client_detected" if resolved else "client_not_detected"}]
+    else:
+        authority, authority_fact = read_document_fact(authority_path)
+        approval, approval_warnings = collect_approval(project_root)
+        platforms, matrix_fact = collect_platforms(project_root)
     python_supported = sys.version_info >= (3, 11)
     spec_directory = project_root / "spec"
     blockers: list[str] = []
     if not python_supported:
         blockers.append("python_below_3_11")
-    if not spec_directory.is_dir():
-        blockers.append("spec_directory_missing")
-    if authority is None:
-        blockers.append("authority_index_unavailable")
-    if approval["summary"]["parse_status"] != "valid":
-        blockers.append("approval_summary_unavailable")
-    if matrix_fact["parse_status"] != "valid":
-        blockers.append("platform_support_matrix_unavailable")
+    try:
+        bundled_rules = _bundled_rule_facts(project_root, installed)
+    except (OSError, ValueError, KeyError, TypeError, ImportError) as exc:
+        bundled_rules = {"status": "unavailable", "error": type(exc).__name__}
+        blockers.append("bundled_rules_unavailable")
+    if not installed:
+        if not spec_directory.is_dir():
+            blockers.append("spec_directory_missing")
+        if authority is None:
+            blockers.append("authority_index_unavailable")
+        if approval["summary"]["parse_status"] != "valid":
+            blockers.append("approval_summary_unavailable")
+        if matrix_fact["parse_status"] != "valid":
+            blockers.append("platform_support_matrix_unavailable")
     warnings = list(approval_warnings)
     warnings.extend(
         f"{row['platform_id']}_client_not_detected"
@@ -189,6 +242,8 @@ def collect_diagnostics(project_root: Path) -> dict[str, Any]:
         "status": "BLOCKED" if blockers else "READY",
         "project_root": str(project_root),
         "environment": {
+            "layout": "installed" if installed else "source",
+            "bundled_rules": bundled_rules,
             "python": {
                 "version": ".".join(str(value) for value in sys.version_info[:3]),
                 "executable": sys.executable,

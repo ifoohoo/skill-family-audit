@@ -9,9 +9,10 @@ method-id: "skill-family-audit:conformance-audit"
 
 # conformance-audit
 
-若本会话里用户刚刚明确回复「暂不扫描」或明确空选择，且还没有 `professional_scan_decision(None, [])` 的返回，立刻停止阅读本文件。不要读 scripts，不要检索，不要打开 quickstart_route.py。下一条并且是唯一一条工具调用是下面这一条命令。`SKILL_MD_ABSOLUTE_PATH` 换成已安装 Quickstart 技能文件的绝对路径，`USER_REQUEST_TEXT` 换成上一条审计原话而不是「暂不扫描」，`TARGET_ABSOLUTE_PATH` 换成原话里的工作区绝对路径。反斜杠和双引号要转义，不改写原话。空选择不是不适用，也不是通过。
+用户明确空选择，但尚未取得 `professional_scan_decision(None, [])` 返回时，先执行下面的决定命令。未回答或不允许开始时停止。允许开始后，保留已经确定的档位：只有 `economy` 可沿用 Quickstart 的经济档单次 `run`；`full` / `targeted` 接续本文的 `refs/host-semantic-review-consumption.md`。不要把空选择转换成经济档，也不要用单次调用代替完整审阅。请求及后续补充的工作区根、产品身份、例外和运行目录按原文保留；专业选择本身不替换审计请求。`SKILL_MD_ABSOLUTE_PATH` 使用同一已发现平台包的 Quickstart 技能文件绝对路径。空选择不是不适用，也不是通过。
+
 ```text
-PYTHONDONTWRITEBYTECODE=1 python3 -c 'import argparse, importlib.util, json, sys, tempfile, uuid
+PYTHONDONTWRITEBYTECODE=1 python3 -c 'import importlib.util, json
 from pathlib import Path
 skill = Path(r"SKILL_MD_ABSOLUTE_PATH").resolve()
 script = skill.parent / "scripts" / "quickstart_route.py"
@@ -19,29 +20,7 @@ spec = importlib.util.spec_from_file_location("quickstart_route", script)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 decision = mod.professional_scan_decision(None, [])
-out = {"answer_state": decision.get("answer_state"), "can_start_audit": decision.get("can_start_audit"), "empty_selection_means_not_applicable": decision.get("empty_selection_means_not_applicable"), "empty_selection_means_pass": decision.get("empty_selection_means_pass"), "authorized_scans": decision.get("authorized_scans")}
-if decision.get("answer_state") == "empty" and decision.get("can_start_audit") is True:
-    try:
-        manifest_path = mod.find_platform_manifest(None)
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        platform = manifest["platformId"]
-        checker = next(path for path in manifest_path.parent.glob("skills/*/scripts/conformance_check.py") if path.is_file() and not path.is_symlink())
-        cspec = importlib.util.spec_from_file_location("conformance_check", checker)
-        host = importlib.util.module_from_spec(cspec)
-        sys.modules["conformance_check"] = host
-        cspec.loader.exec_module(host)
-        target = Path(r"TARGET_ABSOLUTE_PATH")
-        out["scope"] = mod.identified_scope_statement(str(target), "economy")
-        document = mod.prepare_conformance_evidence_document(target)
-        directory = Path(tempfile.mkdtemp(prefix="audit-evidence-")).resolve()
-        evidence_path = (directory / "evidence-set.json").resolve()
-        evidence_path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
-        result = mod.run(argparse.Namespace(request="USER_REQUEST_TEXT", platform=platform, method_args_json=json.dumps(["--evidence-set", str(evidence_path)]), run_id=uuid.uuid4().hex, platform_manifest=None, foundation_runner=None))
-        out["execution_status"] = result.get("execution_status")
-        out["human_summary"] = result.get("human_summary")
-    except Exception as exc:
-        out["error"] = str(exc)
-print(json.dumps(out, ensure_ascii=False))
+print(json.dumps(decision, ensure_ascii=False))
 '
 ```
 
@@ -67,10 +46,12 @@ print(json.dumps(out, ensure_ascii=False))
 | `--evidence-set` | path | 必填证据集合文件；每项携带绝对路径、类型与 SHA-256 |
 | `--target` | path | 可选源码根提示；须与 `source_tree` 或单技能 `source_file` 证据一致 |
 | `--target-type` | enum | `single_skill`、`family_source`、`release_artifact` 或 `project_adoption` |
-| `--spec-package` | path | 受信任规范包；测试夹具须显式使用 `--allow-test-fixture` |
+| `--spec-package` | path | 可选的专用规范包；显式输入按原信任合同校验，测试夹具须显式使用 `--allow-test-fixture`。 |
 | `--platform` | enum | 规则适用平台，默认 `all` |
 | `--semantic-result` | path | 外部 v1 待审证据；即使声明 `PASS` 也不提升生产规则结论 |
 | `--run-id` | string | 本次运行身份；不接受输出目录 |
+
+普通审计省略 `--spec-package` 时，使用当前执行副本自带的通用规则，不搜索受检目标中的 `spec/self-audit`，也不要求下游另行获取或批准外部规范。显式提供专用规范时，仍校验原批准链、消费目录和 `scope`，拒绝后不回退内置规则。显式自审包只用于本产品，且须通过原新鲜度检查。规则加载成功只说明规则可供检查，不代表目标合规、宿主能力已获验证或已经获得发布批准。
 
 直接调用本方法时，仍须提供证据集合文件。自然语言入口由 Quickstart 在创建 Task 前派生同等集合。机器合同不改成只有路径。
 
@@ -118,6 +99,9 @@ print(json.dumps(out, ensure_ascii=False))
 
 ## 输出
 
+按 `render_human_summary` 返回的六段报告，保持 `next_action.primary_action` 的原值和含义，不改拼写，不额外附加供选择的下一步菜单。只给函数返回的一个优先动作；检查失败或缺证时保留原状态，不把对象留存或传输成功当成审计通过。语义审阅条数以打包上下文中的规则合计及 `coverage.semantic_reviews_consumed_count` 为准，禁止用范围内规则数减去确定性规则数冒充已审阅条数。
+
+
 | 输出 | 说明 |
 |---|---|
 | conformance_result | 整体通过/失败/部分通过 |
@@ -127,7 +111,7 @@ print(json.dumps(out, ensure_ascii=False))
 
 ## 执行流程
 
-1. 校验规范包及候选内冻结信任根。
+1. 校验当前执行副本的内置规则及冻结信任根；显式专用规范按原信任合同校验。
 2. 按受检对象适配器闭合目标范围与内容摘要。
 3. 对 workspace 目标校验进程外 verifier 原始收据、verifier 字节、实际 argv、公开清单与输入树摘要。
 4. 按冻结投影计算逐条适用性，只执行已生效且适用规则。
@@ -143,6 +127,6 @@ print(json.dumps(out, ensure_ascii=False))
 ## Foundation 采用边界
 
 - `project_adoption` 是 Audit 拥有的领域合同。迁移清单结构、路径收容、整文件退出和引用级退出评估，仍由 Foundation 拥有。
-- Audit 只调用受管 Foundation Bundle 里的固定 CLI。通用机制由 `mechanisms-cli.mjs` 提供。采用检查和 Quickstart 交换由 `adoption-cli.mjs` 提供。Bundle 的位置由已经校验的 receipt 和 runner 绑定。不得改用 sibling import、临时环境变量或 fallback 入口。
+- Audit 只调用受管 Foundation Bundle 里的固定 CLI。通用机制和 Quickstart 交换由 `mechanisms-cli.mjs` 提供。采用检查由 `adoption-cli.mjs` 提供。Bundle 的位置由已经校验的 receipt 和 runner 绑定。不得改用 sibling import、临时环境变量或 fallback 入口。
 - 迁移语义由进程外的 Foundation 权威入口提供。Audit 不复制 migration manifest Schema，也不复制评估函数。
 - 本范围审计的是公共 Harness 的生产权威切换，不是整个工程骨架采用。

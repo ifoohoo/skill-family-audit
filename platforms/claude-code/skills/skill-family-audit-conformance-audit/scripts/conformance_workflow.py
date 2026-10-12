@@ -1428,10 +1428,32 @@ def _semantic_review_candidate_descriptors(
         evidence_refs = _descriptor_evidence_refs(descriptor, evidence_set)
         covered_roles = {row["role"] for row in evidence_refs}
         required_roles = set(descriptor["required_evidence_roles"])
-        if (
+        in_semantic_scope = (
             canonical_id in ready_group_rules
             or canonical_id in ungrouped_selected
-        ) and required_roles <= covered_roles:
+        )
+        # A citable conditional premise may use the existing single-rule
+        # context.  It is not a READY group and missing roles remain frozen;
+        # finalize_review still rejects a PASS without every required role.
+        # Targeted group mode must not auto-include a dual-method
+        # deterministic rule that is not in the requested group or exact ids.
+        # Full profile still admits the premise for a selected rule.
+        grouping_ok = (
+            plan["execution_profile"] == "full" or in_semantic_scope
+        )
+        conditional_premise = (
+            grouping_ok
+            and canonical_id in selected
+            and (
+                (canonical_id == "SFA-DEPEND-011"
+                 and {"adopted_version_lock", "compatibility_range_declaration"} <= covered_roles)
+                or (canonical_id == "SFA-PUBLISH-017"
+                    and {"release_process_declaration", "release_skill_reference"} <= covered_roles)
+            )
+        )
+        if conditional_premise or (
+            in_semantic_scope and required_roles <= covered_roles
+        ):
             candidates.append({**descriptor, "evidence_refs": evidence_refs})
     return sorted(
         candidates,
@@ -2021,8 +2043,18 @@ def _load_formal_release_object(path: Path) -> dict[str, Any] | None:
 
 
 def load_rules(
-    package: Path, allow_test_fixture: bool
+    package: Path | None, allow_test_fixture: bool, target: Path | None = None
 ) -> tuple[dict[str, Any], dict[str, Any], bool, dict[str, Any]]:
+    if package is None:
+        if allow_test_fixture:
+            raise WorkflowError("SPEC_PACKAGE_NOT_TEST_FIXTURE", "测试夹具必须显式提供")
+        if Path(checker.__file__).absolute().parent != Path(__file__).absolute().parent:
+            raise WorkflowError("BUNDLED_RULES_INVALID", "检查器不属于当前执行副本")
+        try:
+            index, manifest, trust_policy = checker._load_bundled_rules()
+        except ValueError as exc:
+            raise WorkflowError("BUNDLED_RULES_INVALID", "当前执行副本的内置规则或信任锚无效") from exc
+        return index, manifest, False, trust_policy
     index = load_json(package / "authority-index.json")
     manifest_path = package / "applicable-rules.json"
     manifest = load_json(manifest_path)
@@ -2031,8 +2063,13 @@ def load_rules(
         raise WorkflowError("TEST_FIXTURE_NOT_ALLOWED", "生产路径拒绝测试规范包")
     trust_policy = load_json(TRUST_POLICY)
     # 自审与显式测试夹具保留原分支，不借此取得正式可发布性。
-    if is_fixture or index.get("selfAudit") is True:
+    if is_fixture:
         return index, manifest, is_fixture, trust_policy
+    if index.get("selfAudit") is True:
+        error = checker._self_audit_target_error(package, target)
+        if error:
+            raise WorkflowError(error, "显式自审规范只用于当前 Audit 产品，且必须保持新鲜")
+        return index, manifest, False, trust_policy
     # --spec-package 仍是消费方 spec 目录；release_root 只由其外层显式推导。
     release_root = package.resolve().parent
     release_index = _load_formal_release_object(
@@ -4014,7 +4051,7 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
         scope.update(_observe_foundation_profile(declared.product_root))
         return scope
     if target_type == "release_artifact":
-        payload_roots = ("platforms", "spec", ".claude-plugin", "skills")
+        payload_roots = ("platforms", "spec", ".claude-plugin", ".codex-plugin", "skills")
         if not (target / "candidate-summary.json").is_file():
             raise WorkflowError(
                 "RELEASE_ARTIFACT_INCOMPLETE", "缺失: ['candidate-summary.json']"
@@ -4517,6 +4554,41 @@ def _is_audit_self_audit_target(target_arg: str | None) -> DeclaredProduct | Non
     return None
 
 
+def _workspace_root_package_manifest_entry(
+    workspace_root: Path,
+) -> dict[str, Any] | None:
+    """把工作区根 package.json 列为 named manifest，供图治理接口引用。
+
+    独立于正式制品清单的 workspace_evidence_selection。摘要必须来自
+    Foundation 严格读取。缺失、符号链接或不可读则省略，不补造版本声明。
+    """
+    relative = "package.json"
+    path = workspace_root / relative
+    if path.is_symlink() or not path.is_file():
+        return None
+    try:
+        receipt = foundation_read_file_strict(workspace_root, relative)
+    except WorkflowError:
+        return None
+    return {
+        "evidence_id": f"workspace-evidence:{relative}",
+        "kind": "manifest",
+        "path": str(path),
+        "sha256": receipt["sha256"],
+    }
+
+
+def _append_unique_evidence(
+    evidence_set: list[dict[str, Any]],
+    existing_ids: set[Any],
+    entry: dict[str, Any] | None,
+) -> None:
+    if entry is None or entry["evidence_id"] in existing_ids:
+        return
+    existing_ids.add(entry["evidence_id"])
+    evidence_set.append(entry)
+
+
 def _augment_evidence_set_with_workspace_selection(
     evidence_set: list[dict[str, Any]],
     target_arg: str | None,
@@ -4529,8 +4601,12 @@ def _augment_evidence_set_with_workspace_selection(
     for entry in _workspace_evidence_selection_entries(
         declared.workspace_root, declared.product_root
     ):
-        if entry["evidence_id"] not in existing_ids:
-            evidence_set.append(entry)
+        _append_unique_evidence(evidence_set, existing_ids, entry)
+    _append_unique_evidence(
+        evidence_set,
+        existing_ids,
+        _workspace_root_package_manifest_entry(declared.workspace_root),
+    )
     return evidence_set
 
 
@@ -4539,6 +4615,32 @@ _PRODUCT_METADATA_MATERIALS = (
     ("plugin-src/manifest.json", "manifest"),
     ("spec/platforms/support-matrix.json", "platform_support"),
     (".skill-family-audit/governance/runtime-layout.json", "policy"),
+    ("profile.json", "source_file"),
+    ("docs/decisions/2026-09-04-rb01-foundation-adoption.md", "source_file"),
+    ("spec/capabilities/skill-family-audit.capability.json", "source_file"),
+    ("spec/methods/conformance-audit.json", "source_file"),
+    ("spec/methods/release-audit.json", "source_file"),
+    ("spec/methods/registry-implementation.json", "manifest"),
+    ("spec/methods/registration-boundary.json", "source_file"),
+    ("scripts/spec/validate_spec_package.py", "source_file"),
+    ("scripts/governance/verify_registry_protocol_adoption_policy.py", "source_file"),
+    ("spec/contracts/methods/conformance-parameters.schema.json", "source_file"),
+    ("spec/contracts/methods/conformance-result.schema.json", "source_file"),
+    ("spec/contracts/methods/release-parameters.schema.json", "source_file"),
+    ("spec/contracts/methods/release-result.schema.json", "source_file"),
+    ("plugin-src/skills/skill-family-audit/quickstart/scripts/quickstart_route.py", "source_file"),
+    ("plugin-src/skills/skill-family-audit-conformance/scripts/conformance_check.py", "source_file"),
+    ("plugin-src/skills/skill-family-audit-conformance/scripts/foundation_adoption_verifier.py", "source_file"),
+    ("plugin-src/skills/skill-family-audit-conformance/scripts/resolve_spec_release.py", "source_file"),
+    ("plugin-src/skills/skill-family-audit-release/scripts/release_audit.py", "source_file"),
+    ("plugin-src/skills/skill-family-audit-release/scripts/release_receipts.py", "source_file"),
+    ("spec/policies/registry-protocol-adoption.json", "policy"),
+    ("spec/policies/version-release-governance.json", "policy"),
+    ("spec/current-artifacts/methods/conformance-audit.json", "manifest"),
+    ("spec/current-artifacts/methods/release-audit.json", "manifest"),
+    ("spec/current-artifacts/skill-release.json", "manifest"),
+    ("plugin-src/skills/skill-family-audit-conformance/refs/host-semantic-review-consumption.md", "source_file"),
+    ("plugin-src/skills/skill-family-audit-conformance/SKILL.md", "source_file"),
 )
 _PLUGIN_SRC_MANIFEST = "plugin-src/manifest.json"
 
@@ -4644,6 +4746,11 @@ def _derived_evidence_set(target: Path) -> list[dict[str, Any]]:
                     declared.workspace_root, declared.product_root
                 )
             )
+            package_manifest = _workspace_root_package_manifest_entry(
+                declared.workspace_root
+            )
+            if package_manifest is not None:
+                entries.append(package_manifest)
     seen_ids: set[str] = set()
     unique: list[dict[str, Any]] = []
     for entry in entries:
@@ -5065,6 +5172,119 @@ def _verified_static_evidence_refs(
     return copied
 
 
+
+def _netsec_common_premise_not_applicable(
+    item: dict[str, Any],
+    internal_semantic_reviews: dict[Any, Any],
+    internal_semantic_binding: dict[str, Any] | None,
+    internal_review_request: dict[str, Any] | None,
+    foundation_task_digest: str | None,
+    evidence_set: list[dict[str, Any]],
+) -> bool:
+    """Consume one finalized common-premise judgment, never infer no network.
+
+    A citable no-network declaration is sufficient for this merge.  Absence of
+    a network target is not a merge blocker.  Source presence is not a
+    semantic conclusion.  The original strict reader must already have
+    accepted the cited declaration.  All raw method observations remain.
+    """
+    lineage = item.get("canonical_lineage", {})
+    canonical_id = lineage.get("canonical_id")
+    revision = lineage.get("revision_digest")
+    if canonical_id != "SFA-NETSEC-001":
+        return False
+    review = internal_semantic_reviews.get((canonical_id, revision, "semantic_review"))
+    if not isinstance(review, dict) or review.get("status") != "NOT_APPLICABLE":
+        return False
+    method_rows = item.get("check_method_subresults", [])
+    static_rows = [row for row in method_rows if row.get("check_method") == "static_scan"]
+    if len(static_rows) != 1 or static_rows[0].get("status") != "EVIDENCE_MISSING":
+        return False
+    evidence = static_rows[0].get("evidence", {})
+    if (
+        item.get("status") != "EVIDENCE_MISSING"
+        or evidence.get("reason") != "network_role_references_incomplete"
+        or evidence.get("reference_failures")
+    ):
+        return False
+    refs = _verified_static_evidence_refs(
+        internal_semantic_reviews, internal_semantic_binding,
+        internal_review_request, foundation_task_digest, canonical_id, revision,
+    )
+    covered = {ref["role"] for ref in refs}
+    declaration_role = "network_behavior_declaration"
+    if (
+        declaration_role not in covered
+        or declaration_role not in set(evidence.get("covered_roles", []))
+    ):
+        return False
+    frozen = {
+        row["evidence_id"]: row
+        for row in evidence_set
+    }
+    allowed_declaration_kinds = {"manifest", "policy", "source_file"}
+    return any(
+        ref["role"] == declaration_role
+        and frozen.get(ref["evidence_id"], {}).get("kind") in allowed_declaration_kinds
+        and frozen[ref["evidence_id"]].get("sha256") == ref["sha256"]
+        and frozen[ref["evidence_id"]].get("path") == ref["locator"]
+        for ref in refs
+    )
+
+
+def _publish_common_premise_not_applicable(
+    item: dict[str, Any],
+    internal_semantic_reviews: dict[Any, Any],
+    internal_semantic_binding: dict[str, Any] | None,
+    internal_review_request: dict[str, Any] | None,
+    foundation_task_digest: str | None,
+    evidence_set: list[dict[str, Any]],
+) -> bool:
+    """Consume the finalized public-write premise only for the zero-output gap.
+
+    Missing records do not establish applicability. The same frozen review
+    must cite the actual release process and its provider adoption; damaged,
+    mismatched or inconclusive verifier records retain their original findings.
+    """
+    lineage = item.get("canonical_lineage", {})
+    canonical_id = lineage.get("canonical_id")
+    revision = lineage.get("revision_digest")
+    if canonical_id != "SFA-PUBLISH-017" or item.get("status") != "EVIDENCE_MISSING":
+        return False
+    review = internal_semantic_reviews.get((canonical_id, revision, "semantic_review"))
+    if not isinstance(review, dict) or review.get("status") != "NOT_APPLICABLE":
+        return False
+    rows = item.get("check_method_subresults", [])
+    schema_rows = [row for row in rows if row.get("check_method") == "schema_validation"]
+    digest_rows = [row for row in rows if row.get("check_method") == "digest_verification"]
+    if len(schema_rows) != 1 or len(digest_rows) != 1:
+        return False
+    schema, digest = schema_rows[0], digest_rows[0]
+    if (
+        schema.get("status") != "EVIDENCE_MISSING"
+        or schema.get("evidence", {}).get("reason") != "release_verifier_output_not_unique"
+        or schema.get("evidence", {}).get("matching_outputs") != 0
+        or digest.get("status") != "EVIDENCE_MISSING"
+        or digest.get("evidence", {}).get("reason") != "release_verifier_output_unbound"
+    ):
+        return False
+    refs = _verified_static_evidence_refs(
+        internal_semantic_reviews, internal_semantic_binding,
+        internal_review_request, foundation_task_digest, canonical_id, revision,
+    )
+    frozen = {row["evidence_id"]: row for row in evidence_set}
+    required_premise = {"release_process_declaration", "release_skill_reference"}
+    return all(
+        any(
+            ref["role"] == role
+            and frozen.get(ref["evidence_id"], {}).get("sha256") == ref["sha256"]
+            and frozen.get(ref["evidence_id"], {}).get("path") == ref["locator"]
+            for ref in refs
+        )
+        for role in required_premise
+    )
+
+
 def _static_evidence_ref_rows(refs: Any) -> list[dict[str, str]]:
     """执行上下文只保留四字段引用；多余键和坏引用都不能变成静态结论。"""
     if not isinstance(refs, (list, tuple)):
@@ -5365,6 +5585,36 @@ def _canonical_guidance_from_results(
     return aggregates
 
 
+def _professional_mechanical_pass_holds_unscheduled_semantic(
+    item: dict[str, Any],
+    lineage: dict[str, Any],
+    scheduled_review_identities: set[tuple[str, str, str]],
+) -> bool:
+    """机械半区专业消费已 PASS、语义未排程且总体 missing_roles 为空时成立。
+
+    不把 version_policy PASS 写成 reader 已跑，也不用 overlay 覆盖语义义务。
+    未排程的 semantic NOT_RUN 保留在子结果，但不得升总体缺证。
+    """
+    if item.get("status") != "PASS":
+        return False
+    if item.get("missing_evidence_roles"):
+        return False
+    evidence = item.get("evidence") if isinstance(item.get("evidence"), dict) else {}
+    if evidence.get("mechanical_half") is not True:
+        return False
+    if (
+        "professional_consumption" not in evidence
+        and evidence.get("professional_mode") is None
+    ):
+        return False
+    canonical_id = lineage.get("canonical_id")
+    revision = lineage.get("revision_digest")
+    if not isinstance(canonical_id, str) or not isinstance(revision, str):
+        return False
+    identity = (canonical_id, revision, "semantic_review")
+    return identity not in scheduled_review_identities
+
+
 def _combine_route_status(statuses: set[str]) -> str:
     """行级规则终态聚合阶梯（route method ledger + executor 行状态的并集判定）。
 
@@ -5467,7 +5717,7 @@ def _execute_conformance_workflow(
     if not args.run_id:
         raise WorkflowError(
             "WORKFLOW_ARGS_MISSING",
-            "完整工作流需要 --run-id；规范包可省略（默认自审规范包）或显式 --spec-package",
+            "完整工作流需要 --run-id；默认使用当前版本内置通用规则，专用规范可显式 --spec-package",
         )
     _reset_run_fact_cache()
     target_hint: Path | None = None
@@ -5480,10 +5730,7 @@ def _execute_conformance_workflow(
                 f"受检目标不存在: {args.target}",
             ) from exc
     spec_package = args.spec_package
-    if not spec_package and target_hint is not None:
-        spec_package = _discover_self_audit_spec_package(
-            _selected_product_root(target_hint)
-        )
+    bundled_rules = load_rules(None, args.allow_test_fixture) if not spec_package else None
     evidence_set: list[dict[str, Any]]
     if args.evidence_set:
         evidence_set = _load_evidence_set(Path(args.evidence_set))
@@ -5531,13 +5778,10 @@ def _execute_conformance_workflow(
         evidence_set, args.target
     )
     stage.evidence_set = evidence_set
-    if not spec_package:
-        spec_package = _discover_self_audit_spec_package(
-            _selected_product_root(target)
-        )
     evidence_set_digest = _evidence_set_digest(evidence_set)
-    index, manifest, is_fixture, trust_policy = load_rules(
-        Path(spec_package).resolve(strict=True), args.allow_test_fixture
+    index, manifest, is_fixture, trust_policy = bundled_rules or load_rules(
+        Path(spec_package).resolve(strict=True), args.allow_test_fixture,
+        _selected_product_root(target),
     )
     (
         assurance_routes,
@@ -5960,19 +6204,38 @@ def _execute_conformance_workflow(
             scheduled_review_identities,
             missing_roles,
         )
-        mechanical_gap_statuses = _retained_mechanical_gap_statuses(
-            canonical_by_id[canonical_id]
-        )
-        # A retained mixed rule has no trusted mechanical executor.  Keep each
-        # missing mechanical method in the same rule aggregation so a semantic
-        # PASS or NOT_APPLICABLE cannot hide the unimplemented half.
-        method_statuses.update(mechanical_gap_statuses)
-        status = _combine_route_status(set(method_statuses.values()))
         semantic_internal = internal_semantic_reviews.get((
             canonical_id,
             revision_digest,
             "semantic_review",
         ))
+        # Only this conditional rule's common Loop-adoption premise is in
+        # scope. The host reviews that premise; these checks prove the frozen
+        # identity and adoption-reference binding, not the prose's truth.
+        # An arbitrary method N/A must not hide an unimplemented static method.
+        scope_not_applicable = (
+            canonical_id == "SFA-WIRING-002"
+            and canonical_by_id[canonical_id].get("adoption_mode") == "conditional_adoption"
+            and isinstance(semantic_internal, dict)
+            and semantic_internal.get("status") == "NOT_APPLICABLE"
+            and preflight_row.get("applicability_preflight") != "APPLICABLE"
+            and applicability_by_id.get(canonical_id, {}).get("scope_disposition") != "APPLICABLE"
+            and any(
+                ref["role"] == "loop_adoption_declaration"
+                for ref in _verified_static_evidence_refs(
+                    internal_semantic_reviews, internal_semantic_binding,
+                    internal_review_request, foundation_task_digest,
+                    canonical_id, revision_digest,
+                )
+            )
+        )
+        mechanical_gap_statuses = (
+            {} if scope_not_applicable
+            else _retained_mechanical_gap_statuses(canonical_by_id[canonical_id])
+        )
+        # Applicable or unresolved rules retain every missing mechanical method.
+        method_statuses.update(mechanical_gap_statuses)
+        status = _combine_route_status(set(method_statuses.values()))
         evidence = (
             semantic_internal["evidence_refs"]
             if semantic_internal is not None
@@ -6361,6 +6624,28 @@ def _execute_conformance_workflow(
                 ), {}).get("trusted_observation", {}).get("status", "NOT_RUN")
                 for method in route["check_methods"]
             )
+            if _professional_mechanical_pass_holds_unscheduled_semantic(
+                item, lineage, scheduled_review_identities
+            ):
+                held = set()
+                for method in route["check_methods"]:
+                    identity = (
+                        lineage["canonical_id"],
+                        lineage["revision_digest"],
+                        method,
+                    )
+                    status = method_records.get(identity, {}).get(
+                        "trusted_observation", {},
+                    ).get("status", "NOT_RUN")
+                    if (
+                        method in rule_method_assurance.NON_MECHANICAL_CHECK_METHODS
+                        and status == "NOT_RUN"
+                        and identity not in scheduled_review_identities
+                    ):
+                        continue
+                    held.add(status)
+                held.add(item["status"])
+                statuses = held
         elif selected_methods:
             statuses = set(_nonmechanical_obligation_statuses(
                 lineage["canonical_id"],
@@ -6375,6 +6660,38 @@ def _execute_conformance_workflow(
         else:
             combined_results.append(_present_professional_finding(item))
             continue
+        if (
+            route is not None
+            and set(route["check_methods"]) == {"static_scan", "semantic_review"}
+            and statuses <= {"EVIDENCE_MISSING", "NOT_APPLICABLE"}
+            and _netsec_common_premise_not_applicable(
+                item, internal_semantic_reviews, internal_semantic_binding,
+                internal_review_request, getattr(args, "foundation_task_digest", None),
+                evidence_set,
+            )
+        ):
+            # Only the five-role mechanical gap shares this proven false
+            # premise.  Other failures/unknown methods still fail closed.
+            statuses.discard("EVIDENCE_MISSING")
+            statuses.add("NOT_APPLICABLE")
+        if lineage.get("canonical_id") == "SFA-PUBLISH-017" and "NOT_APPLICABLE" in statuses:
+            if (
+                route is not None
+                and set(route["check_methods"]) == {
+                    "digest_verification", "schema_validation", "semantic_review",
+                }
+                and statuses <= {"EVIDENCE_MISSING", "NOT_APPLICABLE"}
+                and _publish_common_premise_not_applicable(
+                    item, internal_semantic_reviews, internal_semantic_binding,
+                    internal_review_request, getattr(args, "foundation_task_digest", None),
+                    evidence_set,
+                )
+            ):
+                statuses.discard("EVIDENCE_MISSING")
+            else:
+                # This rule cannot turn an unbound or contradicted NA into a
+                # passing rule via the generic PASS + NA combination.
+                statuses.add("EVIDENCE_MISSING")
         combined_status = _combine_route_status(statuses)
         combined = {**item, "status": combined_status}
         internal = internal_semantic_reviews.get((
@@ -6665,8 +6982,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--spec-package",
         help=(
-            "显式规范包目录；省略时默认使用仓内自审规范包 spec/self-audit/"
-            "（selfAudit: true，仅用于自审，永不具备发布资格）"
+            "显式专用规范包目录；省略时使用当前执行副本内置通用规则；"
+            "显式输入仍须通过原批准、目录和 scope 校验"
         ),
     )
     value.add_argument("--run-id")

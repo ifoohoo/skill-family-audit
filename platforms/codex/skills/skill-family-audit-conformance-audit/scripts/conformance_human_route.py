@@ -470,6 +470,8 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
     """
     status = domain_result.get("status")
     coverage = domain_result.get("coverage") or {}
+    method_assurance = domain_result.get("method_assurance") or {}
+    canonical_coverage = domain_result.get("canonical_executable_coverage") or {}
     semantic_binding = domain_result.get("semantic_review_binding") or {}
     metrics = domain_result.get("execution_metrics") or {}
     requested_groups = coverage.get("requested_semantic_group_ids") or []
@@ -485,20 +487,26 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
     completion_state = _completion_state(domain_result)
     observed = _validate_journey_facts(journey_facts) or {}
 
+    complete_conformance = bool(
+        status == "SUCCEEDED"
+        and coverage.get("coverage_complete") is True
+        and coverage.get("conclusion_complete") is True
+        and canonical_coverage.get("required_executable_rule_count", 0) > 0
+        and canonical_coverage.get("complete") is True
+    )
     decision_scope = {
         "section": "decision_scope",
         "status": status,
         "status_meaning": (
             _PARTIAL_STATUS_MEANING[completion_state]
-            if status == "PARTIAL" else _STATUS_MEANING.get(status)
+            if status == "PARTIAL"
+            else "本次选定范围已处理完成，但不能证明完整符合性。发布门禁和授权仍要单独核对。"
+            if status == "SUCCEEDED" and not complete_conformance
+            else _STATUS_MEANING.get(status)
         ),
         "completion_state": completion_state,
         "completion_meaning": _COMPLETION_MEANING[completion_state],
-        "can_prove_complete_conformance": bool(
-            status == "SUCCEEDED"
-            and coverage.get("coverage_complete") is True
-            and coverage.get("conclusion_complete") is True
-        ),
+        "can_prove_complete_conformance": complete_conformance,
     }
     if status == "PARTIAL":
         decision_scope["first_sentence"] = (
@@ -545,7 +553,26 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
             "scope_rule_label": "范围内规则",
             "unreviewed_rule_ids": unreviewed_rule_ids,
             "coverage_complete": coverage.get("coverage_complete"),
+            "method_assurance": {
+                name: method_assurance.get(name)
+                for name in (
+                    "total", "method_distribution", "declared_not_proven",
+                    "receipt_succeeded", "receipt_untrusted", "receipt_non_success",
+                    "proven", "not_proven", "trusted_observed", "trusted_unavailable",
+                    "complete",
+                )
+            },
+            "canonical_executable_coverage": {
+                name: canonical_coverage.get(name)
+                for name in (
+                    "required_executable_rule_count", "covered_executable_rule_count",
+                    "complete", "reason_code",
+                )
+            },
             "professional_items": _professional_summary_items(domain_result),
+            "semantic_reviews_consumed_count": _semantic_reviews_consumed_count(
+                domain_result
+            ),
         },
         {
             "section": "semantic_cost",
@@ -1064,6 +1091,8 @@ def _rule_row_by_id(rule_rows, rule_id):
 def _is_audit_internal_missing(row):
     if not isinstance(row, dict):
         return False
+    if row.get("reason_code") == "RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED":
+        return True
     evidence = row.get("evidence")
     if not isinstance(evidence, dict):
         return False
@@ -1078,6 +1107,19 @@ def _status_count(domain_result, status):
         1
         for row in domain_result.get("rule_results") or []
         if row.get("status") == status
+    )
+
+
+def _semantic_reviews_consumed_count(domain_result):
+    """Count rules that actually carry a consumed semantic_review object.
+
+    This is the report口径 for reviewed semantic rules.  It is not
+    selected_count minus selected_deterministic_rule_count.
+    """
+    return sum(
+        1
+        for row in domain_result.get("rule_results") or []
+        if isinstance(row, dict) and isinstance(row.get("semantic_review"), dict)
     )
 
 
@@ -1129,6 +1171,8 @@ def _blocking_findings(domain_result):
                 finding["issue_type"] = "audit_executor_contract_failure"
                 evidence = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
                 finding["reason"] = evidence.get("reason")
+                if row.get("reason_code") == "RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED":
+                    finding["reason_code"] = row["reason_code"]
             findings.append(finding)
     findings.extend(_professional_blocking_findings(domain_result))
     findings.sort(

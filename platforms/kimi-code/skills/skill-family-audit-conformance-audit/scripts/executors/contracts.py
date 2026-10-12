@@ -180,7 +180,13 @@ def validate_method_subresults(
 
 
 def governance_dir(ctx: dict[str, Any]) -> Path:
-    return Path(ctx["target"]) / ".skill-family-audit" / "governance"
+    root = ctx["product_root"] if "product_root" in ctx else ctx["target"]
+    if not isinstance(root, (str, Path)) or not str(root).strip():
+        raise ExecutorEvidenceError("GOVERNANCE_ROOT_INVALID", "product_root 无效")
+    path = Path(root)
+    if "product_root" in ctx and (path.is_symlink() or not path.is_dir()):
+        raise ExecutorEvidenceError("GOVERNANCE_ROOT_INVALID", "治理声明根目录不可读取")
+    return path / ".skill-family-audit" / "governance"
 
 
 def load_governance_document(

@@ -1096,7 +1096,7 @@
       "scanEntryRef": "artifact-graph:check-professional"
     },
     {
-      "baselineVersion": "0.2.2",
+      "baselineVersion": "0.3.0",
       "familyId": "agent-method-registry",
       "id": "registry",
       "kind": "registry",
@@ -1109,7 +1109,7 @@
       "scanEntryRef": "agent-method-registry:diagnoseRegistry/professional-scan"
     },
     {
-      "baselineVersion": "0.4.5",
+      "baselineVersion": "0.5.0",
       "familyId": "skill-family-doc-render",
       "id": "docs",
       "kind": "docs",
@@ -1123,8 +1123,8 @@
       "siteBuildingRequired": false
     }
   ],
-  "projectionDigest": "beb3b05d7f09c570e87221f26fb74ee4ba48d1dad9ae1ca6ce7555be35d09066",
-  "projectionId": "skill-family-audit:codex:1.1.15",
+  "projectionDigest": "869b154ec25bddf3a2032d7cb7a1db1bc6133ea85d80c8082aa0dde3e422fc10",
+  "projectionId": "skill-family-audit:codex:1.1.30",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -1138,7 +1138,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "d2e7a2fc26e1d97fa12c55f20f24bf4db5a6324059bb43fc8570174823f5f988",
+  "sourceDigest": "cabfa9823c01e56909c694010259d37ba15344b394837050cc652645e7f1a426",
   "status": "candidate",
   "supportStatus": "static_projection_available",
   "unverifiedCapabilities": [
@@ -1151,5 +1151,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.1.15"
+  "version": "1.1.30"
 }

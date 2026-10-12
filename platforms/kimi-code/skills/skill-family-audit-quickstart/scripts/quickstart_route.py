@@ -31,6 +31,7 @@ HUMAN_CONFORMANCE_INTENTS = (
     "完整审计",
     "全量规范",
     "完整规范",
+    "完整档",
 )
 METHODS = {
     "conformance": "skill-family-audit:conformance-audit",
@@ -69,8 +70,7 @@ METHOD_CLI_TO_PARAM_MAPPING: dict[str, dict[str, str]] = {
         "target-type": "scope_selector",
     },
     "release": {
-        "target-project": "target_project_path",
-        "assessments-ref": "assessments_ref",
+        "release-audit-input": "release_audit_input",
     },
 }
 FOUNDATION_PROFILE_EXPECTED = {
@@ -85,7 +85,10 @@ FOUNDATION_PROFILE_EXPECTED = {
         "quickstart-profile/v2/result.json"
     ),
 }
-_ABS_PATH_RE = re.compile(r"(?<![A-Za-z0-9_])/[^\s」』”'\"）)]+")
+_ABS_PATH_RE = re.compile(
+    r"(?P<quoted>(?<=[「『“'\"])/[^\s」』”'\"）)]+(?=[」』”'\"]))"
+    r"|(?<![A-Za-z0-9_])/[^\s」』”'\"）)，。；、！？,;]+"
+)
 _PROFILE_SCOPE = {
     "economy": "普通规范检查，只跑本地预筛，不调用语义模型",
     "mechanical": "只检查确定性规则",
@@ -99,10 +102,12 @@ class RouteError(RuntimeError):
 
 
 def absolute_paths_in_request(request: str) -> list[str]:
-    """从自然语言请求中提取规范化绝对路径，不去猜测相对目录。"""
+    """提取审计候选绝对路径；明确标注的运行目录不作为审计目标。"""
     found: list[str] = []
     for match in _ABS_PATH_RE.finditer(request):
-        value = match.group(0).rstrip("。．，,;；、")
+        if re.search(r"运行目录\s*[:：]?\s*[「『“\"']?\s*$", request[:match.start()]):
+            continue
+        value = match.group("quoted") or match.group(0).rstrip("。．，,;；、")
         if os.path.isabs(value) and value not in found:
             found.append(value)
     return found
@@ -1078,7 +1083,7 @@ def _human_intent(request: str) -> str:
     normalized = request.lower()
     if any(token in normalized for token in ("准备发布", "发布准备", "冻结候选")):
         return "release_preparation"
-    if any(token in normalized for token in ("完整审计", "全量规范", "完整规范")):
+    if any(token in normalized for token in ("完整审计", "全量规范", "完整规范", "完整档")):
         return "complete_audit"
     if any(token in normalized for token in ("确定性", "静态合同", "schema", "摘要")):
         return "deterministic_only"
@@ -1191,7 +1196,6 @@ def assert_release_preparation_input(
     ]
     if (
         parsed.get("target-type") != "release_artifact"
-        or len(evidence_set) != 1
         or len(source_trees) != 1
         or parsed.get("target") != source_trees[0].get("path")
     ):
@@ -1413,12 +1417,10 @@ def extract_business_parameters(
             }.get(parameters["scope_selector"], parameters["scope_selector"])
         return parameters, resource
 
-    resource = _trusted_input_file(parsed.get("assessments-ref"), "assessments 文件")
-    unit_id = parsed.get("unit-id")
-    version = parsed.get("target-version")
-    if not unit_id or not version:
-        raise RouteError("METHOD_PARAM_MISSING:candidate_release_ref")
-    parameters["candidate_release_ref"] = f"{unit_id}:{version}"
+    resource = _trusted_input_file(
+        parsed.get("release-audit-input"), "release-audit-input 文件"
+    )
+    parameters["release_audit_input"] = str(resource)
     return parameters, resource
 
 
@@ -1935,30 +1937,24 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     try:
-        manifest_hint = next(
+        args = parser().parse_args()
+        manifest_path = find_platform_manifest(args.platform_manifest)
+        platform_root = manifest_path.parent
+        checker_dir = next(
             (
-                sys.argv[index + 1]
-                for index, value in enumerate(sys.argv[:-1])
-                if value == "--platform-manifest"
+                path.parent
+                for path in platform_root.glob("skills/*/scripts/conformance_check.py")
+                if path.is_file() and not path.is_symlink()
             ),
             None,
         )
-        if manifest_hint:
-            platform_root = Path(manifest_hint).resolve(strict=True).parent
-            checker_dir = next(
-                (
-                    path.parent
-                    for path in platform_root.glob(
-                        "skills/*/scripts/conformance_check.py"
-                    )
-                    if path.is_file() and not path.is_symlink()
-                ),
-                None,
-            )
-            if checker_dir is not None and str(checker_dir) not in sys.path:
-                sys.path.insert(0, str(checker_dir))
-            __import__("conformance_check")
-        result = run(parser().parse_args())
+        if checker_dir is None:
+            raise RouteError("FOUNDATION_TRANSPORT_MISSING")
+        if str(checker_dir) not in sys.path:
+            sys.path.insert(0, str(checker_dir))
+        __import__("conformance_check")
+        args.platform_manifest = str(manifest_path)
+        result = run(args)
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         if result["execution_status"] == "SUCCEEDED":
             return 0

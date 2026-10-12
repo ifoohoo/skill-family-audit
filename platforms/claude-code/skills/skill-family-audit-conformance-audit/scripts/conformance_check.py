@@ -531,7 +531,7 @@ def _default_audit_bundle_candidates() -> list[Path]:
     own_root = _host_platform_root()
     if own_root is not None:
         own_runner = own_root / "foundation" / "quickstart-profile" / "runner.mjs"
-        if own_runner in candidates:
+        if own_runner.is_file() and not own_runner.is_symlink():
             candidates = [
                 own_runner,
                 *(candidate for candidate in candidates if candidate != own_runner),
@@ -1388,8 +1388,118 @@ def _formal_release_activation(package: Path) -> tuple[dict | None, str | None]:
     return resolved["active_release"], None
 
 
+def _load_bundled_rules() -> tuple[dict, dict, dict]:
+    """Read only this executing Skill's bundled rules and existing trust anchors."""
+    error = "BUNDLED_RULES_INVALID"
+    try:
+        script = Path(__file__).absolute()
+        _check_path_chain_no_symlinks(script, error)
+        skill = script.parent.parent
+        refs = skill / "refs"
+        source_root = skill.parent.parent
+        if source_root.name == "plugin-src":
+            identity_path = source_root / "manifest.json"
+            routing_path = source_root.parent / "governance/rules/first-tier-execution-routing.json"
+            _check_path_chain_no_symlinks(identity_path, error)
+            identity = _load(identity_path)
+            entries = identity.get("internalSkills", [])
+            if not any(
+                row.get("methodId") == CHECKER_METHOD_ID
+                and source_root / row.get("sourceDir", "") == skill
+                for row in entries
+            ):
+                raise ValueError(error)
+            source_digest = hashlib.sha256(identity_path.read_bytes()).hexdigest()
+        else:
+            platform = next((parent for parent in skill.parents
+                             if (parent / "platform-manifest.json").exists()), None)
+            if platform is None:
+                raise ValueError(error)
+            identity_path = platform / "platform-manifest.json"
+            _check_path_chain_no_symlinks(identity_path, error)
+            identity = _load(identity_path)
+            mapping = [row for row in identity.get("logicalMappings", [])
+                       if row.get("logicalName") == CHECKER_METHOD_ID]
+            if len(mapping) != 1 or platform / mapping[0].get("path", "") != skill / "SKILL.md":
+                raise ValueError(error)
+            descriptor_path = platform / identity["platformManifest"]
+            _check_path_chain_no_symlinks(descriptor_path, error)
+            descriptor_path.relative_to(platform)
+            if ".." in descriptor_path.parts:
+                raise ValueError(error)
+            descriptor = _load(descriptor_path)
+            if descriptor.get("version") != identity.get("version"):
+                raise ValueError(error)
+            source_digest = identity.get("sourceDigest")
+            if not HEX64.fullmatch(str(source_digest)):
+                raise ValueError(error)
+            routing_path = refs / "first-tier-execution-routing.json"
+        _check_path_chain_no_symlinks(identity_path, error)
+        if identity.get("familyId") != "skill-family-audit" or not re.fullmatch(
+            r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?", str(identity.get("version"))
+        ):
+            raise ValueError(error)
+        paths = [refs / "applicable-rules.json", refs / "conformance-trust-policy.json",
+                 refs / "canonical-rule-projection.json", routing_path]
+        for path in paths:
+            _check_path_chain_no_symlinks(path, error)
+        manifest, trust, projection, routing = [_load(path) for path in paths]
+        generated = routing["generated_from"]
+        expected = trust["canonical_rule_projection"]
+        projection_digest = hashlib.sha256(paths[2].read_bytes()).hexdigest()
+        rules_digest = hashlib.sha256(paths[0].read_bytes()).hexdigest()
+        if (manifest.get("checkerMethodId") != CHECKER_METHOD_ID
+            or generated["applicable_rules_sha256"] != rules_digest
+            or generated["canonical_rule_projection_sha256"] != projection_digest
+            or expected["digest"] != projection_digest
+            or generated["canonical_rule_inventory_sha256"] != projection["source_digest"]
+            or any(expected[key] != projection[key]
+                   for key in ("source_digest", "business_digest", "total_rules"))
+            or len(projection["rules"]) != expected["total_rules"]):
+            raise ValueError(error)
+        if source_root.name != "plugin-src":
+            # The platform builder hashes this complete managed payload, excluding
+            # its own manifest and interpreter caches. Use the same published
+            # Foundation resource operation; do not create a second digest format.
+            resources = [
+                {"path": path.relative_to(platform).as_posix(), "role": "input"}
+                for path in sorted(platform.rglob("*"))
+                if path.is_file()
+                and path != identity_path
+                and not any(part in {"__pycache__", ".DS_Store", ".pytest_cache"}
+                            for part in path.relative_to(platform).parts)
+                and path.suffix not in {".pyc", ".pyo"}
+            ]
+            runner = verify_foundation_bundle(
+                str(platform / "foundation/quickstart-profile/runner.mjs")
+            )
+            closure = call_foundation_mechanism(runner, {
+                "operation": "resource-closure", "root": str(platform),
+                "resources": resources,
+            })
+            if closure.get("digest") != identity.get("projectionDigest"):
+                raise ValueError(error)
+        return {"bundledRules": {"familyId": identity["familyId"],
+                                 "version": identity["version"], "sourceDigest": source_digest,
+                                 "ruleManifestDigest": rules_digest}}, manifest, trust
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, StopIteration, RuntimeError) as exc:
+        raise ValueError(error) from exc
+
+
+def _self_audit_target_error(package: Path, target: Path | None) -> str | None:
+    """An explicit self-audit input cannot confer trust on an external target."""
+    root = _package_root()
+    if root is None or target is None:
+        return "SELF_AUDIT_TARGET_REQUIRED"
+    root = root.resolve()
+    target = target.resolve()
+    if target != root and root not in target.parents:
+        return "SELF_AUDIT_TARGET_REQUIRED"
+    return verify_self_audit_freshness(package)
+
+
 def _validate_package(
-    package: Path, test_fixture: bool
+    package: Path, test_fixture: bool, target: Path | None = None
 ) -> tuple[dict | None, dict | None, str | None, dict | None]:
     index_path, rules_path = package / "authority-index.json", package / "applicable-rules.json"
     if not index_path.is_file() or not rules_path.is_file():
@@ -1403,8 +1513,11 @@ def _validate_package(
     if test_fixture and index.get("test_fixture") is not True:
         return index, None, "SPEC_PACKAGE_NOT_TEST_FIXTURE", None
     # 自审与显式测试夹具沿用原分支，不进入正式批准链，也不能取得发布资格。
-    if index.get("test_fixture") is True or index.get("selfAudit") is True:
+    if index.get("test_fixture") is True:
         return index, manifest, None, None
+    if index.get("selfAudit") is True:
+        error = _self_audit_target_error(package, target)
+        return index, manifest if error is None else None, error, None
     active_release, error = _formal_release_activation(package)
     if error:
         return index, None, error, None
@@ -2057,22 +2170,17 @@ def run_conformance_check(target_path: str, project_root: str, spec_version_ref:
     else: output = None
     active_release: dict | None = None
     if spec_package:
-        index, manifest, error, active_release = _validate_package(Path(spec_package).resolve(), test_fixture)
+        index, manifest, error, active_release = _validate_package(Path(spec_package).resolve(), test_fixture, target)
         if error: return _blocked(error, index, target_path)
         self_audit = index.get("selfAudit") is True
     else:
-        # D2 自审默认发现路径：无显式规范包时只接受本仓裁决权威派生的
-        # 自审规范包（selfAudit: true，摘要新鲜性逐条校验）；外部规范必须
-        # 显式 --spec-package 提供。自审包缺失时维持原失败关闭结论。
-        spec_dir = self_audit_spec_package_default(root)
-        if spec_dir is None:
-            return _blocked("NO_ACTIVE_APPROVED_SPEC", target=target_path)
-        freshness_error = verify_self_audit_freshness(spec_dir)
-        if freshness_error:
-            return _blocked(freshness_error, target=target_path)
-        index, manifest, error, active_release = _validate_package(spec_dir, test_fixture)
-        if error: return _blocked(error, index, target_path)
-        self_audit = True
+        if test_fixture:
+            return _blocked("SPEC_PACKAGE_NOT_TEST_FIXTURE", target=target_path)
+        try:
+            index, manifest, _ = _load_bundled_rules()
+        except ValueError as exc:
+            return _blocked(str(exc), target=target_path)
+        self_audit = False
     if manifest.get("checkerMethodId") != CHECKER_METHOD_ID:
         return _blocked("UNKNOWN_CHECKER", index, target_path)
     scan, results = _scan(

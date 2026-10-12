@@ -6283,17 +6283,21 @@ def check_governance_001(ctx: dict[str, Any]) -> dict[str, Any]:
     - 无任何门禁对象为 NOT_APPLICABLE；禁止以'无 CI 配置'作 N/A。
     绝不执行受检目标。
     """
-    target = ctx.get("target")
+    target = ctx.get("product_root") if "product_root" in ctx else ctx.get("target")
     if not target or not Path(target).is_dir():
         outcome = _finish_validated(
             [
-                _static_row("NOT_APPLICABLE", reason="target_not_observable"),
+                _static_row(
+                    "EVIDENCE_MISSING" if "product_root" in ctx else "NOT_APPLICABLE",
+                    reason="product_root_not_observable" if "product_root" in ctx else "target_not_observable",
+                ),
             ],
             ["static_scan"],
             mechanical_half=True,
         )
         outcome["behavior_verification_result"] = _behavior_row(
-            "NOT_APPLICABLE", reason="target_not_observable"
+            "EVIDENCE_MISSING" if "product_root" in ctx else "NOT_APPLICABLE",
+            reason="product_root_not_observable" if "product_root" in ctx else "target_not_observable"
         )
         return outcome
     target_root = Path(target)
@@ -7295,10 +7299,18 @@ def check_depend_013(ctx: dict[str, Any]) -> dict[str, Any]:
 
 def check_foundation_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """以真实 Profile、具名 import 与 active exemption 核对三包覆盖。"""
-    target_root = _observable_target_root(ctx)
+    target_root = (
+        _observable_declared_root(ctx["product_root"])
+        if "product_root" in ctx else _observable_target_root(ctx)
+    )
+    if isinstance(ctx.get("product_root"), str) and not ctx["product_root"].strip():
+        target_root = None
     if target_root is None:
         return _finish_validated(
-            [_static_row("EVIDENCE_MISSING", reason="target_not_observable")],
+            [_static_row(
+                "EVIDENCE_MISSING",
+                reason="product_root_not_observable" if "product_root" in ctx else "target_not_observable",
+            )],
             ["static_scan"],
             mechanical_half=True,
         )
