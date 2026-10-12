@@ -4051,7 +4051,7 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
         scope.update(_observe_foundation_profile(declared.product_root))
         return scope
     if target_type == "release_artifact":
-        payload_roots = ("platforms", "spec", ".claude-plugin", ".codex-plugin", "skills")
+        payload_roots = ("platforms", "spec", ".claude-plugin", ".codex-plugin", ".codebuddy-plugin", "skills")
         if not (target / "candidate-summary.json").is_file():
             raise WorkflowError(
                 "RELEASE_ARTIFACT_INCOMPLETE", "缺失: ['candidate-summary.json']"

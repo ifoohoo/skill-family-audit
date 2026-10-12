@@ -2,7 +2,7 @@
 
 技能族静态规范审阅、两个审计方法和四平台投影的唯一公开发布源。
 
-当前版本 `1.1.30` 是尚未批准的本地修订候选，
+当前版本 `1.1.32` 是尚未批准的本地修订候选，
 不声明为稳定发布。候选批准不等于 Release Skill 计划批准、生产发布确认
 或任何远端写入授权。候选标记只说明品质与批准状态，不阻止可用的只读检查；
 真实依赖缺失、输入不合法或适用结论缺失仍如实报告。
@@ -154,11 +154,37 @@ codex plugin add skill-family-audit@skill-family-hub --json
 可用于检查载荷；候选尚未获批准或发布，不能据此安装公开版本：
 
 ```text
-dist/candidate/1.1.30/platforms/<platform>
+dist/candidate/1.1.32/platforms/<platform>
 ```
 
 四个平台目录都是静态、自包含投影。Kimi 只支持人工安装或会话级
 `--skills-dir`；可选 smoke 失败只记录 `manual_unverified`，不阻断候选发布。
+
+### WorkBuddy 候选离线安装
+
+未发布候选可通过已冻结的完整候选包，在私有工作区中由原构建器生成 WorkBuddy 本地安装容器与离线 ZIP 包。执行以下命令，输入已冻结候选根路径，输出指定一个尚不存在且位于仓库外的目录：
+
+```sh
+python3 packages/skill-family-audit/scripts/build/build_platform_packages.py \
+  --package-workbuddy-offline \
+  --frozen-candidate "<已冻结候选根>" \
+  --offline-output "<尚不存在的仓外目录>"
+```
+
+命令执行后，输出目录包含 `workbuddy-marketplace/` 子目录与对应版本的 ZIP 文件。请先解压该 ZIP 包，再将解压出的 `workbuddy-marketplace/` 目录加入 macOS WorkBuddy 官方 CLI 的本地市场，并安装对应插件。下面是 macOS WorkBuddy 的安装命令；请将占位路径替换为实际解压目录：
+
+```sh
+CODEBUDDY_CONFIG_DIR="$HOME/.workbuddy" CODEBUDDY_FORCE_LITE_WB_BUNDLE=1 \
+  "/Applications/WorkBuddy.app/Contents/Resources/app.asar.unpacked/cli/bin/codebuddy" \
+  plugin marketplace add "<实际解压目录>/workbuddy-marketplace"
+CODEBUDDY_CONFIG_DIR="$HOME/.workbuddy" CODEBUDDY_FORCE_LITE_WB_BUNDLE=1 \
+  "/Applications/WorkBuddy.app/Contents/Resources/app.asar.unpacked/cli/bin/codebuddy" \
+  plugin install skill-family-audit@skill-family-audit-workbuddy-local --scope user
+```
+
+本地容器包含候选包中冻结的 WorkBuddy 全部技能与资源，其市场描述仅用于本次离线安装，不会进入正式 GitHub 发布物。本地打包行为不改变候选在 Hub 的分发资格；正式版本的安装仍以实际宿主支持和 Hub 收录资格为前提，不会因本地安装成功而自动开放分发。
+
+若首次安装返回 `MANUAL_REQUIRED`，须按宿主原生安装流程完成，不可绕过该状态。安装完成后，需在 WorkBuddy 桌面新会话中实际发现并调用目标技能，保留真实调用结果。打包成功、安装完成或菜单中出现技能，均不能代替业务验收。
 
 ## 发布边界
 

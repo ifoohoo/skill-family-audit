@@ -1,6 +1,6 @@
 {
   "kind": "skill-family-audit.method-assurance-trust-projection",
-  "projection_digest": "1e5c5b7fdf1c08fff8facda0fb5cf45f4755ef16e466fc7cccbfb2a0029c05bd",
+  "projection_digest": "900e06b30763ad82e4c84c046dc43f2effb315c1c875d62bcbafe3aeb34abb8b",
   "routing": {
     "first_tier_static": [
       {
@@ -1332,7 +1332,7 @@
   },
   "schema_version": "1.0.0",
   "source_closure": {
-    "digest": "fb408fe3055ed05c97326ea545faa04bdf0a50b80927d06f556c967c2789242f",
+    "digest": "24b65b99a3b7a1ae9d78863dc258b3c7af0fad0b5827bfc3562a4c97591dae4c",
     "digestAlgorithm": "sha256",
     "kind": "skill-family.resource-closure",
     "resources": [
@@ -1358,7 +1358,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/conformance_workflow.py",
         "role": "input",
-        "sha256": "bd580c338c59ebfc00a802e721b533afcfb8826c12a1515177a70e638d119cc2"
+        "sha256": "880a5e75ae9412c997dccd9a5453fca34e00101f33ed7efa8c97246889584902"
       },
       {
         "exists": true,
