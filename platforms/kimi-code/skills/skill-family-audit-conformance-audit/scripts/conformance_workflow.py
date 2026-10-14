@@ -4898,6 +4898,9 @@ def _validate_method_parameters(
 def _gmin_static_outcome(
     rule_id: str,
     scope: dict[str, Any],
+    *,
+    nonframework_declaration_refs: list[dict[str, str]] | None = None,
+    evidence_set: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Execute the mechanical half of the twelve terminal governance rules.
 
@@ -4952,6 +4955,32 @@ def _gmin_static_outcome(
         profile_code = profile_result.get("code")
         profile_observed = profile_code not in (None, "PROJECT_PROFILE_MISSING")
         if not profile_observed:
+            # 普通技能的框架前提由已终审领域判断负责；这里只核对其真实声明绑定。
+            # 无引用、错绑或变更字节仍是缺证，不能仅凭 NA 枚举撤销机械结果。
+            declared = scope.get("declared_product", {})
+            product_root = declared.get("product_root") if isinstance(declared, dict) else None
+            frozen = {row.get("evidence_id"): row for row in evidence_set or [] if isinstance(row, dict)}
+            if isinstance(product_root, str):
+                root = Path(product_root)
+                for ref in nonframework_declaration_refs or []:
+                    entry = frozen.get(ref.get("evidence_id"), {})
+                    if (
+                        ref.get("role") != "method_contract_authority"
+                        or entry.get("kind") not in {"manifest", "policy", "source_file"}
+                        or entry.get("path") != ref.get("locator")
+                        or entry.get("sha256") != ref.get("sha256")
+                    ):
+                        continue
+                    try:
+                        relative = Path(ref["locator"]).relative_to(root).as_posix()
+                        receipt = foundation_read_file_strict(root, relative, ref["sha256"])
+                    except (WorkflowError, ValueError, OSError):
+                        continue
+                    if receipt.get("sha256") == ref["sha256"]:
+                        return {"status": "NOT_APPLICABLE", "evidence": {
+                            "reason": "verified_nonframework_product_declaration",
+                            "declaration_refs": [ref],
+                        }}
             return {
                 "status": "EVIDENCE_MISSING",
                 "evidence": {
@@ -5092,9 +5121,15 @@ def _gmin_method_assured_outcome(
     rule_id: str,
     scope: dict[str, Any],
     method_route: dict[str, Any],
+    *,
+    nonframework_declaration_refs: list[dict[str, str]] | None = None,
+    evidence_set: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Bind the existing GMIN check result to its managed method route."""
-    outcome = _gmin_static_outcome(rule_id, scope)
+    outcome = (_gmin_static_outcome(
+        rule_id, scope, nonframework_declaration_refs=nonframework_declaration_refs,
+        evidence_set=evidence_set,
+    ) if nonframework_declaration_refs is not None else _gmin_static_outcome(rule_id, scope))
     outcome["executor_family"] = GMIN_METHOD_ASSURANCE_FAMILY
     outcome["check_method_subresults"] = executors._check_method_subresults(
         outcome, method_route
@@ -6378,8 +6413,18 @@ def _execute_conformance_workflow(
                         "METHOD_ASSURANCE_ROUTE_IDENTITY_MISSING",
                         f"{rule['ruleId']} lacks a managed method route",
                     )
+                premise_refs = None
+                if lineage["canonical_id"] == "SFA-HARNESS-002":
+                    review = internal_semantic_reviews.get((*route_key, "semantic_review"))
+                    if isinstance(review, dict) and review.get("status") == "NOT_APPLICABLE":
+                        premise_refs = _verified_static_evidence_refs(
+                            internal_semantic_reviews, internal_semantic_binding,
+                            internal_review_request, getattr(args, "foundation_task_digest", None),
+                            *route_key,
+                        )
                 outcome = _gmin_method_assured_outcome(
-                    rule["ruleId"], scope, method_route
+                    rule["ruleId"], scope, method_route,
+                    nonframework_declaration_refs=premise_refs, evidence_set=evidence_set,
                 )
                 outcome["worker"] = "deterministic-terminal-governance"
                 result = {

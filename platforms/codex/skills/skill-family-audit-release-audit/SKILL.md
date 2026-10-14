@@ -59,7 +59,13 @@ python3 scripts/release_audit.py --release-audit-input <冻结的 release-audit-
 - 只读取调用方显式指定的记录路径，不扫描 `.release-skill`，不跟随记录内路径
 - 调用方内嵌的验证器输出不能形成成功结果
 - 发布评估只接受 `conformance`、`platforms`、`exceptions` 和 `release_policy` 四类输入
-- 缺项（结论不可用）的结果，在既有 `reason` 上说明适用的检查或接入入口。conformance 指向 `skill-family-audit:conformance-audit`。平台投影指向 `skill-family-audit:setup`。没有公开专业入口时，如实说明能力缺口，不静默重做专业工作，不要求 failure-auditor 报告
+- `platforms` 消费目标技能族的原始平台清单，只核对对象、版本、平台身份、文件路径和摘要，以及外层候选、类型和身份绑定。宿主别名按 Foundation 已发布公开身份处理，不要求其他产品填写 Audit 专有的 `files`、`fileCount`、`sourceDigest`、`projectionDigest` 或 `foundationProjection` 字段
+- 平台行的 `valid` 仅表示静态身份与记录绑定有效，不代表专业闭包通过。专业结论和覆盖范围沿原 conformance 链通过 `conformance_result.professional_consumption` 如实承载，本方法不据裸平台清单推断或重算闭包，不新增通用适用性判断或强制扫描
+- `valid` 表示输入记录有效、可供本方法消费，不表示原领域结论全部通过。Foundation Result 的 `state=succeeded` 说明传输完成；原 `conformance_result.status`、专业结论和覆盖范围仍按原记录解释。专业输入按原合同可选，本方法不强制要求领域状态为 `SUCCEEDED` 或 Foundation 项存在且为 `pass`，也不改写原失败、受阻或特殊处理结论。稳定发布保留原有的各输入记录状态均为 `valid` 条件，不将它解释为所有原领域结论全部通过
+- `exceptions` 消费 Audit 自带的 `spec/policies/exception-policy.json` 通用例外政策，证据类型为 `exception-policy`，身份为 `skill-family-audit:exception-policy`。政策必须包含实际记录约定、约束条件和 `currentExceptions` 数组；仅含 `status` 的薄文件不通过
+- 通用例外政策不认证发布目标的例外声明。`currentExceptions` 是 Audit 当前产品实例的唯一真源；本仓 `rule-exception-declaration` 的 `scope=skill-family-audit-current-product` 不随外层 `candidate_id` 改绑成其他目标无例外的事实
+- 特殊处理记录须对应当前对象、规则、范围和处理事项；不因缺少批准人、统一期限或作者不同而拒绝。若记录自身约定的期限或条件已失效，或与当前对象事项不符，不得视为有效特殊处理，须按当前事实重新检查原要求
+- 缺项（结论不可用）结果在既有 `reason` 中说明适用的检查或接入入口。conformance 指向 `skill-family-audit:conformance-audit`，平台缺项时要求提供目标当前候选的原始清单与绑定；若原 conformance 结论报告适用专业项缺证，可接续 `foundation-adoption-review:foundation-engineering-check` 取得或读取已有证明，再由 `skill-family-audit:conformance-audit` 消费新的结论。例外政策缺项时指向 `spec/policies/exception-policy.json`，要求提供真实政策及摘要、类型和候选绑定；没有公开专业入口时，如实说明能力缺口，不静默重做专业工作，不要求 failure-auditor 报告
 - 失败模式和运行效果报告不属于发布评估所需输入
 - 和提供方的结果不一致时，先核对目标、采用版本、适用范围与双方职责，按实际原因解释。不默认 Audit 有错，不改写提供方结论，不新建冲突裁决机制
 - 项目名称、目录与临时托管只作个案事实，不提升为通用义务。改名或换目录不等于符合要求

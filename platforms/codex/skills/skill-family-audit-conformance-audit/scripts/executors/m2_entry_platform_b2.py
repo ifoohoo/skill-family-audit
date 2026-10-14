@@ -3511,7 +3511,7 @@ def check_source_019(ctx: dict[str, Any]) -> dict[str, Any]:
         surface_roots.append({"source": "src", "generated": [name for name in ("dist", "build") if (target / name).is_dir()]})
     if (target / "plugin-src").is_dir() and (target / "generated" / "platforms").is_dir():
         surface_roots.append({"source": "plugin-src", "generated": ["generated/platforms"]})
-    trigger = ctx.get("target_type") == "family_source" or projections > 0 or bool(surface_roots)
+    trigger = projections > 0 or bool(surface_roots)
     if not trigger and not scan["declaration_signal"]:
         return _finish(
             [_static_row("NOT_APPLICABLE", reason="no_generated_artifacts_and_no_declaration")],

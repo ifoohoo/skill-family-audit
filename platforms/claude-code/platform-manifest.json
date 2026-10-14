@@ -991,7 +991,7 @@
     "skills/skill-family-audit-setup/scripts/setup_diagnostics.py"
   ],
   "foundationProjection": {
-    "bundleDigest": "b5882aade297deed6db0ae050e01fa06fa269a7179d4548bcea2d86f2dafddf7",
+    "bundleDigest": "be11fff54f6bde104436ef4a344f2404946c33cd4cc9d9714daf631b92cf8844",
     "path": "foundation/quickstart-profile/foundation-projection.json",
     "profile": {
       "contractsVersion": "1.20.0",
@@ -1123,8 +1123,8 @@
       "siteBuildingRequired": false
     }
   ],
-  "projectionDigest": "b8e6aca5ea358a3abdd7943880ad8fbd2b9e4465da1931d3ab2dbd8423c02a01",
-  "projectionId": "skill-family-audit:claude-code:1.1.32",
+  "projectionDigest": "e54a434f821988866125ecc8f5ffa508362d3cea1d17cd0cea772b55801c6afd",
+  "projectionId": "skill-family-audit:claude-code:1.1.35",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -1138,7 +1138,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "d6567f5cd03122c0f2971cfe930e2f053bfc29e07843b0ff54a5b7d49b472d58",
+  "sourceDigest": "f106e24405423a6e233d1d24aba8410abcbf8e12db2e42e48ffe702766cb7534",
   "status": "candidate",
   "supportStatus": "static_projection_available",
   "unverifiedCapabilities": [
@@ -1151,5 +1151,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.1.32"
+  "version": "1.1.35"
 }

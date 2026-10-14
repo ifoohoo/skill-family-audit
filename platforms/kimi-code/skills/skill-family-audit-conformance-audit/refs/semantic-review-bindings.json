@@ -3498,14 +3498,10 @@
       "revision_digest": "5b5e5681c9efe3906d82f37b1434931dc62eea03cf2d38d094e3d586876706a2",
       "required_evidence_roles": {
         "adoption_declaration": [
+          "exception",
           "manifest",
           "receipt",
           "source_file"
-        ],
-        "exemption_record": [
-          "exception",
-          "manifest",
-          "receipt"
         ],
         "self_built_stack_observation": [
           "source_file",

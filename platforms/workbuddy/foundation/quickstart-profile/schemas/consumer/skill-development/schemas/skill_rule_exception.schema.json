@@ -2,21 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "spec/packages/skill-development/schemas/skill_rule_exception.schema.json",
   "title": "skill rule exception 制品",
-  "description": "记录技能开发规则的例外审批与执行状态，包括例外范围、截止时间、审批人、补偿措施及生命周期状态，用于在合规框架下管理临时性规则豁免。",
+  "description": "记录对应当前对象、规则和处理事项的特殊处理约定。批准、期限和其他条件按实际约定填写，不认证作者或批准真实性。",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "exception_id",
+    "target_object",
     "target_rule_id",
     "target_revision_digest",
     "scope",
-    "deadline",
-    "approver",
-    "compensation",
-    "revocation",
-    "invalidation_conditions",
-    "status",
-    "created_at"
+    "treatment"
   ],
   "properties": {
     "exception_id": {
@@ -26,11 +21,13 @@
     },
     "target_rule_id": {
       "type": "string",
-      "description": "被例外的规则标识"
+      "description": "被例外的规则标识",
+      "minLength": 1
     },
     "target_revision_digest": {
       "type": "string",
-      "description": "被例外的规则修订摘要"
+      "description": "被例外的规则修订摘要",
+      "minLength": 1
     },
     "scope": {
       "type": "string",
@@ -40,12 +37,12 @@
     "deadline": {
       "type": "string",
       "format": "date-time",
-      "description": "例外截止时间"
+      "description": "记录自身约定的截止时间；未约定时无需填写"
     },
     "approver": {
       "type": "string",
       "minLength": 1,
-      "description": "批准主体"
+      "description": "记录中已有的批准主体信息；不要求填写或认证"
     },
     "compensation": {
       "type": "string",
@@ -54,7 +51,7 @@
     },
     "revocation": {
       "type": "object",
-      "description": "撤销要素：撤销主体、撤销条件和撤销证据",
+      "description": "记录自身约定的撤销信息；未约定时无需填写",
       "additionalProperties": false,
       "required": [
         "revoker",
@@ -90,23 +87,27 @@
     },
     "status": {
       "type": "string",
-      "enum": [
-        "pending_approval",
-        "active",
-        "expired",
-        "revoked",
-        "remediation_completed"
-      ],
-      "description": "例外生命周期状态"
+      "description": "记录自身说明的状态，不作为统一审批生命周期或有效性结论",
+      "minLength": 1
     },
     "created_at": {
       "type": "string",
       "format": "date-time",
-      "description": "创建时间"
+      "description": "记录中已有的创建时间；未约定时无需填写"
     },
     "metadata": {
       "type": "object",
       "description": "可选元数据"
+    },
+    "target_object": {
+      "type": "string",
+      "minLength": 1,
+      "description": "记录对应的当前对象"
+    },
+    "treatment": {
+      "type": "string",
+      "minLength": 1,
+      "description": "约定的特殊处理事项"
     }
   }
 }

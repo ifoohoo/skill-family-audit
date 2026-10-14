@@ -356,7 +356,7 @@
         "path": "skill-development/schemas/skill_rule_exception.schema.json",
         "$id": "spec/packages/skill-development/schemas/skill_rule_exception.schema.json",
         "dialect": "2020-12",
-        "sha256": "03380b9cbe581d47b88729d0293f3cc81de54c284068a39a960280c9dc4f5cdb"
+        "sha256": "7116906008a65bfd7d7c843b4ae900042c6e5e7a551865563a960c39d1a62cbc"
       },
       {
         "path": "source-truth-declaration.schema.json",
@@ -464,7 +464,7 @@
       },
       {
         "path": "runtime/generated/validate-2020-12.mjs",
-        "sha256": "119ae34501d338ef496981e9912a2bfadbacef599866950c587ab00862ee1c6f"
+        "sha256": "e60a41b6b64a225ad5fcadb68671feb73d1c58193119e5cafc122e0c13fc4def"
       },
       {
         "path": "runtime/harness/atomic.mjs",
@@ -588,7 +588,7 @@
       },
       {
         "path": "schemas/consumer/skill-development/schemas/skill_rule_exception.schema.json",
-        "sha256": "b93d0b5541ec63a75fde900936c3c5d058cdfeb6c852ebcb0f4ae9fb30e9a409"
+        "sha256": "7116906008a65bfd7d7c843b4ae900042c6e5e7a551865563a960c39d1a62cbc"
       },
       {
         "path": "schemas/consumer/source-truth-declaration.schema.json",
@@ -667,6 +667,6 @@
         "sha256": "361cae9d2c2cfb87e0e0adafd584502121279237a42cbe5ec0987461179d88e7"
       }
     ],
-    "digest": "b5882aade297deed6db0ae050e01fa06fa269a7179d4548bcea2d86f2dafddf7"
+    "digest": "be11fff54f6bde104436ef4a344f2404946c33cd4cc9d9714daf631b92cf8844"
   }
 }

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0.0-candidate",
+  "policyId": "exception-policy",
+  "name": "例外管理政策",
+  "description": "特殊处理记录对应当前对象、规则与处理事项；只依据记录自身约定判断适用性，不认证作者或批准真实性",
+  "requiredExceptionFields": [
+    "exception_id",
+    "target_object",
+    "target_rule_id",
+    "target_revision_digest",
+    "scope",
+    "treatment"
+  ],
+  "exceptionConstraints": [
+    {
+      "constraintId": "EC-001",
+      "rule": "规则不适用时直接判断；适用且有特殊处理时，记录须对应当前对象、规则和处理事项",
+      "violationImpact": "error"
+    },
+    {
+      "constraintId": "EC-002",
+      "rule": "不要求特定作者、批准人、委托链、签名或身份认证；缺少批准或统一期限不单独拒绝记录",
+      "violationImpact": "error"
+    },
+    {
+      "constraintId": "EC-004",
+      "rule": "仅按记录自身约定的期限、范围和条件判断当前是否可用；约定已失效或不对应当前对象事项时，重新检查原要求，不复用历史违规",
+      "violationImpact": "error"
+    }
+  ],
+  "currentExceptions": [],
+  "status": "candidate"
+}

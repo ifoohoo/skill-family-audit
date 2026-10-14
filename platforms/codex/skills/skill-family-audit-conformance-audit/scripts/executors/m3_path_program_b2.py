@@ -2609,6 +2609,149 @@ def _has_source_surface(target: Path) -> bool:
     return False
 
 
+_NATIVE_ROLE_CHECKS = (
+    "native_role_separation",
+    "native_runtime_closure",
+    "native_public_boundary",
+)
+
+
+def _generated_surface_roots(target: Path) -> list[dict[str, Any]]:
+    """与 SOURCE-019 相同的三对表面根；只认成对出现的源码与生成投影。"""
+    surface_roots: list[dict[str, Any]] = []
+    if (target / "skills-src").is_dir() and (
+        (target / "skills").is_dir() or (target / "adapters").is_dir()
+    ):
+        surface_roots.append({
+            "source": "skills-src",
+            "generated": [name for name in ("skills", "adapters") if (target / name).is_dir()],
+        })
+    if (target / "src").is_dir() and (
+        (target / "dist").is_dir() or (target / "build").is_dir()
+    ):
+        surface_roots.append({
+            "source": "src",
+            "generated": [name for name in ("dist", "build") if (target / name).is_dir()],
+        })
+    if (target / "plugin-src").is_dir() and (target / "generated" / "platforms").is_dir():
+        surface_roots.append({"source": "plugin-src", "generated": ["generated/platforms"]})
+    return surface_roots
+
+
+def _projection_row_count(ctx: dict[str, Any]) -> int:
+    document = load_governance_document(ctx, "source-projections")
+    if document is None:
+        return 0
+    return len(rows_of(document, "projections", "source-projections"))
+
+
+def _release_unit_source_roots(product_root: Path) -> tuple[list[str], bool]:
+    """用既有 release project 读取函数取出单元 source。
+
+    返回 (产品根内的相对源码根, 是否存在单元 source 声明)。工作区把本产品
+    整目录声明为单元 source 时，声明成立，但不把产品根本身写入路径集合。
+    """
+    import conformance_workflow
+
+    try:
+        yaml_path = conformance_workflow._release_project_path(product_root)
+        yaml_root = product_root
+        if yaml_path is None:
+            workspace = conformance_workflow._workspace_root_declaring(product_root)
+            if workspace is None:
+                return [], False
+            yaml_path = conformance_workflow._release_project_path(workspace)
+            yaml_root = workspace
+        if yaml_path is None:
+            return [], False
+        units = conformance_workflow._parse_release_unit_sources(
+            yaml_path.read_text(encoding="utf-8")
+        )
+    except conformance_workflow.WorkflowError as exc:
+        raise ExecutorEvidenceError("GOVERNANCE_DOCUMENT_INVALID", str(exc)) from exc
+    except OSError as exc:
+        raise ExecutorEvidenceError(
+            "GOVERNANCE_DOCUMENT_INVALID",
+            f".release-skill/project.yaml 无法读取: {exc}",
+        ) from exc
+    roots: list[str] = []
+    declared = False
+    try:
+        product_resolved = product_root.resolve()
+    except OSError as exc:
+        raise ExecutorEvidenceError(
+            "GOVERNANCE_DOCUMENT_INVALID", f"产品根无法解析: {exc}",
+        ) from exc
+    for unit in units:
+        source = unit.get("source")
+        if not isinstance(source, str) or not source:
+            continue
+        declared = True
+        normalized = _normalized_runtime_dir(source)
+        if normalized is None:
+            raise ExecutorEvidenceError(
+                "GOVERNANCE_DOCUMENT_INVALID",
+                ".release-skill/project.yaml releaseUnits.source 必须是目标根下的相对目录",
+            )
+        source_path = yaml_root / normalized
+        if source_path.is_symlink():
+            raise ExecutorEvidenceError(
+                "GOVERNANCE_DOCUMENT_INVALID",
+                ".release-skill/project.yaml releaseUnits.source 不得是符号链接",
+            )
+        if yaml_root == product_root:
+            roots.append(normalized)
+            continue
+        try:
+            resolved = source_path.resolve()
+        except OSError as exc:
+            raise ExecutorEvidenceError(
+                "GOVERNANCE_DOCUMENT_INVALID",
+                f".release-skill/project.yaml releaseUnits.source 无法解析: {exc}",
+            ) from exc
+        if resolved == product_resolved:
+            continue
+        try:
+            relative = resolved.relative_to(product_resolved).as_posix()
+        except ValueError:
+            continue
+        inner = _normalized_runtime_dir(relative)
+        if inner is not None:
+            roots.append(inner)
+    return roots, declared
+
+
+def _same_professional_subject(ctx: dict[str, Any], conclusion: dict[str, Any]) -> bool:
+    subject = conclusion["subject"].get("ref")
+    try:
+        return (
+            isinstance(subject, str)
+            and Path(subject).is_absolute()
+            and Path(subject).resolve(strict=True) == Path(ctx["target"]).resolve(strict=True)
+        )
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
+def _named_native_passes(conclusion: dict[str, Any]) -> dict[str, list[str]] | None:
+    """按 checks[].id 消费已 pass 的具名范围。checks 缺席时不进入该分支。"""
+    checks = conclusion.get("checks")
+    if not isinstance(checks, list) or not checks:
+        return None
+    passed: list[str] = []
+    for name in _NATIVE_ROLE_CHECKS:
+        rows = [
+            row for row in checks
+            if isinstance(row, dict) and row.get("id") == name
+        ]
+        if rows and all(row.get("status") == "pass" for row in rows):
+            passed.append(name)
+    return {
+        "consumed_checks": passed,
+        "missing_checks": [name for name in _NATIVE_ROLE_CHECKS if name not in passed],
+    }
+
+
 def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """核对已有角色声明；不把旧目录、Git 或单候选策略当作开发规范。
 
@@ -2618,27 +2761,46 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
     target = governance_dir(ctx).parent.parent
     product_ctx = {**ctx, "target": str(target)}
     layout = load_governance_document(ctx, "runtime-layout")
+    release_roots: list[str] = []
+    release_declared = False
     if layout is None:
-        return _finish([_static_row(
-            "EVIDENCE_MISSING", reason="runtime_role_declaration_unavailable",
-        )])
-    rows = rows_of(layout, "runtime_directories", "runtime-layout")
-    declared = []
-    for row in rows:
-        path = row.get("path")
-        normalized = _normalized_runtime_dir(path) if _nonempty_str(path) else None
-        if normalized is None:
+        runtime_names = sorted(
+            name for name in ("runs", "evidence") if (target / name).is_dir()
+        )
+        if runtime_names:
+            return _finish([_static_row(
+                "EVIDENCE_MISSING", reason="runtime_role_declaration_unavailable",
+            )])
+        if _projection_row_count(ctx) == 0 and not _generated_surface_roots(target):
+            return _finish(
+                [_static_row(
+                    "NOT_APPLICABLE",
+                    reason="no_generated_projection_and_no_runtime_materials",
+                )],
+                generated_projections=0,
+                runtime_dirs=0,
+            )
+        declared = []
+        excluded = None
+        release_roots, release_declared = _release_unit_source_roots(target)
+    else:
+        rows = rows_of(layout, "runtime_directories", "runtime-layout")
+        declared = []
+        for row in rows:
+            path = row.get("path")
+            normalized = _normalized_runtime_dir(path) if _nonempty_str(path) else None
+            if normalized is None:
+                raise ExecutorEvidenceError(
+                    "GOVERNANCE_DOCUMENT_INVALID",
+                    "runtime-layout.runtime_directories.path 必须是目标根下的相对目录",
+                )
+            declared.append(normalized)
+        excluded = layout.get("source_count_excludes_runtime")
+        if excluded is not None and not isinstance(excluded, bool):
             raise ExecutorEvidenceError(
                 "GOVERNANCE_DOCUMENT_INVALID",
-                "runtime-layout.runtime_directories.path 必须是目标根下的相对目录",
+                "runtime-layout.source_count_excludes_runtime 必须是布尔值",
             )
-        declared.append(normalized)
-    excluded = layout.get("source_count_excludes_runtime")
-    if excluded is not None and not isinstance(excluded, bool):
-        raise ExecutorEvidenceError(
-            "GOVERNANCE_DOCUMENT_INVALID",
-            "runtime-layout.source_count_excludes_runtime 必须是布尔值",
-        )
     if declared and excluded is False:
         return _finish([_static_row(
             "FAIL", reason="runtime_copies_declared_as_source", runtime_dirs=declared,
@@ -2661,7 +2823,7 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
         raise ExecutorEvidenceError(
             "GOVERNANCE_DOCUMENT_INVALID", "源码角色声明必须是可解析且闭合的 JSON 对象",
         )
-    if not scan["candidates"]:
+    if not scan["candidates"] and not release_declared:
         return _finish([_static_row(
             "EVIDENCE_MISSING", reason="source_role_declaration_unavailable",
             runtime_dirs=declared,
@@ -2685,6 +2847,7 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
                     if normalized is None:
                         raise ExecutorEvidenceError("GOVERNANCE_DOCUMENT_INVALID", f"source-authority.{field} 路径非法")
                     roots.add(normalized)
+    sources.update(release_roots)
     # 只判同一声明位置被同时指定为源码和非源码；不推断目录祖先的排除策略。
     conflicts = sorted(sources & (generated | set(declared)))
     if conflicts:
@@ -2699,19 +2862,10 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
     item = _professional_consumption_item(ctx, "foundation")
     conclusion = _professional_original_conclusion(item) if isinstance(item, dict) else None
     if conclusion is not None and _professional_pass_verified(item):
-        subject = conclusion["subject"].get("ref")
         checked = conclusion["scope"].get("checked")
-        required = {"native_role_separation", "native_runtime_closure", "native_public_boundary"}
-        try:
-            same_subject = (
-                isinstance(subject, str)
-                and Path(subject).is_absolute()
-                and Path(subject).resolve(strict=True) == Path(ctx["target"]).resolve(strict=True)
-            )
-        except (OSError, RuntimeError, ValueError):
-            same_subject = False
+        required = set(_NATIVE_ROLE_CHECKS)
         if (
-            same_subject
+            _same_professional_subject(ctx, conclusion)
             and isinstance(checked, list)
             and all(isinstance(check, str) for check in checked)
             and required <= set(checked)
@@ -2720,6 +2874,25 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
             # Reuse the already-consumed public result and version policy;
             # neither a new reader nor a rescan is performed here.
             return _finish_professional_consumption(ctx, item, mechanical="static_scan")
+    if conclusion is not None and _same_professional_subject(ctx, conclusion):
+        named = _named_native_passes(conclusion)
+        if named is not None and not named["missing_checks"]:
+            return _finish([_static_row(
+                "PASS",
+                reason="named_native_checks_consumed",
+                consumed_checks=named["consumed_checks"],
+            )])
+        if named is not None:
+            return _finish([_static_row(
+                "EVIDENCE_MISSING",
+                reason="native_closure_public_boundary_coverage_unavailable",
+                source_roots=sorted(sources),
+                generated_roots=sorted(generated),
+                runtime_dirs=declared,
+                consumed_checks=named["consumed_checks"],
+                missing_checks=named["missing_checks"],
+                next_step="消费实际覆盖本条角色区分的原生闭包与公开边界材料；不以总体专业通过替代。",
+            )])
     return _finish([_static_row(
         "EVIDENCE_MISSING", reason="native_closure_public_boundary_coverage_unavailable",
         source_roots=sorted(sources), generated_roots=sorted(generated), runtime_dirs=declared,

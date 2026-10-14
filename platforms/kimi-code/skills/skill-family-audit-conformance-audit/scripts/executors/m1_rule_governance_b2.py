@@ -7298,7 +7298,7 @@ def check_depend_013(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_foundation_001(ctx: dict[str, Any]) -> dict[str, Any]:
-    """以真实 Profile、具名 import 与 active exemption 核对三包覆盖。"""
+    """以真实 Profile、具名 import 或正式豁免核对适用的采用分支。"""
     target_root = (
         _observable_declared_root(ctx["product_root"])
         if "product_root" in ctx else _observable_target_root(ctx)
@@ -7433,7 +7433,10 @@ def check_foundation_001(ctx: dict[str, Any]) -> dict[str, Any]:
                 failures.append({"reason": "foundation_profile_spi_rejected", "code": code})
             else:
                 mechanism_errors.append({"reason": "foundation_profile_spi_response_unjudgable"})
-    elif isinstance(foundation_profile, dict) and foundation_profile:
+    elif (
+        isinstance(foundation_profile, dict) and foundation_profile
+        and foundation_profile.get("code") != "PROJECT_PROFILE_MISSING"
+    ):
         mechanism_errors.append({"reason": "foundation_profile_without_real_carrier"})
 
     observed = bool(
@@ -7442,7 +7445,7 @@ def check_foundation_001(ctx: dict[str, Any]) -> dict[str, Any]:
         or legacy_pin is not None
         or exemption_records
         or capability_need
-        or "foundation_profile" in scope
+        or (isinstance(foundation_profile, dict) and foundation_profile.get("code") not in (None, "PROJECT_PROFILE_MISSING"))
         or "project_profile_document" in scope
         or mechanism_errors
     )
@@ -7481,8 +7484,9 @@ def check_foundation_001(ctx: dict[str, Any]) -> dict[str, Any]:
         )
 
     covered = imported_packages | adopted_packages | exempted_packages
-    uncovered = sorted(set(_FOUNDATION_PACKAGE_NAMES) - covered)
-    if not uncovered and not mechanism_errors:
+    # 具体适用能力由采用声明及语义审阅判断；单包消费不制造其余两包义务。
+    uncovered = []
+    if covered and not mechanism_errors:
         return _finish_validated(
             [_static_row(
                 "PASS",
@@ -7509,7 +7513,7 @@ def check_foundation_001(ctx: dict[str, Any]) -> dict[str, Any]:
     return _finish_validated(
         [_static_row(
             "FAIL",
-            reason="foundation_package_coverage_incomplete",
+            reason="foundation_adoption_not_demonstrated",
             uncovered_packages=uncovered,
             imported_packages=sorted(imported_packages),
             adopted_packages=sorted(adopted_packages),
@@ -8623,6 +8627,44 @@ def check_foundation_007(ctx: dict[str, Any]) -> dict[str, Any]:
             ["schema_validation", "digest_verification"],
             mechanical_half=True,
         )
+    if not profile_path.exists() and not profile_path.is_symlink():
+        # 仅在根载体缺失时核读已冻结的两层工作区声明；不继承父仓运行消费。
+        import conformance_workflow as workflow
+        workspace = target_root.parent.parent
+        entries = _foundation_evidence_entries(ctx) or []
+        selected = {}
+        for relative in (".release-skill/project.yaml", "profile.json", "AGENTS.md"):
+            path = workspace / relative
+            matches = [entry for entry in entries if isinstance(entry, dict) and entry.get("path") == str(path)]
+            if len(matches) == 1 and not any(parent.is_symlink() for parent in (path, *path.parents)):
+                raw = _foundation_entry_bytes(matches[0])
+                if raw is not None:
+                    selected[relative] = raw
+        if len(selected) == 3:
+            try:
+                declared_workspace = workflow._workspace_root_declaring(target_root)
+                parent_profile = json.loads(selected["profile.json"].decode("utf-8"))
+                agents = selected["AGENTS.md"].decode("utf-8")
+                units = workflow._parse_release_unit_sources(selected[".release-skill/project.yaml"].decode("utf-8"))
+            except (ValueError, UnicodeError, OSError, workflow.WorkflowError):
+                parent_profile = None
+                declared_workspace = None
+            if isinstance(parent_profile, dict) and declared_workspace == workspace:
+                project = parent_profile.get("project", {})
+                adoption = parent_profile.get("adoption", {})
+                descriptor = adoption.get("foundation_profile", {}) if isinstance(adoption, dict) else {}
+                if (
+                    isinstance(project, dict) and isinstance(descriptor, dict)
+                    and project.get("id") in {unit.get("id") for unit in units}
+                    and "profile.json" in agents and "Foundation" in agents
+                    and descriptor.get("stability") == "stable"
+                ):
+                    return _finish_validated(
+                        [_schema_row("NOT_APPLICABLE", reason="declared_workspace_stable_line"),
+                         _digest_row("NOT_APPLICABLE", reason="declared_workspace_stable_line",
+                                     profile_sha256=_sha256_bytes(selected["profile.json"]))],
+                        ["schema_validation", "digest_verification"], mechanical_half=True,
+                    )
     if not profile_path.is_file():
         return _finish_validated(
             [
