@@ -174,9 +174,9 @@ human = workflow.conformance_human_route
 
    成功时返回 `{"semantic_review_request": request, "semantic_context_plan": context_plan}`。这不是最终报告。完整档未指定精确选择器时，保留解析器默认的 `semantic_group_ids=None`、`canonical_rule_ids=None`，不改为空列表。等待此次返回后方可进入步骤 5。
 
-5. 按 `context_plan["contexts"]` 的现有顺序逐项处理，一项完成后再进入下一项。对每一项，先读完整当前规则，再核实际处理对象、阅读绑定材料，最后判断并引用当前证据；按以下四步完成后，交回 `{"context_digest": 当前 context_digest, "reviews": 该项 reviews}`。  
-   不要先生成全部判断再拆成多个文件，不要自行把多项合成一批。禁止用 `for i in …; judgement-00$i.json` 这类批写拼两位数文件名。不要在同一助手消息里后台并行多个 Agent。短调用应对 `for context in context_plan["contexts"]` 审阅 `context["request"]`，保存一项结果后再处理下一项；全部项保存后进入步骤 6。
-   同一宿主会话内逐项读取、判断和保存，不为每项另起模型、门禁或独立审阅，也不在扫描中修复目标。单项非阻断发现保留原结果，继续本批其余可独立执行的项；全部项完成并收齐问题后，再沿步骤 6 合并。真实必需输入缺失、权限拒绝或原合同失败关闭仍保护对应分支，不绕过原停点。
+5. 预检返回后，主控按实际处理对象、共享证据和必要关系，把 `context_plan["contexts"]` 中明确相关的原 context 组成相关规则组，并为每个相关组使用宿主原生新上下文。分派单位是相关规则组，不是一条规则、一个装箱包或一个 `review_family` 固定一个会话。同组可在同一原生新上下文中按原计划顺序逐个消费多个原 context；每项仍单独交回 `{"context_digest": 当前 context_digest, "reviews": 该项 reviews}`，立即保存后再处理下一项。不得重组 `context_plan`、不得改写原 `request`、不要先生成全部判断再拆成多个文件，也不要自行把多项合成一批。禁止用 `for i in …; judgement-00$i.json` 这类批写拼两位数文件名。不要在同一助手消息里后台并行多个 Agent。短调用应对 `for context in context_plan["contexts"]` 审阅 `context["request"]`；相关组内保存一项结果后再处理下一项，各组结果收齐后进入步骤 6。
+   每个原生新上下文完整传入该项当前 `control`、`permissions`、`untrusted_data`、冻结绑定材料和判断所需的必要关系；不传入父会话完整历史、其他组答案或旧审计答案。共用原始证据可在各组按需读取，但不能把其他组已经作出的判断当作本项事实。Codex 可明确使用 `fork_turns=none` 取得不继承对话历史的新上下文；不得声称其他平台已经过运行验证。原生新上下文不等于认知独立，`cognitive_independence=not_attested` 与四项接受条件保持不变。当前宿主没有可用原生新上下文时，明确记录受影响分支的能力缺口并停止该完整档消费，不回退到持续累积的单一会话冒充完成。
+   主控只保留归属、结果定位和必要跨组事实，串行委派相关组。组间或跨规则判断出现分歧时，回读原规则和原证据解释，保留原结果，不投票，也不覆盖子结果。不为每项机械另起模型、门禁或独立审阅程序，也不在扫描中修复目标。单项非阻断发现保留原结果，继续其余可独立执行的项；全部项完成并收齐问题后，再沿步骤 6 使用原 `_merge_semantic_context_results` 合并。真实必需输入缺失、权限拒绝或原合同失败关闭仍保护对应分支，不绕过原停点。不新增实现代码、调度器、合并入口或第二套结果合同。
 
    `reviews` 覆盖该项冻结规则子集，字段以该项
    `request["control"]["result_contract"]["required_review_fields"]` 为准。`result_contract` 只规定输出形状，不提供审计事实，也不预填结论。旧语义答案、旧摘要或旧通过结论不能代替本次审计的规则和证据。

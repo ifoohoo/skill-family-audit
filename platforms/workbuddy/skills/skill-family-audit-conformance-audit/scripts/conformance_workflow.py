@@ -4642,7 +4642,159 @@ _PRODUCT_METADATA_MATERIALS = (
     ("plugin-src/skills/skill-family-audit-conformance/refs/host-semantic-review-consumption.md", "source_file"),
     ("plugin-src/skills/skill-family-audit-conformance/SKILL.md", "source_file"),
 )
+_PRODUCT_DOCUMENT_RELATIVES = ("README.md", "CHANGELOG.md")
 _PLUGIN_SRC_MANIFEST = "plugin-src/manifest.json"
+_HOST_PLUGIN_MANIFEST_RELATIVES = (
+    ".claude-plugin/plugin.json",
+    ".codex-plugin/plugin.json",
+    ".codebuddy-plugin/plugin.json",
+    ".kimi-plugin/plugin.json",
+)
+
+
+def _host_manifest_declared_skills_dirs(product_root: Path) -> list[tuple[str, str]]:
+    """Read public host plugin manifests' declared skills directories.
+
+    Returns (manifest relative path, declared skills directory) pairs in
+    fixed manifest order.  Absolute, traversing, missing, unreadable, or
+    non-string declarations yield no pair rather than a rewritten relative
+    twin.
+    """
+    pairs: list[tuple[str, str]] = []
+    for manifest_relative in _HOST_PLUGIN_MANIFEST_RELATIVES:
+        manifest_path = product_root / manifest_relative
+        if manifest_path.is_symlink() or not manifest_path.is_file():
+            continue
+        try:
+            receipt = foundation_read_file_strict(product_root, manifest_relative)
+            declared = json.loads(receipt["content"])
+        except (WorkflowError, json.JSONDecodeError, TypeError, ValueError):
+            continue
+        if not isinstance(declared, dict):
+            continue
+        skills_value = declared.get("skills")
+        if not isinstance(skills_value, str) or not skills_value.strip():
+            continue
+        declared_dir = skills_value.strip()
+        if declared_dir.startswith("./"):
+            declared_dir = declared_dir[2:]
+        declared_dir = declared_dir.rstrip("/")
+        try:
+            _validate_posix_relative_path(declared_dir, "host manifest skills")
+        except WorkflowError:
+            continue
+        pairs.append((manifest_relative, declared_dir))
+    return pairs
+
+
+def _host_manifest_skill_source_files(product_root: Path) -> list[str]:
+    """Follow public host plugin manifests' declared skills directories.
+
+    Each host manifest may declare one ``skills`` directory whose immediate
+    skill subdirectories hold the actual SKILL.md bodies.  Missing or
+    non-directory declarations yield no skill files rather than a new
+    discovery scan.
+    """
+    relatives: list[str] = []
+    seen: set[str] = set()
+    for _manifest_relative, declared_dir in _host_manifest_declared_skills_dirs(
+        product_root
+    ):
+        skills_root = product_root / declared_dir
+        if skills_root.is_symlink() or not skills_root.is_dir():
+            continue
+        try:
+            children = sorted(skills_root.iterdir())
+        except OSError:
+            continue
+        for child in children:
+            if child.is_symlink() or not child.is_dir():
+                continue
+            skill_file = child / "SKILL.md"
+            if skill_file.is_symlink() or not skill_file.is_file():
+                continue
+            relative = f"{declared_dir}/{child.name}/SKILL.md"
+            if relative in seen:
+                continue
+            seen.add(relative)
+            relatives.append(relative)
+    return relatives
+
+
+def _existing_host_plugin_manifests(product_root: Path) -> list[str]:
+    """List the public host plugin manifests that exist as regular files."""
+    relatives: list[str] = []
+    for manifest_relative in _HOST_PLUGIN_MANIFEST_RELATIVES:
+        path = product_root / manifest_relative
+        if path.is_symlink() or not path.is_file():
+            continue
+        relatives.append(manifest_relative)
+    return relatives
+
+
+def _declared_platform_manifests(product_root: Path) -> list[str]:
+    """Locate platform mappings as siblings of the declared skills directories.
+
+    A host manifest declaring ``adapters/kimi/skills`` locates the platform
+    mapping at ``adapters/kimi/platform-manifest.json``.  Only existing
+    regular files are returned; no directory scan is performed.
+    """
+    relatives: list[str] = []
+    seen: set[str] = set()
+    for _manifest_relative, declared_dir in _host_manifest_declared_skills_dirs(
+        product_root
+    ):
+        parent = declared_dir.rsplit("/", 1)[0] if "/" in declared_dir else ""
+        candidate = (
+            f"{parent}/platform-manifest.json" if parent else "platform-manifest.json"
+        )
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        path = product_root / candidate
+        if path.is_symlink() or not path.is_file():
+            continue
+        relatives.append(candidate)
+    return relatives
+
+
+_SKILL_REFERENCE_PATTERN = re.compile(r"`([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+)`")
+
+
+def _skill_referenced_materials(product_root: Path, skill_relatives: list[str]) -> list[str]:
+    """Bind real materials that bound SKILL bodies explicitly reference.
+
+    Backtick-quoted relative references (for example ``references/writing.md``)
+    are validated as contained POSIX paths and bound only when they name an
+    existing regular file under the same skill directory.  Missing, pseudo,
+    absolute, traversing, or symlinked references are skipped; nothing is
+    synthesized or relabeled.
+    """
+    relatives: list[str] = []
+    seen: set[str] = set()
+    for skill_relative in skill_relatives:
+        try:
+            receipt = foundation_read_file_strict(product_root, skill_relative)
+        except WorkflowError:
+            continue
+        content = receipt.get("content")
+        if not isinstance(content, str):
+            continue
+        skill_dir = skill_relative.rsplit("/", 1)[0]
+        for reference in sorted(set(_SKILL_REFERENCE_PATTERN.findall(content))):
+            try:
+                _validate_posix_relative_path(reference, "skill reference")
+            except WorkflowError:
+                continue
+            relative = f"{skill_dir}/{reference}"
+            if relative in seen:
+                continue
+            path = product_root / relative
+            if path.is_symlink() or not path.is_file():
+                continue
+            seen.add(relative)
+            relatives.append(relative)
+    return relatives
 
 
 def _declared_skill_source_files(product_root: Path) -> list[str]:
@@ -4651,40 +4803,46 @@ def _declared_skill_source_files(product_root: Path) -> list[str]:
     sourceDir values are POSIX paths relative to plugin-src.  Absolute,
     traversing, missing, unreadable, or non-object declarations yield no
     skill files rather than a rewritten relative twin or a new discovery
-    scan.
+    scan.  Products without a plugin-src layout may instead declare their
+    skills directories through the public host plugin manifests; the
+    declared directories' immediate SKILL.md bodies are bound the same way.
     """
     manifest_path = product_root / _PLUGIN_SRC_MANIFEST
-    if manifest_path.is_symlink() or not manifest_path.is_file():
-        return []
-    try:
-        receipt = foundation_read_file_strict(product_root, _PLUGIN_SRC_MANIFEST)
-        declared = json.loads(receipt["content"])
-    except (WorkflowError, json.JSONDecodeError, TypeError, ValueError):
-        return []
-    if not isinstance(declared, dict):
-        return []
     relatives: list[str] = []
     seen: set[str] = set()
-    for collection in ("entrySkills", "internalSkills"):
-        rows = declared.get(collection)
-        if not isinstance(rows, list):
+    declared: Any = None
+    if manifest_path.is_file() and not manifest_path.is_symlink():
+        try:
+            receipt = foundation_read_file_strict(product_root, _PLUGIN_SRC_MANIFEST)
+            declared = json.loads(receipt["content"])
+        except (WorkflowError, json.JSONDecodeError, TypeError, ValueError):
+            declared = None
+    if isinstance(declared, dict):
+        for collection in ("entrySkills", "internalSkills"):
+            rows = declared.get(collection)
+            if not isinstance(rows, list):
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                source_dir = row.get("sourceDir")
+                if not isinstance(source_dir, str) or not source_dir.strip():
+                    continue
+                declared_dir = source_dir.strip()
+                try:
+                    _validate_posix_relative_path(declared_dir, "manifest.sourceDir")
+                except WorkflowError:
+                    continue
+                relative = f"plugin-src/{declared_dir}/SKILL.md"
+                if relative in seen:
+                    continue
+                seen.add(relative)
+                relatives.append(relative)
+    for relative in _host_manifest_skill_source_files(product_root):
+        if relative in seen:
             continue
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            source_dir = row.get("sourceDir")
-            if not isinstance(source_dir, str) or not source_dir.strip():
-                continue
-            declared_dir = source_dir.strip()
-            try:
-                _validate_posix_relative_path(declared_dir, "manifest.sourceDir")
-            except WorkflowError:
-                continue
-            relative = f"plugin-src/{declared_dir}/SKILL.md"
-            if relative in seen:
-                continue
-            seen.add(relative)
-            relatives.append(relative)
+        seen.add(relative)
+        relatives.append(relative)
     return relatives
 
 
@@ -4693,10 +4851,23 @@ def _product_direct_evidence_entries(product_root: Path) -> list[dict[str, Any]]
 
     Only existing regular files under the already selected product root are
     bound.  Kinds stay the declared evidence kinds; missing files are omitted
-    rather than relabeled.
+    rather than relabeled.  Beyond the fixed metadata materials and declared
+    SKILL bodies, this binds the product's own README/CHANGELOG, the public
+    host plugin manifests actually read, platform mappings locatable from
+    those declarations, and real materials the SKILL bodies explicitly
+    reference.
     """
+    skill_relatives = _declared_skill_source_files(product_root)
     materials: list[tuple[str, str]] = list(_PRODUCT_METADATA_MATERIALS)
-    for relative in _declared_skill_source_files(product_root):
+    for relative in _PRODUCT_DOCUMENT_RELATIVES:
+        materials.append((relative, "source_file"))
+    for relative in _existing_host_plugin_manifests(product_root):
+        materials.append((relative, "manifest"))
+    for relative in _declared_platform_manifests(product_root):
+        materials.append((relative, "manifest"))
+    for relative in skill_relatives:
+        materials.append((relative, "source_file"))
+    for relative in _skill_referenced_materials(product_root, skill_relatives):
         materials.append((relative, "source_file"))
     entries: list[dict[str, Any]] = []
     bound: set[str] = set()
@@ -5137,6 +5308,13 @@ def _gmin_method_assured_outcome(
     return outcome
 
 
+METHOD_ASSURANCE_REJECTS_SUCCEEDED = "TRUSTED_OBSERVATION_REJECTS_SUCCEEDED"
+METHOD_ASSURANCE_REJECTS_SUCCEEDED_SUMMARY = (
+    "方法保证可信观察门禁拒绝顶层 SUCCEEDED："
+    "同一规则的方法终态不一致，或存在非终态观察。"
+)
+
+
 def _method_assurance_gated_status(
     provisional_status: str,
     report: dict[str, Any],
@@ -5147,7 +5325,8 @@ def _method_assurance_gated_status(
             report
         )
     ):
-        return "FAILED"
+        # 原 Schema 要求 FAILED 必须含真实规则 FAIL；门禁拒绝成功不等于已证违规。
+        return "BLOCKED"
     return provisional_status
 
 
@@ -5648,6 +5827,30 @@ def _professional_mechanical_pass_holds_unscheduled_semantic(
         return False
     identity = (canonical_id, revision, "semantic_review")
     return identity not in scheduled_review_identities
+
+
+def _participating_route_statuses(
+    item: dict[str, Any],
+    lineage: dict[str, Any],
+    route: dict[str, Any],
+    method_records: dict[tuple[str, str, str], dict[str, Any]],
+) -> set[str]:
+    """Collect method statuses that participate in the rule conclusion.
+
+    Participation is derived from the route's check_methods and
+    required_mechanical_methods. A zero-mechanical carrier keeps its
+    executor aggregate as a non-proving observation and does not join
+    the row-level conclusion.
+    """
+    statuses = {
+        method_records.get((
+            lineage["canonical_id"], lineage["revision_digest"], method,
+        ), {}).get("trusted_observation", {}).get("status", "NOT_RUN")
+        for method in route["check_methods"]
+    }
+    if route.get("required_mechanical_methods"):
+        statuses.add(item["status"])
+    return statuses
 
 
 def _combine_route_status(statuses: set[str]) -> str:
@@ -6662,15 +6865,14 @@ def _execute_conformance_workflow(
             canonical_identity, []
         )
         if route is not None and review_methods:
-            statuses = {item["status"]}
-            statuses.update(
-                method_records.get((
-                    lineage["canonical_id"], lineage["revision_digest"], method,
-                ), {}).get("trusted_observation", {}).get("status", "NOT_RUN")
-                for method in route["check_methods"]
+            statuses = _participating_route_statuses(
+                item, lineage, route, method_records
             )
-            if _professional_mechanical_pass_holds_unscheduled_semantic(
-                item, lineage, scheduled_review_identities
+            if (
+                route.get("required_mechanical_methods")
+                and _professional_mechanical_pass_holds_unscheduled_semantic(
+                    item, lineage, scheduled_review_identities
+                )
             ):
                 held = set()
                 for method in route["check_methods"]:
@@ -6970,6 +7172,9 @@ def _execute_conformance_workflow(
     )
     if domain["status"] != status:
         domain["baseline_rule_set"]["status"] = "NON_PASSING"
+        if domain["status"] == "BLOCKED":
+            domain["reason_code"] = METHOD_ASSURANCE_REJECTS_SUCCEEDED
+            domain["summary"] = METHOD_ASSURANCE_REJECTS_SUCCEEDED_SUMMARY
     credibility = (
         "self_reported" if is_fixture or index.get("selfAudit") is True else "verified"
     )

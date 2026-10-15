@@ -3491,12 +3491,35 @@ def check_nam_024(ctx: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _source_019_bound_refs(ctx: dict[str, Any]) -> list[dict[str, str]]:
+    """调用方已验证的四字段引用；畸形整表放弃，不读 scope 或语义状态。"""
+    raw = ctx.get("verified_evidence_refs")
+    if not isinstance(raw, list) or not raw:
+        return []
+    copied: list[dict[str, str]] = []
+    for ref in raw:
+        if not isinstance(ref, dict):
+            return []
+        row: dict[str, str] = {}
+        for key in ("evidence_id", "sha256", "locator", "role"):
+            value = ref.get(key)
+            if not isinstance(value, str) or not value:
+                return []
+            row[key] = value
+        if not is_hex64(row["sha256"]):
+            return []
+        copied.append(row)
+    return copied
+
+
 def check_source_019(ctx: dict[str, Any]) -> dict[str, Any]:
     """单一真源声明。
 
     机械断言：存在公开能力生成物时，必须存在机器可读真源声明，且其
     源→生成物边集合可机械派生；同一能力不得有两个位置各自宣称真源；
     YAML 载体不是可审计载体（检出不通过）。
+    无固定生成物且无机器声明时，已绑定材料只把该早退从无对象改为缺证，
+    不是机械通过，也不独立证明整条规则不适用。
     """
     projections = 0
     document = _doc(ctx, "source-projections")
@@ -3513,6 +3536,20 @@ def check_source_019(ctx: dict[str, Any]) -> dict[str, Any]:
         surface_roots.append({"source": "plugin-src", "generated": ["generated/platforms"]})
     trigger = projections > 0 or bool(surface_roots)
     if not trigger and not scan["declaration_signal"]:
+        refs = _source_019_bound_refs(ctx)
+        if refs:
+            return _finish(
+                [_static_row(
+                    "EVIDENCE_MISSING",
+                    reason="bound_source_relation_mechanical_evidence_unavailable",
+                    evidence_refs=refs,
+                    next_step=(
+                        "缺少能核对实际编辑源或副本关系的机械结果；"
+                        "不要求新增生成器或固定声明。"
+                    ),
+                )],
+                generated_artifacts=0,
+            )
         return _finish(
             [_static_row("NOT_APPLICABLE", reason="no_generated_artifacts_and_no_declaration")],
             generated_artifacts=0,

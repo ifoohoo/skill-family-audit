@@ -231,7 +231,7 @@ print(json.dumps(out, ensure_ascii=False))
 调用，不要临时编写大型调用程序，也不要自行构造合并、规范化逻辑或残缺失败结果。
 进程内 `run_workflow` 失败与 CLI 相同：选择前走 `before_rule_selection_result`，
 选出后使用 `exc.result`。预检之后按该参考文档逐个消费每一项，不要自行合批，
-不要在同一助手消息里后台并行多个 Agent。
+不要在同一助手消息里后台并行多个 Agent。分派单位可以是相关多 context 的原生新上下文，结果单位不变；详细流程仍只在该参考文档。
 
 审阅者不能是目标的原实现者。完整检查请求不等于预先批准任何规则 `PASS`。原始审阅记录必须绑定同一 Task、规则修订和证据摘要。缺证保持 `EVIDENCE_MISSING`，不得填 `PASS`。外部 v1 仍只是待审材料。
 

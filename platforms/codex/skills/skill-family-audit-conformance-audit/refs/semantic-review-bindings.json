@@ -2298,7 +2298,8 @@
         ],
         "sensitive_data_declaration": [
           "manifest",
-          "policy"
+          "policy",
+          "source_file"
         ]
       }
     },
@@ -10571,7 +10572,8 @@
         ],
         "orchestration_responsibility_map": [
           "manifest",
-          "policy"
+          "policy",
+          "source_file"
         ]
       }
     },
@@ -10712,7 +10714,8 @@
         ],
         "shared_validation_result_contract": [
           "manifest",
-          "policy"
+          "policy",
+          "source_file"
         ]
       }
     },

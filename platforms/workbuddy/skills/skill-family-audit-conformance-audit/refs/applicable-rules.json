@@ -5332,7 +5332,7 @@
       "canonicalId": "SFA-WORKER-002",
       "canonicalRevisionDigest": "b890f2ec9e6d1ff64c607c0933e02d0f8ff95ef75c450805b68dd0c3c323be13",
       "baselineRuleId": "semantic:SFA-WORKER-002@2",
-      "baselineRevisionDigest": "fc9a61b9b9f794027dc307199eca1f407e772de84e8f76b4213e1338663a5c9c"
+      "baselineRevisionDigest": "b88986ffdca2d0c8b6e9508704ab7a6092140e279abd622d54a52a7195737cf0"
     },
     {
       "canonicalId": "SFA-WORKER-003",
@@ -5383,7 +5383,7 @@
       "canonicalRevisionDigest": "65a017bb87f9d080fd5e81a68d5d738fca199ebb494884fc757075ab10c8228e"
     },
     {
-      "baselineRevisionDigest": "7ed80061566a858770be706ca76d63a228730611b17a90d631a211291492cc1e",
+      "baselineRevisionDigest": "ac88c8d6d856ffcd962cb65b6e49a1ab1d6fbb31de86091d2d23c14d7a541c64",
       "baselineRuleId": "semantic:SFA-WORKER-011@3",
       "canonicalId": "SFA-WORKER-011",
       "canonicalRevisionDigest": "b32ec0ce88ace5c3073dc334a8f116f24d6b8f715a4d38f77532cbaf883d9739"
@@ -8589,7 +8589,7 @@
     },
     {
       "ruleId": "semantic:SFA-WORKER-002@2",
-      "revisionDigest": "fc9a61b9b9f794027dc307199eca1f407e772de84e8f76b4213e1338663a5c9c",
+      "revisionDigest": "b88986ffdca2d0c8b6e9508704ab7a6092140e279abd622d54a52a7195737cf0",
       "checkType": "semantic",
       "applicability": "project_adoption",
       "description": "Execute terminal governance SFA-WORKER-002",
@@ -8674,7 +8674,7 @@
       "description": "Execute terminal governance SFA-WORKER-011",
       "failureImpact": "error",
       "remediation": "Supply the evidence required by SFA-WORKER-011",
-      "revisionDigest": "7ed80061566a858770be706ca76d63a228730611b17a90d631a211291492cc1e",
+      "revisionDigest": "ac88c8d6d856ffcd962cb65b6e49a1ab1d6fbb31de86091d2d23c14d7a541c64",
       "ruleId": "semantic:SFA-WORKER-011@3"
     },
     {

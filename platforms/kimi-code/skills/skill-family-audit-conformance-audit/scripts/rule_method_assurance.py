@@ -947,6 +947,7 @@ def trusted_observation_accepts_top_level(report: Any) -> bool:
             result, "check_method_subresults", list, where
         )
         statuses = set()
+        has_mechanical = False
         for subindex, raw_subresult in enumerate(subresults):
             subwhere = f"{where}.check_method_subresults[{subindex}]"
             method = _require_field(
@@ -956,12 +957,19 @@ def trusted_observation_accepts_top_level(report: Any) -> bool:
             if record is None or not isinstance(record.get("trusted_observation"), dict):
                 return False
             statuses.add(record["trusted_observation"].get("status"))
+            if method in MECHANICAL_CHECK_METHODS:
+                has_mechanical = True
         terminal_statuses = {"FAIL", "NOT_APPLICABLE", "PASS"}
-        if (
-            aggregate_status not in terminal_statuses
-            or not statuses
-            or not statuses <= terminal_statuses
-        ):
+        if not statuses or not statuses <= terminal_statuses:
+            return False
+        if not has_mechanical:
+            # Zero-mechanical carrier: keep the executor aggregate as a
+            # non-proving observation. Row success is decided by the formal
+            # method observations only.
+            if len(statuses) != 1:
+                return False
+            continue
+        if aggregate_status not in terminal_statuses:
             return False
         if aggregate_status == "PASS" and statuses != {"PASS"}:
             return False

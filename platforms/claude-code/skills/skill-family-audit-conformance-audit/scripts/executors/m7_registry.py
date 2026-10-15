@@ -170,6 +170,9 @@ def check_registry_004(ctx: dict[str, Any]) -> dict[str, Any]:
 
     机械断言：每个已登记方法的投影能力/输入/输出/副作用集合必须覆盖
     权威契约声明集合（按已声明契约消费声明比对）。
+    例外：注册投影文档缺席时，已选中的 digest_verification 与兼容
+    schema_validation 记 NOT_APPLICABLE（无可检查对象），digest 观察
+    仍保留 present=false；entries=[] 不是文档缺席。
     """
     run_schema = _should_run(ctx, "schema_validation")
     run_digest = _should_run(ctx, "digest_verification")
@@ -180,7 +183,11 @@ def check_registry_004(ctx: dict[str, Any]) -> dict[str, Any]:
     evidence: dict[str, Any] = {}
     if run_schema:
         if rows is None:
-            result_rows.append(_schema_row("PASS", reason="no_declared_registry"))
+            result_rows.append(
+                _schema_row(
+                    "NOT_APPLICABLE", reason="no_inspectable_registry_object"
+                )
+            )
             evidence["registry_declared"] = False
         else:
             contracts_document = load_governance_document(ctx, "authority-contracts")
@@ -237,11 +244,22 @@ def check_registry_004(ctx: dict[str, Any]) -> dict[str, Any]:
                 evidence["entries_checked"] = len(rows)
                 evidence["contracts_bound"] = len(contracts)
     if run_digest:
-        result_rows.append(
-            _doc_digest_row(ctx, ("method-registry-projection", "authority-contracts"))
-        )
         if rows is None:
+            result_rows.append(
+                _doc_digest_row(
+                    ctx,
+                    ("method-registry-projection", "authority-contracts"),
+                    status="NOT_APPLICABLE",
+                    reason="no_inspectable_registry_object",
+                )
+            )
             evidence.setdefault("registry_declared", False)
+        else:
+            result_rows.append(
+                _doc_digest_row(
+                    ctx, ("method-registry-projection", "authority-contracts")
+                )
+            )
     return _completed(result_rows, **evidence)
 
 
@@ -295,6 +313,9 @@ def check_registry_010(ctx: dict[str, Any]) -> dict[str, Any]:
 
     机械断言：已声明的注册表消费契约摘要与制品图消费契约摘要必须一致，
     且均为 64 位十六进制；manual_second_source=true 即违反。
+    例外：注册投影文档缺席时，已选中的 digest_verification 与兼容
+    schema_validation 记 NOT_APPLICABLE（无可检查对象），digest 观察
+    仍保留 present=false；entries=[] 不是文档缺席。
     """
     run_schema = _should_run(ctx, "schema_validation")
     run_digest = _should_run(ctx, "digest_verification")
@@ -307,9 +328,20 @@ def check_registry_010(ctx: dict[str, Any]) -> dict[str, Any]:
     schema_violations: list[str] = []
     if document is None:
         if run_schema:
-            result_rows.append(_schema_row("PASS", reason="no_declared_registry"))
+            result_rows.append(
+                _schema_row(
+                    "NOT_APPLICABLE", reason="no_inspectable_registry_object"
+                )
+            )
         if run_digest:
-            result_rows.append(_doc_digest_row(ctx, ("method-registry-projection",)))
+            result_rows.append(
+                _doc_digest_row(
+                    ctx,
+                    ("method-registry-projection",),
+                    status="NOT_APPLICABLE",
+                    reason="no_inspectable_registry_object",
+                )
+            )
         return _completed(result_rows, registry_declared=False)
     if run_digest:
         registry_digest = document.get("consumed_contract_digest")

@@ -1123,13 +1123,30 @@ def _semantic_reviews_consumed_count(domain_result):
     )
 
 
+def _row_missing_evidence_roles(row):
+    """读取规则行的缺证角色：顶层机械缺证优先，语义消费结果沿嵌套字段。
+
+    真实消费结果把语义审阅的缺项放在 semantic_review.missing_evidence_roles；
+    顶层 missing_evidence_roles 继续承载机械缺证。两处都缺失时为空数组。
+    """
+    top = row.get("missing_evidence_roles")
+    if isinstance(top, list) and top:
+        return top
+    nested = row.get("semantic_review")
+    if isinstance(nested, dict):
+        nested_roles = nested.get("missing_evidence_roles")
+        if isinstance(nested_roles, list):
+            return nested_roles
+    return top if isinstance(top, list) else []
+
+
 def _missing_roles_by_rule(domain_result, rule_ids):
     roles_by_id = {}
     for row in domain_result.get("rule_results") or []:
         lineage = row.get("canonical_lineage") or {}
         canonical_id = lineage.get("canonical_id")
         rule_id = row.get("rule_id")
-        roles = sorted(row.get("missing_evidence_roles") or [])
+        roles = sorted(_row_missing_evidence_roles(row))
         if isinstance(canonical_id, str):
             roles_by_id[canonical_id] = roles
         if isinstance(rule_id, str):
@@ -1157,9 +1174,7 @@ def _blocking_findings(domain_result):
         lineage = row.get("canonical_lineage") or {}
         canonical_id = lineage.get("canonical_id")
         if status in _FINDING_STATUS_ORDER and isinstance(rule_id, str):
-            missing_roles = row.get("missing_evidence_roles")
-            if not isinstance(missing_roles, list):
-                missing_roles = []
+            missing_roles = _row_missing_evidence_roles(row)
             finding = {
                 "rule_id": rule_id,
                 "status": status,

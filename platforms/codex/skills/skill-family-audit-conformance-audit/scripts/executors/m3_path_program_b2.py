@@ -2609,13 +2609,6 @@ def _has_source_surface(target: Path) -> bool:
     return False
 
 
-_NATIVE_ROLE_CHECKS = (
-    "native_role_separation",
-    "native_runtime_closure",
-    "native_public_boundary",
-)
-
-
 def _generated_surface_roots(target: Path) -> list[dict[str, Any]]:
     """与 SOURCE-019 相同的三对表面根；只认成对出现的源码与生成投影。"""
     surface_roots: list[dict[str, Any]] = []
@@ -2721,42 +2714,33 @@ def _release_unit_source_roots(product_root: Path) -> tuple[list[str], bool]:
     return roots, declared
 
 
-def _same_professional_subject(ctx: dict[str, Any], conclusion: dict[str, Any]) -> bool:
-    subject = conclusion["subject"].get("ref")
-    try:
-        return (
-            isinstance(subject, str)
-            and Path(subject).is_absolute()
-            and Path(subject).resolve(strict=True) == Path(ctx["target"]).resolve(strict=True)
-        )
-    except (OSError, RuntimeError, ValueError):
-        return False
-
-
-def _named_native_passes(conclusion: dict[str, Any]) -> dict[str, list[str]] | None:
-    """按 checks[].id 消费已 pass 的具名范围。checks 缺席时不进入该分支。"""
-    checks = conclusion.get("checks")
-    if not isinstance(checks, list) or not checks:
-        return None
-    passed: list[str] = []
-    for name in _NATIVE_ROLE_CHECKS:
-        rows = [
-            row for row in checks
-            if isinstance(row, dict) and row.get("id") == name
-        ]
-        if rows and all(row.get("status") == "pass" for row in rows):
-            passed.append(name)
-    return {
-        "consumed_checks": passed,
-        "missing_checks": [name for name in _NATIVE_ROLE_CHECKS if name not in passed],
-    }
+def _repo_005_bound_refs(ctx: dict[str, Any]) -> list[dict[str, str]]:
+    """调用方已验证的四字段引用；畸形整表放弃，不读 scope 或语义状态。"""
+    raw = ctx.get("verified_evidence_refs")
+    if not isinstance(raw, list) or not raw:
+        return []
+    copied: list[dict[str, str]] = []
+    for ref in raw:
+        if not isinstance(ref, dict):
+            return []
+        row: dict[str, str] = {}
+        for key in ("evidence_id", "sha256", "locator", "role"):
+            value = ref.get(key)
+            if not isinstance(value, str) or not value:
+                return []
+            row[key] = value
+        if not is_hex64(row["sha256"]):
+            return []
+        copied.append(row)
+    return copied
 
 
 def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """核对已有角色声明；不把旧目录、Git 或单候选策略当作开发规范。
 
-    声明中的明确冲突可以判定；声明存在不证明原生闭包或公开边界已经检查。
-    消费已验证且实际覆盖本条具名范围的专业结论；总体专业 PASS 不填补范围。
+    声明中的明确冲突可以判定；声明存在不证明角色、来源或公开输入已经核对。
+    无固定生成物或运行目录时，已绑定材料只把该早退从无对象改为缺证。
+    未完成机械核对保持 EVIDENCE_MISSING；专业结论不转成机械 PASS。
     """
     target = governance_dir(ctx).parent.parent
     product_ctx = {**ctx, "target": str(target)}
@@ -2772,6 +2756,21 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
                 "EVIDENCE_MISSING", reason="runtime_role_declaration_unavailable",
             )])
         if _projection_row_count(ctx) == 0 and not _generated_surface_roots(target):
+            refs = _repo_005_bound_refs(ctx)
+            if refs:
+                return _finish(
+                    [_static_row(
+                        "EVIDENCE_MISSING",
+                        reason="bound_role_input_mechanical_evidence_unavailable",
+                        evidence_refs=refs,
+                        next_step=(
+                            "缺少能核对实际角色、来源与公开输入的机械结果；"
+                            "不要求补造声明。"
+                        ),
+                    )],
+                    generated_projections=0,
+                    runtime_dirs=0,
+                )
             return _finish(
                 [_static_row(
                     "NOT_APPLICABLE",
@@ -2854,49 +2853,13 @@ def check_repo_005(ctx: dict[str, Any]) -> dict[str, Any]:
         return _finish([_static_row(
             "FAIL", reason="source_generated_runtime_role_conflict", paths=conflicts,
         )])
-    from .m1_rule_governance_b2 import (
-        _professional_consumption_item, _professional_original_conclusion,
-        _professional_pass_verified, _finish_professional_consumption,
-    )
-
-    item = _professional_consumption_item(ctx, "foundation")
-    conclusion = _professional_original_conclusion(item) if isinstance(item, dict) else None
-    if conclusion is not None and _professional_pass_verified(item):
-        checked = conclusion["scope"].get("checked")
-        required = set(_NATIVE_ROLE_CHECKS)
-        if (
-            _same_professional_subject(ctx, conclusion)
-            and isinstance(checked, list)
-            and all(isinstance(check, str) for check in checked)
-            and required <= set(checked)
-            and conclusion["outcome"].get("completion") == "complete"
-        ):
-            # Reuse the already-consumed public result and version policy;
-            # neither a new reader nor a rescan is performed here.
-            return _finish_professional_consumption(ctx, item, mechanical="static_scan")
-    if conclusion is not None and _same_professional_subject(ctx, conclusion):
-        named = _named_native_passes(conclusion)
-        if named is not None and not named["missing_checks"]:
-            return _finish([_static_row(
-                "PASS",
-                reason="named_native_checks_consumed",
-                consumed_checks=named["consumed_checks"],
-            )])
-        if named is not None:
-            return _finish([_static_row(
-                "EVIDENCE_MISSING",
-                reason="native_closure_public_boundary_coverage_unavailable",
-                source_roots=sorted(sources),
-                generated_roots=sorted(generated),
-                runtime_dirs=declared,
-                consumed_checks=named["consumed_checks"],
-                missing_checks=named["missing_checks"],
-                next_step="消费实际覆盖本条角色区分的原生闭包与公开边界材料；不以总体专业通过替代。",
-            )])
     return _finish([_static_row(
-        "EVIDENCE_MISSING", reason="native_closure_public_boundary_coverage_unavailable",
-        source_roots=sorted(sources), generated_roots=sorted(generated), runtime_dirs=declared,
-        next_step="消费实际覆盖本条角色区分的原生闭包与公开边界材料；不以总体专业通过替代。",
+        "EVIDENCE_MISSING",
+        reason="role_input_mechanical_evidence_unavailable",
+        source_roots=sorted(sources),
+        generated_roots=sorted(generated),
+        runtime_dirs=declared,
+        next_step="缺少能核对实际角色、来源与公开输入的机械结果。",
     )])
 
 
