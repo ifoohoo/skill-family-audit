@@ -4061,6 +4061,7 @@ def target_scope(target: Path, target_type: str) -> dict[str, Any]:
         payload_files = [
             relative for relative in release_files
             if relative.startswith(tuple(f"{name}/" for name in payload_roots))
+            or relative == "kimi.plugin.json"
         ]
         actual_payload = str(
             foundation_resource_closure(target, payload_files)["digest"]

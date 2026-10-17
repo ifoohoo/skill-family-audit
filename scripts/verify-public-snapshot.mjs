@@ -156,14 +156,15 @@ export async function verify(root) {
     ["claude-code", ".claude-plugin/plugin.json"],
     ["codex", ".codex-plugin/plugin.json"],
     ["workbuddy", ".codebuddy-plugin/plugin.json"],
+    ["kimi-code", "kimi.plugin.json"],
   ]) {
     const descriptor = await tryParseJson(root, descriptorPath);
     if (descriptor?.skills !== `./platforms/${platform}/skills/`) {
       findings.push(`ROOT_SKILLS_PATH_MISMATCH:${platform}`);
     }
-    if (platform === "workbuddy"
+    if ((platform === "workbuddy" || platform === "kimi-code")
         && (descriptor?.name !== FAMILY_ID || descriptor?.version !== summary.version)) {
-      findings.push("ROOT_PLUGIN_IDENTITY_MISMATCH:workbuddy");
+      findings.push(`ROOT_PLUGIN_IDENTITY_MISMATCH:${platform}`);
     }
   }
   if (allFiles.some((item) => item === "platform-manifest.json"
@@ -201,11 +202,11 @@ export async function verify(root) {
     // only the candidate payload roots.  README, LICENSE, package metadata,
     // and this verifier are release-wrapper files; they must not silently
     // redefine the candidate approval subject.
-    // 与生成器的四平台闭包和三个根宿主描述文件对齐。
+    // 与生成器的四平台闭包和根宿主描述文件对齐。
     const payloadFiles = allFiles.filter(
       (item) => (item.startsWith("platforms/") || item.startsWith("spec/")
         || item.startsWith(".claude-plugin/") || item.startsWith(".codex-plugin/")
-        || item.startsWith(".codebuddy-plugin/"))
+        || item.startsWith(".codebuddy-plugin/") || item === "kimi.plugin.json")
         && !item.endsWith("#non-file"),
     );
     const payloadDigest = (await foundationClosure(runnerApi, root, payloadFiles)).digest;

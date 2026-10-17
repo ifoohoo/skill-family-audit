@@ -1123,8 +1123,8 @@
       "siteBuildingRequired": false
     }
   ],
-  "projectionDigest": "74a837f2a8a4253c8efe8930d0b3d1e720bab5fe62a7af1b98497b0162ab15c9",
-  "projectionId": "skill-family-audit:claude-code:1.1.38",
+  "projectionDigest": "efa8875e5ce6d1c793329e1630010d4ec4dbc4356a1260f12790e14cdbfd42e1",
+  "projectionId": "skill-family-audit:claude-code:1.1.40",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -1138,7 +1138,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "3131f9f83a23fbc74e8d76b1e4363652e900a025154e99ad592436ccf3e19167",
+  "sourceDigest": "9dd1668e8e325e8c352734a48a05c398ec88dafeddd3dfadb12b6aa3356d1d5a",
   "status": "candidate",
   "supportStatus": "static_projection_available",
   "unverifiedCapabilities": [
@@ -1151,5 +1151,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.1.38"
+  "version": "1.1.40"
 }

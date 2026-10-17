@@ -1123,8 +1123,8 @@
       "siteBuildingRequired": false
     }
   ],
-  "projectionDigest": "543c079f7a49d416ebeac6c2743510c5829d17be1829b047dfc50401f8045873",
-  "projectionId": "skill-family-audit:workbuddy:1.1.38",
+  "projectionDigest": "80dc8b684e9ff7cba008b9b2a8f5a80c9468dd62533676c60a60171b23eb5617",
+  "projectionId": "skill-family-audit:workbuddy:1.1.40",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -1138,7 +1138,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "3131f9f83a23fbc74e8d76b1e4363652e900a025154e99ad592436ccf3e19167",
+  "sourceDigest": "9dd1668e8e325e8c352734a48a05c398ec88dafeddd3dfadb12b6aa3356d1d5a",
   "status": "candidate",
   "supportStatus": "static_projection_available",
   "unverifiedCapabilities": [
@@ -1151,5 +1151,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.1.38"
+  "version": "1.1.40"
 }

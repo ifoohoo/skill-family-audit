@@ -1124,8 +1124,8 @@
       "siteBuildingRequired": false
     }
   ],
-  "projectionDigest": "1d3f9bbe931044d1850d863735efc09f7e39a25ab7d020ee63a329f584bc129f",
-  "projectionId": "skill-family-audit:kimi-code:1.1.38",
+  "projectionDigest": "06bd4dabc41cedf5edef3e9fdd7bb3ae4365a17ad0a98e0d0522955388a4d29e",
+  "projectionId": "skill-family-audit:kimi-code:1.1.40",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -1139,7 +1139,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "3131f9f83a23fbc74e8d76b1e4363652e900a025154e99ad592436ccf3e19167",
+  "sourceDigest": "9dd1668e8e325e8c352734a48a05c398ec88dafeddd3dfadb12b6aa3356d1d5a",
   "status": "candidate",
   "supportStatus": "manual_unverified",
   "unverifiedCapabilities": [
@@ -1153,5 +1153,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.1.38"
+  "version": "1.1.40"
 }
