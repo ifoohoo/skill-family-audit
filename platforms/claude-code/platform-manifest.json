@@ -999,10 +999,10 @@
       "version": 2
     },
     "profileSpi": {
-      "closureSha256": "0673cf2a6e0903c28d3d6968756597934e9bd1b5331d5c44155d5a99072a3867",
+      "closureSha256": "9015ff1a534700614b727b81f0a9b335e4801a9fe419cf7aea126c7404449dd8",
       "entry": "foundation/profile-spi/node_modules/skill-family-engineering-kit/profile-spi/index.mjs",
       "path": "foundation/profile-spi/foundation-profile-spi-projection.json",
-      "projectionSha256": "f89ed9762b14fa2ad0b9192d22fbdd2f6f505cd2242b6c39c2050010fa860d9b",
+      "projectionSha256": "a0dd6247f5bfac65925fd5048306392389db54332904556df4b768854988e5b4",
       "receiptSha256": "9a6ffadef519d41fb38c4c04693698eb5c9ab5641f45813454704ac99bcefe0a"
     },
     "source": {
@@ -1123,8 +1123,8 @@
       "siteBuildingRequired": false
     }
   ],
-  "projectionDigest": "efa8875e5ce6d1c793329e1630010d4ec4dbc4356a1260f12790e14cdbfd42e1",
-  "projectionId": "skill-family-audit:claude-code:1.1.40",
+  "projectionDigest": "097ef151354af3400f9991fe7a059a09f88b40e5490a8fcdbafec97db1fc4588",
+  "projectionId": "skill-family-audit:claude-code:1.1.44",
   "schemaVersion": "1.0.0-candidate",
   "sharedRuntime": {
     "contractsRoot": "shared/contracts",
@@ -1138,7 +1138,7 @@
     "rootMarker": "platform-manifest.json"
   },
   "skillsRoot": "skills",
-  "sourceDigest": "9dd1668e8e325e8c352734a48a05c398ec88dafeddd3dfadb12b6aa3356d1d5a",
+  "sourceDigest": "176b9b2a50a805479bd0fcbcbe2aa94e94cc4bc97f9a7367274407cec27764d5",
   "status": "candidate",
   "supportStatus": "static_projection_available",
   "unverifiedCapabilities": [
@@ -1151,5 +1151,5 @@
     "skill_resource_closure",
     "static_platform_projection"
   ],
-  "version": "1.1.40"
+  "version": "1.1.44"
 }

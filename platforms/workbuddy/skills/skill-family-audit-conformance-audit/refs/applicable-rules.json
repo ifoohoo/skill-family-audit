@@ -1654,7 +1654,7 @@
       "baselineRevisionDigest": "a5f99e3780803c7e173959dd4457f2dfd780d9928f01625ac81efe7553ff9e48",
       "baselineRuleId": "semantic:SFA-DATASEC-002@2",
       "canonicalId": "SFA-DATASEC-002",
-      "canonicalRevisionDigest": "086d196cd6d128242039cd7b6f812848666ae770907f2ea578722542f61ac996"
+      "canonicalRevisionDigest": "8e190943cc0fb8fb10fa2c0baa6cd2cbec379696ccdf68b70972572d69cee8b7"
     },
     {
       "baselineRevisionDigest": "aaa73aa2ed076fe5ed086869d1d12ea693914d08dbb46a0c79d5331712dc4696",
@@ -2815,10 +2815,10 @@
       "canonicalRevisionDigest": "bb866fe7eddce00469b8f4cc46bbc8e40e4661973bb2b37cd2591be6db8fe0f0"
     },
     {
-      "baselineRevisionDigest": "af9c5ea5b2263ec8db796712d857d906a818d68eb4319d81e8edf4167bc8782e",
+      "baselineRevisionDigest": "dfe23922fcdc52242cd6a3085bd6308dd4be0d802340ddaa5066549cb598ed37",
       "baselineRuleId": "semantic:SFA-METHOD-003@3",
       "canonicalId": "SFA-METHOD-003",
-      "canonicalRevisionDigest": "98439230e249f5bb48170656b6fa102aebcbd8259a158fa74a146e5d3c759c3f"
+      "canonicalRevisionDigest": "4eae2e71b014d0ebac7bd97e5e1a0fdf63539944a87be43b86b91a0bb6a5d026"
     },
     {
       "baselineRevisionDigest": "8f335921ae28c36368486677b2d078439b262a9ac2796d01df61f56217264f3e",
@@ -2905,10 +2905,10 @@
       "canonicalRevisionDigest": "3c819176e8339c83360c1833824de2c1231ee32afe5e5301c80e0da2b875a421"
     },
     {
-      "baselineRevisionDigest": "e9fcd93803909c84b2ac92a3addbf64fd3b0fc16ac00b4e4003ac0c0f6823ef0",
+      "baselineRevisionDigest": "49053d99d550b12c692d94f4d9272299b8970cb43b2cb71f86d501927d569de6",
       "baselineRuleId": "semantic:SFA-MIGRATE-005@2",
       "canonicalId": "SFA-MIGRATE-005",
-      "canonicalRevisionDigest": "4b19ee32c8869f9b51936f84619406c5eec57bac2dd91eff1c62a89749047c79"
+      "canonicalRevisionDigest": "b3291cb02787d674c96ecec39c77992f67967c1c3ded5f04e910d2705942eea2"
     },
     {
       "baselineRevisionDigest": "8a2d53bec6ef662ceedf7f4ab9d2c82f6f2e8140f02fc144eee9d4691b84582a",
@@ -7594,7 +7594,7 @@
       "description": "Execute terminal governance SFA-METHOD-003",
       "failureImpact": "error",
       "remediation": "Supply the evidence required by SFA-METHOD-003",
-      "revisionDigest": "af9c5ea5b2263ec8db796712d857d906a818d68eb4319d81e8edf4167bc8782e",
+      "revisionDigest": "dfe23922fcdc52242cd6a3085bd6308dd4be0d802340ddaa5066549cb598ed37",
       "ruleId": "semantic:SFA-METHOD-003@3"
     },
     {
@@ -7711,7 +7711,7 @@
       "description": "Execute terminal governance SFA-MIGRATE-005",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-MIGRATE-005",
-      "revisionDigest": "e9fcd93803909c84b2ac92a3addbf64fd3b0fc16ac00b4e4003ac0c0f6823ef0",
+      "revisionDigest": "49053d99d550b12c692d94f4d9272299b8970cb43b2cb71f86d501927d569de6",
       "ruleId": "semantic:SFA-MIGRATE-005@2"
     },
     {

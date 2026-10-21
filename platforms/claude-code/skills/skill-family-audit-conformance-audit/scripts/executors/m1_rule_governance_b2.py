@@ -4499,7 +4499,69 @@ def _professional_original_conclusion(item: dict[str, Any]) -> dict[str, Any] | 
     return conclusion
 
 
+_PROFESSIONAL_CLEAR_CODES = {"FOUNDATION_STATIC_CLEAR"}
+_PROFESSIONAL_FINDINGS_CODES = {"FOUNDATION_STATIC_FINDINGS"}
+_PROFESSIONAL_INCOMPLETE_CODES = {"FOUNDATION_STATIC_INCOMPLETE"}
+
+
+def _professional_outcome(item: dict[str, Any]) -> dict[str, Any] | None:
+    conclusion = _professional_original_conclusion(item)
+    if conclusion is None:
+        return None
+    outcome = conclusion.get("outcome")
+    return outcome if isinstance(outcome, dict) else None
+
+
+def _canonical_fs_path(value: str) -> str:
+    text = os.path.normpath(value)
+    try:
+        return os.path.realpath(text)
+    except OSError:
+        return text
+
+
+def _professional_subject_matches_target(
+    item: dict[str, Any], target: str | Path
+) -> bool | None:
+    """True match, False mismatch, None when subject.ref is not a comparable path.
+
+    Existing in-repo fixtures use opaque tokens such as ``foundation-012``.
+    Formal Foundation proofs use absolute filesystem paths. Only the latter
+    are compared to ctx.target.
+    """
+    conclusion = _professional_original_conclusion(item)
+    if conclusion is None:
+        return None
+    subject = conclusion.get("subject")
+    ref = subject.get("ref") if isinstance(subject, dict) else None
+    if not isinstance(ref, str) or not ref:
+        return None
+    if not os.path.isabs(ref):
+        return None
+    return _canonical_fs_path(ref) == _canonical_fs_path(str(target))
+
+
 def _professional_issue(item: dict[str, Any]) -> str:
+    conclusion = _professional_original_conclusion(item)
+    outcome = _professional_outcome(item)
+    completion = outcome.get("completion") if isinstance(outcome, dict) else None
+    code = outcome.get("code") if isinstance(outcome, dict) else None
+    findings = outcome.get("findings") if isinstance(outcome, dict) else None
+    if isinstance(completion, str) and completion != "complete":
+        return "professional_incomplete"
+    if isinstance(code, str) and code in _PROFESSIONAL_INCOMPLETE_CODES:
+        return "professional_incomplete"
+    if isinstance(code, str) and code in _PROFESSIONAL_FINDINGS_CODES:
+        return "professional_findings"
+    if isinstance(findings, list) and findings:
+        return "professional_findings"
+    if (
+        item.get("reader_status") == "not_pass"
+        and conclusion is not None
+        and completion == "complete"
+        and not (isinstance(code, str) and code in _PROFESSIONAL_CLEAR_CODES)
+    ):
+        return "professional_findings"
     if item.get("status") == "pass":
         return "professional_pass"
     if item.get("reader_status") == "unavailable":
@@ -4507,18 +4569,6 @@ def _professional_issue(item: dict[str, Any]) -> str:
     mode = item.get("mode")
     if mode in {"missing_entry", "missing_proof", "version_policy", "not_selected"}:
         return str(mode)
-    conclusion = _professional_original_conclusion(item)
-    outcome = conclusion.get("outcome") if conclusion is not None else None
-    completion = outcome.get("completion") if isinstance(outcome, dict) else None
-    if isinstance(completion, str) and completion != "complete":
-        return "professional_incomplete"
-    if (
-        item.get("reader_status") == "not_pass"
-        and mode in {"reused_proof", "scanned"}
-        and conclusion is not None
-        and completion == "complete"
-    ):
-        return "professional_findings"
     return "missing_proof"
 
 
@@ -4528,12 +4578,27 @@ def _professional_pass_verified(item: dict[str, Any]) -> bool:
     baseline = item.get("baseline_version")
     if not isinstance(baseline, str) or not baseline:
         return False
+    conclusion = _professional_original_conclusion(item)
+    if conclusion is not None:
+        outcome = _professional_outcome(item)
+        if not isinstance(outcome, dict):
+            return False
+        if outcome.get("completion") != "complete":
+            return False
+        code = outcome.get("code")
+        if code in _PROFESSIONAL_FINDINGS_CODES or code in _PROFESSIONAL_INCOMPLETE_CODES:
+            return False
+        findings = outcome.get("findings")
+        if isinstance(findings, list) and findings:
+            return False
+        if code not in _PROFESSIONAL_CLEAR_CODES:
+            return False
     relation = item.get("version_relation")
     proof_version = item.get("proof_version")
     if relation == "higher" and isinstance(proof_version, str) and proof_version:
         return True
     if relation == "same" and item.get("reader_status") == "pass":
-        return _professional_original_conclusion(item) is not None
+        return conclusion is not None
     if relation == "absent" and item.get("mode") == "not_selected":
         return True
     return False
@@ -4572,6 +4637,17 @@ def _finish_professional_consumption(
     )
     issue = _professional_issue(item)
     verified = _professional_pass_verified(item)
+    subject_match = _professional_subject_matches_target(item, target)
+    if subject_match is False:
+        verified = False
+        issue = "professional_wrong_target"
+        reason = "professional_subject_does_not_match_audit_target"
+    if issue in {
+        "professional_findings",
+        "professional_incomplete",
+        "professional_wrong_target",
+    }:
+        verified = False
     mechanical_status = "PASS" if verified else "EVIDENCE_MISSING"
     conclusion = _professional_original_conclusion(item)
     evidence = {
@@ -4583,6 +4659,7 @@ def _finish_professional_consumption(
         "does_not_certify_author": item.get("does_not_certify_author") is True,
         "does_not_mean_rescan": item.get("does_not_mean_rescan") is True,
         "refresh_suggested": item.get("refresh_suggested") is True,
+        "subject_matches_target": subject_match,
     }
     if conclusion is not None:
         evidence["conclusion"] = conclusion

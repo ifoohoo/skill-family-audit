@@ -1,5 +1,5 @@
 {
-  "closureSha256": "0673cf2a6e0903c28d3d6968756597934e9bd1b5331d5c44155d5a99072a3867",
+  "closureSha256": "9015ff1a534700614b727b81f0a9b335e4801a9fe419cf7aea126c7404449dd8",
   "entry": "node_modules/skill-family-engineering-kit/profile-spi/index.mjs",
   "fileCount": 794,
   "files": [
@@ -729,7 +729,7 @@
     },
     {
       "path": "node_modules/fast-uri/index.js",
-      "sha256": "62876e5094b43ba2ba90374613dab4576fd337063dad20b4b07cc5e3a7e2303b"
+      "sha256": "528ad63bf9d97d888d716ea0c7fff01b5d7054980bb671f0353065b7a7e093f4"
     },
     {
       "path": "node_modules/fast-uri/lib/schemes.js",
@@ -737,11 +737,11 @@
     },
     {
       "path": "node_modules/fast-uri/lib/utils.js",
-      "sha256": "610a6cfa7b1c9d5689443b3a3d14af4c24afed51ef5852495ae1489ae455a9f4"
+      "sha256": "f97791a6c193027083b654d7428e0101aa2aaf5c2ab07a813cb8c1bf71d4ceb6"
     },
     {
       "path": "node_modules/fast-uri/package.json",
-      "sha256": "30cad05aad3d3596513706451dbfc7e0422f9c1d00f2903ecc34580327d54bc7"
+      "sha256": "06728ad83c4df979c6895d089452622441e34afe9b1c24584e2acac8d94a2876"
     },
     {
       "path": "node_modules/get-npm-tarball-url/lib/index.js",

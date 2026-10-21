@@ -100,8 +100,571 @@ OWNER_BOUNDARY = {
     "release": "release-skill",
 }
 
+_AUDIT_MAINTENANCE_DOMAINS = frozenset({
+    "AUDIT",
+    "AUDITINTERNAL",
+    "AUDITMETHOD",
+    "AUDITPRODUCT",
+    "AUDITREPAIR",
+    "CHECKIMPL",
+    "RULE",
+})
+_RELEASE_DOMAINS = frozenset({"PUBLISH", "RELEASE", "INSTALL"})
+_FOUNDATION_DOMAINS = frozenset({"FOUNDATION", "WIRING", "HARNESS"})
+_REVALIDATION_AUDIT = "skill-family-audit:conformance-audit"
+_REVALIDATION_FOUNDATION = (
+    "skill-family-foundation:foundation-engineering-check then "
+    "skill-family-audit:conformance-audit"
+)
+_REVALIDATION_RELEASE = (
+    "release-skill:release-assess then skill-family-audit:conformance-audit"
+)
+_REVALIDATION_PRODUCT = (
+    "target-engineering per professional advice then "
+    "skill-family-audit:conformance-audit"
+)
+_REVALIDATION_EVIDENCE = (
+    "existing professional or mechanical check conclusion then "
+    "skill-family-audit:conformance-audit"
+)
+_CONFIRMED_RECOMMENDATION_REASON_CODES = frozenset({
+    "scaffold_recommended_file_missing",
+    "recommendation_gap",
+    "recommendation_only_difference",
+})
+_CONSUMER_CONFIGURATION_MARKERS = (
+    "consumer_configuration_invalid",
+    "consumer_wiring",
+    "target_configuration_invalid",
+)
+_MISSING_EVIDENCE_MARKERS = (
+    "required_evidence_role_missing",
+    "professional_proof_missing",
+    "missing_proof",
+    "evidence_missing",
+    "bound_source_relation_mechanical_evidence_unavailable",
+    "bound_role_input_mechanical_evidence_unavailable",
+    "role_input_mechanical_evidence_unavailable",
+)
+_SECRET_OR_STRUCTURAL_MARKERS = (
+    "real_secret",
+    "real_sensitive",
+    "unauthorized_sensitive",
+    "truth_source_carrier_violations",
+    "source_generated_runtime_role_conflict",
+    "actual_source_root_not_declared",
+)
+
 _RUN_TREE_DIGEST_CACHE: dict[Path, str] = {}
 _GOVERNED_ROUTE_CACHE: dict[str, dict[str, Any]] = {}
+
+
+def _canonical_id_of_result(item: dict[str, Any]) -> str:
+    lineage = item.get("canonical_lineage")
+    if isinstance(lineage, dict):
+        canonical_id = lineage.get("canonical_id")
+        if isinstance(canonical_id, str) and canonical_id:
+            return canonical_id
+    rule_id = item.get("rule_id")
+    if isinstance(rule_id, str) and rule_id.startswith("SFA-"):
+        return rule_id
+    if isinstance(rule_id, str) and "SFA-" in rule_id:
+        body = rule_id.split(":", 1)[-1]
+        return body.rsplit("@", 1)[0]
+    return str(rule_id or "")
+
+
+def _domain_of_canonical_id(canonical_id: str) -> str:
+    if not canonical_id.startswith("SFA-"):
+        return ""
+    parts = canonical_id.split("-")
+    if len(parts) >= 3:
+        return parts[1]
+    return parts[1] if len(parts) == 2 else ""
+
+
+def _as_dict(value: Any) -> dict[str, Any] | None:
+    return value if isinstance(value, dict) else None
+
+
+def _professional_consumption_record(item: dict[str, Any]) -> dict[str, Any] | None:
+    """Read the original professional item from the executor nesting.
+
+    ``_finish`` stores the consumed item at ``evidence.professional_consumption``.
+    Older hand-built rows may still place it on the result root.
+    """
+    for candidate in (
+        item.get("professional_consumption"),
+        (_as_dict(item.get("evidence")) or {}).get("professional_consumption"),
+    ):
+        record = _as_dict(candidate)
+        if record is not None:
+            return record
+    return None
+
+
+def _professional_original_conclusion_from_item(
+    item: dict[str, Any],
+) -> dict[str, Any] | None:
+    consumption = _professional_consumption_record(item)
+    for source in (
+        consumption,
+        _as_dict(item.get("evidence")),
+        item,
+    ):
+        if source is None:
+            continue
+        conclusion = _as_dict(source.get("conclusion"))
+        if (
+            conclusion is not None
+            and isinstance(conclusion.get("subject"), dict)
+            and isinstance(conclusion.get("scope"), dict)
+            and isinstance(conclusion.get("outcome"), dict)
+        ):
+            return conclusion
+    rows = item.get("check_method_subresults")
+    if isinstance(rows, list):
+        for row in rows:
+            evidence = _as_dict((_as_dict(row) or {}).get("evidence"))
+            if evidence is None:
+                continue
+            conclusion = _as_dict(evidence.get("conclusion"))
+            if (
+                conclusion is not None
+                and isinstance(conclusion.get("subject"), dict)
+                and isinstance(conclusion.get("scope"), dict)
+                and isinstance(conclusion.get("outcome"), dict)
+            ):
+                return conclusion
+    return None
+
+
+def _append_reason_piece(pieces: list[str], value: Any) -> None:
+    if isinstance(value, str) and value:
+        pieces.append(value)
+
+
+def _finding_reason_text(item: dict[str, Any]) -> str:
+    pieces: list[str] = []
+    _append_reason_piece(pieces, item.get("status"))
+    for key in ("reason_code", "reason", "summary"):
+        _append_reason_piece(pieces, item.get(key))
+    semantic = _as_dict(item.get("semantic_review"))
+    if semantic is not None:
+        for key in ("reason_code", "status", "rationale"):
+            _append_reason_piece(pieces, semantic.get(key))
+    evidence = _as_dict(item.get("evidence"))
+    if evidence is not None:
+        _append_reason_piece(pieces, evidence.get("reason"))
+        _append_reason_piece(pieces, evidence.get("reason_code"))
+    consumption = _professional_consumption_record(item)
+    if consumption is not None:
+        _append_reason_piece(pieces, consumption.get("reason"))
+        _append_reason_piece(pieces, consumption.get("summary"))
+    rows = item.get("check_method_subresults")
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for key in ("reason", "reason_code"):
+                _append_reason_piece(pieces, row.get(key))
+            row_evidence = _as_dict(row.get("evidence"))
+            if row_evidence is not None:
+                _append_reason_piece(pieces, row_evidence.get("reason"))
+                _append_reason_piece(pieces, row_evidence.get("reason_code"))
+    conclusion = _professional_original_conclusion_from_item(item)
+    if conclusion is not None:
+        outcome = _as_dict(conclusion.get("outcome"))
+        if outcome is not None:
+            for key in ("summary", "code", "reason"):
+                _append_reason_piece(pieces, outcome.get(key))
+        checks = conclusion.get("checks")
+        if isinstance(checks, list):
+            for check in checks:
+                if isinstance(check, dict):
+                    _append_reason_piece(pieces, check.get("reason"))
+    seen: dict[str, None] = {}
+    for piece in pieces:
+        seen.setdefault(piece, None)
+    return " / ".join(seen)
+
+
+def _identity_strings(value: Any) -> list[str]:
+    found: list[str] = []
+    if isinstance(value, str) and value:
+        found.append(value)
+    mapping = _as_dict(value)
+    if mapping is not None:
+        for key in ("id", "provider_id", "ref", "owner"):
+            inner = mapping.get(key)
+            if isinstance(inner, str) and inner:
+                found.append(inner)
+    return found
+
+
+def _professional_provider_id(item: dict[str, Any]) -> str | None:
+    consumption = _professional_consumption_record(item)
+    sources: list[dict[str, Any]] = []
+    if consumption is not None:
+        sources.append(consumption)
+    evidence = _as_dict(item.get("evidence"))
+    if evidence is not None:
+        sources.append(evidence)
+    rows = item.get("check_method_subresults")
+    if isinstance(rows, list):
+        for row in rows:
+            row_evidence = _as_dict((_as_dict(row) or {}).get("evidence"))
+            if row_evidence is not None:
+                sources.append(row_evidence)
+    for source in sources:
+        for key in ("provider_id", "provider", "owner"):
+            for identity in _identity_strings(source.get(key)):
+                return identity
+    return None
+
+
+def _reason_blob(item: dict[str, Any], reason: str) -> str:
+    code = str(item.get("reason_code") or "")
+    status = str(item.get("status") or "")
+    return f"{status} {code} {reason}".lower()
+
+
+def _professional_issue_of_item(item: dict[str, Any]) -> str | None:
+    rows = item.get("check_method_subresults")
+    if isinstance(rows, list):
+        for row in rows:
+            evidence = _as_dict((_as_dict(row) or {}).get("evidence"))
+            if evidence is not None:
+                issue = evidence.get("professional_issue")
+                if isinstance(issue, str) and issue:
+                    return issue
+    evidence = _as_dict(item.get("evidence"))
+    if evidence is not None:
+        issue = evidence.get("professional_issue")
+        if isinstance(issue, str) and issue:
+            return issue
+    consumption = _professional_consumption_record(item)
+    if consumption is not None:
+        issue = consumption.get("professional_issue") or consumption.get("issue_type")
+        if isinstance(issue, str) and issue:
+            return issue
+    return None
+
+
+def _professional_provider_identities(
+    item: dict[str, Any], provider_id: str | None
+) -> set[str]:
+    identities: set[str] = set()
+    if isinstance(provider_id, str) and provider_id:
+        identities.add(provider_id)
+    consumption = _professional_consumption_record(item)
+    sources: list[dict[str, Any]] = []
+    if consumption is not None:
+        sources.append(consumption)
+        conclusion = _as_dict(consumption.get("conclusion"))
+        if conclusion is not None:
+            sources.append(conclusion)
+    item_conclusion = _professional_original_conclusion_from_item(item)
+    if item_conclusion is not None:
+        sources.append(item_conclusion)
+    for source in sources:
+        for key in ("provider_id", "provider", "owner"):
+            identities.update(_identity_strings(source.get(key)))
+    return identities
+
+
+def _provider_capability_gap_proven(
+    conclusion: dict[str, Any] | None, provider_identities: set[str]
+) -> bool:
+    """Only when the original conclusion's subject is the provider itself."""
+    if conclusion is None or not provider_identities:
+        return False
+    subject = _as_dict(conclusion.get("subject"))
+    if subject is None:
+        return False
+    for key in ("ref", "id", "provider_id"):
+        value = subject.get(key)
+        if isinstance(value, str) and value in provider_identities:
+            return True
+    return False
+
+
+def _target_professional_findings(
+    conclusion: dict[str, Any] | None, provider_identities: set[str]
+) -> bool:
+    """Completed professional checks that found defects in the target subject."""
+    if conclusion is None:
+        return False
+    subject = _as_dict(conclusion.get("subject"))
+    subject_ref = None
+    if subject is not None:
+        for key in ("ref", "id"):
+            value = subject.get(key)
+            if isinstance(value, str) and value:
+                subject_ref = value
+                break
+    if not subject_ref or subject_ref in provider_identities:
+        return False
+    outcome = _as_dict(conclusion.get("outcome"))
+    if outcome is not None and outcome.get("completion") == "complete":
+        return True
+    checks = conclusion.get("checks")
+    if isinstance(checks, list):
+        for check in checks:
+            if isinstance(check, dict) and check.get("status") in {
+                "findings",
+                "fail",
+                "not_pass",
+            }:
+                return True
+    return False
+
+
+def _finding_object_locator(
+    canonical_id: str, conclusion: dict[str, Any] | None
+) -> str:
+    parts = [canonical_id] if canonical_id else []
+    if conclusion is None:
+        return canonical_id
+    subject = _as_dict(conclusion.get("subject"))
+    if subject is not None:
+        for key in ("ref", "id"):
+            value = subject.get(key)
+            if isinstance(value, str) and value:
+                parts.append(value)
+                break
+    scope = _as_dict(conclusion.get("scope"))
+    if scope is not None:
+        for key in ("id", "checked"):
+            value = scope.get(key)
+            if isinstance(value, str) and value:
+                parts.append(value)
+                break
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, str) and item:
+                        parts.append(item)
+                        break
+    checks = conclusion.get("checks")
+    if isinstance(checks, list):
+        for check in checks:
+            if not isinstance(check, dict):
+                continue
+            check_id = check.get("id")
+            if isinstance(check_id, str) and check_id:
+                parts.append(check_id)
+            refs = check.get("sourceRefs")
+            if isinstance(refs, list):
+                for ref in refs:
+                    if isinstance(ref, str) and ref:
+                        parts.append(ref)
+    seen: dict[str, None] = {}
+    ordered: list[str] = []
+    for part in parts:
+        if part not in seen:
+            seen[part] = None
+            ordered.append(part)
+    return " / ".join(ordered) if ordered else canonical_id
+
+
+def _has_mandatory_secret_or_structural_failure(item: dict[str, Any], reason: str) -> bool:
+    blob = _reason_blob(item, reason)
+    if any(marker in blob for marker in _SECRET_OR_STRUCTURAL_MARKERS):
+        return True
+    effect = item.get("effect")
+    if isinstance(effect, str) and effect.lower() == "mandatory" and str(item.get("status") or "") == "FAIL":
+        return True
+    return False
+
+
+def _is_missing_applicable_proof(item: dict[str, Any], reason: str) -> bool:
+    status = str(item.get("status") or "")
+    blob = _reason_blob(item, reason)
+    if status == "EVIDENCE_MISSING":
+        return True
+    return any(marker in blob for marker in _MISSING_EVIDENCE_MARKERS)
+
+
+def _is_consumer_configuration_issue(reason: str) -> bool:
+    blob = reason.lower()
+    return any(marker in blob for marker in _CONSUMER_CONFIGURATION_MARKERS)
+
+
+def _confirmed_recommendation_without_mandatory_obligation(
+    item: dict[str, Any], reason: str
+) -> bool:
+    """Only when existing evidence already confirms a recommendation gap.
+
+    Secrets, missing applicable proof and real structural violations stay
+    repair-or-evidence obligations. Rule IDs and keyword hits are not enough.
+    """
+    if _has_mandatory_secret_or_structural_failure(item, reason):
+        return False
+    if _is_missing_applicable_proof(item, reason):
+        return False
+    code = str(item.get("reason_code") or "")
+    adoption = str(item.get("adoption_mode") or "")
+    effect = str(item.get("effect") or "")
+    if effect.lower() == "mandatory":
+        return False
+    return (
+        code in _CONFIRMED_RECOMMENDATION_REASON_CODES
+        or adoption == "recommendation_only"
+        or item.get("classification") == "recommendation"
+    )
+
+
+def finding_responsibility_route(item: dict[str, Any]) -> dict[str, str]:
+    """Classify an existing non-passing rule result for report routing.
+
+    Does not add a second status ledger. Triage uses the actual reason and
+    existing professional/semantic fields, not domain-name defaults.
+    """
+    canonical_id = _canonical_id_of_result(item)
+    domain = _domain_of_canonical_id(canonical_id)
+    status = str(item.get("status") or "")
+    reason = _finding_reason_text(item) or status or "未给出失败原因"
+    provider_id = _professional_provider_id(item)
+    professional_issue = _professional_issue_of_item(item)
+    conclusion = _professional_original_conclusion_from_item(item)
+    object_id = _finding_object_locator(
+        canonical_id or str(item.get("rule_id") or ""),
+        conclusion,
+    )
+    provider_identities = _professional_provider_identities(item, provider_id)
+    audit_executor_contract = any(
+        marker in reason
+        for marker in (
+            "executor_method_subresults_invalid",
+            "SEMANTIC_REVIEW_PRODUCER_UNTRUSTED",
+        )
+    )
+    if _confirmed_recommendation_without_mandatory_obligation(item, reason):
+        party = OWNER_BOUNDARY["foundation_harness"]
+        classification = "confirmed_recommendation"
+        minimal_fix = (
+            f"对象 {object_id}：当前证据已确认是推荐项且无强制义务，"
+            "不作为产品缺陷整改；按 Foundation 公开初始化或存量接入入口核对适用结构。"
+        )
+        revalidation = _REVALIDATION_FOUNDATION
+    elif _is_consumer_configuration_issue(reason):
+        party = "product"
+        classification = "consumer_configuration"
+        minimal_fix = (
+            f"对象 {object_id}：消费者参数或接线由目标工程按专业建议修复，"
+            "不是上游产品缺陷。"
+        )
+        revalidation = _REVALIDATION_PRODUCT
+    elif professional_issue == "professional_findings":
+        if _provider_capability_gap_proven(conclusion, provider_identities):
+            party = provider_id or next(iter(provider_identities), "pending_triage")
+            classification = "provider_capability_gap"
+            minimal_fix = (
+                f"对象 {object_id}：原始结论证明提供方能力缺口，交 {party}，"
+                "按其公开检查或接入入口处理后复验，再审计。"
+            )
+            revalidation = (
+                f"{party} public check or access entry then "
+                "skill-family-audit:conformance-audit"
+            )
+        elif _target_professional_findings(conclusion, provider_identities):
+            party = "product"
+            classification = "product"
+            minimal_fix = (
+                f"对象 {object_id}：专业检查已完成并在目标发现问题，"
+                "由目标工程按专业建议修复后复验，再审计。"
+            )
+            revalidation = _REVALIDATION_PRODUCT
+        else:
+            party = "pending_triage"
+            classification = "pending_triage"
+            minimal_fix = (
+                f"对象 {object_id}：信息不足，待分诊。"
+                "professional_findings 只说明专业检查已完成并发现了问题，"
+                "不能据此断定提供方能力缺口。"
+            )
+            revalidation = _REVALIDATION_EVIDENCE
+    elif _is_missing_applicable_proof(item, reason):
+        classification = "missing_evidence"
+        if professional_issue in {"missing_entry", "missing_proof", "reader_unavailable"} and provider_id:
+            party = provider_id
+            minimal_fix = (
+                f"对象 {object_id}：缺适用证明。补现有检查结论，"
+                "缺证不等于产品实现失败。"
+            )
+            revalidation = _REVALIDATION_EVIDENCE
+        elif domain in _FOUNDATION_DOMAINS and not _is_consumer_configuration_issue(reason):
+            party = "pending_triage"
+            classification = "pending_triage"
+            minimal_fix = (
+                f"对象 {object_id}：信息不足，待分诊。"
+                "不能凭域名断定上游产品缺陷；先核对是消费者接线还是提供方缺口，再补现有检查结论。"
+            )
+            revalidation = _REVALIDATION_EVIDENCE
+        elif domain in _AUDIT_MAINTENANCE_DOMAINS or audit_executor_contract:
+            party = OWNER_BOUNDARY["audit"]
+            minimal_fix = (
+                f"对象 {object_id}：缺适用证明。补现有检查结论；"
+                "若属规则或证据识别错误，交 skill-family-audit 维护任务。"
+            )
+            revalidation = _REVALIDATION_EVIDENCE
+        else:
+            party = "product"
+            minimal_fix = (
+                f"对象 {object_id}：缺适用证明。补现有检查结论，"
+                "缺证不等于产品实现失败。"
+            )
+            revalidation = _REVALIDATION_EVIDENCE
+    elif domain in _AUDIT_MAINTENANCE_DOMAINS or audit_executor_contract:
+        party = OWNER_BOUNDARY["audit"]
+        classification = "audit_maintenance"
+        minimal_fix = (
+            f"对象 {object_id}：规则或证据识别错误交 skill-family-audit 维护任务，"
+            "不在一次消费者审计中临时改标准。"
+        )
+        revalidation = _REVALIDATION_AUDIT
+    elif domain in _RELEASE_DOMAINS:
+        party = OWNER_BOUNDARY["release"]
+        classification = "release"
+        minimal_fix = (
+            f"对象 {object_id}：发布配置及载荷归 release-skill；"
+            "按 release-assess 或 release-config 处理后复验，再审计。"
+        )
+        revalidation = _REVALIDATION_RELEASE
+    elif professional_issue and provider_id:
+        party = provider_id
+        classification = "professional_consumption"
+        minimal_fix = (
+            f"对象 {object_id}：由 {provider_id} 按其公开入口处理现有专业结论后复验，再审计。"
+        )
+        revalidation = (
+            f"{provider_id} public check or access entry then "
+            "skill-family-audit:conformance-audit"
+        )
+    elif domain in _FOUNDATION_DOMAINS:
+        party = "pending_triage"
+        classification = "pending_triage"
+        minimal_fix = (
+            f"对象 {object_id}：信息不足，待分诊。"
+            "不能凭 FOUNDATION 域名断定上游产品缺陷。"
+        )
+        revalidation = _REVALIDATION_EVIDENCE
+    else:
+        party = "product"
+        classification = "product"
+        minimal_fix = (
+            f"对象 {object_id}：领域问题归产品。"
+            "按规则整改目标工程后重新运行符合性审计；本制品不修改目标。"
+        )
+        revalidation = _REVALIDATION_PRODUCT
+    return {
+        "object": object_id,
+        "reason": reason,
+        "responsible_party": party,
+        "minimal_fix": minimal_fix,
+        "revalidation_entry": revalidation,
+        "classification": classification,
+    }
 
 
 def _reset_run_fact_cache() -> None:
@@ -5593,6 +6156,81 @@ def _w2b1_executor_outcome(
         }
 
 
+def _guidance_exited_result_rows(
+    manifest: dict[str, Any],
+    results: list[dict[str, Any]],
+    profile_plan: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Fill guidance IDs that left executable scope, without rewriting canonicalGuidance.
+
+    gmin-12 identities can remain in canonicalGuidance after source_dispositions
+    remove their live routes.  Targeted project_adoption then has no in-scope
+    result for those IDs, and SPI-complete public entry fail-closes before A1.
+    Rows are only for the guidance view; they must not enter
+    project_in_scope_rule_results.  IDs still in in_scope stay fail-closed.
+    """
+    guidance = manifest.get("canonicalGuidance")
+    if not isinstance(guidance, dict):
+        return []
+    result_index: set[str] = set()
+    for result in results:
+        lineage = result.get("canonical_lineage")
+        canonical_id = lineage.get("canonical_id") if isinstance(lineage, dict) else None
+        if isinstance(canonical_id, str) and canonical_id:
+            result_index.add(canonical_id)
+    in_scope = set(profile_plan.get("in_scope_rule_ids") or [])
+    lineage_by_canonical: dict[str, dict[str, Any]] = {}
+    for row in manifest.get("canonicalRuleLineage") or []:
+        if not isinstance(row, dict):
+            continue
+        canonical_id = row.get("canonicalId")
+        if isinstance(canonical_id, str) and canonical_id:
+            lineage_by_canonical[canonical_id] = row
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for group_ids in guidance.values():
+        if not isinstance(group_ids, list):
+            continue
+        for canonical_id in group_ids:
+            if (
+                not isinstance(canonical_id, str)
+                or not canonical_id
+                or canonical_id in seen
+                or canonical_id in result_index
+                or canonical_id in in_scope
+            ):
+                continue
+            seen.add(canonical_id)
+            lineage = lineage_by_canonical.get(canonical_id)
+            if (
+                lineage is None
+                or not isinstance(lineage.get("baselineRuleId"), str)
+                or not lineage.get("baselineRuleId")
+                or not isinstance(lineage.get("baselineRevisionDigest"), str)
+                or not lineage.get("baselineRevisionDigest")
+                or not isinstance(lineage.get("canonicalRevisionDigest"), str)
+                or not lineage.get("canonicalRevisionDigest")
+            ):
+                raise WorkflowError(
+                    "CANONICAL_GUIDANCE_RESULT_MISSING",
+                    f"指导规则缺少 lineage 绑定: {canonical_id}",
+                )
+            rows.append({
+                "rule_id": lineage["baselineRuleId"],
+                "rule_revision_digest": lineage["baselineRevisionDigest"],
+                "status": "NOT_APPLICABLE",
+                "evidence": {
+                    "reason_code": "CANONICAL_GUIDANCE_SOURCE_EXITED",
+                },
+                "worker": "canonical-guidance-disposition",
+                "canonical_lineage": {
+                    "canonical_id": canonical_id,
+                    "revision_digest": lineage["canonicalRevisionDigest"],
+                },
+            })
+    return rows
+
+
 def _canonical_guidance_from_results(
     manifest: dict[str, Any],
     results: list[dict[str, Any]],
@@ -6971,15 +7609,20 @@ def _execute_conformance_workflow(
         for item in canonical_results
         if item["status"] not in {"PASS", "NOT_APPLICABLE"}
     ]
-    findings = [
-        {
-            "finding_id": f"finding-{index + 1}",
+    findings = []
+    for finding_index, item in enumerate(failed):
+        route = finding_responsibility_route(item)
+        findings.append({
+            "finding_id": f"finding-{finding_index + 1}",
             "rule_id": item["rule_id"],
             "rule_revision_digest": item["rule_revision_digest"],
             "status": item["status"],
-        }
-        for index, item in enumerate(failed)
-    ]
+            "object": route["object"],
+            "reason": route["reason"],
+            "responsible_party": route["responsible_party"],
+            "minimal_fix": route["minimal_fix"],
+            "revalidation_entry": route["revalidation_entry"],
+        })
     remediation = {
         "schema_version": "1.0.0",
         "status": "unapplied",
@@ -6993,7 +7636,7 @@ def _execute_conformance_workflow(
             {
                 **finding,
                 "applicability_scope": args.target_type,
-                "suggested_action": "按规则整改后重新运行；本制品不修改目标",
+                "suggested_action": finding["minimal_fix"],
                 "patch_status": "unapplied",
             }
             for finding in findings
@@ -7005,7 +7648,9 @@ def _execute_conformance_workflow(
     canonical_guidance = (
         _canonical_guidance_from_results(
             manifest,
-            results,
+            results + _guidance_exited_result_rows(
+                manifest, results, profile_plan
+            ),
             scope,
             remediation["items"],
         )

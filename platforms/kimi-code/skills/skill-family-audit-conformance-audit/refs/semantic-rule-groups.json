@@ -1532,7 +1532,7 @@
         {
           "canonical_id": "SFA-METHOD-003",
           "revision": 3,
-          "revision_digest": "98439230e249f5bb48170656b6fa102aebcbd8259a158fa74a146e5d3c759c3f",
+          "revision_digest": "4eae2e71b014d0ebac7bd97e5e1a0fdf63539944a87be43b86b91a0bb6a5d026",
           "scan_packs": [
             "declaration",
             "source"
@@ -1739,7 +1739,7 @@
         {
           "canonical_id": "SFA-MIGRATE-005",
           "revision": 2,
-          "revision_digest": "4b19ee32c8869f9b51936f84619406c5eec57bac2dd91eff1c62a89749047c79",
+          "revision_digest": "b3291cb02787d674c96ecec39c77992f67967c1c3ded5f04e910d2705942eea2",
           "scan_packs": [
             "declaration",
             "source"
@@ -2224,7 +2224,7 @@
         {
           "canonical_id": "SFA-DATASEC-002",
           "revision": 2,
-          "revision_digest": "086d196cd6d128242039cd7b6f812848666ae770907f2ea578722542f61ac996",
+          "revision_digest": "8e190943cc0fb8fb10fa2c0baa6cd2cbec379696ccdf68b70972572d69cee8b7",
           "scan_packs": [
             "execution_record",
             "source"

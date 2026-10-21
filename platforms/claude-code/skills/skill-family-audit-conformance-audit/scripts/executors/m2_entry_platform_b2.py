@@ -3491,6 +3491,71 @@ def check_nam_024(ctx: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+# 默认与兼容目录对：仅在无正式声明时作为表面触发。声明存在时以
+# source-truth-declaration 的任意合法 sourceRoots/generatedRoots 为准，
+# 不再用第二套目录名否定已声明的默认或兼容源。
+_COMPAT_SOURCE_GENERATED_PAIRS = (
+    ("skills-src", ("skills", "adapters")),
+    ("src", ("dist", "build")),
+    ("plugin-src", ("generated/platforms",)),
+)
+
+
+def _present_under(root: Path, relative: str) -> bool:
+    path = root / relative
+    return path.exists() and not path.is_symlink()
+
+
+def _compat_surface_roots(target: Path) -> list[dict[str, Any]]:
+    """三对兼容目录。不是第二套权威，只识别未声明时的常见双头表面。"""
+    surface_roots: list[dict[str, Any]] = []
+    for source, generated_names in _COMPAT_SOURCE_GENERATED_PAIRS:
+        if not (target / source).is_dir():
+            continue
+        generated = [
+            name for name in generated_names if (target / name).is_dir()
+        ]
+        if generated:
+            surface_roots.append({"source": source, "generated": generated})
+    return surface_roots
+
+
+def _declared_surface_roots(
+    target: Path, candidates: list[tuple[str, dict[str, Any] | None]]
+) -> list[dict[str, Any]]:
+    """正式声明中实际存在的源/生成根；schema 已允许任意合法 containedPath。"""
+    surface_roots: list[dict[str, Any]] = []
+    for _label, value in candidates:
+        if not isinstance(value, dict):
+            continue
+        mappings = value.get("mappings")
+        if not isinstance(mappings, list):
+            continue
+        for mapping in mappings:
+            if not isinstance(mapping, dict):
+                continue
+            sources = [
+                item for item in mapping.get("sourceRoots", [])
+                if isinstance(item, str) and _present_under(target, item)
+            ]
+            generated = [
+                item for item in mapping.get("generatedRoots", [])
+                if isinstance(item, str) and _present_under(target, item)
+            ]
+            for source in sources:
+                surface_roots.append({"source": source, "generated": generated})
+    return surface_roots
+
+
+def _declared_or_compat_surface_roots(target: Path) -> list[dict[str, Any]]:
+    """REPO-005 触发：正式声明根或兼容对，任一存在即构成源/生成表面。"""
+    scan = _source_020_authority_scan({"target": str(target)})
+    declared = _declared_surface_roots(target, scan["candidates"])
+    if declared:
+        return declared
+    return _compat_surface_roots(target)
+
+
 def _source_019_bound_refs(ctx: dict[str, Any]) -> list[dict[str, str]]:
     """调用方已验证的四字段引用；畸形整表放弃，不读 scope 或语义状态。"""
     raw = ctx.get("verified_evidence_refs")
@@ -3520,21 +3585,33 @@ def check_source_019(ctx: dict[str, Any]) -> dict[str, Any]:
     YAML 载体不是可审计载体（检出不通过）。
     无固定生成物且无机器声明时，已绑定材料只把该早退从无对象改为缺证，
     不是机械通过，也不独立证明整条规则不适用。
+    同一次 Task 中已有 Foundation 专业消费时，先复用其目标/版本/范围：
+    错目标、过期、部分覆盖或真实缺陷不得转为整体通过。匹配且 CLEAR 的
+    专业结果不把本规则改写成机械 PASS，本规则仍核自己的真源声明。
     """
+    from . import m1_rule_governance_b2 as m1_governance
+
+    item = m1_governance._professional_consumption_item(
+        ctx, m1_governance._PROFESSIONAL_FOUNDATION_PROVIDER
+    )
+    if item is not None:
+        consumed = m1_governance._finish_professional_consumption(
+            ctx, item, mechanical="static_scan"
+        )
+        if consumed.get("status") != "PASS":
+            return consumed
     projections = 0
     document = _doc(ctx, "source-projections")
     if document is not None:
         projections = len(rows_of(document, "projections", "source-projections"))
     scan = _source_020_authority_scan(ctx)
-    surface_roots: list[dict[str, Any]] = []
     target = Path(ctx["target"])
-    if (target / "skills-src").is_dir() and ((target / "skills").is_dir() or (target / "adapters").is_dir()):
-        surface_roots.append({"source": "skills-src", "generated": [name for name in ("skills", "adapters") if (target / name).is_dir()]})
-    if (target / "src").is_dir() and ((target / "dist").is_dir() or (target / "build").is_dir()):
-        surface_roots.append({"source": "src", "generated": [name for name in ("dist", "build") if (target / name).is_dir()]})
-    if (target / "plugin-src").is_dir() and (target / "generated" / "platforms").is_dir():
-        surface_roots.append({"source": "plugin-src", "generated": ["generated/platforms"]})
-    trigger = projections > 0 or bool(surface_roots)
+    compat_roots = _compat_surface_roots(target)
+    if scan["candidates"]:
+        surface_roots = _declared_surface_roots(target, scan["candidates"])
+    else:
+        surface_roots = compat_roots
+    trigger = projections > 0 or bool(surface_roots) or bool(compat_roots)
     if not trigger and not scan["declaration_signal"]:
         refs = _source_019_bound_refs(ctx)
         if refs:

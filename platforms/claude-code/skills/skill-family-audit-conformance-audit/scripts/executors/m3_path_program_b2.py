@@ -2602,33 +2602,20 @@ def _tracked_files(ctx: dict[str, Any]) -> list[str] | None:
 
 def _has_source_surface(target: Path) -> bool:
     """识别真实源码/生成物表面，避免仅因普通空目录改变状态。"""
-    for source, generated in (("skills-src", "skills"), ("src", "dist"), ("src", "build")):
-        if (target / source).is_dir() and (target / generated).is_dir():
-            if any(path.is_file() for path in (target / source).rglob("*")):
-                return True
+    from .m2_entry_platform_b2 import _declared_or_compat_surface_roots
+
+    for surface in _declared_or_compat_surface_roots(target):
+        source = target / surface["source"]
+        if source.is_dir() and any(path.is_file() for path in source.rglob("*")):
+            return True
     return False
 
 
 def _generated_surface_roots(target: Path) -> list[dict[str, Any]]:
-    """与 SOURCE-019 相同的三对表面根；只认成对出现的源码与生成投影。"""
-    surface_roots: list[dict[str, Any]] = []
-    if (target / "skills-src").is_dir() and (
-        (target / "skills").is_dir() or (target / "adapters").is_dir()
-    ):
-        surface_roots.append({
-            "source": "skills-src",
-            "generated": [name for name in ("skills", "adapters") if (target / name).is_dir()],
-        })
-    if (target / "src").is_dir() and (
-        (target / "dist").is_dir() or (target / "build").is_dir()
-    ):
-        surface_roots.append({
-            "source": "src",
-            "generated": [name for name in ("dist", "build") if (target / name).is_dir()],
-        })
-    if (target / "plugin-src").is_dir() and (target / "generated" / "platforms").is_dir():
-        surface_roots.append({"source": "plugin-src", "generated": ["generated/platforms"]})
-    return surface_roots
+    """正式声明根优先；无声明时才用兼容目录对触发。不另建源关系检查器。"""
+    from .m2_entry_platform_b2 import _declared_or_compat_surface_roots
+
+    return _declared_or_compat_surface_roots(target)
 
 
 def _projection_row_count(ctx: dict[str, Any]) -> int:
