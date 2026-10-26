@@ -483,6 +483,7 @@ def _project_trusted_conformance_observation(
     finalized_semantic_reviews: (
         dict[tuple[str, str, str], dict[str, Any]] | None
     ) = None,
+    verified_evidence_refs: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Purely project an in-process Conformance observation onto this ledger.
 
@@ -776,7 +777,7 @@ def _project_trusted_conformance_observation(
                 )
                 or (
                     aggregate_status == "PASS"
-                    and all(status == "PASS" for status in required_statuses)
+                    and _mechanical_pass_aggregate(required_rows, verified_evidence_refs)
                 )
                 or (
                     aggregate_status == "NOT_APPLICABLE"
@@ -818,10 +819,10 @@ def _project_trusted_conformance_observation(
                 TRUSTED_OBSERVATION_INVALID,
                 f"{where} has incoherent aggregate and per-method statuses",
             )
-        if aggregate_status == "PASS" and all(
-            row["status"] == "PASS" for row in required_rows
-        ):
+        if aggregate_status == "PASS" and _mechanical_pass_aggregate(required_rows, verified_evidence_refs):
             for row in required_rows:
+                if row["status"] != "PASS":
+                    continue
                 observed[(canonical_id, revision_digest, row["check_method"])][
                     "proof_eligible"
                 ] = True
@@ -915,7 +916,69 @@ def _project_trusted_conformance_observation(
     }
 
 
-def trusted_observation_accepts_top_level(report: Any) -> bool:
+def _nonempty_evidence_text(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _bound_citation_ref(ref: Any) -> bool:
+    """A finalized citation names evidence_id, sha256, locator, and role."""
+    if not isinstance(ref, dict):
+        return False
+    if not all(_nonempty_evidence_text(ref.get(key)) for key in (
+        "evidence_id", "sha256", "locator", "role",
+    )):
+        return False
+    return bool(re.fullmatch(r"[0-9a-f]{64}", ref["sha256"].strip()))
+
+
+def mechanical_na_is_evidenced(row: dict[str, Any], verified_evidence_refs: list[dict[str, str]] | None = None) -> bool:
+    """Mechanical NOT_APPLICABLE counts only with a bound applicability citation.
+
+    A rationale by itself, a nonempty locator, or a rationale plus an unbound
+    locator is not a citation. The citation is a bound evidence_id, sha256,
+    locator, and role, either as the evidence list or as evidence_refs.
+    """
+    if row.get("status") != "NOT_APPLICABLE":
+        return False
+    evidence = row.get("evidence")
+    if isinstance(evidence, list):
+        return bool(evidence) and all(_bound_citation_ref(ref) and ref in (verified_evidence_refs or []) for ref in evidence)
+    if not isinstance(evidence, dict) or not evidence:
+        return False
+    if evidence.get("kind") == "method_not_executed":
+        return False
+    if evidence.get("reason") in {
+        "non_mechanical_method",
+        "method_not_executed",
+        "executor_does_not_report_per_method",
+        "audit_unwired",
+        "provider_capability_missing",
+    }:
+        return False
+    refs = evidence.get("evidence_refs")
+    return bool(
+        isinstance(refs, list)
+        and refs
+        and all(_bound_citation_ref(ref) and ref in (verified_evidence_refs or []) for ref in refs)
+    )
+
+
+def _mechanical_pass_aggregate(rows: list[dict[str, Any]], verified_evidence_refs: list[dict[str, str]] | None = None) -> bool:
+    """PASS, or PASS mixed with evidenced NOT_APPLICABLE and at least one PASS."""
+    if not rows:
+        return False
+    statuses = [row.get("status") for row in rows]
+    if any(status not in {"PASS", "NOT_APPLICABLE"} for status in statuses):
+        return False
+    if "PASS" not in statuses:
+        return False
+    return all(
+        row.get("status") != "NOT_APPLICABLE" or mechanical_na_is_evidenced(row, verified_evidence_refs)
+        for row in rows
+    )
+
+
+def trusted_observation_accepts_top_level(report: Any, verified_evidence_refs: list[dict[str, str]] | None = None) -> bool:
     """Return whether observed method rows permit a top-level success.
 
     This is a run-local gate, not a claim that the global 814-rule obligation
@@ -938,6 +1001,19 @@ def trusted_observation_accepts_top_level(report: Any) -> bool:
         obligation_identity(record): record
         for record in _require_field(document, "records", list, "assurance report")
     }
+    for record in records.values():
+        retained = record.get("trusted_observation")
+        if not isinstance(retained, dict) or retained.get("observation_source") not in {
+            "retained_mechanical_object_judgment", "bounded_material_security",
+            "retained_professional_consumption",
+        }:
+            continue
+        if retained.get("status") not in {"PASS", "NOT_APPLICABLE"}:
+            return False
+        if retained.get("status") == "NOT_APPLICABLE" and not mechanical_na_is_evidenced(
+            retained, verified_evidence_refs,
+        ):
+            return False
     for index, raw_result in enumerate(results):
         where = f"assurance report.trusted_observation.rule_results[{index}]"
         result = _require_object(raw_result, where)
@@ -965,17 +1041,53 @@ def trusted_observation_accepts_top_level(report: Any) -> bool:
         if not has_mechanical:
             # Zero-mechanical carrier: keep the executor aggregate as a
             # non-proving observation. Row success is decided by the formal
-            # method observations only.
+            # method observations only. Mixed formal methods must agree.
             if len(statuses) != 1:
                 return False
             continue
         if aggregate_status not in terminal_statuses:
             return False
-        if aggregate_status == "PASS" and statuses != {"PASS"}:
-            return False
-        if (
-            aggregate_status == "NOT_APPLICABLE"
-            and statuses != {"NOT_APPLICABLE"}
-        ):
-            return False
+        mechanical_rows = []
+        other_statuses: set[Any] = set()
+        for subindex, raw_subresult in enumerate(subresults):
+            subwhere = f"{where}.check_method_subresults[{subindex}]"
+            subresult = _require_object(raw_subresult, subwhere)
+            method = subresult.get("check_method")
+            record = records.get((
+                result["canonical_id"], result["revision_digest"], method,
+            ))
+            observation = record.get("trusted_observation") if isinstance(record, dict) else {}
+            if not isinstance(observation, dict):
+                return False
+            if method in MECHANICAL_CHECK_METHODS:
+                mechanical_rows.append({
+                    "status": observation.get("status"),
+                    "evidence": observation.get("evidence")
+                    if isinstance(observation.get("evidence"), dict)
+                    else subresult.get("evidence"),
+                })
+            else:
+                other_statuses.add(observation.get("status"))
+        if aggregate_status == "PASS":
+            if other_statuses - {"PASS"}:
+                return False
+            evidenced_mechanical_na = bool(mechanical_rows) and all(
+                row.get("status") == "NOT_APPLICABLE"
+                and mechanical_na_is_evidenced(row, verified_evidence_refs)
+                for row in mechanical_rows
+            )
+            if not _mechanical_pass_aggregate(mechanical_rows, verified_evidence_refs):
+                # All evidenced mechanical NA plus a real semantic PASS is
+                # still PASS. Mechanical NA must not paint the whole rule,
+                # and it must not block that PASS.
+                if not (evidenced_mechanical_na and other_statuses == {"PASS"}):
+                    return False
+        if aggregate_status == "NOT_APPLICABLE" and statuses != {"NOT_APPLICABLE"}:
+            # Semantic PASS must not be accepted under an NA aggregate.
+            # Mechanical PASS plus evidenced semantic NA may aggregate to NA.
+            if "PASS" in other_statuses:
+                return False
+            semantic_na = other_statuses <= {"NOT_APPLICABLE"} and bool(other_statuses)
+            if not (semantic_na and _mechanical_pass_aggregate(mechanical_rows, verified_evidence_refs)):
+                return False
     return True

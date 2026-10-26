@@ -314,14 +314,16 @@ def check_artmethod_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _artifact_method_runs(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "runs", "artifact-method-runs")
+    if not rows:
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         schema_reasons = []
@@ -375,14 +377,12 @@ def check_artmethod_002(ctx: dict[str, Any]) -> dict[str, Any]:
     刷新关系锁。
     """
     document = _artifact_method_runs(ctx)
-    if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+    if document is None or not rows_of(document, "formal_results", "artifact-method-runs"):
+        evidence = {"reason": "audit_mechanical_object_unresolved", "object": 'Formal results requiring long-term governance and their graph/source relationships', "source_refs": list(ctx.get("evidence_set") or []), "mechanical_half": True}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _digest_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     rows = rows_of(document, "formal_results", "artifact-method-runs")
     violations = []
     for row in rows:
@@ -420,14 +420,10 @@ def check_artmethod_004(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _artifact_method_runs(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='quickstart路由正式制品业务请求时适用。 请求与严格方法任务; 制品契约引用归属; 被路由方法承担图义务的合同', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "quickstart_routes", "artifact-method-runs")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='quickstart路由正式制品业务请求时适用。 请求与严格方法任务; 制品契约引用归属; 被路由方法承担图义务的合同', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         reasons = []
@@ -465,14 +461,12 @@ def check_artmethod_005(ctx: dict[str, Any]) -> dict[str, Any]:
     用不可变内容摘要固定内容；不得使用漂移版本名或"最新"。
     """
     document = _artifact_method_runs(ctx)
-    if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+    if document is None or not rows_of(document, "contract_selections", "artifact-method-runs"):
+        evidence = {"reason": "audit_mechanical_object_unresolved", "object": 'Actual formal artifact contract selection and immutable content', "source_refs": list(ctx.get("evidence_set") or []), "mechanical_half": True}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _digest_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     rows = rows_of(document, "contract_selections", "artifact-method-runs")
     violations = []
     for row in rows:
@@ -536,14 +530,10 @@ def check_artmethod_006(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _artifact_method_runs(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='旧版制品转为当前方法内部表示时适用。 旧输入及目标契约; 字段语义身份关系无损对照; 转换器、版本及前后摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "legacy_conversions", "artifact-method-runs")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='旧版制品转为当前方法内部表示时适用。 旧输入及目标契约; 字段语义身份关系无损对照; 转换器、版本及前后摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         schema_reasons = []
@@ -748,14 +738,10 @@ def check_artmethod_010(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _artifact_method_runs(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='正式制品具有必需上下游或实现评估发布等关系时适用。 领域必需关系定义; 实际关系端点和证据; 身份及新鲜度结果', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "relation_evidence_checks", "artifact-method-runs")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='正式制品具有必需上下游或实现评估发布等关系时适用。 领域必需关系定义; 实际关系端点和证据; 身份及新鲜度结果', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         reasons = []
@@ -932,14 +918,10 @@ def check_artmethod_013(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _artifact_method_runs(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='制品编写方法报告成功时适用。 入口合同中的承诺输出与完成条件说明; 部分完成时的告知方式说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "author_reports", "artifact-method-runs")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='制品编写方法报告成功时适用。 入口合同中的承诺输出与完成条件说明; 部分完成时的告知方式说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         reasons = []
@@ -976,14 +958,10 @@ def check_artmethod_014(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _artifact_method_runs(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='制品修复方法报告成功时适用。 逐发现处置和未解决项; 原审阅与修复任务关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "repair_reports", "artifact-method-runs")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='制品修复方法报告成功时适用。 逐发现处置和未解决项; 原审阅与修复任务关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         reasons = []
@@ -1071,14 +1049,10 @@ def check_artmethod_016(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _artifact_method_runs(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_artifact_method_runs"),
-                _doc_digest_row(ctx, ("artifact-method-runs",)),
-            ],
-            artifact_method_runs_declared=False,
-        )
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='旧版制品转换方法报告成功时适用。 无损转换的合同声明与来源关系; 无法转换时的说明方式', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "conversion_reports", "artifact-method-runs")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='旧版制品转换方法报告成功时适用。 无损转换的合同声明与来源关系; 无法转换时的说明方式', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         reasons = []
@@ -1247,13 +1221,7 @@ def check_registry_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _registry_projection(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_registry"),
-                _doc_digest_row(ctx, ("method-registry-projection",)),
-            ],
-            registry_declared=False,
-        )
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='锁定协议要求业务对象或制品类型非空时 锁定协议要求; 权威契约、非空标签与代表性输入输出引用', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     required = document.get("locked_protocol_requires_nonempty_business_object")
     if required is not True:
         return _finish(
@@ -1264,6 +1232,8 @@ def check_registry_005(ctx: dict[str, Any]) -> dict[str, Any]:
             nonempty_business_object_not_required=True,
         )
     rows = rows_of(document, "entries", "method-registry-projection")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='锁定协议要求业务对象或制品类型非空时 锁定协议要求; 权威契约、非空标签与代表性输入输出引用', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         reasons = []
@@ -1406,45 +1376,18 @@ def _template_overrides(ctx: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def check_template_003(ctx: dict[str, Any]) -> dict[str, Any]:
-    """项目模板覆盖仍满足基础契约。
-
-    机械断言：每条覆盖声明不得删除或放宽上级强制语义，生成结果仍满足
-    基础制品契约。
-    """
-    document = _template_overrides(ctx)
-    if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_template_overrides"),
-                _doc_digest_row(ctx, ("template-overrides",)),
-            ],
-            template_overrides_declared=False,
-        )
-    rows = rows_of(document, "overrides", "template-overrides")
-    violations = []
-    for row in rows:
-        reasons = []
-        if row.get("removes_or_loosens_upstream_mandatory_semantics") is True:
-            reasons.append("loosens_upstream_mandatory_semantics")
-        if row.get("generated_result_satisfies_base_contract") is not True:
-            reasons.append("base_contract_not_satisfied")
-        if reasons:
-            violations.append({"override_id": row.get("override_id"), "reasons": reasons})
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("template-overrides",)),
-            ],
-            overrides_breaking_base_contract=violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", overrides_checked=len(rows)),
-            _doc_digest_row(ctx, ("template-overrides",)),
-        ],
-        overrides_checked=len(rows),
-    )
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _template_overrides(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Actual project template override and the original base-contract validation result', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_template_004(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1455,14 +1398,10 @@ def check_template_004(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _template_overrides(ctx)
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_template_overrides"),
-                _doc_digest_row(ctx, ("template-overrides",)),
-            ],
-            template_overrides_declared=False,
-        )
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='模板、技能正文或示例包含制品填充结构时适用。 权威字段关系契约引用; 模板填充和默认值; 无独立演进结构定义的检查', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "structure_definitions", "template-overrides")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='模板、技能正文或示例包含制品填充结构时适用。 权威字段关系契约引用; 模板填充和默认值; 无独立演进结构定义的检查', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for row in rows:
         reasons = []

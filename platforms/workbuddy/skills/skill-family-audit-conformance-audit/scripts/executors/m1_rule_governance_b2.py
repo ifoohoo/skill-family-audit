@@ -440,14 +440,11 @@ def check_graph_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "graph-links")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_document"),
-                _static_row("PASS", reason="no_declared_document"),
-                _doc_digest_row(ctx, ("graph-links",)),
-            ],
-            declared_authority_chains=False,
-        )
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='建立两条链之间的采用、方法、评估或发布关系时 规范治理链与交付链的权威归属; 交叉关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='建立两条链之间的采用、方法、评估或发布关系时 规范治理链与交付链的权威归属; 交叉关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='建立两条链之间的采用、方法、评估或发布关系时 规范治理链与交付链的权威归属; 交叉关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='建立两条链之间的采用、方法、评估或发布关系时 规范治理链与交付链的权威归属; 交叉关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     chains = _require_dict(document.get("authority_chains"), "graph-links", "authority_chains")
     spec_chain = chains.get("spec_chain")
     delivery_chain = chains.get("delivery_chain")
@@ -507,14 +504,16 @@ def check_graph_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """每个严格方法契约必须直接指向其实现的一个或多个业务能力修订。"""
     document = _doc(ctx, "graph-links")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_document"),
-                _doc_digest_row(ctx, ("graph-links",)),
-            ],
-            declared_method_contracts=0,
-        )
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='创建或修订方法契约关系时 方法契约到一个或多个业务能力精确修订的直接关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='创建或修订方法契约关系时 方法契约到一个或多个业务能力精确修订的直接关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='创建或修订方法契约关系时 方法契约到一个或多个业务能力精确修订的直接关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     contracts = rows_of(document, "method_contracts", "graph-links")
+    if not contracts:
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='创建或修订方法契约关系时 方法契约到一个或多个业务能力精确修订的直接关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='创建或修订方法契约关系时 方法契约到一个或多个业务能力精确修订的直接关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='创建或修订方法契约关系时 方法契约到一个或多个业务能力精确修订的直接关系', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(contracts):
         capabilities = row.get("capability_revisions")
@@ -546,14 +545,12 @@ def check_graph_002(ctx: dict[str, Any]) -> dict[str, Any]:
 def check_graph_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """每项技能评估必须直接指向被评估对象及其精确修订。"""
     document = _doc(ctx, "graph-links")
-    if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_document"),
-                _doc_digest_row(ctx, ("graph-links",)),
-            ],
-            declared_evaluations=0,
-        )
+    if document is None or not rows_of(document, "evaluations", "graph-links"):
+        evidence = {"reason": "audit_mechanical_object_unresolved", "object": 'Actual assessment artifact and exact assessed object/version/scope', "source_refs": list(ctx.get("evidence_set") or []), "mechanical_half": True}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _digest_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     evaluations = rows_of(document, "evaluations", "graph-links")
     violations = [
         {"index": index, "evaluation_id": row.get("evaluation_id")}
@@ -627,15 +624,15 @@ def check_graph_005(ctx: dict[str, Any]) -> dict[str, Any]:
 def check_graph_007(ctx: dict[str, Any]) -> dict[str, Any]:
     """项目加严声明必须指向被加严的上级规则及其修订，并声明条件单调收紧。"""
     document = _doc(ctx, "graph-links")
-    if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_document"),
-                _doc_digest_row(ctx, ("graph-links",)),
-            ],
-            declared_tightenings=0,
-        )
-    tightenings = rows_of(document, "tightenings", "graph-links")
+    tightenings = rows_of(document, "tightenings", "graph-links") if document is not None else []
+    if not tightenings:
+        evidence = {"reason": "audit_mechanical_object_unresolved",
+                    "object": '项目实际加严声明、对应上级规则修订与单调收紧依据',
+                    "source_refs": list(ctx.get("evidence_set") or [])}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _digest_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     violations = []
     for index, row in enumerate(tightenings):
         parent_rule = row.get("parent_rule_id")
@@ -728,18 +725,14 @@ def check_graph_009(ctx: dict[str, Any]) -> dict[str, Any]:
     未声明的方法；简单项目保留较粗关联（不登记该文档）时不适用。
     """
     document = _doc(ctx, "graph-links")
-    if document is None:
-        return _finish(
-            [
-                _static_row(
-                    "PASS",
-                    reason="no_declared_document",
-                    documents=_documents_observed(ctx, ("graph-links",)),
-                ),
-            ],
-            declared_attachments=0,
-        )
-    attachments = rows_of(document, "attachments", "graph-links")
+    attachments = rows_of(document, "attachments", "graph-links") if document is not None else []
+    if not attachments:
+        evidence = {"reason": "audit_mechanical_object_unresolved",
+                    "object": '实际实现资源职责及其到最近权威制品的追溯关系',
+                    "source_refs": list(ctx.get("evidence_set") or [])}
+        return _finish([
+            _static_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     violations = [
         {"index": index, "unit_id": row.get("unit_id")}
         for index, row in enumerate(attachments)
@@ -876,6 +869,13 @@ def _axis_check(
         return _digest_row(status, documents=documents, **evidence)
 
     document = _doc(ctx, "status-axes")
+    if axis_key in {"family_maturity", "capability_support"} and (
+        document is None or document.get(axis_key) is None or document.get(axis_key) == []
+    ):
+        evidence = {"reason": "audit_mechanical_object_unresolved", "object": axis_key,
+                    "source_refs": list(ctx.get("evidence_set") or [])}
+        return _finish([_schema_row("EVIDENCE_MISSING", **evidence),
+                        _static_row("EVIDENCE_MISSING", **evidence)], **evidence)
     if document is None:
         return _finish(
             [
@@ -1023,6 +1023,15 @@ def check_graph_017(ctx: dict[str, Any]) -> dict[str, Any]:
     路由声明 schema_validation + static_scan：第二行静态读取逐平台声明，
     不替目标推断未声明的平台支持程度。
     """
+    document = _doc(ctx, "status-axes")
+    if document is None or document.get("platform_support") is None or document.get("platform_support") == []:
+        evidence = {"reason": "audit_mechanical_object_unresolved",
+                    "object": '实际逐平台支持程度、限制与状态定义',
+                    "source_refs": list(ctx.get("evidence_set") or [])}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _static_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     return _axis_check(ctx, "platform_support", declaration_method="static_scan")
 
 
@@ -1044,48 +1053,21 @@ def _releases(ctx: dict[str, Any]) -> list[dict[str, Any]] | None:
 
 
 def check_graph_004(ctx: dict[str, Any]) -> dict[str, Any]:
-    """技能发布必须指向技能族版本、能力与方法修订、四平台包、运行时摘要、有效评估和采用的规范发布。"""
+    """Keep actual release scope; a declaration is not the original graph check."""
     releases = _releases(ctx)
-    if releases is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_document"),
-                _doc_digest_row(ctx, ("release-graph",)),
-            ],
-            declared_releases=0,
-        )
-    violations = []
-    for index, row in enumerate(releases):
-        if row.get("kind") != "skill":
-            continue
-        members = row.get("members")
-        present = (
-            {member.get("member") for member in members if isinstance(member, dict)}
-            if isinstance(members, list)
-            else set()
-        )
-        if not SKILL_RELEASE_REQUIRED_MEMBERS.issubset(present):
-            violations.append(
-                {"index": index, "release_id": row.get("release_id"),
-                 "missing": sorted(SKILL_RELEASE_REQUIRED_MEMBERS - present)}
-            )
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("release-graph",)),
-            ],
-            skill_releases_incomplete_composition=violations,
-        )
-    return _finish(
-        [
-            _schema_row(
-                "PASS", reason="schema_checks_passed", declared_releases=len(releases)
-            ),
-            _doc_digest_row(ctx, ("release-graph",)),
-        ],
-        declared_releases=len(releases),
-    )
+    evidence = {
+        "reason": "audit_mechanical_object_unresolved",
+        "object": "Actual skill release composition within its declared platform scope",
+        "declared_material": releases,
+        "source_refs": list(ctx.get("evidence_set") or []),
+        "mechanical_half": True,
+    }
+    if releases:
+        evidence["detail"] = "Declared release relations are retained; their original structure and byte observations are not established. Four-platform delivery is conditional on the actual joint-release declaration."
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_graph_019(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1439,6 +1421,15 @@ def _lock_check(ctx: dict[str, Any], lock_key: str, extra_fields: tuple[str, ...
 
 def check_graph_028(ctx: dict[str, Any]) -> dict[str, Any]:
     """项目必须锁定采用的每个领域图规范版本和内容摘要。"""
+    document = _doc(ctx, "governance-locks")
+    if document is None or document.get("domain_spec_selection") is None:
+        evidence = {"reason": "audit_mechanical_object_unresolved",
+                    "object": '实际采用领域图规范的身份、版本、摘要与选择锁',
+                    "source_refs": list(ctx.get("evidence_set") or [])}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _digest_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     return _lock_check(ctx, "domain_spec_selection", extra_fields=("version",))
 
 
@@ -1510,6 +1501,15 @@ def check_graph_029(ctx: dict[str, Any]) -> dict[str, Any]:
 
 def check_graph_030(ctx: dict[str, Any]) -> dict[str, Any]:
     """技能族或目标项目必须锁定实际采用的技能族规范发布身份和内容摘要。"""
+    document = _doc(ctx, "governance-locks")
+    if document is None or document.get("spec_adoption") is None:
+        evidence = {"reason": "audit_mechanical_object_unresolved",
+                    "object": '实际采用技能族规范的发布身份、摘要与采用锁',
+                    "source_refs": list(ctx.get("evidence_set") or [])}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _digest_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     return _lock_check(ctx, "spec_adoption", extra_fields=("release_id",))
 
 
@@ -1674,6 +1674,15 @@ def check_graph_033(ctx: dict[str, Any]) -> dict[str, Any]:
 
 def check_graph_034(ctx: dict[str, Any]) -> dict[str, Any]:
     """评估环境摘要必须锁定平台、模型、运行器、夹具、输入和目标实现。"""
+    document = _doc(ctx, "governance-locks")
+    if document is None or document.get("eval_env_summary") is None:
+        evidence = {"reason": "audit_mechanical_object_unresolved",
+                    "object": '实际评估记录的目标版本、平台、输入与相关运行条件',
+                    "source_refs": list(ctx.get("evidence_set") or [])}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _digest_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     return _lock_check(
         ctx, "eval_env_summary",
         extra_fields=("platform", "model", "runner", "fixtures", "inputs", "target_implementation"),
@@ -4541,7 +4550,30 @@ def _professional_subject_matches_target(
     return _canonical_fs_path(ref) == _canonical_fs_path(str(target))
 
 
-def _professional_issue(item: dict[str, Any]) -> str:
+_FOUNDATION_SCOPE_RULES = {
+    "SFA-FOUNDATION-012": {
+        "object": "Foundation harness 导出及实际消费者调用",
+        "required_capability": "覆盖 harness 导出、消费者调用及适用词元计量的完整机械检查",
+        "public_entry": "foundation-engineering-check / runChecks",
+        "gap": "公开 engineering 审阅是语义判断；runChecks 的 contracts/drift 不覆盖 harness 消费者机械检查",
+    },
+    "SFA-FOUNDATION-014": {
+        "object": "Contracts 注册表及实际消费者参数映射",
+        "required_capability": "覆盖 Contracts 注册表和消费者参数映射的完整机械检查",
+        "public_entry": "foundation-engineering-check / runChecks",
+        "gap": "公开 contracts 结构检查只覆盖 project-manifest/managed-file-lock；公共调用关系审阅不提供注册表或消费者参数的原机械输出",
+    },
+}
+
+
+def _professional_issue(item: dict[str, Any], *, scope_rule: str | None = None) -> str:
+    if (
+        scope_rule in _FOUNDATION_SCOPE_RULES
+        and item.get("version_relation") == "higher"
+        and item.get("status") == "pass"
+        and item.get("mode") == "version_policy"
+    ):
+        return "version_policy"
     conclusion = _professional_original_conclusion(item)
     outcome = _professional_outcome(item)
     completion = outcome.get("completion") if isinstance(outcome, dict) else None
@@ -4572,12 +4604,22 @@ def _professional_issue(item: dict[str, Any]) -> str:
     return "missing_proof"
 
 
-def _professional_pass_verified(item: dict[str, Any]) -> bool:
+def _professional_pass_verified(
+    item: dict[str, Any], *, scope_rule: str | None = None,
+) -> bool:
     if item.get("status") != "pass":
         return False
     baseline = item.get("baseline_version")
     if not isinstance(baseline, str) or not baseline:
         return False
+    if (
+        scope_rule in _FOUNDATION_SCOPE_RULES
+        and item.get("version_relation") == "higher"
+        and item.get("mode") == "version_policy"
+        and isinstance(item.get("proof_version"), str)
+        and item.get("proof_version")
+    ):
+        return True
     conclusion = _professional_original_conclusion(item)
     if conclusion is not None:
         outcome = _professional_outcome(item)
@@ -4605,7 +4647,11 @@ def _professional_pass_verified(item: dict[str, Any]) -> bool:
 
 
 def _finish_professional_consumption(
-    ctx: dict[str, Any], item: dict[str, Any] | None, *, mechanical: str
+    ctx: dict[str, Any],
+    item: dict[str, Any] | None,
+    *,
+    mechanical: str,
+    scope_rule: str | None = None,
 ) -> dict[str, Any]:
     """Map Foundation professional consumption onto the remaining mechanical half."""
     row_fn = _static_row if mechanical == "static_scan" else _schema_row
@@ -4635,8 +4681,8 @@ def _finish_professional_consumption(
         if isinstance(item.get("reason"), str) and item.get("reason")
         else "professional_consumption"
     )
-    issue = _professional_issue(item)
-    verified = _professional_pass_verified(item)
+    issue = _professional_issue(item, scope_rule=scope_rule)
+    verified = _professional_pass_verified(item, scope_rule=scope_rule)
     subject_match = _professional_subject_matches_target(item, target)
     if subject_match is False:
         verified = False
@@ -4648,6 +4694,14 @@ def _finish_professional_consumption(
         "professional_wrong_target",
     }:
         verified = False
+    scope_gap = None
+    if (
+        scope_rule in _FOUNDATION_SCOPE_RULES
+        and item.get("version_relation") == "same"
+        and verified
+    ):
+        verified = False
+        scope_gap = _FOUNDATION_SCOPE_RULES[scope_rule]
     mechanical_status = "PASS" if verified else "EVIDENCE_MISSING"
     conclusion = _professional_original_conclusion(item)
     evidence = {
@@ -4661,6 +4715,21 @@ def _finish_professional_consumption(
         "refresh_suggested": item.get("refresh_suggested") is True,
         "subject_matches_target": subject_match,
     }
+    if scope_gap is not None:
+        evidence["capability_gap"] = True
+        evidence["object"] = scope_gap["object"]
+        evidence["required_capability"] = scope_gap["required_capability"]
+        evidence["public_entry"] = scope_gap["public_entry"]
+        evidence["gap"] = scope_gap["gap"]
+        evidence["professional_issue"] = "provider_capability_missing"
+    if (
+        scope_rule in _FOUNDATION_SCOPE_RULES
+        and verified
+        and item.get("version_relation") == "higher"
+        and item.get("mode") == "version_policy"
+    ):
+        evidence["policy_acceptance"] = True
+        evidence["not_this_scan"] = True
     if conclusion is not None:
         evidence["conclusion"] = conclusion
     return _finish(
@@ -4684,6 +4753,7 @@ def check_foundation_012(ctx: dict[str, Any]) -> dict[str, Any]:
         ctx,
         _professional_consumption_item(ctx, _PROFESSIONAL_FOUNDATION_PROVIDER),
         mechanical="static_scan",
+        scope_rule="SFA-FOUNDATION-012",
     )
 
 
@@ -4697,6 +4767,7 @@ def check_foundation_014(ctx: dict[str, Any]) -> dict[str, Any]:
         ctx,
         _professional_consumption_item(ctx, _PROFESSIONAL_FOUNDATION_PROVIDER),
         mechanical="schema_validation",
+        scope_rule="SFA-FOUNDATION-014",
     )
 
 

@@ -346,8 +346,14 @@ def check_error_002(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "error-contracts")
     if document is None:
-        return result("PASS", declared_usages=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='原始平台异常的脱敏证据及稳定错误码映射',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     usages = rows_of(document, "platform_exception_usages", "error-contracts")
+    if not usages:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='原始平台异常的脱敏证据及稳定错误码映射',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "exception_ref": row.get("exception_ref")}
         for index, row in enumerate(usages)
@@ -366,8 +372,10 @@ def check_error_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "error-contracts")
     if document is None:
-        return result("PASS", declared_error_records=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='记录每条结构化错误时 错误记录及码、类别、阶段、中文说明、资源、证据、副作用、重试和整改字段', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     records = rows_of(document, "error_records", "error-contracts")
+    if not records:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='记录每条结构化错误时 错误记录及码、类别、阶段、中文说明、资源、证据、副作用、重试和整改字段', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     required = (
         "code", "category", "stage", "description", "affected_resources",
         "evidence", "side_effect_status", "retryability", "remediation",
@@ -401,8 +409,10 @@ def check_error_004(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "error-contracts")
     if document is None:
-        return result("PASS", declared_error_records=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='记录错误副作用状态时 副作用状态枚举约束; 已有错误及副作用依据', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     records = rows_of(document, "error_records", "error-contracts")
+    if not records:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='记录错误副作用状态时 副作用状态枚举约束; 已有错误及副作用依据', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "code": row.get("code"),
          "side_effect_status": row.get("side_effect_status")}
@@ -466,8 +476,10 @@ def check_error_007(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "error-contracts")
     if document is None:
-        return result("PASS", declared_degradations=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='采用降级替代路径时 契约预先声明的可选能力; 替代方式和语义影响记录', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     degradations = rows_of(document, "degradations", "error-contracts")
+    if not degradations:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='采用降级替代路径时 契约预先声明的可选能力; 替代方式和语义影响记录', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "capability": row.get("capability")}
         for index, row in enumerate(degradations)
@@ -488,8 +500,10 @@ def check_error_008(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "error-contracts")
     if document is None:
-        return result("PASS", declared_degradations=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='必需输出、安全、授权、路径、契约或发布摘要检查失败时 关键检查原始结果; 最终状态与采用路径', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     degradations = rows_of(document, "degradations", "error-contracts")
+    if not degradations:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='必需输出、安全、授权、路径、契约或发布摘要检查失败时 关键检查原始结果; 最终状态与采用路径', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "capability": row.get("capability"),
          "target_category": row.get("target_category")}
@@ -509,8 +523,10 @@ def check_error_009(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "output-lifecycle")
     if document is None:
-        return result("PASS", declared_outputs=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='等待、受阻、失败或取消且产生输出时 非完成结果与实际输出; 每项输出生命周期状态', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     outputs = rows_of(document, "outputs", "output-lifecycle")
+    if not outputs:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='等待、受阻、失败或取消且产生输出时 非完成结果与实际输出; 每项输出生命周期状态', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "output": row.get("output"), "lifecycle": row.get("lifecycle")}
         for index, row in enumerate(outputs)
@@ -530,8 +546,10 @@ def check_error_010(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "output-lifecycle")
     if document is None:
-        return result("PASS", declared_outputs=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='拟将未验证或未提交输出作为正式制品或下游输入时 输出验证提交状态; 下游输入与正式制品引用', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     outputs = rows_of(document, "outputs", "output-lifecycle")
+    if not outputs:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='拟将未验证或未提交输出作为正式制品或下游输入时 输出验证提交状态; 下游输入与正式制品引用', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     uncommitted = {"transient", "partial", "unverified"}
     violations = [
         {"index": index, "output": row.get("output"), "lifecycle": row.get("lifecycle")}
@@ -647,8 +665,14 @@ def check_extension_004(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "extension-declarations")
     if document is None:
-        return result("PASS", extensions_declared=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='实际扩展、平台覆盖或项目规则及其共同合同边界',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "extensions", "extension-declarations")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='实际扩展、平台覆盖或项目规则及其共同合同边界',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     legal_personalization = {"add_independent_content", "monotonic_tightening"}
     violations = [
         {"index": index, "extension": row.get("id")}
@@ -730,8 +754,8 @@ def check_program_001(ctx: dict[str, Any]) -> dict[str, Any]:
     第③级必须记录"前两级不可行"的理由。
     """
     rows = _programs(ctx)
-    if rows is None:
-        return result("PASS", programs_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='采用脚本并说明其业务所有者、消费入口或共享中立能力复用关系时 实际脚本的业务所有者与消费入口说明; 实际采用的共享中立能力及其适用公共实现引用（如适用）', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(rows):
         tier = row.get("tier")
@@ -756,8 +780,8 @@ def check_program_002(ctx: dict[str, Any]) -> dict[str, Any]:
     SKILL.md 直接说明调用时机和入口。
     """
     rows = _programs(ctx)
-    if rows is None:
-        return result("PASS", programs_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='说明可执行脚本的调用时机和入口时 可定位的脚本调用时机与入口说明; 技能指令或实际采用的公开包合同中的调用导航', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(rows):
         if row.get("tier") != 1:
@@ -780,8 +804,8 @@ def check_program_005(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：每个已声明程序必须声明唯一非空 owner，且未声明共享所有权。
     """
     rows = _programs(ctx)
-    if rows is None:
-        return result("PASS", programs_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='确定程序逻辑所有主体时 程序所有者及用途、接口、权限、测试验收责任; 共享包唯一实现或适用例外', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "program": row.get("id")}
         for index, row in enumerate(rows)
@@ -798,8 +822,8 @@ def check_program_006(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：已声明程序不得标记存在跨技能相对路径直接引用或执行。
     """
     rows = _programs(ctx)
-    if rows is None:
-        return result("PASS", programs_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='一个技能调用另一个技能拥有的程序时 调用路径与依赖引用; 程序所有者边界', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "program": row.get("id")}
         for index, row in enumerate(rows)
@@ -811,28 +835,18 @@ def check_program_006(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_program_007(ctx: dict[str, Any]) -> dict[str, Any]:
-    """程序复用使用版本化稳定入口。
-
-    机械断言：声明被复用的程序必须通过版本化引用和稳定机器入口调用，
-    且未复制程序实现。
-    """
-    rows = _programs(ctx)
-    if rows is None:
-        return result("PASS", programs_declared=0, mechanical_half=True)
-    violations = []
-    for index, row in enumerate(rows):
-        if row.get("reused") is not True:
-            continue
-        ok = (
-            _nonempty_str(row.get("versioned_reference"))
-            and _nonempty_str(row.get("stable_machine_entry"))
-            and row.get("implementation_copied") is not True
-        )
-        if not ok:
-            violations.append({"index": index, "program": row.get("id")})
-    if violations:
-        return result("FAIL", reuse_without_versioned_entry=violations, mechanical_half=True)
-    return result("PASS", programs_declared=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _programs(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Versioned origin and stable public entry of a program reused across skills', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_program_008(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -860,8 +874,8 @@ def check_program_009(ctx: dict[str, Any]) -> dict[str, Any]:
     私有参考资料或实现文件。
     """
     rows = _programs(ctx)
-    if rows is None:
-        return result("PASS", programs_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='解析或调用复用程序时 已发布入口与契约; 实际读取和调用路径', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "program": row.get("id")}
         for index, row in enumerate(rows)
@@ -873,24 +887,19 @@ def check_program_009(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_program_010(ctx: dict[str, Any]) -> dict[str, Any]:
-    """版本化程序引用最小契约。
-
-    机械断言：每条已声明程序引用必须锁定所有技能、程序身份、接口版本、
-    内容摘要、机器入口、输入输出、依赖、兼容范围和平台解析方式。
-    """
-    document = load_governance_document(ctx, "program-contracts")
-    if document is None:
-        return result("PASS", program_references_declared=0, mechanical_half=True)
-    references = rows_of(document, "program_references", "program-contracts")
-    violations = []
-    for index, row in enumerate(references):
-        problems = _program_reference_violations(row, "reference")
-        if problems:
-            violations.append({"index": index, "program": row.get("program_id"),
-                               "problems": problems})
-    if violations:
-        return result("FAIL", program_references_below_minimum_contract=violations, mechanical_half=True)
-    return result("PASS", program_references_declared=len(references), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = load_governance_document(ctx, "program-contracts")
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Shared program public reference contract and corresponding origin bytes', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_program_011(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1044,8 +1053,14 @@ def check_runtimepkg_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-packages")
     if document is None:
-        return result("PASS", packages_declared=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='已提升公共运行时的包实现及原技能和平台投影中的副本',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     packages = rows_of(document, "packages", "runtime-packages")
+    if not packages:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='已提升公共运行时的包实现及原技能和平台投影中的副本',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(packages):
         copies = row.get("implementation_copies")
@@ -1065,31 +1080,19 @@ def check_runtimepkg_001(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_runtimepkg_002(ctx: dict[str, Any]) -> dict[str, Any]:
-    """运行时包拥有独立版本与兼容范围。
-
-    机械断言：每个已声明运行时包必须携带可独立识别的版本，以及与技能族、
-    平台和调用接口的兼容范围。
-    """
-    document = _doc(ctx, "runtime-packages")
-    if document is None:
-        return result("PASS", packages_declared=0, mechanical_half=True)
-    packages = rows_of(document, "packages", "runtime-packages")
-    violations = []
-    for index, row in enumerate(packages):
-        compatibility = row.get("compatibility")
-        ok = (
-            _nonempty_str(row.get("version"))
-            and isinstance(compatibility, dict)
-            and _nonempty_str(compatibility.get("family"))
-            and isinstance(compatibility.get("platforms"), list)
-            and bool(compatibility.get("platforms"))
-            and _nonempty_str(compatibility.get("interface"))
-        )
-        if not ok:
-            violations.append({"index": index, "package": row.get("id")})
-    if violations:
-        return result("FAIL", packages_without_independent_version=violations, mechanical_half=True)
-    return result("PASS", packages_declared=len(packages), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _doc(ctx, "runtime-packages")
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Actual independent runtime package version, compatibility declarations and dependency observations', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+        _static_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_runtimepkg_003(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1171,15 +1174,16 @@ def check_runtimepkg_006(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-packages")
     if document is None:
-        return _finish(
-            [
-                _static_row("PASS", reason="no_declared_packages"),
-                _digest_row("PASS", reason="no_declared_packages"),
-            ],
-            packages_declared=0,
-            mechanical_half=True,
-        )
+        return _finish([
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     packages = rows_of(document, "packages", "runtime-packages")
+    if not packages:
+        return _finish([
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     static_violations = []
     digest_violations = []
     digest_missing = []
@@ -1324,16 +1328,17 @@ def check_state_003(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-state-contracts")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_degradations"),
-                _static_row("PASS", reason="no_declared_degradations"),
-            ],
-            declared_degradations=0,
-            mechanical_half=True,
-        )
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发生或声明可选能力降级时 降级输出合同中的缺失部分与影响说明; 主要状态枚举', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发生或声明可选能力降级时 降级输出合同中的缺失部分与影响说明; 主要状态枚举', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='发生或声明可选能力降级时 降级输出合同中的缺失部分与影响说明; 主要状态枚举', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     degradations = rows_of(document, "degradations", "runtime-state-contracts")
     states = rows_of(document, "states", "runtime-state-contracts")
+    if not degradations and not states:
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发生或声明可选能力降级时 降级输出合同中的缺失部分与影响说明; 主要状态枚举', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发生或声明可选能力降级时 降级输出合同中的缺失部分与影响说明; 主要状态枚举', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='发生或声明可选能力降级时 降级输出合同中的缺失部分与影响说明; 主要状态枚举', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     schema_violations = [
         {"kind": "degradation_incomplete", "index": index,
          "capability": row.get("capability")}
@@ -1436,15 +1441,16 @@ def check_state_007(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-state-contracts")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_results"),
-                _static_row("PASS", reason="no_declared_results"),
-            ],
-            declared_results=0,
-            mechanical_half=True,
-        )
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='进入等待用户或受阻前 暂停与等待合同中的已完成范围、阻碍与继续条件说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='进入等待用户或受阻前 暂停与等待合同中的已完成范围、阻碍与继续条件说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='进入等待用户或受阻前 暂停与等待合同中的已完成范围、阻碍与继续条件说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     results = rows_of(document, "results", "runtime-state-contracts")
+    if not results:
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='进入等待用户或受阻前 暂停与等待合同中的已完成范围、阻碍与继续条件说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='进入等待用户或受阻前 暂停与等待合同中的已完成范围、阻碍与继续条件说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='进入等待用户或受阻前 暂停与等待合同中的已完成范围、阻碍与继续条件说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     required = (
         "completed_work", "last_valid_checkpoint", "missing",
         "resume_conditions", "outputs", "resource_usage",
@@ -1580,15 +1586,16 @@ def check_state_012(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-state-contracts")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_methods"),
-                _static_row("PASS", reason="no_declared_methods"),
-            ],
-            declared_methods=0,
-            mechanical_half=True,
-        )
+        return _finish([
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='定义严格方法的重复执行语义时 方法契约中适用的幂等特征', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='定义严格方法的重复执行语义时 方法契约中适用的幂等特征', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='定义严格方法的重复执行语义时 方法契约中适用的幂等特征', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     methods = rows_of(document, "methods", "runtime-state-contracts")
+    if not methods:
+        return _finish([
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='定义严格方法的重复执行语义时 方法契约中适用的幂等特征', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='定义严格方法的重复执行语义时 方法契约中适用的幂等特征', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='定义严格方法的重复执行语义时 方法契约中适用的幂等特征', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     schema_violations = []
     static_violations = []
     for index, row in enumerate(methods):
@@ -1667,8 +1674,10 @@ def check_state_014(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "runtime-state-contracts")
     if document is None:
-        return result("PASS", declared_cancellations=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='取消发生于正式制品提交后 正式制品提交记录; 取消后的文件状态和清理范围', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     cancellations = rows_of(document, "cancellations", "runtime-state-contracts")
+    if not cancellations:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='取消发生于正式制品提交后 正式制品提交记录; 取消后的文件状态和清理范围', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "run_id": row.get("run_id")}
         for index, row in enumerate(cancellations)
@@ -2144,8 +2153,10 @@ def check_task_015(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "task-result-contracts")
     if document is None:
-        return result("PASS", declared_results=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='输出业务运行结果时 业务结果合同中的产出定位与完成范围说明; 未完成时的缺口与下一步说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     results = rows_of(document, "results", "task-result-contracts")
+    if not results:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='输出业务运行结果时 业务结果合同中的产出定位与完成范围说明; 未完成时的缺口与下一步说明', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "run_id": row.get("run_id"),
          "missing": _missing_fields(row, RESULT_REQUIRED_FIELDS)}
@@ -2165,8 +2176,10 @@ def check_task_016(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "task-result-contracts")
     if document is None:
-        return result("PASS", declared_inputs=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='声明输入资源时 输入资源身份、种类、路径、契约、摘要、访问和必需性字段', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     inputs = rows_of(document, "inputs", "task-result-contracts")
+    if not inputs:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='声明输入资源时 输入资源身份、种类、路径、契约、摘要、访问和必需性字段', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(inputs):
         ok = (
@@ -2193,8 +2206,10 @@ def check_task_017(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "task-result-contracts")
     if document is None:
-        return result("PASS", declared_expected_outputs=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='声明预期输出时 预期输出身份、路径、契约、必需性、覆盖策略和验收要求', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     outputs = rows_of(document, "expected_outputs", "task-result-contracts")
+    if not outputs:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='声明预期输出时 预期输出身份、路径、契约、必需性、覆盖策略和验收要求', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(outputs):
         ok = (
@@ -2220,15 +2235,16 @@ def check_task_018(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "task-result-contracts")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_actual_outputs"),
-                _static_row("PASS", reason="no_declared_actual_outputs"),
-            ],
-            declared_actual_outputs=0,
-            mechanical_half=True,
-        )
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='报告已产生输出时 交付合同中的产出定位方式（链接、资源标识或直接内容）; 现有引用的静态可解析性', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='报告已产生输出时 交付合同中的产出定位方式（链接、资源标识或直接内容）; 现有引用的静态可解析性', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='报告已产生输出时 交付合同中的产出定位方式（链接、资源标识或直接内容）; 现有引用的静态可解析性', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     outputs = rows_of(document, "actual_outputs", "task-result-contracts")
+    if not outputs:
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='报告已产生输出时 交付合同中的产出定位方式（链接、资源标识或直接内容）; 现有引用的静态可解析性', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='报告已产生输出时 交付合同中的产出定位方式（链接、资源标识或直接内容）; 现有引用的静态可解析性', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='报告已产生输出时 交付合同中的产出定位方式（链接、资源标识或直接内容）; 现有引用的静态可解析性', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     schema_violations = []
     for index, row in enumerate(outputs):
         if (
@@ -2272,15 +2288,16 @@ def check_task_019(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "task-result-contracts")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_structured_outputs"),
-                _digest_row("PASS", reason="no_declared_structured_outputs"),
-            ],
-            declared_structured_outputs=0,
-            mechanical_half=True,
-        )
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     outputs = rows_of(document, "structured_outputs", "task-result-contracts")
+    if not outputs:
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     schema_violations = []
     digest_violations = []
     for index, row in enumerate(outputs):
@@ -2340,8 +2357,10 @@ def check_task_020(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "task-result-contracts")
     if document is None:
-        return result("PASS", declared_structured_outputs=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='将示例声明为TASK-019合格示例时适用。 示例原始字节; 消费者同一公开校验入口', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     outputs = rows_of(document, "structured_outputs", "task-result-contracts")
+    if not outputs:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='将示例声明为TASK-019合格示例时适用。 示例原始字节; 消费者同一公开校验入口', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = [
         {"index": index, "output": row.get("output_id")}
         for index, row in enumerate(outputs)

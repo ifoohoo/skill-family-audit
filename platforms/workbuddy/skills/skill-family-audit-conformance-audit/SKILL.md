@@ -82,6 +82,9 @@ print(json.dumps(decision, ensure_ascii=False))
 
 ## 语义审阅结果接入
 
+当当前 `request` 要求机械对象前提时，实际判断必须填写在已有 `reason_code` 中，`rationale` 需解释该前提及本条业务结论，`evidence_refs` 必须引用本条真正读取的绑定材料。仅在 `rationale` 中写出某代码，而 `reason_code` 仍为一般说明时，无法完成机械对象判断。不得通过解析 `rationale` 推测 `NA`。
+
+
 只有已建立精确语义 binding 的活动规则才生成 review request。生产 CLI 不接受 `--semantic-review-stdin` 提升语义结论：即使字段、摘要、角色和 `PASS` 都正确，也以退出码 2、顶层 `BLOCKED` 和 `SEMANTIC_REVIEW_PRODUCER_UNTRUSTED` 失败关闭。
 
 现行职责边界：
@@ -92,11 +95,11 @@ print(json.dumps(decision, ensure_ascii=False))
 4. finalizer 只核对结果内容与冻结的 Task、request、规则集合及证据摘要：缺少证据角色返回 `EVIDENCE_MISSING`，冲突、判据未裁明或仍有激活阻塞返回 `REVIEW_REQUIRED`。
 5. 外部审阅结果继续走 v1 待审合同；认可的具名语义来源、独立性与结论接受政策确定前，不能进入生产 v2 结论通道。
 
-宿主已有认可审阅来源与接受记录时，按 `refs/host-semantic-review-consumption.md` 消费已接受结果，并保留同一实际 Task；该程序内路径不改变本节 CLI 边界。函数参数本身不认证来源；宿主负责证明审阅来源、职责分离与接受范围；Audit 只绑定内容并执行既有 Schema 与状态规则。完整档必须在预检之后继续：宿主安排实际审阅、消费该次结果、校验并返回最终报告，不能把预检请求当成检查完成。
+宿主已有认可审阅来源与接受记录时，按 `refs/host-semantic-review-consumption.md` 消费已接受结果。阶段内部仍绑定该阶段自己的 Task；完整档的 `final` 只组合原 `stage_results`，不把早期或晚期判断重签成最终 Task 结果。该程序内路径不改变本节 CLI 边界。函数参数本身不认证来源；宿主负责证明审阅来源、职责分离与接受范围；Audit 只绑定内容并执行既有 Schema 与状态规则。完整档必须在预检之后继续：宿主安排实际审阅、消费该次结果、校验并返回最终报告，不能把预检请求当成检查完成。
 
 调用顺序、逐项判断和报告只在该参考文档维护。按文档中的已有函数和真实参数调用；不要临时编写大型调用程序，也不要自行重写合并或结果转换。进程内调用 `run_workflow` 时与 CLI `main()` 相同：规则选择前失败用 `before_rule_selection_result`；规则已选出后使用 `exc.result`。不要自行拼只含 status/reason/summary 的残缺结果，也不要把后置失败改标为选择前失败。外层 Foundation 仍失败。预检返回的 `semantic_context_plan["contexts"]` 必须按该文档逐个消费，不要自行合批。分派单位可以是相关多 context 的原生新上下文，结果单位仍是每个原 `context_digest` 与该项 `reviews`；详细分派、输入边界和宿主缺口只在该参考文档维护。直接调用本方法与经 Quickstart 到达本方法的业务路径等价，Quickstart 不是强制入口。
 
-`PASS` 必须覆盖 binding 声明的全部证据角色，并逐项提供 `evidence_id`、SHA-256、定位符和理由；引用必须支持该理由，不能只因为某份材料已被预选进上下文。`FAIL` 必须引用明确反例。没有读过的材料不得写入理由；材料不足保持 `EVIDENCE_MISSING`，不得写成无依据的 `PASS` 或 `NA`。`cognitive_independence=not_attested` 只表示当前结果未证明认知独立，不代表审阅职责已分离。实际模型执行次数、上下文数和发送规则数从宿主观察取得，经 `render_human_summary` 的 `journey_facts` 传入；不要保持固定零值，不要用上下文数或结果数量推算模型调用次数。未知值表示为 `unknown`。范围内含 `NOT_APPLICABLE` 时称「范围内规则」，不要称「全部适用规则」。检查器内部异常（如 `executor_method_subresults_invalid`）与目标缺材料分开说明。只读结论限于实际沙箱、工具调用和已比较字节，不能用 Git 状态条数证明全部脏文件未改。
+`PASS` 必须覆盖 binding 声明的全部证据角色，并逐项提供 `evidence_id`、SHA-256、定位符和理由；引用必须支持该理由，不能只因为某份材料已被预选进上下文。六条已列条件规则的本次必需角色由条件代码决定，`*_CONDITION_UNKNOWN` 不能是 `PASS` 或 `NOT_APPLICABLE`。可计入完成的目标缺证必须同时写明材料类型、已核对的获准位置，以及缺失或无法读取的内容。`executor_` 前缀加任意 reason，或只有 `REQUIRED_EVIDENCE_ROLE_MISSING` 加缺角色列表，都不是完成。高版本专业证明按政策接受，与本次是否实际开展检查为两个独立事实；同版本的 partial、unverified 或范围不匹配不计完成。`FAIL` 必须引用明确反例。没有读过的材料不得写入理由；材料不足保持 `EVIDENCE_MISSING`，不得写成无依据的 `PASS` 或 `NA`。`cognitive_independence=not_attested` 只表示当前结果未证明认知独立，不代表审阅职责已分离。实际模型执行次数、上下文数和发送规则数从宿主观察取得，经 `render_human_summary` 的 `journey_facts` 传入；不要保持固定零值，不要用上下文数或结果数量推算模型调用次数。未知值表示为 `unknown`。范围内含 `NOT_APPLICABLE` 时称「范围内规则」，不要称「全部适用规则」。检查器内部异常（如 `executor_method_subresults_invalid`）与目标缺材料分开说明。只读结论限于实际沙箱、工具调用和已比较字节，不能用 Git 状态条数证明全部脏文件未改。
 
 宿主每次接入前都要核对四项：任务与审阅范围经用户认可；审阅者非原实现者；原始请求、材料和逐条理由可回读；结果已精确绑定当前 Task、规则集合和证据摘要。争议交人工裁决。完整检查请求不等于预先批准任何规则 `PASS`。人工规范审阅和对 `SFA-FOUNDATION-011` 的同意，都不授权具体目标形成语义 `PASS`。缺证保持 `EVIDENCE_MISSING`。外部 v1 仍只是待审材料。
 

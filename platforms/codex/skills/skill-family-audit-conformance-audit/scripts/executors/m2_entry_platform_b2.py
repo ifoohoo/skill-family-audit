@@ -290,37 +290,41 @@ def json_stable(value: Any) -> str:
 
 
 def check_entry_004(ctx: dict[str, Any]) -> dict[str, Any]:
-    """固定入口的规范对外名称。
-
-    机械断言：已声明固定入口的逻辑名必须形如 ``<family>:<entry>``；物理名非空；
-    采用前缀命名回退必须声明动因为裸名冲突且平台清单映射已登记。
-    """
-    rows = _entry_rows(ctx)
-    if rows is None:
-        return result("PASS", entries_declared=0, mechanical_half=True)
-    fixed = _fixed_entry_rows(rows)
-    if not fixed:
-        return result("PASS", entries_declared=len(rows), mechanical_half=True)
-    violations = []
-    for row in fixed:
-        entry = row.get("entry")
-        logical = row.get("logical_name")
-        problems = []
-        match = ENTRY_LOGICAL_NAME_PATTERN.match(logical) if isinstance(logical, str) else None
-        if not match or match.group(2) != entry:
-            problems.append("logical_name_not_family_colon_entry")
-        if not _nonempty_str(row.get("physical_name")):
-            problems.append("physical_name_empty")
-        if row.get("naming_fallback") is True:
-            if row.get("fallback_reason") != "bare_name_conflict":
-                problems.append("fallback_reason_not_bare_name_conflict")
-            if row.get("manifest_mapping_declared") is not True:
-                problems.append("fallback_mapping_not_declared_in_manifest")
-        if problems:
-            violations.append({"entry": entry, "problems": problems})
-    if violations:
-        return result("FAIL", entry_name_violations=violations, mechanical_half=True)
-    return result("PASS", fixed_entries_declared=len(fixed), mechanical_half=True)
+    """Consume the existing logical-to-physical observation, without a naming policy."""
+    from .m2_entry_platform import _entry_kind_of
+    declared = _entry_rows(ctx)
+    project = ctx.get("scope", {}).get("plugin_project") or {}
+    fixed = {row["id"] for row in project.get("skills", [])
+             if _entry_kind_of(row.get("id")) is not None}
+    projections = project.get("projections") or []
+    mappings = [{"manifest": row["manifest"], "platform": row["platform"], **mapping}
+                for row in projections for mapping in row.get("mappings", [])
+                if mapping.get("skillId") in fixed]
+    evidence = {"object": "Declared fixed logical entries and observed platform physical identities",
+                "fixed_entries": sorted(fixed), "mappings": mappings,
+                "source_refs": list(ctx.get("evidence_set") or []), "mechanical_half": True}
+    if not fixed or not mappings:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      declared_material=declared, **evidence)
+    missing = [{"platform": row["platform"], "entries": sorted(fixed - {
+        mapping.get("skillId") for mapping in row.get("mappings", [])})}
+        for row in projections if fixed - {
+            mapping.get("skillId") for mapping in row.get("mappings", [])}]
+    collisions = []
+    for row in projections:
+        physical = {}
+        for mapping in row.get("mappings", []):
+            physical.setdefault(mapping["physicalName"], set()).add(mapping["skillId"])
+        collisions.extend({"platform": row["platform"], "physical_name": name,
+                           "logical_ids": sorted(ids)} for name, ids in physical.items()
+                          if len(ids) > 1 and ids & fixed)
+    if missing:
+        return result("EVIDENCE_MISSING", reason="fixed_entry_mapping_incomplete",
+                      missing_mappings=missing, **evidence)
+    if collisions:
+        return result("EVIDENCE_MISSING", reason="actual_name_conflict_resolution_unconfirmed",
+                      collisions=collisions, **evidence)
+    return result("PASS", reason="observed_logical_physical_mapping", **evidence)
 
 
 def check_entry_006(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -969,51 +973,18 @@ def _package_rows(ctx: dict[str, Any]) -> list[dict[str, Any]] | None:
 
 
 def check_package_001(ctx: dict[str, Any]) -> dict[str, Any]:
-    """平台发行包内容边界。
-
-    机械断言：已声明发行包不得混入其他平台专属清单、开发测试设施、源码仓说明
-    或未授权内部资料；共同运行资源必须位于真实安装布局并进入载荷清单。
-    """
-    rows = _package_rows(ctx)
-    if rows is None:
-        return result("PASS", packages_declared=0, mechanical_half=True)
-    violations = []
-    for index, row in enumerate(rows):
-        problems = []
-        for key in (
-            "foreign_platform_manifest_files",
-            "dev_test_facilities",
-            "source_repo_docs",
-            "unauthorized_internal_materials",
-        ):
-            value = row.get(key)
-            if value is None:
-                value = []
-            if not isinstance(value, list) or not all(
-                isinstance(item, str) for item in value
-            ):
-                raise ExecutorEvidenceError(
-                    "GOVERNANCE_DOCUMENT_INVALID",
-                    f"release-packages.{key} 必须是字符串数组",
-                )
-            if value:
-                problems.append(f"{key}:{sorted(set(value))}")
-        for res_index, resource in enumerate(row.get("shared_resources") or []):
-            if not isinstance(resource, dict):
-                raise ExecutorEvidenceError(
-                    "GOVERNANCE_DOCUMENT_INVALID",
-                    "release-packages.shared_resources 行必须是对象",
-                )
-            if (
-                resource.get("in_real_install_layout") is not True
-                or resource.get("in_payload_manifest") is not True
-            ):
-                problems.append(f"shared_resource_unplaced:{res_index}")
-        if problems:
-            violations.append({"index": index, "platform": row.get("platform"), "problems": problems})
-    if violations:
-        return result("FAIL", package_content_violations=violations, mechanical_half=True)
-    return result("PASS", packages_declared=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _package_rows(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Actual platform payload, shared resources and non-public boundary', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_package_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1049,42 +1020,18 @@ def check_package_002(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_package_003(ctx: dict[str, Any]) -> dict[str, Any]:
-    """相同输入重复构建摘要一致。
-
-    机械断言：已声明发行包必须至少记录两次干净构建且载荷摘要全部一致；
-    不一致时不得声明可重复构建或稳定发布。
-    """
-    rows = _package_rows(ctx)
-    if rows is None:
-        return result("PASS", packages_declared=0, mechanical_half=True)
-    violations = []
-    for index, row in enumerate(rows):
-        builds = row.get("clean_builds")
-        if builds is None:
-            builds = []
-        if not isinstance(builds, list) or not all(
-            isinstance(item, dict) for item in builds
-        ):
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID", "release-packages.clean_builds 必须是对象数组"
-            )
-        problems = []
-        digests = [build.get("payload_digest") for build in builds]
-        if len(builds) < 2:
-            problems.append("fewer_than_two_clean_builds")
-        elif any(not is_hex64(digest) for digest in digests):
-            problems.append("payload_digest_invalid")
-        elif len(set(digests)) != 1:
-            problems.append("payload_digest_mismatch")
-            if row.get("reproducible_build_claimed") is True:
-                problems.append("reproducible_build_claimed_despite_mismatch")
-            if row.get("stable_release") is True:
-                problems.append("stable_release_despite_mismatch")
-        if problems:
-            violations.append({"index": index, "platform": row.get("platform"), "problems": problems})
-    if violations:
-        return result("FAIL", reproducibility_violations=violations, mechanical_half=True)
-    return result("PASS", packages_declared=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _package_rows(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Reproducible-build claim and the build provider result for identical inputs', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 # ---------------------------------------------------------------------------
@@ -1179,47 +1126,24 @@ def check_plat_003(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_plat_004(ctx: dict[str, Any]) -> dict[str, Any]:
-    """四平台逻辑名称一致。
-
-    机械断言：已声明各平台的技能族逻辑名、固定入口名与命名端到端入口逻辑名
-    必须跨平台一致。
-    """
-    rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
-    declared = [row for row in rows if isinstance(row.get("logical_names"), dict)]
-    if len(declared) < 2:
-        return result("PASS", platforms_with_logical_names=len(declared), mechanical_half=True)
-    families = set()
-    fixed_maps = set()
-    named_sets = set()
-    for row in declared:
-        names = row["logical_names"]
-        families.add(names.get("family"))
-        fixed = names.get("fixed_entries")
-        if not isinstance(fixed, dict):
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                f"platform-projections {row.get('platform')} logical_names.fixed_entries 必须是对象",
-            )
-        fixed_maps.add(json_stable(fixed))
-        named = names.get("named_entries")
-        if not isinstance(named, list) or not all(isinstance(item, str) for item in named):
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                f"platform-projections {row.get('platform')} logical_names.named_entries 必须是字符串数组",
-            )
-        named_sets.add(frozenset(named))
-    violations = []
-    if len(families) != 1 or None in families:
-        violations.append({"problem": "family_name_diverges", "families": sorted(str(f) for f in families)})
-    if len(fixed_maps) != 1:
-        violations.append({"problem": "fixed_entry_names_diverge"})
-    if len(named_sets) != 1:
-        violations.append({"problem": "named_entry_sets_diverge"})
-    if violations:
-        return result("FAIL", logical_name_divergence=violations, mechanical_half=True)
-    return result("PASS", platforms_compared=len(declared), mechanical_half=True)
+    """Compare the logical identities in the already observed platform mappings."""
+    declared = _projection_rows(ctx)
+    project = ctx.get("scope", {}).get("plugin_project") or {}
+    projections = project.get("projections") or []
+    evidence = {"object": "Logical identities of declared platform projections",
+                "projections": projections, "source_refs": list(ctx.get("evidence_set") or []),
+                "mechanical_half": True}
+    if len(projections) < 2 or any(not row.get("mappings") for row in projections):
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      declared_material=declared, **evidence)
+    identities = {row["platform"]: sorted({mapping["skillId"]
+                  for mapping in row["mappings"]}) for row in projections}
+    if len({tuple(ids) for ids in identities.values()}) != 1:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      detail="Different platform mapping sets do not establish a conflict for the same capability in an actual joint release.",
+                      logical_identities=identities, **evidence)
+    return result("PASS", reason="observed_logical_identity_correspondence",
+                  logical_identities=identities, **evidence)
 
 
 def check_plat_006(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1391,13 +1315,17 @@ def check_plat_013(ctx: dict[str, Any]) -> dict[str, Any]:
     为受控增强。
     """
     rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='平台专有增强的实际用途、能力矩阵声明与受控边界',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
+    observed = 0
     for row in rows:
         extensions = _sub_rows(row, "platform_specific_extensions", row.get("platform"))
         if extensions is None:
             continue
+        observed += len(extensions)
         for ext_index, extension in enumerate(extensions):
             if (
                 extension.get("declared_in_capability_matrix") is not True
@@ -1407,6 +1335,10 @@ def check_plat_013(ctx: dict[str, Any]) -> dict[str, Any]:
                     {"platform": row.get("platform"), "extension_index": ext_index,
                      "name": extension.get("name")}
                 )
+    if not observed:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='平台专有增强的实际用途、能力矩阵声明与受控边界',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     if violations:
         return result("FAIL", uncontrolled_platform_extensions=violations, mechanical_half=True)
     return result("PASS", projections_declared=len(rows), mechanical_half=True)
@@ -1418,13 +1350,17 @@ def check_plat_015(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：已声明能力差异必须记录受影响能力、语义差异、替代路径与验证证据。
     """
     rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='实际平台差异、受影响能力、用户可见变化与替代路径',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
+    observed = 0
     for row in rows:
         differences = _sub_rows(row, "capability_differences", row.get("platform"))
         if differences is None:
             continue
+        observed += len(differences)
         for diff_index, difference in enumerate(differences):
             problems = []
             if not _nonempty_list(difference.get("affected_capabilities")):
@@ -1440,6 +1376,10 @@ def check_plat_015(ctx: dict[str, Any]) -> dict[str, Any]:
                     {"platform": row.get("platform"), "difference_index": diff_index,
                      "problems": problems}
                 )
+    if not observed:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='实际平台差异、受影响能力、用户可见变化与替代路径',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     if violations:
         return result("FAIL", capability_difference_records_incomplete=violations, mechanical_half=True)
     return result("PASS", projections_declared=len(rows), mechanical_half=True)
@@ -1483,13 +1423,17 @@ def check_plat_017(ctx: dict[str, Any]) -> dict[str, Any]:
     能力矩阵，不得只存在于适配代码。
     """
     rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='实际偏离共同业务定义的平台行为及权威差异登记',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
+    observed = 0
     for row in rows:
         deviations = _sub_rows(row, "deviations", row.get("platform"))
         if deviations is None:
             continue
+        observed += len(deviations)
         for dev_index, deviation in enumerate(deviations):
             if (
                 deviation.get("registered_in_matrix_or_contract") is not True
@@ -1499,6 +1443,10 @@ def check_plat_017(ctx: dict[str, Any]) -> dict[str, Any]:
                     {"platform": row.get("platform"), "deviation_index": dev_index,
                      "name": deviation.get("name")}
                 )
+    if not observed:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='实际偏离共同业务定义的平台行为及权威差异登记',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     if violations:
         return result("FAIL", unregistered_deviations=violations, mechanical_half=True)
     return result("PASS", projections_declared=len(rows), mechanical_half=True)
@@ -1529,22 +1477,18 @@ def check_plat_018(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_plat_019(ctx: dict[str, Any]) -> dict[str, Any]:
-    """平台特有内容不得写回共享业务规则。
-
-    机械断言：已声明投影不得把平台特有目录、命令、工具名和委派方式写回共享
-    业务规则正文。
-    """
-    rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
-    violations = [
-        row.get("platform")
-        for row in rows
-        if row.get("platform_specifics_written_back_to_shared_rules") is True
-    ]
-    if violations:
-        return result("FAIL", platform_specifics_written_back=violations, mechanical_half=True)
-    return result("PASS", projections_declared=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _projection_rows(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Shared business text and platform adaptation boundaries', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _static_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_plat_020(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1581,27 +1525,19 @@ def check_plat_020(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_plat_023(ctx: dict[str, Any]) -> dict[str, Any]:
-    """各平台分别维护版本化档案与合同。
-
-    机械断言：已声明平台必须分别维护具有版本和内容摘要的能力档案与投影合同。
-    """
-    rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
-    violations = []
-    for row in rows:
-        for key in ("capability_profile", "projection_contract"):
-            item = row.get(key)
-            if not isinstance(item, dict):
-                violations.append({"platform": row.get("platform"), "problem": f"{key}_missing"})
-                continue
-            if not _nonempty_str(item.get("version")):
-                violations.append({"platform": row.get("platform"), "problem": f"{key}_version_empty"})
-            if not is_hex64(item.get("content_digest")):
-                violations.append({"platform": row.get("platform"), "problem": f"{key}_digest_invalid"})
-    if violations:
-        return result("FAIL", versioned_artifacts_missing=violations, mechanical_half=True)
-    return result("PASS", projections_declared=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _projection_rows(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Declared platform capability profiles and projection contracts, their structure and actual content bytes', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _digest_row("EVIDENCE_MISSING", **evidence),
+        _schema_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_plat_024(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1699,38 +1635,18 @@ def check_plat_027(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_plat_028(ctx: dict[str, Any]) -> dict[str, Any]:
-    """每次发布声明支持矩阵。
-
-    机械断言：已声明发布必须记录由宿主平台、操作系统、处理器架构和运行时
-    版本构成的支持矩阵。
-    """
-    rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
-    violations = []
-    for row in rows:
-        releases = _sub_rows(row, "releases", row.get("platform"))
-        if releases is None:
-            continue
-        for release_index, release in enumerate(releases):
-            matrix = release.get("support_matrix")
-            if not isinstance(matrix, dict):
-                violations.append(
-                    {"platform": row.get("platform"), "release_index": release_index,
-                     "problem": "support_matrix_missing"}
-                )
-                continue
-            missing = [
-                field for field in SUPPORT_MATRIX_FIELDS if not _nonempty_str(matrix.get(field))
-            ]
-            if missing:
-                violations.append(
-                    {"platform": row.get("platform"), "release_index": release_index,
-                     "missing": missing}
-                )
-    if violations:
-        return result("FAIL", support_matrix_violations=violations, mechanical_half=True)
-    return result("PASS", projections_declared=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _projection_rows(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Release support statement for host, system, runtime and applicable architecture limits', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_plat_029(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1804,13 +1720,17 @@ def check_plat_032(ctx: dict[str, Any]) -> dict[str, Any]:
     机械断言：已声明矩阵外环境必须标记为未评估或不支持，不得默认为支持。
     """
     rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='支持矩阵外实际环境的未评估或不支持说明',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
+    observed = 0
     for row in rows:
         environments = _sub_rows(row, "out_of_matrix_environments", row.get("platform"))
         if environments is None:
             continue
+        observed += len(environments)
         for env_index, environment in enumerate(environments):
             problems = []
             if environment.get("status") not in {"not_evaluated", "unsupported"}:
@@ -1822,6 +1742,10 @@ def check_plat_032(ctx: dict[str, Any]) -> dict[str, Any]:
                     {"platform": row.get("platform"), "environment_index": env_index,
                      "problems": problems}
                 )
+    if not observed:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='支持矩阵外实际环境的未评估或不支持说明',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     if violations:
         return result("FAIL", out_of_matrix_environments_unmarked=violations, mechanical_half=True)
     return result("PASS", projections_declared=len(rows), mechanical_half=True)
@@ -1920,30 +1844,19 @@ def check_plat_037(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_plat_038(ctx: dict[str, Any]) -> dict[str, Any]:
-    """适配变化后四平台包从同一修订重新生成并复验。
-
-    机械断言：已声明适配变化的平台必须从同一共同技能族修订重新生成四个平台
-    发行包，并重新执行漂移、摘要和联合发布验证；不得只发布单平台同版本变体。
-    """
-    rows = _projection_rows(ctx)
-    if rows is None:
-        return result("PASS", projections_declared=0, mechanical_half=True)
-    violations = []
-    for row in rows:
-        if row.get("adaptation_changed") is not True:
-            continue
-        problems = []
-        if row.get("regenerated_from_same_revision") is not True:
-            problems.append("not_regenerated_from_same_revision")
-        if row.get("drift_digest_joint_release_reverified") is not True:
-            problems.append("joint_release_not_reverified")
-        if row.get("single_platform_variant_only") is True:
-            problems.append("single_platform_variant_only")
-        if problems:
-            violations.append({"platform": row.get("platform"), "problems": problems})
-    if violations:
-        return result("FAIL", joint_regeneration_violations=violations, mechanical_half=True)
-    return result("PASS", projections_declared=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _projection_rows(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Changed adaptation in an actual joint release and corresponding projection/release consistency results', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _digest_row("EVIDENCE_MISSING", **evidence),
+        _static_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 # ---------------------------------------------------------------------------
@@ -1956,54 +1869,33 @@ def _source_document(ctx: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def check_source_001(ctx: dict[str, Any]) -> dict[str, Any]:
-    """单一平台无关业务源码与确定性投影。
-
-    机械断言：已声明者必须维护单一平台无关业务源码并确定性生成各平台投影。
-    """
-    document = _source_document(ctx)
-    if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
-    root = document.get("business_source_root")
-    if not isinstance(root, dict):
-        return result("FAIL", reason="business_source_root_missing", mechanical_half=True)
-    problems = []
-    if not _nonempty_str(root.get("path")):
-        problems.append("source_root_path_empty")
-    if root.get("single_platform_independent_source") is not True:
-        problems.append("not_single_platform_independent_source")
-    if root.get("deterministic_projection_generation") is not True:
-        problems.append("projection_generation_not_deterministic")
-    if problems:
-        return result("FAIL", source_root_problems=problems, mechanical_half=True)
-    return result("PASS", source_root=root.get("path"), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _source_document(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Common business authority and source-to-platform synchronization relation', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_source_002(ctx: dict[str, Any]) -> dict[str, Any]:
-    """平台加载目录不是业务源码。
-
-    机械断言：已声明者不得把平台加载目录当作业务源码，也不得手工维护多份
-    内容近似的 SKILL.md。
-    """
-    document = _source_document(ctx)
-    if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
-    root = document.get("business_source_root")
-    if not isinstance(root, dict):
-        return result("FAIL", reason="business_source_root_missing", mechanical_half=True)
-    problems = []
-    if root.get("platform_load_directory_is_source") is True:
-        problems.append("platform_load_directory_is_source")
-    copies = root.get("hand_maintained_skill_md_copies")
-    if copies is not None and not isinstance(copies, int):
-        raise ExecutorEvidenceError(
-            "GOVERNANCE_DOCUMENT_INVALID",
-            "source-projections.business_source_root.hand_maintained_skill_md_copies 必须是整数",
-        )
-    if isinstance(copies, int) and copies > 1:
-        problems.append(f"hand_maintained_skill_md_copies:{copies}")
-    if problems:
-        return result("FAIL", second_source_problems=problems, mechanical_half=True)
-    return result("PASS", single_source_maintained=True, mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _source_document(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Common authority and synchronization of the actual cross-platform business copies', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_source_003(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -2060,51 +1952,34 @@ def check_source_004(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_source_005(ctx: dict[str, Any]) -> dict[str, Any]:
-    """可见性由元数据与清单区分。
-
-    机械断言：已声明可见性必须由权威元数据和平台发布清单区分，不得通过复制
-    或移动到不同业务源码根实现。
-    """
-    document = _source_document(ctx)
-    if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
-    rows = rows_of(document, "visibility_declarations", "source-projections")
-    violations = []
-    for index, row in enumerate(rows):
-        problems = []
-        if row.get("visibility") not in {"public", "internal"}:
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                f"source-projections.visibility_declarations 第 {index} 行 visibility 非法",
-            )
-        if row.get("distinguished_by_metadata") is not True:
-            problems.append("not_distinguished_by_metadata")
-        if row.get("distinguished_by_copy_or_move") is True:
-            problems.append("distinguished_by_copy_or_move")
-        if problems:
-            violations.append({"index": index, "skill": row.get("skill"), "problems": problems})
-    if violations:
-        return result("FAIL", visibility_distinction_violations=violations, mechanical_half=True)
-    return result("PASS", visibility_declarations=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _source_document(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Public/internal entry visibility metadata and corresponding release manifests', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _static_row("EVIDENCE_MISSING", **evidence),
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_source_006(ctx: dict[str, Any]) -> dict[str, Any]:
-    """隐藏内部技能保持包内相对路径。
-
-    机械断言：已声明被平台隐藏的内部技能必须保持对自身 references/scripts/assets
-    的稳定包内相对路径。
-    """
-    document = _source_document(ctx)
-    if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
-    rows = rows_of(document, "hidden_internal_skills", "source-projections")
-    violations = []
-    for index, row in enumerate(rows):
-        if row.get("intra_package_relative_paths_preserved") is not True:
-            violations.append({"index": index, "skill": row.get("skill")})
-    if violations:
-        return result("FAIL", hidden_skill_paths_unstable=violations, mechanical_half=True)
-    return result("PASS", hidden_internal_skills=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _source_document(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Resource references of internal skills actually hidden or relocated by the platform', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _static_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_source_007(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -2114,8 +1989,14 @@ def check_source_007(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _source_document(ctx)
     if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='实际平台覆盖补丁、共同业务合同及差异说明',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "overlays", "source-projections")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='实际平台覆盖补丁、共同业务合同及差异说明',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(rows):
         problems = []
@@ -2133,26 +2014,19 @@ def check_source_007(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_source_008(ctx: dict[str, Any]) -> dict[str, Any]:
-    """覆盖层只含白名单补丁。
-
-    机械断言：已声明覆盖补丁必须位于投影合同版本化白名单内。
-    """
-    document = _source_document(ctx)
-    if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
-    rows = rows_of(document, "overlay_patches", "source-projections")
-    violations = []
-    for index, row in enumerate(rows):
-        problems = []
-        if row.get("in_versioned_whitelist") is not True:
-            problems.append("not_in_versioned_whitelist")
-        if not _nonempty_str(row.get("whitelist_ref")):
-            problems.append("whitelist_ref_empty")
-        if problems:
-            violations.append({"index": index, "patch": row.get("patch"), "problems": problems})
-    if violations:
-        return result("FAIL", patches_outside_whitelist=violations, mechanical_half=True)
-    return result("PASS", overlay_patches=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _source_document(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Actual versioned overlay patch, permitted scope and corresponding bytes', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _static_row("EVIDENCE_MISSING", **evidence),
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_source_009(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -2162,8 +2036,11 @@ def check_source_009(ctx: dict[str, Any]) -> dict[str, Any]:
     适用平台版本范围和复核期限。
     """
     document = _source_document(ctx)
-    if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
+    if document is None or not rows_of(document, "overlay_patches", "source-projections"):
+        evidence = {"reason": "audit_mechanical_object_unresolved", "object": 'Actual overlay patch purpose, scope and authority metadata', "source_refs": list(ctx.get("evidence_set") or []), "mechanical_half": True}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     rows = rows_of(document, "overlay_patches", "source-projections")
     violations = []
     for index, row in enumerate(rows):
@@ -2229,61 +2106,34 @@ def check_source_011(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_source_013(ctx: dict[str, Any]) -> dict[str, Any]:
-    """平台投影自包含。
-
-    机械断言：已声明平台投影必须自包含所需技能、参考资料、程序、清单与已声明
-    运行依赖，不得依赖其他平台包。
-    """
-    document = _source_document(ctx)
-    if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
-    rows = rows_of(document, "platform_projections", "source-projections")
-    violations = []
-    for index, row in enumerate(rows):
-        problems = []
-        if row.get("self_contained") is not True:
-            problems.append("not_self_contained")
-        if row.get("depends_on_other_platform_packages") is True:
-            problems.append("depends_on_other_platform_packages")
-        if problems:
-            violations.append({"index": index, "platform": row.get("platform"), "problems": problems})
-    if violations:
-        return result("FAIL", projection_self_containment_violations=violations, mechanical_half=True)
-    return result("PASS", platform_projections=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _source_document(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Actual platform payload, declared runtime resources and engineering closure result', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _static_row("EVIDENCE_MISSING", **evidence),
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_source_014(ctx: dict[str, Any]) -> dict[str, Any]:
-    """安装后投影不得反向引用。
-
-    机械断言：已声明安装后投影不得反向引用源码仓库、相邻工程或构建者用户
-    主目录中的文件。
-    """
-    document = _source_document(ctx)
-    if document is None:
-        return result("PASS", source_declared=False, mechanical_half=True)
-    rows = rows_of(document, "platform_projections", "source-projections")
-    violations = []
-    for index, row in enumerate(rows):
-        references = row.get("reverse_references")
-        if references is None:
-            references = []
-        if not isinstance(references, list) or not all(
-            isinstance(item, dict) for item in references
-        ):
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                "source-projections.platform_projections.reverse_references 必须是对象数组",
-            )
-        forbidden = [
-            {"target_kind": item.get("target_kind"), "path": item.get("path")}
-            for item in references
-            if item.get("target_kind") in FORBIDDEN_REVERSE_REFERENCE_KINDS
-        ]
-        if forbidden:
-            violations.append({"index": index, "platform": row.get("platform"), "references": forbidden})
-    if violations:
-        return result("FAIL", reverse_references_present=violations, mechanical_half=True)
-    return result("PASS", platform_projections=len(rows), mechanical_half=True)
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _source_document(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Installed-resource path declarations and actual static reference closure', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _static_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_source_015(ctx: dict[str, Any]) -> dict[str, Any]:

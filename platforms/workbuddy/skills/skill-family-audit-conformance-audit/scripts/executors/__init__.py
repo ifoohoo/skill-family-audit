@@ -158,6 +158,78 @@ def _validate_method_route(route: Any) -> tuple[list[str], list[str]]:
     return methods, required
 
 
+def _row_is_evidenced_not_applicable(row: dict[str, Any]) -> bool:
+    if row.get("status") != "NOT_APPLICABLE":
+        return False
+    evidence = row.get("evidence")
+    if not isinstance(evidence, dict) or not evidence:
+        return False
+    if evidence.get("kind") == "method_not_executed":
+        return False
+    if evidence.get("reason") in {
+        "non_mechanical_method",
+        "method_not_executed",
+        "executor_does_not_report_per_method",
+    }:
+        return False
+    refs = evidence.get("evidence_refs")
+    if isinstance(refs, list) and any(
+        isinstance(ref, dict)
+        and isinstance(ref.get("locator"), str)
+        and ref["locator"].strip()
+        for ref in refs
+    ):
+        return True
+    for key in ("rationale", "locator", "applicability_citation", "citation"):
+        value = evidence.get(key)
+        if isinstance(value, str) and value.strip():
+            return True
+    return False
+
+
+def _accept_pass_with_evidenced_na(
+    supplied: Any, required: list[str], aggregate_status: str
+) -> list[dict[str, Any]] | None:
+    """Reuse the shipped shape check for PASS mixed with evidenced NOT_APPLICABLE."""
+    if aggregate_status != "PASS" or not isinstance(supplied, list) or not supplied:
+        return None
+    statuses = []
+    for row in supplied:
+        if not isinstance(row, dict):
+            return None
+        statuses.append(row.get("status"))
+    if "PASS" not in statuses or any(
+        status not in {"PASS", "NOT_APPLICABLE"} for status in statuses
+    ):
+        return None
+    if not all(
+        row.get("status") != "NOT_APPLICABLE" or _row_is_evidenced_not_applicable(row)
+        for row in supplied
+    ):
+        return None
+    probed = []
+    for row in supplied:
+        copy = dict(row)
+        if copy.get("status") == "NOT_APPLICABLE":
+            copy["status"] = "PASS"
+        probed.append(copy)
+    accepted = validate_method_subresults(
+        probed, required_methods=required, aggregate_status="PASS",
+    )
+    original = {row.get("check_method"): row for row in supplied}
+    restored = []
+    for row in accepted:
+        source = original.get(row["check_method"])
+        if not isinstance(source, dict):
+            return None
+        restored.append({
+            **row,
+            "status": source["status"],
+            "evidence": dict(source["evidence"]),
+        })
+    return restored
+
+
 def _check_method_subresults(
     outcome: dict[str, Any], route: Any, *, require_multi_itemization: bool = False
 ) -> list[dict[str, Any]]:
@@ -172,11 +244,20 @@ def _check_method_subresults(
     supplied = outcome.get("check_method_subresults")
     itemized = None
     if supplied is not None or (require_multi_itemization and len(required) > 1):
-        itemized = validate_method_subresults(
-            supplied,
-            required_methods=required,
-            aggregate_status=outcome["status"],
-        )
+        try:
+            itemized = validate_method_subresults(
+                supplied,
+                required_methods=required,
+                aggregate_status=outcome["status"],
+            )
+        except ExecutorEvidenceError as exc:
+            if exc.code != "EXECUTOR_METHOD_SUBRESULTS_AGGREGATE_MISMATCH":
+                raise
+            itemized = _accept_pass_with_evidenced_na(
+                supplied, required, outcome["status"],
+            )
+            if itemized is None:
+                raise
     single = required[0] if len(required) == 1 and itemized is None else None
     itemized_by_method = {
         row["check_method"]: row for row in (itemized or [])

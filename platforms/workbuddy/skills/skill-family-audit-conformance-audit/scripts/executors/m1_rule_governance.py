@@ -130,34 +130,18 @@ def _exceptions(ctx: dict[str, Any]) -> list[dict[str, Any]] | None:
 
 
 def check_graph_026(ctx: dict[str, Any]) -> dict[str, Any]:
-    """放宽已采用要求的特殊处理只核对对象、规则和处理事项。
-
-    机械断言：已声明的例外记录存在并计入文档摘要。作者身份、外部权威引用
-    与批准人不构成机械门槛——Audit 接受约定记录，不鉴定由谁填写或批准。
-    未声明任何豁免则无违反事实。
-    """
-    exceptions = _exceptions(ctx)
-    if exceptions is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_exceptions"),
-                _doc_digest_row(ctx, ("exceptions",)),
-            ],
-            declared_exceptions=0,
-            mechanical_half=True,
-        )
-    return _finish(
-        [
-            _schema_row(
-                "PASS",
-                reason="declared_exceptions_recorded",
-                declared_exceptions=len(exceptions),
-            ),
-            _doc_digest_row(ctx, ("exceptions",)),
-        ],
-        declared_exceptions=len(exceptions),
-        mechanical_half=True,
-    )
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _exceptions(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Agreed special-treatment record linking the current object, adopted rule and treatment', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_graph_027(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -382,49 +366,21 @@ def check_rule_005(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_rule_007(ctx: dict[str, Any]) -> dict[str, Any]:
-    """项目只能新增独立规则或收紧上级规则，不得关闭、覆盖或放宽上级强制规则。
-
-    机械断言：已声明规则覆盖动作只允许 add_independent_rule / tighten；
-    出现 close / override / loosen / waive 即违反。
-    """
+    """Consume an actual Project Profile structure result; special treatment is allowed."""
     document = load_governance_document(ctx, "rule-overrides")
-    if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_overrides"),
-                _doc_digest_row(ctx, ("rule-overrides",)),
-            ],
-            declared_overrides=0,
-            mechanical_half=True,
-        )
-    rows = rows_of(document, "overrides", "rule-overrides")
-    violations = []
-    for index, row in enumerate(rows):
-        action = row.get("action")
-        if action not in _OVERRIDE_ACTIONS:
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                f"rule-overrides 第 {index} 行动作非法: {action!r}",
-            )
-        if action in _FORBIDDEN_OVERRIDE_ACTIONS:
-            violations.append({"index": index, "rule_id": row.get("rule_id"), "action": action})
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("rule-overrides",)),
-            ],
-            forbidden_overrides=violations,
-            mechanical_half=True,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", declared_overrides=len(rows)),
-            _doc_digest_row(ctx, ("rule-overrides",)),
-        ],
-        declared_overrides=len(rows),
-        mechanical_half=True,
-    )
+    if document is not None:
+        rows_of(document, "overrides", "rule-overrides")
+    scope = ctx.get("scope") or {}
+    profile = scope.get("project_profile_document")
+    checked = scope.get("foundation_profile")
+    evidence = {"object": "Project requirements distinguished from adopted rules and recorded special treatment",
+                "declared_material": document, "profile": profile, "foundation_profile": checked,
+                "source_refs": list(ctx.get("evidence_set") or []), "mechanical_half": True}
+    if (isinstance(profile, dict) and isinstance(profile.get("overrides"), list)
+            and isinstance(checked, dict) and checked.get("code") == "SPE0000"
+            and checked.get("foundation_profile_complete") is True):
+        return _finish([_schema_row("PASS", reason="verified_project_profile_structure", **evidence)], **evidence)
+    return _finish([_schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", **evidence)], **evidence)
 
 
 def check_rule_009(ctx: dict[str, Any]) -> dict[str, Any]:

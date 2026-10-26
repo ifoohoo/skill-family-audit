@@ -15,7 +15,15 @@
     "execution_profile",
     "semantic_group_ids",
     "canonical_rule_ids",
-    "professional_consumption"
+    "professional_consumption",
+    "audit_phase",
+    "audit_input",
+    "audit_input_digest",
+    "audit_input_ref",
+    "stage_rules",
+    "stage_results",
+    "supersedes",
+    "target_type"
   ],
   "produces": [
     "conformance_result",

@@ -1304,8 +1304,10 @@ def check_tier1_007(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _tier1_runtime(ctx)
     if document is None:
-        return result("PASS", tier1_results_declared=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='报告第一档各规则或样例结论时 逐项身份、环境、证据位置、结论与未运行受阻不适用理由', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "tier1_results", "tier1-runtime")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='报告第一档各规则或样例结论时 逐项身份、环境、证据位置、结论与未运行受阻不适用理由', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(rows):
         conclusion = row.get("conclusion")

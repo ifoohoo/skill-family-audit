@@ -424,3 +424,42 @@ def _validate_result_rows(rows, what):
             raise ValueError("check_method 必须是非机械审阅方法")
         _require_non_empty_string(row["binding_id"], "binding_id")
         _require_string_list(row["evidence_refs"], "evidence_refs")
+
+
+_CITATION_FIELDS = (
+    "evidence_id", "path", "platform", "role", "sha256", "text", "control",
+)
+
+
+def accept_citation(catalog, citation):
+    """接受一条引用。相同字节可以共用，路径、平台、角色和 evidence_id 仍各算各的身份。
+
+    对调后的引用、用摘要代替正文、或把 ``text`` / ``control`` 截断，一律拒绝。
+    """
+    if not isinstance(catalog, list) or not isinstance(citation, dict):
+        raise ValueError("citation catalog is invalid")
+    rows = {}
+    for row in catalog:
+        _require_dict(row, "citation catalog 行")
+        for field in _CITATION_FIELDS:
+            if field not in row:
+                raise ValueError("citation catalog 行缺少字段：%s" % field)
+            _require_non_empty_string(row[field], field)
+        if row["text"] == row["sha256"] or row["control"] == row["sha256"]:
+            raise ValueError("citation text or control cannot be replaced by a digest")
+        if row["evidence_id"] in rows:
+            raise ValueError("citation catalog evidence_id is duplicated")
+        rows[row["evidence_id"]] = row
+    for field in _CITATION_FIELDS:
+        if field not in citation:
+            raise ValueError("citation 缺少字段：%s" % field)
+        _require_non_empty_string(citation[field], field)
+    source = rows.get(citation["evidence_id"])
+    if source is None:
+        raise ValueError("citation identity is unknown")
+    for field in ("path", "platform", "role", "sha256", "text", "control"):
+        if citation[field] != source[field]:
+            raise ValueError("citation identity does not match the catalog row")
+    return {
+        field: citation[field] for field in _CITATION_FIELDS
+    }

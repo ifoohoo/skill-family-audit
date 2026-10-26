@@ -458,7 +458,7 @@ def choose_primary_next_action(domain_result, journey_facts=None):
     return action
 
 
-def render_human_summary(domain_result, group_registry, journey_facts=None):
+def render_human_summary(domain_result, group_registry, journey_facts=None, *, professional_context=None):
     """按 11-result-presentation.md 固定六段顺序生成人类摘要（普通列表）。
 
     每段为 {"section": <段名>, ...}；group_registry 仅用于把 group ID 映射为
@@ -569,7 +569,7 @@ def render_human_summary(domain_result, group_registry, journey_facts=None):
                     "complete", "reason_code",
                 )
             },
-            "professional_items": _professional_summary_items(domain_result),
+            "professional_items": _professional_summary_items(domain_result, professional_context),
             "semantic_reviews_consumed_count": _semantic_reviews_consumed_count(
                 domain_result
             ),
@@ -1071,6 +1071,11 @@ def _resolve_selectors(
 _AUDIT_INTERNAL_EVIDENCE_REASONS = {
     "executor_method_subresults_invalid",
     "executor_evidence_invalid",
+    "audit_mechanical_object_unresolved",
+    "audit_context_object_scope_unresolved",
+    "audit_context_projection_unresolved",
+    "audit_context_measurement_unperformed",
+    "mechanical_object_scope_unresolved",
 }
 
 
@@ -1091,14 +1096,19 @@ def _rule_row_by_id(rule_rows, rule_id):
 def _is_audit_internal_missing(row):
     if not isinstance(row, dict):
         return False
-    if row.get("reason_code") == "RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED":
+    if row.get("reason_code") in {"RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED", "MECHANICAL_METHOD_NOT_EXECUTED"}:
+        return True
+    if any(_is_audit_internal_missing(item) for item in row.get("check_method_subresults") or []):
         return True
     evidence = row.get("evidence")
     if not isinstance(evidence, dict):
         return False
     return (
         evidence.get("reason") in _AUDIT_INTERNAL_EVIDENCE_REASONS
-        or evidence.get("reason_code") == "CANONICAL_EXECUTION_CARRIER_MISSING"
+        or evidence.get("reason_code") in {
+            "CANONICAL_EXECUTION_CARRIER_MISSING", "MECHANICAL_METHOD_NOT_EXECUTED",
+            "RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED",
+        }
     )
 
 
@@ -1182,10 +1192,26 @@ def _blocking_findings(domain_result):
             }
             if isinstance(canonical_id, str):
                 finding["canonical_id"] = canonical_id
+            if isinstance(row.get("evidence"), dict):
+                finding["evidence"] = row["evidence"]
+            review = row.get("semantic_review")
+            for field in ("reason_code", "rationale"):
+                value = row.get(field)
+                if (value is None and isinstance(review, dict)
+                        and review.get("status") == status):
+                    value = review.get(field)
+                if value is not None:
+                    finding[field] = value
+            pending_methods = [
+                item for item in row.get("check_method_subresults") or []
+                if isinstance(item, dict) and item.get("status") in _FINDING_STATUS_ORDER
+            ]
+            if pending_methods:
+                finding["check_method_subresults"] = pending_methods
             if _is_audit_internal_missing(row):
                 finding["issue_type"] = "audit_executor_contract_failure"
                 evidence = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
-                finding["reason"] = evidence.get("reason")
+                finding["reason"] = evidence.get("reason") or row.get("reason_code")
                 if row.get("reason_code") == "RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED":
                     finding["reason_code"] = row["reason_code"]
             findings.append(finding)
@@ -1209,6 +1235,8 @@ def _blocking_findings(domain_result):
 def _professional_issue_type(item):
     mode = item.get("mode")
     reader_status = item.get("reader_status")
+    if item.get("status") == "pass" and item.get("version_relation") == "higher":
+        return "policy_acceptance"
     if item.get("status") == "pass":
         return "professional_pass"
     if mode == "missing_entry":
@@ -1240,6 +1268,8 @@ def _professional_next_step(item):
     issue = _professional_issue_type(item)
     entry = item.get("entry_ref") if isinstance(item.get("entry_ref"), str) else ""
     provider = item.get("provider_id") if isinstance(item.get("provider_id"), str) else ""
+    if issue == "policy_acceptance":
+        return "高版本证明按既有政策接受；本次是否开展检查及完成范围以原 action、outcome 和 scope 为准，不表示其他领域通过。"
     if issue == "professional_pass":
         return "这个专业项已按证明或版本政策通过，并不表示其他领域通过。"
     if issue == "missing_entry":
@@ -1281,18 +1311,43 @@ def _professional_next_step(item):
     )
 
 
-def _professional_summary_items(domain_result):
+def _professional_summary_items(domain_result, professional_context=None):
     payload = domain_result.get("professional_consumption")
     if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
         return []
+    context_items = professional_context.get("items", []) if isinstance(professional_context, dict) else []
+    if not isinstance(context_items, list):
+        context_items = []
     items = []
     for item in payload["items"]:
         if not isinstance(item, dict):
             continue
+        originals = [raw for raw in context_items if isinstance(raw, dict)
+                     and raw.get("provider_id") == item.get("provider_id")]
+        original = originals[0] if len(originals) == 1 else {}
+        selected = original.get("selected") if isinstance(original.get("selected"), bool) else None
+        action = original.get("action") if original.get("action") in {"none", "reuse", "scan", "refresh"} else None
         issue = _professional_issue_type(item)
         conclusion = item.get("conclusion") if isinstance(item.get("conclusion"), dict) else None
         outcome = conclusion.get("outcome") if isinstance(conclusion, dict) else None
         scope = conclusion.get("scope") if isinstance(conclusion, dict) else None
+        details = conclusion.get("details", {}) if isinstance(conclusion, dict) else {}
+        review = details.get("review", {}) if isinstance(details, dict) else {}
+        reviewed_checks = review.get("checks", []) if isinstance(review, dict) else []
+        if not isinstance(reviewed_checks, list):
+            reviewed_checks = []
+        performed = None
+        if selected is not None and action is not None:
+            if not selected or action not in {"scan", "refresh"}:
+                performed = False
+            elif isinstance(outcome, dict):
+                if (outcome.get("completion") in {"complete", "partial"}
+                        or bool(scope.get("checked") if isinstance(scope, dict) else False)
+                        or any(isinstance(check, dict) and check.get("status") in {"pass", "fail", "insufficient"}
+                               for check in reviewed_checks)):
+                    performed = True
+                elif outcome.get("completion") == "not-performed":
+                    performed = False
         items.append({
             "provider_id": item.get("provider_id"),
             "status": item.get("status"),
@@ -1301,6 +1356,14 @@ def _professional_summary_items(domain_result):
             "issue_type": issue,
             "passed": item.get("status") == "pass",
             "version_relation": item.get("version_relation"),
+            "acceptance_basis": (
+                "policy_acceptance"
+                if item.get("version_relation") == "higher" and item.get("status") == "pass"
+                else None
+            ),
+            "selected": selected,
+            "action": action,
+            "scan_performed_this_time": performed,
             "reader_status": item.get("reader_status"),
             "entry_ref": item.get("entry_ref"),
             "refresh_suggested": item.get("refresh_suggested") is True,

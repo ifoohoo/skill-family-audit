@@ -720,6 +720,49 @@
               }
             }
           }
+        },
+        "stage_results": {
+          "type": "array",
+          "description": "最终领域结果保留的各阶段原归属。review 阶段必须引用原 Task、Foundation Result、领域结果和 context 文件；接受事实只从这些原资源派生。调用方声明的 exchange_valid、domain_schema_valid、transport_succeeded、domain_result_accepted 不是输入。不把早期或晚期判断重签为最终 Task 结果，也不合并成另一份 semantic-review-result v2。",
+          "items": {
+            "type": "object",
+            "properties": {
+              "audit_phase": {
+                "type": "string"
+              },
+              "task_digest": {
+                "type": "string"
+              },
+              "foundation_task_digest": {
+                "type": "string"
+              },
+              "parent_review_request_digest": {
+                "type": "string"
+              },
+              "task_ref": {
+                "type": "object"
+              },
+              "result_ref": {
+                "type": "object"
+              },
+              "domain_result_ref": {
+                "type": "object"
+              },
+              "context_plan_ref": {
+                "type": "object"
+              },
+              "context_results_ref": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "effective_contributions": {
+          "type": "array",
+          "description": "每项恰好一个有效贡献，并集等于冻结应执行集合。被替代的原结果保留，但不计入该并集。缺失结果不补 PASS。",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "allOf": [

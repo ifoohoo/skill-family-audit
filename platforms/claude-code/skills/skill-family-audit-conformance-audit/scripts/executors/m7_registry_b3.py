@@ -297,14 +297,16 @@ def check_template_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = load_governance_document(ctx, "template-overrides")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_base_templates"),
-                _doc_digest_row(ctx, ("template-overrides",)),
-            ],
-            base_templates_declared=0,
-        )
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='选择发布正式制品公共基础模板时适用。 模板及其精确契约绑定; 结构权威引用和辅助定位', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='选择发布正式制品公共基础模板时适用。 模板及其精确契约绑定; 结构权威引用和辅助定位', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='选择发布正式制品公共基础模板时适用。 模板及其精确契约绑定; 结构权威引用和辅助定位', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "base_templates", "template-overrides")
+    if not rows:
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='选择发布正式制品公共基础模板时适用。 模板及其精确契约绑定; 结构权威引用和辅助定位', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='选择发布正式制品公共基础模板时适用。 模板及其精确契约绑定; 结构权威引用和辅助定位', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='选择发布正式制品公共基础模板时适用。 模板及其精确契约绑定; 结构权威引用和辅助定位', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(rows):
         problems = []
@@ -342,14 +344,12 @@ def check_template_002(ctx: dict[str, Any]) -> dict[str, Any]:
     基础模板修订、覆盖摘要和选择条件四项事实。
     """
     document = load_governance_document(ctx, "template-overrides")
-    if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_template_overrides"),
-                _doc_digest_row(ctx, ("template-overrides",)),
-            ],
-            template_overrides_declared=0,
-        )
+    if document is None or not rows_of(document, "overrides", "template-overrides"):
+        evidence = {"reason": "audit_mechanical_object_unresolved", "object": 'Voluntary project template override and its base revision', "source_refs": list(ctx.get("evidence_set") or []), "mechanical_half": True}
+        return _finish([
+            _schema_row("EVIDENCE_MISSING", **evidence),
+            _digest_row("EVIDENCE_MISSING", **evidence),
+        ], **evidence)
     rows = rows_of(document, "overrides", "template-overrides")
     violations = []
     for index, row in enumerate(rows):

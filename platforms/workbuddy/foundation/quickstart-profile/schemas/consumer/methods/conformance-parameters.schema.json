@@ -65,6 +65,16 @@
       ],
       "description": "受检对象范围"
     },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "single_skill",
+        "family_source",
+        "release_artifact",
+        "project_adoption"
+      ],
+      "description": "受检对象的真实目标类型，取入口实际参数。它与 scope_selector 分开，不使用 skill、plugin 或 release。"
+    },
     "execution_profile": {
       "type": "string",
       "enum": [
@@ -145,7 +155,230 @@
     },
     "professional_consumption": {
       "$ref": "#/$defs/professionalConsumption",
-      "description": "宿主选择、可定位证明和提供方读取器原始返回；进入同一次 Task。基准由清单派生。未知字段拒绝。不得携带待执行命令，不得填写 status、version_relation、reader_status 等最终策略摘要。"
+      "description": "宿主选择、可定位证明和提供方读取器原始返回。完整档只在 late 或 final 的阶段参数中携带，不得写入 audit_input。基准由清单派生。未知字段拒绝。不得携带待执行命令，不得填写 status、version_relation、reader_status 等最终策略摘要。"
+    },
+    "audit_phase": {
+      "type": "string",
+      "enum": [
+        "early",
+        "late",
+        "final"
+      ],
+      "description": "完整档领域阶段。early 只含已核实不消费专业结果的规则；late 等待对应专业终态；final 只组合原阶段结果。省略时不是完整档分阶段。"
+    },
+    "audit_input": {
+      "type": "object",
+      "description": "仅首个真实阶段内联的共同冻结输入。不得包含 professional_consumption 或证明正文。后续阶段不得再内联或倒填。",
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audit_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_project_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope_selector": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "permission": {
+          "type": "string",
+          "minLength": 1
+        },
+        "professional_selection": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence_set": {
+          "type": "array"
+        },
+        "resource_closure": {
+          "type": "object"
+        },
+        "executable_rules": {
+          "type": "array"
+        },
+        "bindings": {
+          "type": "array"
+        },
+        "selectors": {
+          "type": "object"
+        }
+      }
+    },
+    "audit_input_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "audit_input 的 Foundation digest-document 摘要。不能代替正文，也不能手改。"
+    },
+    "audit_input_ref": {
+      "type": "object",
+      "description": "后续阶段和 final 对首个阶段已保存 audit_input 的 QuickstartResource 引用。",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "kind",
+        "id",
+        "location",
+        "role",
+        "digest"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "role": {
+          "const": "evidence"
+        },
+        "digest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "algorithm",
+            "value"
+          ],
+          "properties": {
+            "algorithm": {
+              "const": "sha256"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "stage_rules": {
+      "type": "array",
+      "description": "本阶段精确规则方法子集。不能借用只允许 targeted 的 canonical_rule_ids。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "canonical_id",
+          "revision_digest",
+          "check_method",
+          "binding_id"
+        ],
+        "properties": {
+          "canonical_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "check_method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "binding_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "professional_dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "stage_results": {
+      "type": "array",
+      "minItems": 1,
+      "description": "final 对原阶段 Task、Result、领域结果和 context 的引用。",
+      "items": {
+        "type": "object"
+      }
+    },
+    "supersedes": {
+      "type": "array",
+      "description": "仅新的 late 阶段可携带。每项指向被误分配规则的原阶段和精确规则方法项。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stage_task_digest",
+          "canonical_id",
+          "revision_digest",
+          "check_method",
+          "binding_id"
+        ],
+        "properties": {
+          "stage_task_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "canonical_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "check_method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "binding_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     }
   },
   "$defs": {
@@ -237,6 +470,26 @@
   ],
   "additionalProperties": false,
   "allOf": [
+    {
+      "if": {
+        "properties": {
+          "audit_phase": {
+            "const": "final"
+          }
+        },
+        "required": [
+          "audit_phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "stage_results": {}
+        },
+        "required": [
+          "stage_results"
+        ]
+      }
+    },
     {
       "if": {
         "properties": {

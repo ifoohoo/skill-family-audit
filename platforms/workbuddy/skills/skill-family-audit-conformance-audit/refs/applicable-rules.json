@@ -817,10 +817,10 @@
       "canonicalRevisionDigest": "32557a3f55fbe9244d989ca079fe0feee72271e5e6f709da18eabe079e403c2d"
     },
     {
-      "baselineRevisionDigest": "3c4e7fbf40bed72c5e90d45d4309bcadb90e49ff54446cb5846172c7fd2d9181",
+      "baselineRevisionDigest": "b858b4cd482eb4bcd9597afdb28c1a30732d8113c4cabb4fa0fc75d723064c98",
       "baselineRuleId": "semantic:SFA-ARTIFACT-006@2",
       "canonicalId": "SFA-ARTIFACT-006",
-      "canonicalRevisionDigest": "ab9ff566bde9781f95964a8cedd288d22b6f03b91dddc8f8490a0e8c9d9a98f2"
+      "canonicalRevisionDigest": "204470972b4f9b365f5bfd1d2cda1986795121fc42fb7427f36a19e9d5c0ad8b"
     },
     {
       "baselineRevisionDigest": "36a7f4d8ece7e521b48b89b8a285e23c95e9413e20ea03fa8b9dbb6122144880",
@@ -829,10 +829,10 @@
       "canonicalRevisionDigest": "dfaa58230e7cc47188d6ff55648ad4d20f6719157753077b0bd695260a3f40b6"
     },
     {
-      "baselineRevisionDigest": "b5b3c15359b6c0a8bf3058af71e765a4afd69a0a9da72c965455527989b63fab",
+      "baselineRevisionDigest": "97d59cb4a4938ea0efacd65d15469c67e7492cae183de3af5ec043c411a570be",
       "baselineRuleId": "semantic:SFA-ARTIFACT-008@2",
       "canonicalId": "SFA-ARTIFACT-008",
-      "canonicalRevisionDigest": "c3b4f78195bafe7b5954eaf06dc657c76d83c2df9bf878c287bdfa825e0bde47"
+      "canonicalRevisionDigest": "d84b00a27b2217a3b61b550da64f383ece286d653828453a9b90cc0fbdce487a"
     },
     {
       "baselineRevisionDigest": "9beb3adfff7cd80381cf7f5bdafc91bae8735a1eab9b5c391eaae0600a63f453",
@@ -883,10 +883,10 @@
       "canonicalRevisionDigest": "51b5f006674d4e18ae0931cb38890c93082a30fa93800ab01aabaae76fc1b7dd"
     },
     {
-      "baselineRevisionDigest": "afaef6bbf675699e9ee84a0a50ea4f88f315738e91a4097105911556d8feb6d5",
+      "baselineRevisionDigest": "cc8507e014542e64b0d089c117cc8fb7b07c2ea8efda318e1039b0d3ed1da783",
       "baselineRuleId": "semantic:SFA-ARTIFACT-017@2",
       "canonicalId": "SFA-ARTIFACT-017",
-      "canonicalRevisionDigest": "2858dcdc35582057a9fd67e928590f9c95b5d16d9e2b0dbf783c5c6acd71c0ad"
+      "canonicalRevisionDigest": "4213b109e4315338669dcf57a287126f290a60447fb3a7a031a216cc518a8e0f"
     },
     {
       "baselineRevisionDigest": "9e09bbb2031327f9a2d07ac15ca022b1706e697966188da26094f79e1662e23a",
@@ -895,10 +895,10 @@
       "canonicalRevisionDigest": "c203cee058960637394d1379049b86e112cfc3c4bf5fbbd7a67e9f8ef9cc8122"
     },
     {
-      "baselineRevisionDigest": "08c4c38d93a66f13350735b08b022cd67d3af5d2d3392c387f10ac351bc8367d",
+      "baselineRevisionDigest": "6861fa2a77fc363f385b66de1113182da6c16786126570a7ef511d1c2b8e7a2b",
       "baselineRuleId": "semantic:SFA-ARTIFACT-019@2",
       "canonicalId": "SFA-ARTIFACT-019",
-      "canonicalRevisionDigest": "1e40646e0431be548b5119134561f094dc408b7d8a4c99e201c2083f89824913"
+      "canonicalRevisionDigest": "f1769f15b83545a9a4bccb889ee1cf1f2d69d81fe0fdc8e40d66589ce2ca5297"
     },
     {
       "baselineRevisionDigest": "de6734d7b2d807fdbf1f99d3c767259051943a368e3b3b11eafe5c97148d204f",
@@ -907,22 +907,22 @@
       "canonicalRevisionDigest": "e4838159ad972c9bc35e5e2241b778186f72459bc64cf7af5ca086a955732281"
     },
     {
-      "baselineRevisionDigest": "ba4a18fe38fd0f290fd329c5ae30e8caf7dda0c9cac118d2b29b449b0e2fa3ff",
+      "baselineRevisionDigest": "db67dc13e2c2ee66cd3e3dc8b7893f1241e3643b7cee5af48fe600b32803d494",
       "baselineRuleId": "semantic:SFA-ARTIFACT-021@2",
       "canonicalId": "SFA-ARTIFACT-021",
-      "canonicalRevisionDigest": "88320b94c7eef431b203d50aedb53d8cc646469958747b27baa9e8308c38c0d2"
+      "canonicalRevisionDigest": "0999ccaaaa223eb30cbe41d090227a1e0c0d4277ace74e6caffeb9de348be906"
     },
     {
-      "baselineRevisionDigest": "f27bde6352c3b38b7345c22c36f34f1a518ed6f297f720639f99f7d53236c50d",
+      "baselineRevisionDigest": "20de92164116e4ac2194e3f8788bd3ae1e41e19d02a441653d0b354e08e4e0ce",
       "baselineRuleId": "semantic:SFA-ARTIFACT-022@2",
       "canonicalId": "SFA-ARTIFACT-022",
-      "canonicalRevisionDigest": "812b5b02add935e708838b0960d4f4405bf537ff6848644855b0d39ef37eaed4"
+      "canonicalRevisionDigest": "31e459d097b7d51ef12921dc2183efaa450effa55b87b9252e2cf61437892fa7"
     },
     {
-      "baselineRevisionDigest": "956ff7db132407355542d66f126fb45267215f7cddaf9b83f9f6c926e17e424d",
+      "baselineRevisionDigest": "5365c5d48fc8a5be485167b9e9a125b70eefb826a7cf3c598fba4c0aca687ca0",
       "baselineRuleId": "semantic:SFA-ARTIFACT-023@2",
       "canonicalId": "SFA-ARTIFACT-023",
-      "canonicalRevisionDigest": "e7cd2566005f15998ada1af9cdc241399464c316153a532ec0b24ea709a0d5e8"
+      "canonicalRevisionDigest": "1daaaeda5f5311a4f2c2127f050ccd3a0dfdf60d1cc56ce204d3ca4458443408"
     },
     {
       "baselineRevisionDigest": "7caf3bb70a32359d91a92258814b257dfa8695bfef9cfd41b9bd91dbf106b3df",
@@ -931,16 +931,16 @@
       "canonicalRevisionDigest": "f5fdc80c14d2613a3e115b6ba50d61efc0092dbefa52c9748682567dc4fb1d31"
     },
     {
-      "baselineRevisionDigest": "0f96744e7ca2baf826bc523cc4ec70dd53bb6666da0dc1701b36e70790b083b3",
+      "baselineRevisionDigest": "e4826f154b503479c2ca3e7c8d9e3919e4a639eab676fbe63b45ec4cf480a3c2",
       "baselineRuleId": "semantic:SFA-ARTIFACT-025@2",
       "canonicalId": "SFA-ARTIFACT-025",
-      "canonicalRevisionDigest": "60416bc9db6fbb2cd5d502fc434d98c7dbdb80d628e80e5a0c65e0fd77779fad"
+      "canonicalRevisionDigest": "d60cb3d47db811b328fc7c2a9150cbf02db02ccc55a3b6f6964ac42890350c81"
     },
     {
-      "baselineRevisionDigest": "2a28bbf39bed9d866e140c5a0085cb3c85a52872f3112ceff6bf402d0a094d78",
+      "baselineRevisionDigest": "7df37d125b5d73da589dc84c501bdb95b49fcde6b23fba6e11e3ae418f6301fc",
       "baselineRuleId": "semantic:SFA-ARTIFACT-026@2",
       "canonicalId": "SFA-ARTIFACT-026",
-      "canonicalRevisionDigest": "040c674bcba8a6a20249828c886d2952b50f1e87de908d8d3c948d27e2288135"
+      "canonicalRevisionDigest": "e87a42e46ffdee5a796107b9865f964abf64a98afa7193a55f73bb566a188a3a"
     },
     {
       "baselineRevisionDigest": "11de20c9200d7ac694b07d3430aeb0330d0168551fefc2f28c1240ad6f8a395c",
@@ -949,16 +949,16 @@
       "canonicalRevisionDigest": "a5239933a8a135d1a68a1aad39c924178fdd5d832565ad8a5b10d854337b0092"
     },
     {
-      "baselineRevisionDigest": "6e49141fbad923c7c9896a7449bec0bbe012c1dcd2a8ff3ebbae612d8a12653c",
+      "baselineRevisionDigest": "7c58c34ad21c801fa85bc2efb9aa9c1a17d124bd6f0c321aa985877e9b9f73b1",
       "baselineRuleId": "semantic:SFA-ARTIFACT-028@2",
       "canonicalId": "SFA-ARTIFACT-028",
-      "canonicalRevisionDigest": "7728cc510181e6372c7b5e5ff7bc7e55e1b6ac0eceaae6373fb235006a4351c9"
+      "canonicalRevisionDigest": "55027928804a1da2d19d242658d381f3394274e44e746a21b33a648bc64cc192"
     },
     {
-      "baselineRevisionDigest": "a627c2287527f12722c84b0e1a1556ac1ef3e3809fb940e527c064b71e302f71",
+      "baselineRevisionDigest": "6db39c759c4726173227cd9642308f3b90936082ab2ef69b005918ff2b8a70fb",
       "baselineRuleId": "semantic:SFA-ARTIFACT-029@2",
       "canonicalId": "SFA-ARTIFACT-029",
-      "canonicalRevisionDigest": "d4ae6f94b20d78a362f61c16608b593a529a534c93b4e39b5ea5d853c410386b"
+      "canonicalRevisionDigest": "2d576b87786156a0253fb6865e9591c815885cda31e22de461e25f1b7093f0d5"
     },
     {
       "baselineRevisionDigest": "3069a8db0b479fc7147aef0c0ee54bcef838412b7da9b422fcbcf781aca81667",
@@ -979,10 +979,10 @@
       "canonicalRevisionDigest": "de339442793327859205426a304ee687f05f7dd43fde9ae4d6908252ac807c3c"
     },
     {
-      "baselineRevisionDigest": "e0ca5ca686d39f2d1ab7c1a262a818fc6d21e779a24304f75b8ab5e68ed69397",
+      "baselineRevisionDigest": "31f5481038b8b6417a651d6dba4f8e7593d58a9a318aa684fc1b3dff3a338d68",
       "baselineRuleId": "semantic:SFA-ARTIFACT-033@2",
       "canonicalId": "SFA-ARTIFACT-033",
-      "canonicalRevisionDigest": "127946c57842276585929535d49e5485bbd1b821b1434291c604b4e9a90b209e"
+      "canonicalRevisionDigest": "06277d470906f016a7aab69788330e7c1c88aed0e40a31a2a0bea0059bea57a1"
     },
     {
       "baselineRevisionDigest": "350a9b66981b1a3bef7bdb2e3460dd35c1ddb4764e53939aabb0413262565ca6",
@@ -1333,10 +1333,10 @@
       "canonicalRevisionDigest": "6d01dd979f212ddc65b1362e8c382576e0c44c976bef2facf1428262a4a7365e"
     },
     {
-      "baselineRevisionDigest": "30b6bef868ab0b91377fed8ff7896115d33acb7a761afc6cc26421699e95a249",
+      "baselineRevisionDigest": "6e30171a315ea6c4b5bf170d4c9bfe548cab744e47d7277536ce0130eb7f24e1",
       "baselineRuleId": "semantic:SFA-COMPOSE-002@2",
       "canonicalId": "SFA-COMPOSE-002",
-      "canonicalRevisionDigest": "9599f00b356b5cb83c568b17abea7221f899bab7dde9b1b7bfd00a18dd22ce47"
+      "canonicalRevisionDigest": "a63c233689ace0ed380ca30c025ed87df6023f3962b68c1046dff19ab7bd198c"
     },
     {
       "baselineRevisionDigest": "bfb094a65ac85b3e12ca6fe1e504b245d52b82dc5120e5fbd17c4352e15ae40e",
@@ -1345,10 +1345,10 @@
       "canonicalRevisionDigest": "08da6cce7e0f8de9800d7ff3a342b0ca1c0f72d2d79f979c336c3fcc7309758e"
     },
     {
-      "baselineRevisionDigest": "6117db1cfbf148c4007decb150f3f26fbd777c6228119133cec477e8032a289a",
+      "baselineRevisionDigest": "a1efe7a09c68c058207c80531f2526734865c6b2ee2238ebbcad0addadd79b49",
       "baselineRuleId": "semantic:SFA-COMPOSE-004@2",
       "canonicalId": "SFA-COMPOSE-004",
-      "canonicalRevisionDigest": "71b2dcb061a7e326a26fa9f21a35289e0a3aa41651be804188f4a4b5fda25d9e"
+      "canonicalRevisionDigest": "8377bf6aad44eee69f7cef8ab8b39c07c5eea3d39e9bd04871d9e30b69f9cd58"
     },
     {
       "baselineRevisionDigest": "7f33baa6781e59f08077cbeec792921057dac77492514a1f8f722b2544f368b7",
@@ -1357,10 +1357,10 @@
       "canonicalRevisionDigest": "39f86a105e7df41d63267b45c22093044c6e7485c199cdbae72616bc41de9e59"
     },
     {
-      "baselineRevisionDigest": "ea432df45b7eea4845f5cda4056757d2f9097507c0fa98702ef59c645548a2d6",
+      "baselineRevisionDigest": "e8ea2bd4c2c00934eea075b4a0970c05744af02848de61073a5a7b19412115df",
       "baselineRuleId": "semantic:SFA-COMPOSE-006@2",
       "canonicalId": "SFA-COMPOSE-006",
-      "canonicalRevisionDigest": "40b739a52b25775a5eaa4b2e713b92a986ac4bb2c338a20401c0c88c6ba31307"
+      "canonicalRevisionDigest": "b51a0d06ac2012a449cab66c1868a3a37c88d1e16519843b3e2413cfb7af3485"
     },
     {
       "baselineRevisionDigest": "f6cf38f6f4447a52a1ad84697e7787515c9a52c38df8225f6e468b4d94f7f176",
@@ -1393,10 +1393,10 @@
       "canonicalRevisionDigest": "6c3368a88db9db1d4c75c786588f4c5fd6846df4fb442c8474293db83870dc5d"
     },
     {
-      "baselineRevisionDigest": "9589e25e775c348cb9c12fa3ad0202bee2e9a5bb08d94ad95871da866dbb4a0e",
+      "baselineRevisionDigest": "6c2e86614c6dde4b217184d454c50798820f089a56b7ca89735c9cfd62bd86f5",
       "baselineRuleId": "semantic:SFA-COMPOSE-012@2",
       "canonicalId": "SFA-COMPOSE-012",
-      "canonicalRevisionDigest": "8452832b831a261878e160adf8d32c894ba10a6cc19cb1344ba926bddfc74646"
+      "canonicalRevisionDigest": "98cb1751e5c132e741373207ebac9ed80323a3fc8cc6cd8a86709ba050aa33d2"
     },
     {
       "baselineRevisionDigest": "2d1d739931608eb0fc088be89b1ec30a8f3aa5a1c4f39d57e961d5d04045f083",
@@ -1417,10 +1417,10 @@
       "canonicalRevisionDigest": "31a1665643a01620f97ecbb6eb557b687e961442a80c55870595ab5d979f6e5b"
     },
     {
-      "baselineRevisionDigest": "3cb268e5f6f3633e41fb3b6a44de28f593009198c63c8f662c08dc4343ed1750",
+      "baselineRevisionDigest": "7e04be8732aff13aed99a037d73a536f6d8f7d77e6aaaa3f44a7e2d13a16a030",
       "baselineRuleId": "semantic:SFA-COMPOSE-016@2",
       "canonicalId": "SFA-COMPOSE-016",
-      "canonicalRevisionDigest": "88278b0aa4ef5014ed28ac1c699aacccfdf2bc961d5c24ef531051c7afd3437b"
+      "canonicalRevisionDigest": "bda04066fa2e4146847696f91d265e9f9951b12a5749b238f12d94f101204a3c"
     },
     {
       "baselineRevisionDigest": "3fe9a5bbb508836908caecc4d202456f11dfd3a4df6012c42adc28bfc4d3abd4",
@@ -1648,13 +1648,13 @@
       "baselineRevisionDigest": "d3cf9e6ed0c35b9539804d4c2f782679d885b56ea0211661bbc558c0c8feeca4",
       "baselineRuleId": "semantic:SFA-DATASEC-001@2",
       "canonicalId": "SFA-DATASEC-001",
-      "canonicalRevisionDigest": "e42691904a8d45ab4652438eceab7dcdd75890ada1314616a87d3d1132e2ae0c"
+      "canonicalRevisionDigest": "cc592bb098f690dd8536d5d6e4610001881ca7cd07431901ba61ef16b6476ad7"
     },
     {
       "baselineRevisionDigest": "a5f99e3780803c7e173959dd4457f2dfd780d9928f01625ac81efe7553ff9e48",
       "baselineRuleId": "semantic:SFA-DATASEC-002@2",
       "canonicalId": "SFA-DATASEC-002",
-      "canonicalRevisionDigest": "8e190943cc0fb8fb10fa2c0baa6cd2cbec379696ccdf68b70972572d69cee8b7"
+      "canonicalRevisionDigest": "6e91d04fa95cd5c62b66640f5db5e55464a027243595f5a7732b7c06e5c42738"
     },
     {
       "baselineRevisionDigest": "aaa73aa2ed076fe5ed086869d1d12ea693914d08dbb46a0c79d5331712dc4696",
@@ -1663,10 +1663,10 @@
       "canonicalRevisionDigest": "da5ed1f1f23f26e4a90d809cd61b60ae9fbdd0934ca3f741a7b30412e7768ea5"
     },
     {
-      "baselineRevisionDigest": "0954095b300611b9e608d5c8e2f97df22a08679dfbbc1f4bd16c39d43612459d",
+      "baselineRevisionDigest": "a0275cbcea471103c47eb64dbf51699c107dd064465b85046c6aaaf5463a4c37",
       "baselineRuleId": "semantic:SFA-DEPEND-003@2",
       "canonicalId": "SFA-DEPEND-003",
-      "canonicalRevisionDigest": "5867094a668651f23e3f52e004c824b300d84f454ff81c66cda86c210bbd6a89"
+      "canonicalRevisionDigest": "7f709d2ad7d54e35ac5caff1e8648f309369050907ec610d0432cc43940dbecd"
     },
     {
       "baselineRevisionDigest": "1f6652f57ae467100198bea907c10d5cf8986cb50a72d723a7948e9cb485de08",
@@ -1675,16 +1675,16 @@
       "canonicalRevisionDigest": "74f4e431a9528c5f6aaac4b008e510bc6d053cd3a246760aade6a999f4983227"
     },
     {
-      "baselineRevisionDigest": "52b735048df5b27c31b4564b45896a70c172c72446bc7f23b56426353e001268",
+      "baselineRevisionDigest": "0875a5e628be9a6f3bb70c24599cb2c0f3d0401f7c74355dde67abdf8c308b66",
       "baselineRuleId": "semantic:SFA-DEPEND-005@2",
       "canonicalId": "SFA-DEPEND-005",
-      "canonicalRevisionDigest": "82f0cccc03a343a9fd44e9ec22d3cf996a1bc6b4398d9df6a71a8b4ad34c7b30"
+      "canonicalRevisionDigest": "33f65f875972613b7235d13806cb18e0d42bf0d7ee8e60bae07830795b2cc977"
     },
     {
-      "baselineRevisionDigest": "d19fbe9eebadac10a81d7496159560a22101f98fd52018bf8bd8e2e9106df719",
+      "baselineRevisionDigest": "bec8c5781a1749a8dadd4031306a47dcfbf16251d908b2702a2580b778b0f407",
       "baselineRuleId": "semantic:SFA-DEPEND-006@2",
       "canonicalId": "SFA-DEPEND-006",
-      "canonicalRevisionDigest": "44cd08c9e0d99840717ba32a9b62e97af47d9f5afd7430c20301af6f901ccdeb"
+      "canonicalRevisionDigest": "040c92a08b8d4f6da5a32daf594e6eadef46e6c875f9658ce34bd33e037d8672"
     },
     {
       "baselineRevisionDigest": "78576eae5be0bd1fdeb6e1cc4b84161b16700e5c417306839292bfb48f2eab87",
@@ -1693,10 +1693,10 @@
       "canonicalRevisionDigest": "e234cfa4a0b0f89f1d648aca4313c7b1754651a6029c5740e09decfc778ce5b2"
     },
     {
-      "baselineRevisionDigest": "b9eaa31cb5380b67cfe6fd92b611045b74e3480efa5fcdd1e585be39cb196187",
+      "baselineRevisionDigest": "0ff00927291bea172d5cae9b5f5d8716d328ceb7e37ab21d56ac208f10ecb5a9",
       "baselineRuleId": "semantic:SFA-DEPEND-008@2",
       "canonicalId": "SFA-DEPEND-008",
-      "canonicalRevisionDigest": "b62e68e6ff8fef319bc5e37c2fab39e2540d13f19029fd961d411bc60e6fcbb7"
+      "canonicalRevisionDigest": "18411bca7e8cec5582e437c2a3ee7ce2c4ca4956eb678d732c89c10582b1d043"
     },
     {
       "baselineRevisionDigest": "e937d0c5222029122ef43be7a17e0310e2d043ca30d5243e57568e545b6dc5c4",
@@ -1711,10 +1711,10 @@
       "canonicalRevisionDigest": "93afa65fdff6d3d8d3dfeebdc2eba160b098127df1392e4287e64df4b7b1f0b3"
     },
     {
-      "baselineRevisionDigest": "4d2359b6e6508c1333005a8b894917f9e6176f0f9b2c8f110db2a70c42f9829f",
+      "baselineRevisionDigest": "1e9d9497970bca1f58f0134ee70503757d8755d722742ff55de694760ab25212",
       "baselineRuleId": "semantic:SFA-DEPEND-011@2",
       "canonicalId": "SFA-DEPEND-011",
-      "canonicalRevisionDigest": "b0f353b65dcdfe934d1f715a472ccff8a0b9ba8ef4fe9913d7c620f60bb0c17c"
+      "canonicalRevisionDigest": "f8729b3db1dd35600caf79ea06e61b5c2b297b7b052a1e343e2b82f83f41ba2c"
     },
     {
       "baselineRuleId": "w2b2:SFA-DEPEND-012",
@@ -1864,13 +1864,13 @@
       "baselineRevisionDigest": "8e50383a74120bb8c946f11f59bc4f26b3eb4cf297f33f0c06799567c2962f12",
       "baselineRuleId": "w2b2:SFA-ENTRY-014",
       "canonicalId": "SFA-ENTRY-014",
-      "canonicalRevisionDigest": "d226e2365195da8b1cb1fdc512162d7987f493fe67b3f96a3764973597aab96f"
+      "canonicalRevisionDigest": "763e545b4e33ac1a2610f383f5ef8a12ed1f68e496c654364cacc108c18e821a"
     },
     {
       "baselineRevisionDigest": "921e590b34cdf1e3ff7931b0ab872fb6feb326e4b9eb0015a655d77a6e4f4571",
       "baselineRuleId": "w2b2:SFA-ENTRY-015",
       "canonicalId": "SFA-ENTRY-015",
-      "canonicalRevisionDigest": "5cf6915dab4bb81a8159b303892f8381ba94080273becbae201c29ebc944433d"
+      "canonicalRevisionDigest": "9f1ca5f1023666eb323c18c2f331c16a8a59b80498dccb0be61e7eab89e36ed1"
     },
     {
       "baselineRevisionDigest": "6b876cec9158061ea6eee587a3f6981ca0053625ebe7cf897c98cda6fb07ebbf",
@@ -1894,7 +1894,7 @@
       "baselineRevisionDigest": "333f30b1438b9bf1632cbdc0ea40a6d803b582c871e9bbaa40639b39ea245d10",
       "baselineRuleId": "w2b1:SFA-ENTRY-019",
       "canonicalId": "SFA-ENTRY-019",
-      "canonicalRevisionDigest": "b60e079c5facfc9d7f67b1f082175c93f55a11c3825d92376fccd7ed3f31cc60"
+      "canonicalRevisionDigest": "58a8148988693318aabf9fea588b57ab452611d608dfe753206a3b45b1bb5070"
     },
     {
       "baselineRevisionDigest": "b78a21cfe3a6f6b93d637288a0441b5c293096f1fea01418309196127958f77b",
@@ -2188,7 +2188,7 @@
       "baselineRevisionDigest": "fef0ac1722d3822aa37ba36321ca08a2867b2ac016ab279dac846379380a0887",
       "baselineRuleId": "w2b2:SFA-FOUNDATION-012",
       "canonicalId": "SFA-FOUNDATION-012",
-      "canonicalRevisionDigest": "2d0a9a58645ae76d928b8a9c0dfad75d8d8d00b8f7a769a666eeebbc64d98fb5"
+      "canonicalRevisionDigest": "857ee4375d6a034cfc158ff19ff547f0ba96115fde1c660f173bd7728e2b03b0"
     },
     {
       "baselineRevisionDigest": "aab6c9bbb6e3f14833438b2586674e9554475fc0f69be60d1d0e57f50dc433cf",
@@ -2200,7 +2200,7 @@
       "baselineRevisionDigest": "fef0ac1722d3822aa37ba36321ca08a2867b2ac016ab279dac846379380a0887",
       "baselineRuleId": "w2b2:SFA-FOUNDATION-014",
       "canonicalId": "SFA-FOUNDATION-014",
-      "canonicalRevisionDigest": "003d49f85cffc984732d820666b0af300e58da44af5a3b09539154b753abb878"
+      "canonicalRevisionDigest": "0912cf830791f3a83496f549d55ad492ae6c20ef448789a578c8a1f1de5cb13f"
     },
     {
       "baselineRevisionDigest": "fef0ac1722d3822aa37ba36321ca08a2867b2ac016ab279dac846379380a0887",
@@ -2299,10 +2299,10 @@
       "canonicalRevisionDigest": "399652418f39dd06b17df4789e2bda07b3d7703e5fe547c2754cc63fdff32875"
     },
     {
-      "baselineRevisionDigest": "cb2abd2c4ee592511968e50b283c4e03b60065bd302b34746548937181e2e765",
+      "baselineRevisionDigest": "720ea1ab9d84d89e36d15227d2294cc7baa22f102f2431b0d822544b1f54b3b1",
       "baselineRuleId": "semantic:SFA-GOVERNANCE-002@5",
       "canonicalId": "SFA-GOVERNANCE-002",
-      "canonicalRevisionDigest": "57792af8dbad7247da1429558281354a1465af46f300fb6917184dd1949d3993"
+      "canonicalRevisionDigest": "431f080ffc7bd228e22065030183b137d55475a28215a3f4039fff0633a02e30"
     },
     {
       "baselineRevisionDigest": "56c28d8b3967caebeee8c1bb9682490bbd9c95d158efa136132403f64c55eb83",
@@ -2815,10 +2815,10 @@
       "canonicalRevisionDigest": "bb866fe7eddce00469b8f4cc46bbc8e40e4661973bb2b37cd2591be6db8fe0f0"
     },
     {
-      "baselineRevisionDigest": "dfe23922fcdc52242cd6a3085bd6308dd4be0d802340ddaa5066549cb598ed37",
+      "baselineRevisionDigest": "900ed7daa8005f5eb9b962c5cdd4298a7f80b8c635f6a9a02e3d2c532bca87a6",
       "baselineRuleId": "semantic:SFA-METHOD-003@3",
       "canonicalId": "SFA-METHOD-003",
-      "canonicalRevisionDigest": "4eae2e71b014d0ebac7bd97e5e1a0fdf63539944a87be43b86b91a0bb6a5d026"
+      "canonicalRevisionDigest": "143c8eeed157d8aed515c32a82db7a80901ab76c9c5aa3236e5a889efea8c316"
     },
     {
       "baselineRevisionDigest": "8f335921ae28c36368486677b2d078439b262a9ac2796d01df61f56217264f3e",
@@ -2827,10 +2827,10 @@
       "canonicalRevisionDigest": "af6e8f2663e939398214752d7b356b0c12d63231892d8be0e5a388bd9ca80dc5"
     },
     {
-      "baselineRevisionDigest": "5a7f3b34ae950a27ceb939bfb9579d62a50b46faa8c47ea2e86df837e928dbf8",
+      "baselineRevisionDigest": "149b20167db9818dc32997c50e9937b9c126ae90bf4425d3a7a09c2bae3269f7",
       "baselineRuleId": "semantic:SFA-METHOD-005@2",
       "canonicalId": "SFA-METHOD-005",
-      "canonicalRevisionDigest": "734792401aed13062ba35231e88acf2a54191e461e52b2bb75f285ddc2f74e52"
+      "canonicalRevisionDigest": "2a60fdd6a732bbf6a4e2a986b2e9596d01700a18c827263fd0a9ca2a445de0c4"
     },
     {
       "baselineRevisionDigest": "79d275cefd8ea78970c9c3b38a4b2451a25e63a0d1feb457e77e40eecf270c20",
@@ -2857,22 +2857,22 @@
       "canonicalRevisionDigest": "5eb7929eadffc3f151badbe02e0e9bf2d6778839ee6e4f3ea85f2020ac4f8fe9"
     },
     {
-      "baselineRevisionDigest": "b8e639668fffd7bca15f2c23ef20e39b30ee76add901c1ca95e9a4e3fbcbfd8f",
+      "baselineRevisionDigest": "531faf5ed6ff9279beeaba3808a065a8a01e3702c99b2040e87798debe2436cf",
       "baselineRuleId": "semantic:SFA-METHOD-010@2",
       "canonicalId": "SFA-METHOD-010",
-      "canonicalRevisionDigest": "742b0f9e9a6b5294da44ae8a2ad5890217c90c79448d90ed1fe4e0a6454722ed"
+      "canonicalRevisionDigest": "f90c052c104f60322946962281dd0610891e48c6ad16a04ac99ce17f7fba47c5"
     },
     {
-      "baselineRevisionDigest": "55e7e6f46a6eeb84890f08e79b409ef770d895f4180ec706c7bc8b64ea8f068a",
+      "baselineRevisionDigest": "e1fb6ec2060241a76b7c537c3b2d8480e5dd0958392174276a8ae20f30c19ce3",
       "baselineRuleId": "semantic:SFA-METHOD-011@2",
       "canonicalId": "SFA-METHOD-011",
-      "canonicalRevisionDigest": "6a894807c5ac648916e772a2666cf6daabe4dc39b1c173b6182d08ae97deff10"
+      "canonicalRevisionDigest": "9bf1d7ab40ade41cb113a6bf5649e057b91c97fb74ecf5725ed567e31ed502c8"
     },
     {
-      "baselineRevisionDigest": "21a801bf2aa2148d8eb32651e85f2e2098d34dcf6b005571abe7001003f52d0f",
+      "baselineRevisionDigest": "321e3f4081693a41c8e822af47300ccf3b4a09c3183d4a2c03ed96200983ebba",
       "baselineRuleId": "semantic:SFA-METHOD-012@2",
       "canonicalId": "SFA-METHOD-012",
-      "canonicalRevisionDigest": "3ff94388cf517cd4bd72d26d03f4d8a7ffab604fe1ccc136beebd89388bbd7fe"
+      "canonicalRevisionDigest": "7c9017b6f701090c3fbebb224b87e76e44cb69753d837a32f9d21ce119104e2c"
     },
     {
       "baselineRevisionDigest": "fb6a14706d92f88ee67f0d93e7d73b9432d3860543a0dad2850b753b152ecf6f",
@@ -2965,10 +2965,10 @@
       "canonicalRevisionDigest": "eb10f827a41c246d7508b38e1b8839c44d42a7a89a9a7ccc4354297895a639de"
     },
     {
-      "baselineRevisionDigest": "86b553e2dd488c80742249a71ab39a67ec116638ff5e67ff89cbd2c05da5d11e",
+      "baselineRevisionDigest": "d411a82be428a36c75c03ef4381a7c56ad11d94b7c3c627e65633e79b29dd8d8",
       "baselineRuleId": "semantic:SFA-MIGRATE-016@2",
       "canonicalId": "SFA-MIGRATE-016",
-      "canonicalRevisionDigest": "a34bc8244835706b54fa497a56b88ca5b972c4b2908d1dd0dd79e83702eca0c1"
+      "canonicalRevisionDigest": "aada6fbb80b7bd6f00b464a142d80c75151cd0e275756d1fc92f8636b6f21a9d"
     },
     {
       "baselineRevisionDigest": "26be63137fd13e7d8e2f8f59118910decbd5a0924dbe7ca804ca3c1204156d25",
@@ -3244,7 +3244,7 @@
       "baselineRevisionDigest": "c7b0595e28ba9d9b1608ea21130ccd5dc230f4553e6893e7095945eb8f0fda1d",
       "baselineRuleId": "semantic:SFA-PERM-007@2",
       "canonicalId": "SFA-PERM-007",
-      "canonicalRevisionDigest": "c55a2e05991b439b17e655ed55cde37e2867b5ad17fd2e069e451a19dfca6f40"
+      "canonicalRevisionDigest": "024c776382849fa10f8cd6534a87bd377f989f220cc2bff91efc50f50f848b50"
     },
     {
       "baselineRevisionDigest": "99d379567ff7fc630c7539762553bbe17995d5afdef413a047c032d50e3c1462",
@@ -3490,7 +3490,7 @@
       "baselineRevisionDigest": "e93052588f2c57d0df14f833de0731571391e3d03b40f050bcc1225ce3d1341b",
       "baselineRuleId": "semantic:SFA-PRODUCT-001@2",
       "canonicalId": "SFA-PRODUCT-001",
-      "canonicalRevisionDigest": "23712bde04da1dd849303ef036e53f73285c641fc558f39dd317b6a5f80f3292"
+      "canonicalRevisionDigest": "151e3918812528a81b42994dfdd6b039dbb378ab72f610353083ffc7d5d2ede0"
     },
     {
       "baselineRevisionDigest": "ff48b6f05cf6803562ec45bc34f87454885e7e08f0b0f31f90541adf826056d6",
@@ -3499,10 +3499,10 @@
       "canonicalRevisionDigest": "87f0d8e29c0813897f3d63e16fb8b38a66a2a0187cbdf42beb6d9083c328d939"
     },
     {
-      "baselineRevisionDigest": "016dbf0e32cafd9a854e4e7ffbecdfc195f77ba79d3f2fcc3d897e61c85f1bb4",
+      "baselineRevisionDigest": "276c4e958ab45331d48be6de332b340db624fbb09234b632197147512e3dce43",
       "baselineRuleId": "semantic:SFA-PRODUCT-003@2",
       "canonicalId": "SFA-PRODUCT-003",
-      "canonicalRevisionDigest": "38bb430681b0f35e1e87e9317174e43a970a489748312201325cf83a0872de09"
+      "canonicalRevisionDigest": "c35c0e020d68c670cf89c0d14a8297af33dac6d4a3ce9776f4b5b7861caa21d2"
     },
     {
       "baselineRevisionDigest": "942ead17d376c72df2c05e5e6ed528ca1a7309e72bcee41f3fe09c5929ca5a53",
@@ -3523,10 +3523,10 @@
       "canonicalRevisionDigest": "63b3743434e02785d8f89fcdcae295203d0c1ea0a260813ffc32751a7d65928f"
     },
     {
-      "baselineRevisionDigest": "86b9bf840baab057bf25d32eb9cd1507ea3ca7ce85554408cdbc26b7a2bc8c45",
+      "baselineRevisionDigest": "97496e8c503200aa703bcdd3f6666373ff175b38fb1c767f2af439a8a532cadb",
       "baselineRuleId": "semantic:SFA-PRODUCT-007@2",
       "canonicalId": "SFA-PRODUCT-007",
-      "canonicalRevisionDigest": "83c1c13b950631a186b5fd6e9c978e2c7a0a0cacc75952cc9677d437aeef4531"
+      "canonicalRevisionDigest": "704d3add886b238dffc65199f8dd576188197aa5d1e0a8bb7f1a3b87986db944"
     },
     {
       "baselineRevisionDigest": "1ea605471d1ffd3b5ddb6009728a2e8d739285e33dfa83e30afcf4dc0852ce14",
@@ -3838,7 +3838,7 @@
       "baselineRevisionDigest": "4f3041e8d4daed88bfb5a9d9ce33b1dc2d47ffbb821fc8e2cb00e21ffde39477",
       "baselineRuleId": "semantic:SFA-PUBLISH-014@4",
       "canonicalId": "SFA-PUBLISH-014",
-      "canonicalRevisionDigest": "0bb9787d233aa8aa96933a16679db1171b33cb79b083a37fafd287d3447053a3"
+      "canonicalRevisionDigest": "798d75b8b85e45f329a6d1599b4ef09885ea2b9ffde9a3103a75a6ecff31958b"
     },
     {
       "baselineRevisionDigest": "3661dedba7c3be461b7ec8fbbfc7213b21849846c0f78cdad2abcd9237ca4949",
@@ -4096,7 +4096,7 @@
       "baselineRevisionDigest": "67abfe44f54926ce78e404a3685e5616cefd1e41933b9f899afc59f18aed604d",
       "baselineRuleId": "w2b1:SFA-REGISTRY-007",
       "canonicalId": "SFA-REGISTRY-007",
-      "canonicalRevisionDigest": "a78595916f4642b0c6de266b78ca020c269bc63b6b21d03fce8dc0b3a0467e65"
+      "canonicalRevisionDigest": "b8899153d50121c6e635285339d8ae420ee12b03e5c6da4b071eae1bdcd1d943"
     },
     {
       "baselineRevisionDigest": "21b7b29367e738fd3d6f56919cf4ce701cc716c9118dcf9d5dc5d28fd3b7c534",
@@ -4534,7 +4534,7 @@
       "baselineRevisionDigest": "7325c492f08c691ef182c15451d868a164298e0f908b8ee0af62db795b50648f",
       "baselineRuleId": "semantic:SFA-SECRET-002@2",
       "canonicalId": "SFA-SECRET-002",
-      "canonicalRevisionDigest": "2a94ac74ff51c46124f18b6988bef41f7aa6abfeae5e23dd1e447fb1ba77bb85"
+      "canonicalRevisionDigest": "cf7ed912ea648dda6cb6bc94f4fa6a361138443e0abefae8bb54e3e0f7941474"
     },
     {
       "baselineRevisionDigest": "6e138a77c639250091e1971414e78a63042c1f0f9f87c2de20c00dea5200d51c",
@@ -5342,9 +5342,9 @@
     },
     {
       "canonicalId": "SFA-WORKER-004",
-      "canonicalRevisionDigest": "ef165a959c73a240d8e35dce2f645aee7c9a13416efeae2d9497ced6a18674a5",
+      "canonicalRevisionDigest": "8d8b7a27396e7e215c398d9ae006ccb17283486f46e043d6c71d1518d5ba01eb",
       "baselineRuleId": "semantic:SFA-WORKER-004@2",
-      "baselineRevisionDigest": "da17ace3f8005326da9ea7cff37205c7ba400df10f5c3b61914daff085509076"
+      "baselineRevisionDigest": "5f793449e841c8ec5ba335967918e5186759a7a53284345bc8802ce9c7cf7ca1"
     },
     {
       "canonicalId": "SFA-WORKER-005",
@@ -5377,16 +5377,16 @@
       "baselineRevisionDigest": "e8258dcefbae1787c7d93e60020545c021343c71f63d462b209ae20e96789158"
     },
     {
-      "baselineRevisionDigest": "726a1194acc7f5afcf75d8c787fe77fae9d0b5fda4803e86ec7b3ff9fd0d814e",
+      "baselineRevisionDigest": "6ed8fcf7254ff7d310b17b944a43d4d92e1ff5b7c196b8618deb8a4b86c74feb",
       "baselineRuleId": "semantic:SFA-WORKER-010@3",
       "canonicalId": "SFA-WORKER-010",
-      "canonicalRevisionDigest": "65a017bb87f9d080fd5e81a68d5d738fca199ebb494884fc757075ab10c8228e"
+      "canonicalRevisionDigest": "6229b42686f3745167a4301bf18c70fa99cf3951e066c2dcf4a1d7e63aaa9ae7"
     },
     {
-      "baselineRevisionDigest": "ac88c8d6d856ffcd962cb65b6e49a1ab1d6fbb31de86091d2d23c14d7a541c64",
+      "baselineRevisionDigest": "4c029a9a6dd0822775dea05913ecec6987be1cc2e655fc133ccff45d3b0eb689",
       "baselineRuleId": "semantic:SFA-WORKER-011@3",
       "canonicalId": "SFA-WORKER-011",
-      "canonicalRevisionDigest": "b32ec0ce88ace5c3073dc334a8f116f24d6b8f715a4d38f77532cbaf883d9739"
+      "canonicalRevisionDigest": "4b543e413b6f1e3479cabc198c5df5f2f8c5d66a36a654892e943739a2eb5180"
     },
     {
       "canonicalId": "SFA-WORKER-012",
@@ -5426,9 +5426,9 @@
     },
     {
       "canonicalId": "SFA-WORKER-018",
-      "canonicalRevisionDigest": "cbe4d256a33ab8fdb605c8d3efb972d7630d140cd3c63b6976677cbdb5f8e3ac",
+      "canonicalRevisionDigest": "b63256cbe14d1624e44decb665ba9f763e21bdd31ecdf645d376c550a5fb5fc8",
       "baselineRuleId": "semantic:SFA-WORKER-018@2",
-      "baselineRevisionDigest": "b2a847d6e8b2480c04bcc9c4156a4a24a716aeaae46c83d26191e07312131af5"
+      "baselineRevisionDigest": "120838af7ee0c58d2b141d50efcc0b46d6927b022775674c608f99472cfa4868"
     },
     {
       "canonicalId": "SFA-WORKER-019",
@@ -6442,7 +6442,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-006",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-006",
-      "revisionDigest": "3c4e7fbf40bed72c5e90d45d4309bcadb90e49ff54446cb5846172c7fd2d9181",
+      "revisionDigest": "b858b4cd482eb4bcd9597afdb28c1a30732d8113c4cabb4fa0fc75d723064c98",
       "ruleId": "semantic:SFA-ARTIFACT-006@2"
     },
     {
@@ -6460,7 +6460,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-008",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-008",
-      "revisionDigest": "b5b3c15359b6c0a8bf3058af71e765a4afd69a0a9da72c965455527989b63fab",
+      "revisionDigest": "97d59cb4a4938ea0efacd65d15469c67e7492cae183de3af5ec043c411a570be",
       "ruleId": "semantic:SFA-ARTIFACT-008@2"
     },
     {
@@ -6541,7 +6541,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-017",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-017",
-      "revisionDigest": "afaef6bbf675699e9ee84a0a50ea4f88f315738e91a4097105911556d8feb6d5",
+      "revisionDigest": "cc8507e014542e64b0d089c117cc8fb7b07c2ea8efda318e1039b0d3ed1da783",
       "ruleId": "semantic:SFA-ARTIFACT-017@2"
     },
     {
@@ -6559,7 +6559,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-019",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-019",
-      "revisionDigest": "08c4c38d93a66f13350735b08b022cd67d3af5d2d3392c387f10ac351bc8367d",
+      "revisionDigest": "6861fa2a77fc363f385b66de1113182da6c16786126570a7ef511d1c2b8e7a2b",
       "ruleId": "semantic:SFA-ARTIFACT-019@2"
     },
     {
@@ -6577,7 +6577,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-021",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-021",
-      "revisionDigest": "ba4a18fe38fd0f290fd329c5ae30e8caf7dda0c9cac118d2b29b449b0e2fa3ff",
+      "revisionDigest": "db67dc13e2c2ee66cd3e3dc8b7893f1241e3643b7cee5af48fe600b32803d494",
       "ruleId": "semantic:SFA-ARTIFACT-021@2"
     },
     {
@@ -6586,7 +6586,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-022",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-022",
-      "revisionDigest": "f27bde6352c3b38b7345c22c36f34f1a518ed6f297f720639f99f7d53236c50d",
+      "revisionDigest": "20de92164116e4ac2194e3f8788bd3ae1e41e19d02a441653d0b354e08e4e0ce",
       "ruleId": "semantic:SFA-ARTIFACT-022@2"
     },
     {
@@ -6595,7 +6595,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-023",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-023",
-      "revisionDigest": "956ff7db132407355542d66f126fb45267215f7cddaf9b83f9f6c926e17e424d",
+      "revisionDigest": "5365c5d48fc8a5be485167b9e9a125b70eefb826a7cf3c598fba4c0aca687ca0",
       "ruleId": "semantic:SFA-ARTIFACT-023@2"
     },
     {
@@ -6613,7 +6613,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-025",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-025",
-      "revisionDigest": "0f96744e7ca2baf826bc523cc4ec70dd53bb6666da0dc1701b36e70790b083b3",
+      "revisionDigest": "e4826f154b503479c2ca3e7c8d9e3919e4a639eab676fbe63b45ec4cf480a3c2",
       "ruleId": "semantic:SFA-ARTIFACT-025@2"
     },
     {
@@ -6622,7 +6622,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-026",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-026",
-      "revisionDigest": "2a28bbf39bed9d866e140c5a0085cb3c85a52872f3112ceff6bf402d0a094d78",
+      "revisionDigest": "7df37d125b5d73da589dc84c501bdb95b49fcde6b23fba6e11e3ae418f6301fc",
       "ruleId": "semantic:SFA-ARTIFACT-026@2"
     },
     {
@@ -6640,7 +6640,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-028",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-028",
-      "revisionDigest": "6e49141fbad923c7c9896a7449bec0bbe012c1dcd2a8ff3ebbae612d8a12653c",
+      "revisionDigest": "7c58c34ad21c801fa85bc2efb9aa9c1a17d124bd6f0c321aa985877e9b9f73b1",
       "ruleId": "semantic:SFA-ARTIFACT-028@2"
     },
     {
@@ -6649,7 +6649,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-029",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-029",
-      "revisionDigest": "a627c2287527f12722c84b0e1a1556ac1ef3e3809fb940e527c064b71e302f71",
+      "revisionDigest": "6db39c759c4726173227cd9642308f3b90936082ab2ef69b005918ff2b8a70fb",
       "ruleId": "semantic:SFA-ARTIFACT-029@2"
     },
     {
@@ -6685,7 +6685,7 @@
       "description": "Execute terminal governance SFA-ARTIFACT-033",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-ARTIFACT-033",
-      "revisionDigest": "e0ca5ca686d39f2d1ab7c1a262a818fc6d21e779a24304f75b8ab5e68ed69397",
+      "revisionDigest": "31f5481038b8b6417a651d6dba4f8e7593d58a9a318aa684fc1b3dff3a338d68",
       "ruleId": "semantic:SFA-ARTIFACT-033@2"
     },
     {
@@ -6919,7 +6919,7 @@
       "description": "Execute terminal governance SFA-COMPOSE-002",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-COMPOSE-002",
-      "revisionDigest": "30b6bef868ab0b91377fed8ff7896115d33acb7a761afc6cc26421699e95a249",
+      "revisionDigest": "6e30171a315ea6c4b5bf170d4c9bfe548cab744e47d7277536ce0130eb7f24e1",
       "ruleId": "semantic:SFA-COMPOSE-002@2"
     },
     {
@@ -6937,7 +6937,7 @@
       "description": "Execute terminal governance SFA-COMPOSE-004",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-COMPOSE-004",
-      "revisionDigest": "6117db1cfbf148c4007decb150f3f26fbd777c6228119133cec477e8032a289a",
+      "revisionDigest": "a1efe7a09c68c058207c80531f2526734865c6b2ee2238ebbcad0addadd79b49",
       "ruleId": "semantic:SFA-COMPOSE-004@2"
     },
     {
@@ -6955,7 +6955,7 @@
       "description": "Execute terminal governance SFA-COMPOSE-006",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-COMPOSE-006",
-      "revisionDigest": "ea432df45b7eea4845f5cda4056757d2f9097507c0fa98702ef59c645548a2d6",
+      "revisionDigest": "e8ea2bd4c2c00934eea075b4a0970c05744af02848de61073a5a7b19412115df",
       "ruleId": "semantic:SFA-COMPOSE-006@2"
     },
     {
@@ -7009,7 +7009,7 @@
       "description": "Execute terminal governance SFA-COMPOSE-012",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-COMPOSE-012",
-      "revisionDigest": "9589e25e775c348cb9c12fa3ad0202bee2e9a5bb08d94ad95871da866dbb4a0e",
+      "revisionDigest": "6c2e86614c6dde4b217184d454c50798820f089a56b7ca89735c9cfd62bd86f5",
       "ruleId": "semantic:SFA-COMPOSE-012@2"
     },
     {
@@ -7045,7 +7045,7 @@
       "description": "Execute terminal governance SFA-COMPOSE-016",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-COMPOSE-016",
-      "revisionDigest": "3cb268e5f6f3633e41fb3b6a44de28f593009198c63c8f662c08dc4343ed1750",
+      "revisionDigest": "7e04be8732aff13aed99a037d73a536f6d8f7d77e6aaaa3f44a7e2d13a16a030",
       "ruleId": "semantic:SFA-COMPOSE-016@2"
     },
     {
@@ -7108,7 +7108,7 @@
       "description": "Execute terminal governance SFA-DEPEND-003",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-DEPEND-003",
-      "revisionDigest": "0954095b300611b9e608d5c8e2f97df22a08679dfbbc1f4bd16c39d43612459d",
+      "revisionDigest": "a0275cbcea471103c47eb64dbf51699c107dd064465b85046c6aaaf5463a4c37",
       "ruleId": "semantic:SFA-DEPEND-003@2"
     },
     {
@@ -7126,7 +7126,7 @@
       "description": "Execute terminal governance SFA-DEPEND-005",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-DEPEND-005",
-      "revisionDigest": "52b735048df5b27c31b4564b45896a70c172c72446bc7f23b56426353e001268",
+      "revisionDigest": "0875a5e628be9a6f3bb70c24599cb2c0f3d0401f7c74355dde67abdf8c308b66",
       "ruleId": "semantic:SFA-DEPEND-005@2"
     },
     {
@@ -7135,7 +7135,7 @@
       "description": "Execute terminal governance SFA-DEPEND-006",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-DEPEND-006",
-      "revisionDigest": "d19fbe9eebadac10a81d7496159560a22101f98fd52018bf8bd8e2e9106df719",
+      "revisionDigest": "bec8c5781a1749a8dadd4031306a47dcfbf16251d908b2702a2580b778b0f407",
       "ruleId": "semantic:SFA-DEPEND-006@2"
     },
     {
@@ -7153,7 +7153,7 @@
       "description": "Execute terminal governance SFA-DEPEND-008",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-DEPEND-008",
-      "revisionDigest": "b9eaa31cb5380b67cfe6fd92b611045b74e3480efa5fcdd1e585be39cb196187",
+      "revisionDigest": "0ff00927291bea172d5cae9b5f5d8716d328ceb7e37ab21d56ac208f10ecb5a9",
       "ruleId": "semantic:SFA-DEPEND-008@2"
     },
     {
@@ -7180,7 +7180,7 @@
       "description": "Execute terminal governance SFA-DEPEND-011",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-DEPEND-011",
-      "revisionDigest": "4d2359b6e6508c1333005a8b894917f9e6176f0f9b2c8f110db2a70c42f9829f",
+      "revisionDigest": "1e9d9497970bca1f58f0134ee70503757d8755d722742ff55de694760ab25212",
       "ruleId": "semantic:SFA-DEPEND-011@2"
     },
     {
@@ -7378,7 +7378,7 @@
       "description": "Execute terminal governance SFA-GOVERNANCE-002",
       "failureImpact": "error",
       "remediation": "Supply the evidence required by SFA-GOVERNANCE-002",
-      "revisionDigest": "cb2abd2c4ee592511968e50b283c4e03b60065bd302b34746548937181e2e765",
+      "revisionDigest": "720ea1ab9d84d89e36d15227d2294cc7baa22f102f2431b0d822544b1f54b3b1",
       "ruleId": "semantic:SFA-GOVERNANCE-002@5"
     },
     {
@@ -7594,7 +7594,7 @@
       "description": "Execute terminal governance SFA-METHOD-003",
       "failureImpact": "error",
       "remediation": "Supply the evidence required by SFA-METHOD-003",
-      "revisionDigest": "dfe23922fcdc52242cd6a3085bd6308dd4be0d802340ddaa5066549cb598ed37",
+      "revisionDigest": "900ed7daa8005f5eb9b962c5cdd4298a7f80b8c635f6a9a02e3d2c532bca87a6",
       "ruleId": "semantic:SFA-METHOD-003@3"
     },
     {
@@ -7612,7 +7612,7 @@
       "description": "Execute terminal governance SFA-METHOD-005",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-METHOD-005",
-      "revisionDigest": "5a7f3b34ae950a27ceb939bfb9579d62a50b46faa8c47ea2e86df837e928dbf8",
+      "revisionDigest": "149b20167db9818dc32997c50e9937b9c126ae90bf4425d3a7a09c2bae3269f7",
       "ruleId": "semantic:SFA-METHOD-005@2"
     },
     {
@@ -7657,7 +7657,7 @@
       "description": "Execute terminal governance SFA-METHOD-010",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-METHOD-010",
-      "revisionDigest": "b8e639668fffd7bca15f2c23ef20e39b30ee76add901c1ca95e9a4e3fbcbfd8f",
+      "revisionDigest": "531faf5ed6ff9279beeaba3808a065a8a01e3702c99b2040e87798debe2436cf",
       "ruleId": "semantic:SFA-METHOD-010@2"
     },
     {
@@ -7666,7 +7666,7 @@
       "description": "Execute terminal governance SFA-METHOD-011",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-METHOD-011",
-      "revisionDigest": "55e7e6f46a6eeb84890f08e79b409ef770d895f4180ec706c7bc8b64ea8f068a",
+      "revisionDigest": "e1fb6ec2060241a76b7c537c3b2d8480e5dd0958392174276a8ae20f30c19ce3",
       "ruleId": "semantic:SFA-METHOD-011@2"
     },
     {
@@ -7675,7 +7675,7 @@
       "description": "Execute terminal governance SFA-METHOD-012",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-METHOD-012",
-      "revisionDigest": "21a801bf2aa2148d8eb32651e85f2e2098d34dcf6b005571abe7001003f52d0f",
+      "revisionDigest": "321e3f4081693a41c8e822af47300ccf3b4a09c3183d4a2c03ed96200983ebba",
       "ruleId": "semantic:SFA-METHOD-012@2"
     },
     {
@@ -7783,7 +7783,7 @@
       "description": "Execute terminal governance SFA-MIGRATE-016",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-MIGRATE-016",
-      "revisionDigest": "86b553e2dd488c80742249a71ab39a67ec116638ff5e67ff89cbd2c05da5d11e",
+      "revisionDigest": "d411a82be428a36c75c03ef4381a7c56ad11d94b7c3c627e65633e79b29dd8d8",
       "ruleId": "semantic:SFA-MIGRATE-016@2"
     },
     {
@@ -7945,7 +7945,7 @@
       "description": "Execute terminal governance SFA-PRODUCT-003",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-PRODUCT-003",
-      "revisionDigest": "016dbf0e32cafd9a854e4e7ffbecdfc195f77ba79d3f2fcc3d897e61c85f1bb4",
+      "revisionDigest": "276c4e958ab45331d48be6de332b340db624fbb09234b632197147512e3dce43",
       "ruleId": "semantic:SFA-PRODUCT-003@2"
     },
     {
@@ -7981,7 +7981,7 @@
       "description": "Execute terminal governance SFA-PRODUCT-007",
       "failureImpact": "block",
       "remediation": "Supply the evidence required by SFA-PRODUCT-007",
-      "revisionDigest": "86b9bf840baab057bf25d32eb9cd1507ea3ca7ce85554408cdbc26b7a2bc8c45",
+      "revisionDigest": "97496e8c503200aa703bcdd3f6666373ff175b38fb1c767f2af439a8a532cadb",
       "ruleId": "semantic:SFA-PRODUCT-007@2"
     },
     {
@@ -8607,7 +8607,7 @@
     },
     {
       "ruleId": "semantic:SFA-WORKER-004@2",
-      "revisionDigest": "da17ace3f8005326da9ea7cff37205c7ba400df10f5c3b61914daff085509076",
+      "revisionDigest": "5f793449e841c8ec5ba335967918e5186759a7a53284345bc8802ce9c7cf7ca1",
       "checkType": "semantic",
       "applicability": "project_adoption",
       "description": "Execute terminal governance SFA-WORKER-004",
@@ -8665,7 +8665,7 @@
       "description": "Execute terminal governance SFA-WORKER-010",
       "failureImpact": "warning",
       "remediation": "Supply the evidence required by SFA-WORKER-010",
-      "revisionDigest": "726a1194acc7f5afcf75d8c787fe77fae9d0b5fda4803e86ec7b3ff9fd0d814e",
+      "revisionDigest": "6ed8fcf7254ff7d310b17b944a43d4d92e1ff5b7c196b8618deb8a4b86c74feb",
       "ruleId": "semantic:SFA-WORKER-010@3"
     },
     {
@@ -8674,7 +8674,7 @@
       "description": "Execute terminal governance SFA-WORKER-011",
       "failureImpact": "error",
       "remediation": "Supply the evidence required by SFA-WORKER-011",
-      "revisionDigest": "ac88c8d6d856ffcd962cb65b6e49a1ab1d6fbb31de86091d2d23c14d7a541c64",
+      "revisionDigest": "4c029a9a6dd0822775dea05913ecec6987be1cc2e655fc133ccff45d3b0eb689",
       "ruleId": "semantic:SFA-WORKER-011@3"
     },
     {
@@ -8733,7 +8733,7 @@
     },
     {
       "ruleId": "semantic:SFA-WORKER-018@2",
-      "revisionDigest": "b2a847d6e8b2480c04bcc9c4156a4a24a716aeaae46c83d26191e07312131af5",
+      "revisionDigest": "120838af7ee0c58d2b141d50efcc0b46d6927b022775674c608f99472cfa4868",
       "checkType": "semantic",
       "applicability": "project_adoption",
       "description": "Execute terminal governance SFA-WORKER-018",

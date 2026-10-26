@@ -28,7 +28,7 @@ import foundation_adoption_verifier as adoption_verifier
 import rule_method_assurance
 import semantic_context_plan
 import semantic_review
-from executors.contracts import ExecutorEvidenceError
+from executors.contracts import ExecutorEvidenceError, governance_dir
 
 
 TARGET_TYPES = {
@@ -762,6 +762,9 @@ def _governed_route_rows() -> dict[str, dict[str, Any]]:
                 "execution_route": execution_route,
                 "check_methods": methods,
             }
+            executor_baseline_rule_id = row.get("executor_baseline_rule_id")
+            if isinstance(executor_baseline_rule_id, str) and executor_baseline_rule_id:
+                governed[canonical_id]["executor_baseline_rule_id"] = executor_baseline_rule_id
     if isinstance(total_rules, int) and len(governed) != total_rules:
         raise WorkflowError(
             "FIRST_TIER_ROUTING_AUTHORITY_INVALID",
@@ -870,6 +873,1914 @@ def foundation_document_digests(values: list[Any]) -> list[str]:
         return list(executor.map(foundation_document_digest, values))
 
 
+_STAGE_HEX64 = re.compile(r"^[0-9a-f]{64}$")
+_AUDIT_INPUT_REQUIRED = (
+    "run_id",
+    "audit_version",
+    "target_root",
+    "target_type",
+    "platform",
+    "scope_selector",
+    "execution_profile",
+    "permission",
+    "evidence_set",
+    "resource_closure",
+    "executable_rules",
+    "bindings",
+)
+_AUDIT_INPUT_OPTIONAL = ("professional_selection", "selectors", "target_project_path")
+_PROFESSIONAL_BODY_KEYS = {"professional_consumption", "proof", "reader_result", "command"}
+_RULE_IDENTITY = ("canonical_id", "revision_digest", "check_method", "binding_id")
+_SEMANTIC_V2_DIGESTS = (
+    "foundation_task_digest",
+    "review_request_digest",
+    "evidence_set_digest",
+    "reviewed_rule_set_digest",
+)
+_BASE_FIELDS = (
+    "target_root",
+    "target_type",
+    "platform",
+    "permission",
+    "resource_closure",
+)
+_INCOMPLETE_STOPS = {"cancel", "permission_denied", "missing_independent_context"}
+_OVER_BUDGET_STOPS = {"rate_limit", "capacity_shortfall"}
+_CONFORMANCE_PARAMETER_SCHEMA_ID = (
+    "https://contracts.skill-family.example/skill-family-audit/"
+    "candidate/v2/methods/conformance/parameters.json"
+)
+_CONFORMANCE_RESULT_SCHEMA_ID = (
+    "https://contracts.skill-family.example/skill-family-audit/"
+    "candidate/v2/methods/conformance/result.json"
+)
+_TERMINAL_METHOD_STATUSES = {"PASS", "FAIL", "NOT_APPLICABLE"}
+_COMPLETED_SEMANTIC_STATUSES = {"PASS", "FAIL", "NOT_APPLICABLE"}
+_TASK_IDENTITY_FIELDS = ("audit_phase", "run_id", "operation_id", "audit_input_digest")
+
+
+def _stage_error(code: str, detail: str) -> WorkflowError:
+    return WorkflowError(code, detail)
+
+
+def _digest_value(value: Any, digest_document: Any) -> str:
+    digest_fn = digest_document or foundation_document_digest
+    digest = digest_fn(value)
+    if not isinstance(digest, str) or not _STAGE_HEX64.fullmatch(digest):
+        raise _stage_error("AUDIT_INPUT_DIGEST_MISMATCH", "audit_input digest is not sha256")
+    return digest
+
+
+def _reject_professional_bodies(value: Any) -> None:
+    if isinstance(value, dict):
+        found = _PROFESSIONAL_BODY_KEYS & set(value)
+        if found:
+            raise _stage_error(
+                "AUDIT_INPUT_PROFESSIONAL_BODY_REJECTED",
+                "audit_input cannot carry professional consumption or proof bodies",
+            )
+        for child in value.values():
+            _reject_professional_bodies(child)
+    elif isinstance(value, list):
+        for child in value:
+            _reject_professional_bodies(child)
+
+
+def _rule_key(rule: dict[str, Any]) -> tuple[str, str, str, str]:
+    if not isinstance(rule, dict) or any(
+        not isinstance(rule.get(field), str) or not rule.get(field)
+        for field in _RULE_IDENTITY
+    ):
+        raise _stage_error("STAGE_COVERAGE_REJECTED", "rule identity is incomplete")
+    if not _STAGE_HEX64.fullmatch(rule["revision_digest"]):
+        raise _stage_error("STAGE_COVERAGE_REJECTED", "rule revision digest is invalid")
+    return tuple(rule[field] for field in _RULE_IDENTITY)  # type: ignore[return-value]
+
+
+_RULE_EXPLANATION_FIELDS = (
+    "reason_code",
+    "rationale",
+    "missing_evidence_roles",
+    "semantic_review",
+    "evidence",
+    "observation_source",
+)
+
+
+def _rule_record(rule: dict[str, Any]) -> dict[str, Any]:
+    record = {field: rule[field] for field in _RULE_IDENTITY}
+    if "professional_dependencies" in rule:
+        record["professional_dependencies"] = list(rule["professional_dependencies"])
+    if "status" in rule:
+        record["status"] = rule["status"]
+    for field in _RULE_EXPLANATION_FIELDS:
+        if field not in rule:
+            continue
+        value = rule[field]
+        if isinstance(value, list):
+            record[field] = list(value)
+        elif isinstance(value, dict):
+            record[field] = json.loads(json.dumps(value))
+        else:
+            record[field] = value
+    return record
+
+
+def freeze_audit_input(
+    document: dict[str, Any],
+    *,
+    digest_document: Any = None,
+    provider_failures: list[str] | None = None,
+) -> dict[str, Any]:
+    """Freeze one shared audit_input and digest it with Foundation.
+
+    ``provider_failures`` is recorded only as a reason the set must stay
+    intact. It does not remove rules. Professional consumption and proof
+    bodies are rejected. The digest function defaults to
+    ``foundation_document_digest``.
+    """
+    if not isinstance(document, dict):
+        raise _stage_error("AUDIT_INPUT_INVALID", "audit_input must be an object")
+    unknown = set(document) - set(_AUDIT_INPUT_REQUIRED) - set(_AUDIT_INPUT_OPTIONAL)
+    missing = [field for field in _AUDIT_INPUT_REQUIRED if field not in document]
+    if unknown or missing:
+        raise _stage_error("AUDIT_INPUT_INVALID", "audit_input fields are invalid")
+    _reject_professional_bodies(document)
+    if not isinstance(document["executable_rules"], list):
+        raise _stage_error("AUDIT_INPUT_INVALID", "executable_rules must be a list")
+    if not isinstance(document["evidence_set"], list) or not document["evidence_set"]:
+        raise _stage_error("AUDIT_INPUT_INVALID", "evidence_set must be a non-empty list")
+    frozen: dict[str, Any] = {}
+    for field in _AUDIT_INPUT_REQUIRED:
+        frozen[field] = document[field]
+    for field in _AUDIT_INPUT_OPTIONAL:
+        if field in document:
+            frozen[field] = document[field]
+    if provider_failures is not None and not isinstance(provider_failures, list):
+        raise _stage_error("AUDIT_INPUT_INVALID", "provider_failures must be a list")
+    # Provider failures do not remove rules from the frozen executable set.
+    frozen["executable_rules"] = [_rule_record(rule) for rule in document["executable_rules"]]
+    digest = _digest_value(frozen, digest_document)
+    return {"audit_input": frozen, "audit_input_digest": digest}
+
+
+def retain_executable_set(
+    frozen: dict[str, Any], *, failed_providers: list[str] | None = None
+) -> list[dict[str, Any]]:
+    """Return the frozen executable set unchanged after a provider failure."""
+    del failed_providers
+    rules = frozen.get("executable_rules")
+    if not isinstance(rules, list):
+        raise _stage_error("AUDIT_INPUT_INVALID", "executable_rules must be a list")
+    return [_rule_record(rule) for rule in rules]
+
+
+def _item_stage(rule: dict[str, Any]) -> str:
+    """Place one ledger item. An omitted dependency waits for every method.
+
+    Mechanical and semantic items use the same rule. A missing
+    ``professional_dependencies`` field is not an empty list. Verified ``[]``
+    is early. A non-empty professional dependency is late.
+    """
+    return semantic_review.dependency_stage(rule)
+
+
+def assign_rule_stages(
+    rules: list[dict[str, Any]], *, ready_rule_keys: set[tuple[str, str, str, str]] | None = None
+) -> dict[str, list[dict[str, Any]]]:
+    """Split rule-method items. Omitted dependencies wait."""
+    early: list[dict[str, Any]] = []
+    late: list[dict[str, Any]] = []
+    for rule in rules:
+        record = _rule_record(rule)
+        if _item_stage(rule) == "early" and (ready_rule_keys is None or _rule_key(rule) in ready_rule_keys):
+            early.append(record)
+        else:
+            late.append(record)
+    early_keys = {_rule_key(rule) for rule in early}
+    late_keys = {_rule_key(rule) for rule in late}
+    if early_keys & late_keys:
+        raise _stage_error("STAGE_COVERAGE_REJECTED", "early and late partitions overlap")
+    return {"early": early, "late": late}
+
+
+def audit_input_resource(relative_path: str, digest: str, *, resource_id: str) -> dict[str, Any]:
+    """Build the QuickstartResource ref later stages use to reload audit_input."""
+    if (
+        not isinstance(relative_path, str)
+        or not relative_path
+        or relative_path.startswith("/")
+        or ".." in Path(relative_path).parts
+        or not isinstance(resource_id, str)
+        or not resource_id
+        or not _STAGE_HEX64.fullmatch(digest)
+    ):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "audit_input_ref is invalid")
+    return {
+        "schemaVersion": "1",
+        "kind": "QuickstartResource",
+        "id": resource_id,
+        "location": {"path": relative_path},
+        "role": "evidence",
+        "digest": {"algorithm": "sha256", "value": digest},
+    }
+
+
+def build_stage_task_parameters(
+    frozen: dict[str, Any],
+    audit_input_digest: str,
+    *,
+    audit_input_ref: dict[str, Any],
+    early_rules: list[dict[str, Any]],
+    late_rules: list[dict[str, Any]],
+    supersedes: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Inline audit_input on the first real stage only. final never inlines it."""
+    if not _STAGE_HEX64.fullmatch(audit_input_digest):
+        raise _stage_error("AUDIT_INPUT_DIGEST_MISMATCH", "audit_input digest is not sha256")
+    sequence: list[tuple[str, list[dict[str, Any]], bool]] = []
+    if early_rules:
+        sequence.append(("early", early_rules, True))
+        if late_rules:
+            sequence.append(("late", late_rules, False))
+    else:
+        sequence.append(("late", list(late_rules), True))
+    sequence.append(("final", [], False))
+    parameters: list[dict[str, Any]] = []
+    for phase, rules, inline in sequence:
+        item: dict[str, Any] = {
+            "audit_phase": phase,
+            "run_id": frozen["run_id"],
+            "operation_id": f"{frozen['run_id']}:{phase}",
+            "audit_input_digest": audit_input_digest,
+            "stage_rules": [dict(rule) for rule in rules],
+        }
+        if inline:
+            item["audit_input"] = frozen
+        else:
+            item["audit_input_ref"] = audit_input_ref
+        if phase == "late" and supersedes:
+            item["supersedes"] = [dict(entry) for entry in supersedes]
+        parameters.append(item)
+    inlined = [item for item in parameters if "audit_input" in item]
+    if len(inlined) != 1 or inlined[0]["audit_phase"] == "final":
+        raise _stage_error("AUDIT_INPUT_BACKFILL_REJECTED", "audit_input must be inlined once")
+    return parameters
+
+
+def reload_audit_input(
+    path: Path | str,
+    expected_digest: str,
+    *,
+    digest_document: Any = None,
+    replacement: Any = None,
+) -> dict[str, Any]:
+    """Read the original audit_input file and check its digest. Never backfill."""
+    if replacement is not None:
+        raise _stage_error("AUDIT_INPUT_BACKFILL_REJECTED", "audit_input cannot be backfilled")
+    file_path = Path(path)
+    if file_path.is_symlink() or not file_path.is_file():
+        raise _stage_error(
+            "AUDIT_INPUT_BACKFILL_REJECTED", "original audit_input file is missing"
+        )
+    document = json.loads(file_path.read_text(encoding="utf-8"))
+    if not isinstance(document, dict):
+        raise _stage_error("AUDIT_INPUT_INVALID", "audit_input file must be an object")
+    actual = _digest_value(document, digest_document)
+    if actual != expected_digest:
+        raise _stage_error(
+            "AUDIT_INPUT_DIGEST_MISMATCH", "reloaded audit_input digest drifted"
+        )
+    return document
+
+
+def host_child_slots(total_slots: int) -> int:
+    """The controller occupies one slot. Three child slots are not four."""
+    if type(total_slots) is not int or total_slots < 1:
+        raise _stage_error("HOST_SLOT_INVALID", "host slot count is invalid")
+    return total_slots - 1
+
+
+def classify_host_stop(
+    reason: str, *, rules: list[Any], findings: list[Any]
+) -> dict[str, Any]:
+    """Keep cancel, permission denial, and missing context incomplete.
+
+    Capacity shortfall and rate limit stay over budget. Rules and findings
+    are copied unchanged: nothing is clipped to 420s or 720s, and permission
+    is not bypassed.
+    """
+    if reason in _INCOMPLETE_STOPS:
+        status = "incomplete"
+    elif reason in _OVER_BUDGET_STOPS:
+        status = "over_budget"
+    else:
+        raise _stage_error("HOST_STOP_INVALID", "unknown host stop")
+    return {
+        "status": status,
+        "reason": reason,
+        "rules": [dict(item) if isinstance(item, dict) else item for item in rules],
+        "findings": [dict(item) if isinstance(item, dict) else item for item in findings],
+        "permission_bypassed": False,
+        "coverage_clipped": False,
+    }
+
+
+def _stage_base(stage: dict[str, Any]) -> dict[str, Any]:
+    base = stage.get("base")
+    if not isinstance(base, dict) or any(field not in base for field in _BASE_FIELDS):
+        raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "stage base closure is missing")
+    return base
+
+
+_CONTEXT_IDENTITY_FIELDS = (
+    "canonical_id",
+    "revision_digest",
+    "check_method",
+    "binding_id",
+    "evidence_id",
+    "path",
+    "platform",
+    "role",
+    "sha256",
+    "citations",
+)
+
+
+def _context_digests(rows: Any, label: str) -> list[str]:
+    return list(_context_index(rows, label))
+
+
+def _context_index(rows: Any, label: str) -> dict[str, dict[str, Any]]:
+    if not isinstance(rows, list):
+        raise _stage_error("STAGE_CONTEXT_REJECTED", f"{label} must be a list")
+    indexed: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        digest = row.get("context_digest") if isinstance(row, dict) else None
+        if not isinstance(digest, str) or not _STAGE_HEX64.fullmatch(digest):
+            raise _stage_error("STAGE_CONTEXT_REJECTED", f"{label} context digest is invalid")
+        if digest in indexed:
+            raise _stage_error("STAGE_CONTEXT_REJECTED", f"{label} repeats a context digest")
+        indexed[digest] = row
+    return indexed
+
+
+def _context_identity_matches(plan_row: dict[str, Any], result_row: dict[str, Any]) -> bool:
+    """Rule revision, method, binding, and citation identity must follow the plan."""
+    for field in _CONTEXT_IDENTITY_FIELDS:
+        if field in plan_row or field in result_row:
+            if plan_row.get(field) != result_row.get(field):
+                return False
+    return True
+
+
+_DECLARED_STAGE_FACTS = {
+    "exchange_valid",
+    "domain_schema_valid",
+    "transport_succeeded",
+    "domain_result_accepted",
+    "contributions",
+    "semantic_review_result",
+    "base",
+    "context_plan",
+    "context_results",
+    "task_digest",
+    "foundation_task_digest",
+    "audit_input",
+    "professional_consumption",
+    "coverage",
+    "semantic_preflight",
+    "execution_metrics",
+    "method_assurance",
+}
+_REVIEW_STAGE_REFS = (
+    "task_ref",
+    "result_ref",
+    "domain_result_ref",
+    "context_plan_ref",
+)
+_DOMAIN_ENVELOPE_FIELDS = (
+    "coverage",
+    "semantic_preflight",
+    "execution_metrics",
+    "method_assurance",
+    "professional_consumption",
+    "rule_findings",
+    "evidence_list",
+    "remediation_plan",
+    "target_digest",
+    "rule_set_digest",
+    "semantic_request_digest",
+)
+
+
+def _load_stage_json(root: Path, ref: Any, label: str) -> dict[str, Any]:
+    """Read one original QuickstartResource and check its recorded digest."""
+    location = ref.get("location") if isinstance(ref, dict) else None
+    digest = ref.get("digest") if isinstance(ref, dict) else None
+    relative = location.get("path") if isinstance(location, dict) else None
+    value = digest.get("value") if isinstance(digest, dict) else None
+    if (
+        not isinstance(ref, dict)
+        or ref.get("schemaVersion") != "1"
+        or ref.get("kind") != "QuickstartResource"
+        or ref.get("role") != "evidence"
+        or not isinstance(relative, str)
+        or not relative
+        or relative.startswith("/")
+        or ".." in Path(relative).parts
+        or not isinstance(value, str)
+        or not _STAGE_HEX64.fullmatch(value)
+    ):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", f"{label} is not an original resource")
+    try:
+        receipt = foundation_read_file_strict(root, relative, value)
+        document = json.loads(receipt["content"])
+    except (OSError, WorkflowError, json.JSONDecodeError) as exc:
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED", f"{label} cannot be read from its original file"
+        ) from exc
+    if not isinstance(document, dict):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", f"{label} must be a JSON object")
+    return document
+
+
+
+def bind_final_stage_parameters(
+    parameters: dict[str, Any],
+    stage_results: list[dict[str, Any]],
+    *,
+    resource_root: Path,
+) -> dict[str, Any]:
+    """Bind collected original files before the host creates the final Task."""
+    if parameters.get("audit_phase") != "final" or not isinstance(stage_results, list) or not stage_results:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "final requires collected original stages")
+    for stage in stage_results:
+        if not isinstance(stage, dict):
+            raise _stage_error("STAGE_REFERENCE_REJECTED", "original stage is not an object")
+        root = Path(stage.get("resource_root") or resource_root)
+        documents = {name: _load_stage_json(root, stage.get(name), name) for name in _REVIEW_STAGE_REFS}
+        if _task_parameters(documents["task_ref"]).get("audit_phase") not in {"early", "late"}:
+            raise _stage_error("STAGE_REFERENCE_REJECTED", "final can only bind original review stages")
+        if "context_results_ref" in stage:
+            _load_stage_json(root, stage["context_results_ref"], "context_results_ref")
+        elif documents["context_plan_ref"].get("contexts"):
+            raise _stage_error("STAGE_REFERENCE_REJECTED", "original context results are missing")
+    bound = _copied_json(parameters)
+    bound["stage_results"] = _copied_json(stage_results)
+    return bound
+
+
+def _reobserve_material_closure(frozen: dict[str, Any]) -> None:
+    """Re-read the shared closure. A path or a stored digest is not enough."""
+    closure = frozen.get("resource_closure")
+    resources = closure.get("resources") if isinstance(closure, dict) else None
+    root_value = frozen.get("target_root")
+    if (
+        not isinstance(resources, list)
+        or not isinstance(root_value, str)
+        or not root_value
+        or any(not isinstance(item, dict) or not isinstance(item.get("path"), str) for item in resources)
+    ):
+        raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "shared material closure is not frozen")
+    root = Path(root_value)
+    for index, item in enumerate(frozen.get("evidence_set") or []):
+        if isinstance(item, dict) and item.get("kind") == "source_tree":
+            _RUN_TREE_DIGEST_CACHE.pop(Path(item.get("path", "")), None)
+        error = _evidence_entry_error(item, f"evidence_set[{index}]")
+        if error:
+            raise _stage_error("AUDIT_INPUT_BASE_DRIFT", error)
+    try:
+        current = foundation_resource_closure(
+            root, [item["path"] for item in resources]
+        )
+    except (OSError, WorkflowError) as exc:
+        raise _stage_error(
+            "AUDIT_INPUT_BASE_DRIFT", "shared material closure cannot be re-read"
+        ) from exc
+    if current.get("resources") != resources:
+        raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "shared material bytes drifted")
+    for source in closure.get("authority_sources") or []:
+        path = source.get("path") if isinstance(source, dict) else None
+        expected = source.get("sha256") if isinstance(source, dict) else None
+        if not isinstance(path, str) or not isinstance(expected, str):
+            raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "rule closure source is incomplete")
+        try:
+            actual = foundation_file_digest(Path(path))
+        except (OSError, WorkflowError, KeyError, IndexError, TypeError) as exc:
+            raise _stage_error(
+                "AUDIT_INPUT_BASE_DRIFT", "rule closure cannot be re-read"
+            ) from exc
+        if actual != expected:
+            raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "rule closure drifted")
+    for source in closure.get("bound_base_materials") or []:
+        path = source.get("path") if isinstance(source, dict) else None
+        expected = source.get("sha256") if isinstance(source, dict) else None
+        if not isinstance(path, str) or not isinstance(expected, str):
+            raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "bound base material is incomplete")
+        try:
+            actual = (foundation_tree_digest(Path(path)) if source.get("kind") == "source_tree"
+                      else foundation_file_digest(Path(path)))
+        except (OSError, WorkflowError, KeyError, IndexError, TypeError) as exc:
+            raise _stage_error(
+                "AUDIT_INPUT_BASE_DRIFT", "bound base material cannot be re-read"
+            ) from exc
+        if actual != expected:
+            raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "bound base material drifted")
+
+
+def _frozen_rule_index(
+    frozen: dict[str, Any],
+) -> dict[tuple[str, str, str, str], dict[str, Any]]:
+    rules = frozen.get("executable_rules")
+    if not isinstance(rules, list):
+        raise _stage_error("AUDIT_INPUT_INVALID", "executable_rules must be a list")
+    return {_rule_key(rule): rule for rule in rules}
+
+
+def _contribution_from_outcome(
+    outcome: dict[str, Any],
+    frozen_rules: dict[tuple[str, str, str, str], dict[str, Any]],
+) -> dict[str, Any]:
+    key = _rule_key(outcome)
+    status = outcome.get("status")
+    if not isinstance(status, str) or not status:
+        raise _stage_error("STAGE_COVERAGE_REJECTED", "original method outcome has no status")
+    record = _rule_record(outcome)
+    record["status"] = status
+    frozen_rule = frozen_rules.get(key)
+    if isinstance(frozen_rule, dict) and "professional_dependencies" in frozen_rule:
+        record["professional_dependencies"] = list(frozen_rule["professional_dependencies"])
+    return record
+
+
+def _schema_errors(value: Any, schema_id: str, label: str) -> None:
+    errors = _foundation_schema_errors(value, schema_id)
+    if errors:
+        detail = "; ".join(str(item) for item in errors)
+        raise _stage_error("STAGE_REFERENCE_REJECTED", f"{label}: {detail}")
+
+
+def _task_document_digest(task: dict[str, Any]) -> str:
+    """Digest the original Task through Foundation, not a caller-supplied function."""
+    outcome = _foundation({"operation": "digest-document", "document": task})
+    digest = outcome.get("digest") if isinstance(outcome, dict) else None
+    if not isinstance(digest, str) or not _STAGE_HEX64.fullmatch(digest):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original task digest is missing")
+    return digest
+
+
+def _audit_input_from_task(
+    root: Path,
+    parameters: dict[str, Any],
+    digest_document: Any,
+) -> dict[str, Any]:
+    """Reload the original audit_input from the Task. Do not trust the outer row."""
+    inline = parameters.get("audit_input") if "audit_input" in parameters else None
+    ref = parameters.get("audit_input_ref") if "audit_input_ref" in parameters else None
+    if (inline is None) == (ref is None):
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED",
+            "audit_input must be inlined once or referenced once",
+        )
+    expected = parameters.get("audit_input_digest")
+    if not isinstance(expected, str) or not _STAGE_HEX64.fullmatch(expected):
+        raise _stage_error("AUDIT_INPUT_DIGEST_MISMATCH", "audit_input digest is not sha256")
+    if inline is not None:
+        if not isinstance(inline, dict):
+            raise _stage_error("AUDIT_INPUT_INVALID", "audit_input file must be an object")
+        if _digest_value(inline, digest_document) != expected:
+            raise _stage_error(
+                "AUDIT_INPUT_DIGEST_MISMATCH", "inlined audit_input digest drifted"
+            )
+        return inline
+    location = ref.get("location") if isinstance(ref, dict) else None
+    digest = ref.get("digest") if isinstance(ref, dict) else None
+    relative = location.get("path") if isinstance(location, dict) else None
+    value = digest.get("value") if isinstance(digest, dict) else None
+    if (
+        not isinstance(ref, dict)
+        or ref.get("schemaVersion") != "1"
+        or ref.get("kind") != "QuickstartResource"
+        or ref.get("role") != "evidence"
+        or not isinstance(relative, str)
+        or not relative
+        or relative.startswith("/")
+        or ".." in Path(relative).parts
+        or not isinstance(value, str)
+        or not _STAGE_HEX64.fullmatch(value)
+    ):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "audit_input_ref is not an original resource")
+    try:
+        receipt = foundation_read_file_strict(root, relative, None)
+        document = json.loads(receipt["content"])
+    except (OSError, WorkflowError, json.JSONDecodeError) as exc:
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED", "audit_input_ref cannot be read from its original file"
+        ) from exc
+    if not isinstance(document, dict):
+        raise _stage_error("AUDIT_INPUT_INVALID", "audit_input file must be an object")
+    document_digest = _digest_value(document, digest_document)
+    if document_digest != expected:
+        raise _stage_error("AUDIT_INPUT_DIGEST_MISMATCH", "reloaded audit_input digest drifted")
+    if value not in {receipt["sha256"], document_digest}:
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED",
+            "audit_input_ref digest does not match the original file",
+        )
+    return document
+
+
+def _reject_task_conflict(stage: dict[str, Any], field: str, expected: Any) -> None:
+    if field in stage and stage[field] != expected:
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED",
+            f"{field} does not match the original task",
+        )
+
+
+def _check_original_task_input(task: dict[str, Any], frozen: dict[str, Any]) -> None:
+    parameters = _task_parameters(task)
+    correlation = task.get("params", {}).get("correlation", {})
+    if (task.get("operationId") != frozen["run_id"]
+            or correlation.get("run") != frozen["run_id"]
+            or correlation.get("stage") != "conformance-audit"
+            or task.get("params", {}).get("method") != "conformance-audit"):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original task operation does not belong to this run")
+    for field in ("evidence_set", "target_type", "scope_selector"):
+        if parameters.get(field) != frozen.get(field):
+            raise _stage_error("STAGE_REFERENCE_REJECTED", f"original task {field} differs from audit_input")
+    if parameters.get("execution_profile", "full") != frozen["execution_profile"]:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original task execution_profile differs from audit_input")
+    expected_target = frozen.get("target_project_path", frozen["target_root"])
+    actual_target = parameters.get("target_project_path") or parameters["evidence_set"][0]["path"]
+    if actual_target != expected_target:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original task target_project_path differs from audit_input")
+    selectors = frozen.get("selectors") or {}
+    for field in ("semantic_group_ids", "canonical_rule_ids"):
+        if list(parameters.get(field) or []) != list(selectors.get(field) or []):
+            raise _stage_error("STAGE_REFERENCE_REJECTED", f"original task {field} differs from audit_input")
+
+
+def _stage_target_digest(parameters: dict[str, Any], frozen: dict[str, Any]) -> str:
+    evidence = parameters["evidence_set"]
+    trees = [item for item in evidence if item["kind"] == "source_tree"]
+    files = [item for item in evidence if item["kind"] == "source_file"]
+    if frozen["target_type"] == "project_adoption" or not (
+        trees or (len(files) == 1 and frozen["target_type"] == "single_skill")
+    ):
+        return _evidence_set_digest(evidence)
+    target = Path(trees[0]["path"] if trees else files[0]["path"])
+    return foundation_target_content_digest(target, frozen["target_type"])
+
+
+def _stage_identity_from_task(
+    stage: dict[str, Any],
+    parameters: dict[str, Any],
+    audit_input: dict[str, Any],
+) -> dict[str, Any]:
+    phase = parameters.get("audit_phase")
+    run_id = audit_input.get("run_id")
+    digest = parameters.get("audit_input_digest")
+    if phase not in {"early", "late", "final"} or not isinstance(run_id, str) or not run_id:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "stage phase is invalid")
+    if not isinstance(digest, str) or not _STAGE_HEX64.fullmatch(digest):
+        raise _stage_error("AUDIT_INPUT_DIGEST_MISMATCH", "audit_input digest is not sha256")
+    identity = {
+        field: {
+            "audit_phase": phase,
+            "run_id": run_id,
+            "operation_id": f"{run_id}:{phase}",
+            "audit_input_digest": digest,
+        }[field]
+        for field in _TASK_IDENTITY_FIELDS
+    }
+    for field, expected in identity.items():
+        _reject_task_conflict(stage, field, expected)
+    rules = parameters.get("stage_rules")
+    if not isinstance(rules, list):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original task stage_rules are missing")
+    _reject_task_conflict(stage, "stage_rules", rules)
+    if "supersedes" in stage or "supersedes" in parameters:
+        _reject_task_conflict(stage, "supersedes", parameters.get("supersedes"))
+    for field in ("professional_consumption", "professional_selection"):
+        if field in stage or field in parameters:
+            _reject_task_conflict(stage, field, parameters.get(field))
+    return identity
+
+
+def _remember_method_status(
+    found: dict[tuple[str, str, str], tuple[str, dict[str, Any]]],
+    canonical_id: Any,
+    revision_digest: Any,
+    check_method: Any,
+    status: Any,
+    observation: Any,
+) -> None:
+    if not all(isinstance(value, str) and value for value in (
+        canonical_id, revision_digest, check_method, status,
+    )):
+        return
+    key = (canonical_id, revision_digest, check_method)
+    payload = observation if isinstance(observation, dict) else {}
+    current = found.get(key)
+    if current is None:
+        found[key] = (status, payload)
+        return
+    if current[0] != status:
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED",
+            "method status does not match the original task result",
+        )
+    reference = current[1].get("evidence")
+    if (isinstance(reference, dict)
+            and reference.get("kind") in {
+                "executor_aggregate_evidence_reference", "executor_error_reference"}
+            and reference.get("field") == "evidence"
+            and isinstance(payload.get("result_digest"), str)
+            and _STAGE_HEX64.fullmatch(payload["result_digest"])
+            and payload.get("result_digest") == current[1].get("result_digest")
+            and isinstance(payload.get("evidence"), dict)
+            and "kind" not in payload["evidence"]):
+        found[key] = (status, {**current[1], **payload})
+
+
+def _index_method_statuses(domain: dict[str, Any]) -> dict[tuple[str, str, str], tuple[str, dict[str, Any]]]:
+    """Read method statuses the producer actually stored. Do not invent one."""
+    body = domain.get("conformance_result")
+    if not isinstance(body, dict):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "stage domain schema is invalid")
+    found: dict[tuple[str, str, str], tuple[str, dict[str, Any]]] = {}
+    assurance = body.get("method_assurance")
+    if isinstance(assurance, dict):
+        for record in assurance.get("records") or []:
+            if not isinstance(record, dict):
+                continue
+            observation = record.get("trusted_observation")
+            if not isinstance(observation, dict):
+                continue
+            _remember_method_status(
+                found,
+                record.get("canonical_id"),
+                record.get("revision_digest"),
+                record.get("check_method"),
+                observation.get("status"),
+                observation,
+            )
+        document = assurance.get("trusted_observation")
+        if isinstance(document, dict):
+            for item in document.get("rule_results") or []:
+                if not isinstance(item, dict):
+                    continue
+                for sub in item.get("check_method_subresults") or []:
+                    if not isinstance(sub, dict):
+                        continue
+                    # Static executor payloads retain their pre-review placeholders;
+                    # the finalized method ledger owns nonmechanical observations.
+                    if sub.get("check_method") not in MECHANICAL_CHECK_METHODS:
+                        continue
+                    observation = sub
+                    reference = sub.get("evidence")
+                    parent = item.get("result_payload")
+                    lineage = parent.get("canonical_lineage") if isinstance(parent, dict) else None
+                    if (isinstance(reference, dict)
+                            and reference.get("kind") in {
+                                "executor_aggregate_evidence_reference", "executor_error_reference"}
+                            and reference.get("field") == "evidence"
+                            and isinstance(parent, dict)
+                            and lineage == {"canonical_id": item.get("canonical_id"),
+                                            "revision_digest": item.get("revision_digest")}
+                            and sub in (parent.get("check_method_subresults") or [])
+                            and isinstance(parent.get("evidence"), dict)
+                            and (reference.get("kind") != "executor_error_reference"
+                                 or reference.get("code") == parent["evidence"].get("code"))):
+                        observation = {**sub, "evidence": parent["evidence"],
+                                       "result_digest": item.get("result_digest")}
+                    _remember_method_status(
+                        found,
+                        item.get("canonical_id"),
+                        item.get("revision_digest"),
+                        sub.get("check_method"),
+                        sub.get("status"),
+                        observation,
+                    )
+    for container in (body.get("rule_results"), domain.get("rule_findings")):
+        if not isinstance(container, list):
+            continue
+        for item in container:
+            if not isinstance(item, dict):
+                continue
+            lineage = item.get("canonical_lineage")
+            lineage = lineage if isinstance(lineage, dict) else {}
+            canonical_id = lineage.get("canonical_id") or item.get("canonical_id")
+            revision = (
+                lineage.get("revision_digest")
+                or item.get("revision_digest")
+                or item.get("rule_revision_digest")
+            )
+            review = item.get("semantic_review")
+            if isinstance(review, dict):
+                method = review.get("check_method", "semantic_review")
+                _remember_method_status(found, canonical_id, revision, method,
+                                        review.get("status"), {"semantic_review": review})
+                key = (canonical_id, revision, method)
+                if key in found:
+                    status, original = found[key]
+                    found[key] = (status, {**original, "semantic_review": review})
+            subresults = item.get("check_method_subresults")
+            if not isinstance(subresults, list):
+                continue
+            for sub in subresults:
+                if not isinstance(sub, dict):
+                    continue
+                if (sub.get("check_method") not in MECHANICAL_CHECK_METHODS
+                        and (canonical_id, revision, sub.get("check_method")) in found):
+                    continue
+                _remember_method_status(
+                    found,
+                    canonical_id,
+                    revision,
+                    sub.get("check_method"),
+                    sub.get("status"),
+                    ({**sub, "reason_code": "REQUIRED_EVIDENCE_ROLE_MISSING",
+                      "missing_evidence_roles": item["missing_evidence_roles"]}
+                     if sub.get("check_method") in semantic_review.NON_MECHANICAL_CHECK_METHODS
+                     and sub.get("status") == "EVIDENCE_MISSING"
+                     and item.get("missing_evidence_roles") else sub),
+                )
+    return found
+
+
+def _single_method_status(
+    domain: dict[str, Any],
+    rule: dict[str, Any],
+    siblings: list[dict[str, Any]],
+) -> str | None:
+    """Use a producer rule row only when that canonical rule has one method."""
+    if len(siblings) != 1:
+        return None
+    body = domain.get("conformance_result")
+    rows = body.get("rule_results") if isinstance(body, dict) else None
+    if not isinstance(rows, list):
+        return None
+    for item in rows:
+        if not isinstance(item, dict) or item.get("check_method_subresults"):
+            continue
+        lineage = item.get("canonical_lineage")
+        lineage = lineage if isinstance(lineage, dict) else {}
+        canonical_id = lineage.get("canonical_id") or item.get("canonical_id") or item.get("rule_id")
+        revision = (
+            lineage.get("revision_digest")
+            or item.get("revision_digest")
+            or item.get("rule_revision_digest")
+        )
+        if canonical_id != rule.get("canonical_id") or revision != rule.get("revision_digest"):
+            continue
+        status = item.get("status")
+        if isinstance(status, str) and status:
+            return status
+    return None
+
+
+def _explanation_fields(observation: dict[str, Any]) -> dict[str, Any]:
+    evidence = observation.get("evidence")
+    source = {**observation, **evidence} if isinstance(evidence, dict) else observation
+    review = observation.get("semantic_review")
+    if isinstance(review, dict):
+        source = {**source, **review, "semantic_review": review}
+    found: dict[str, Any] = {}
+    for field in _RULE_EXPLANATION_FIELDS:
+        if field not in source:
+            continue
+        found[field] = _copy_explanation(source[field])
+    return found
+
+
+def _contributions_from_producer(
+    parameters: dict[str, Any],
+    domain: dict[str, Any],
+    frozen_rules: dict[tuple[str, str, str, str], dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rules = parameters.get("stage_rules")
+    if not isinstance(rules, list):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original task stage_rules are missing")
+    observed = _index_method_statuses(domain)
+    contributions: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for rule in rules:
+        if not isinstance(rule, dict):
+            raise _stage_error("STAGE_COVERAGE_REJECTED", "rule identity is incomplete")
+        siblings = [
+            item for item in rules
+            if isinstance(item, dict)
+            and item.get("canonical_id") == rule.get("canonical_id")
+            and item.get("revision_digest") == rule.get("revision_digest")
+        ]
+        key3 = (
+            rule.get("canonical_id"),
+            rule.get("revision_digest"),
+            rule.get("check_method"),
+        )
+        match = observed.get(key3) if all(isinstance(part, str) for part in key3) else None
+        if match is None:
+            status = _single_method_status(domain, rule, siblings)
+            match = (status, {}) if isinstance(status, str) else None
+        if match is None:
+            continue
+        status, observation = match
+        record = _rule_record(rule)
+        record.pop("status", None)
+        record["status"] = status
+        record.update(_explanation_fields(observation))
+        frozen_rule = frozen_rules.get(_rule_key(record))
+        if frozen_rule is None:
+            raise _stage_error(
+                "STAGE_COVERAGE_REJECTED",
+                "stage_rules are outside the frozen executable set",
+            )
+        if "professional_dependencies" in frozen_rule:
+            record["professional_dependencies"] = list(frozen_rule["professional_dependencies"])
+        key = _rule_key(record)
+        if key in seen:
+            raise _stage_error("STAGE_COVERAGE_REJECTED", "a stage repeated a rule contribution")
+        seen.add(key)
+        contributions.append(record)
+    return contributions
+
+
+def _semantic_evidence_view(parameters: dict[str, Any]) -> list[dict[str, Any]]:
+    """Derive stage-local citations without changing the original Task inputs.
+
+    Professional documents are read through the existing strict public proof
+    consumer and Foundation receipt. The parent request commits their bytes;
+    finalization rebuilds this same view from the original Task.
+    """
+    evidence = [dict(row) for row in parameters["evidence_set"]]
+    identifiers = {row["evidence_id"] for row in evidence}
+    derived_originals = set()
+    for item in (parameters.get("professional_consumption") or {}).get("items", []):
+        root, relative = item.get("proof_root"), item.get("proof_path")
+        if not root or not relative:
+            continue
+        try:
+            document = checker._read_professional_proof_document(root, relative)
+            receipt = foundation_read_file_strict(Path(root), relative)
+        except (RuntimeError, WorkflowError):
+            # An unavailable original proof remains unavailable. If it was
+            # previously cited, the rebuilt parent differs and is rejected.
+            continue
+        if strict_read_json(receipt, "PROFESSIONAL_PROOF_FAILED", "professional proof") != document:
+            raise WorkflowError("PROFESSIONAL_PROOF_FAILED", "proof changed during strict reading")
+        original = {"path": str((Path(root) / relative).resolve()), "sha256": receipt["sha256"]}
+        original_digest = foundation_document_digest(original)
+        if original_digest in derived_originals:
+            continue
+        derived_originals.add(original_digest)
+        evidence_id = "professional-proof:" + item["provider_id"] + ":" + original_digest
+        if evidence_id in identifiers:
+            raise WorkflowError("PROFESSIONAL_PROOF_FAILED", "derived proof citation identity is ambiguous")
+        identifiers.add(evidence_id)
+        evidence.append({"evidence_id": evidence_id, "kind": "receipt",
+                         "path": str(Path(root) / relative), "sha256": receipt["sha256"]})
+    return evidence
+
+
+def _context_lists(
+    stage: dict[str, Any],
+    root: Path,
+    *,
+    semantic_result: dict[str, Any] | None,
+    task_digest: str,
+    parameters: dict[str, Any],
+    domain: dict[str, Any],
+    verified_evidence_refs: list[dict[str, str]] | None = None,
+) -> tuple[list[Any], list[Any] | None]:
+    """Reaccept the original parent and child files using stage-local semantics."""
+    document = _load_stage_json(root, stage["context_plan_ref"], "context_plan_ref")
+    contexts = document.get("contexts")
+    indexed = _context_index(contexts, "context_plan")
+    request = document.get("semantic_review_request")
+    if not contexts and semantic_result is None:
+        if "context_results_ref" not in stage:
+            return contexts, None
+    if contexts or semantic_result is not None:
+        if not isinstance(request, dict):
+            raise _stage_error("STAGE_CONTEXT_REJECTED", "original parent review request is missing")
+        try:
+            semantic_evidence = _semantic_evidence_view(parameters)
+            rebuilt = semantic_review.build_review_request(
+                foundation_task_digest=task_digest,
+                evidence_set_digest=_evidence_set_digest(semantic_evidence),
+                rule_set_digest=domain["conformance_result"]["rule_set_digest"],
+                descriptors=request["rules"],
+                evidence_set=semantic_evidence,
+                digest_document=foundation_document_digest,
+            )
+            if rebuilt != request:
+                raise ValueError("original parent review request binding differs")
+            expected = {semantic_review.review_identity(row): row for row in request["rules"]}
+            if len(expected) != len(request["rules"]):
+                raise ValueError("parent repeats a rule")
+            permitted = {_rule_key(row) for row in parameters["stage_rules"]}
+            seen = set()
+            for digest, row in indexed.items():
+                original = row.get("request")
+                if not isinstance(original, dict) or foundation_document_digest(original) != digest:
+                    raise ValueError("original context bytes differ from context_digest")
+                control = original.get("control")
+                if not isinstance(control, dict):
+                    raise ValueError("original context control is missing")
+                if (control.get("foundation_task_digest") != task_digest
+                        or control.get("parent_review_request_digest") != request["review_request_digest"]
+                        or control.get("target_digest") != domain["conformance_result"]["target_digest"]
+                        or any(control.get(field) != domain["conformance_result"].get(field)
+                               for field in ("target_type", "platform", "execution_profile"))):
+                    raise ValueError("original context does not belong to its parent task")
+                rules = _semantic_context_rules(original)
+                identities = []
+                for rule in rules:
+                    identity = semantic_review.review_identity(rule)
+                    key = (identity[0], identity[1], identity[2], rule["binding_id"])
+                    if identity in seen or expected.get(identity) != rule or key not in permitted:
+                        raise ValueError("context rule or evidence differs from original parent")
+                    seen.add(identity)
+                    identities.append(dict(zip(_RULE_IDENTITY, key)))
+                if control.get("context_rule_set_digest") != foundation_document_digest(identities):
+                    raise ValueError("context rule set digest differs")
+            blocked = set(document.get("blocked_rule_ids") or [])
+            if seen != {identity for identity in expected if identity[0] not in blocked}:
+                raise ValueError("context plan does not cover its original parent")
+        except (KeyError, TypeError, ValueError, semantic_review.SemanticReviewError) as exc:
+            raise _stage_error("STAGE_CONTEXT_REJECTED", str(exc)) from exc
+    if "context_results_ref" not in stage:
+        if semantic_result is not None:
+            raise _stage_error("STAGE_CONTEXT_REJECTED", "a consumed semantic result is missing its original context results")
+        return contexts, None
+    results = _load_stage_json(root, stage["context_results_ref"], "context_results_ref")
+    result_contexts = results.get("contexts")
+    _context_index(result_contexts, "context_results")
+    if semantic_result is None:
+        if result_contexts:
+            raise _stage_error("STAGE_CONTEXT_REJECTED", "context results were not consumed by the original domain")
+        return contexts, result_contexts
+    try:
+        payload, _metrics = _merge_semantic_context_results(request, document, result_contexts)
+        observed, binding = semantic_review.finalize_review(
+            request, payload, digest_document=foundation_document_digest,
+        )
+        if binding != domain["conformance_result"]["semantic_review_binding"]:
+            raise ValueError("context results differ from the original consumed semantic result")
+        if verified_evidence_refs is not None:
+            for canonical_id, revision, method in observed:
+                if method == "semantic_review":
+                    verified_evidence_refs.extend(_verified_static_evidence_refs(
+                        observed, binding, request, task_digest, canonical_id, revision,
+                    ))
+        statuses = _index_method_statuses(domain)
+        for identity, review in observed.items():
+            original = statuses.get(identity)
+            if original is not None and original[0] != review["status"]:
+                raise ValueError("context status differs from the original method observation")
+    except (KeyError, TypeError, ValueError, WorkflowError, semantic_review.SemanticReviewError) as exc:
+        raise _stage_error("STAGE_CONTEXT_REJECTED", str(exc)) from exc
+    return contexts, result_contexts
+
+
+def _semantic_binding_from_domain(
+    domain: dict[str, Any], task_digest: str,
+) -> dict[str, str] | None:
+    body = domain.get("conformance_result")
+    binding = body.get("semantic_review_binding") if isinstance(body, dict) else None
+    if binding is None:
+        return None
+    if not isinstance(binding, dict) or any(field not in binding for field in _SEMANTIC_V2_DIGESTS):
+        return None
+    if binding.get("foundation_task_digest") != task_digest:
+        raise _stage_error(
+            "STAGE_RESIGN_REJECTED",
+            "stage semantic result re-signed the foundation task digest",
+        )
+    return {field: binding[field] for field in _SEMANTIC_V2_DIGESTS}
+
+
+def _read_frozen_canonical_authority(frozen: dict[str, Any]) -> dict[str, Any] | None:
+    """Read the original canonical source, without rebinding its installation path."""
+    closure = frozen.get("resource_closure") or {}
+    if frozen.get("execution_profile") != "full" or not (
+        "authority_sources" in closure or "applicability_digest" in closure
+    ):
+        # Generic staged inputs need not carry the production canonical census.
+        # Production full plans freeze both fields when they create audit_input.
+        return None
+    sources = closure.get("authority_sources")
+    if not isinstance(sources, list):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "frozen canonical authority is missing")
+    candidates = [source for source in sources if isinstance(source, dict)
+                  and isinstance(source.get("path"), str)
+                  and Path(source["path"]).name == CANONICAL_PROJECTION.name]
+    if len(candidates) != 1:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "frozen canonical authority is missing or ambiguous")
+    source = candidates[0]
+    path = Path(source["path"])
+    expected = source.get("sha256")
+    if (not path.is_absolute() or os.path.normpath(str(path)) != source["path"]
+            or not isinstance(expected, str) or not _STAGE_HEX64.fullmatch(expected)):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "frozen canonical authority identity is invalid")
+    try:
+        original = foundation_read_file_strict(path.parent, path.name, expected)
+        current = foundation_read_file_strict(
+            AUDIT_PACKAGE_ROOT, CANONICAL_PROJECTION_RELATIVE, expected,
+        )
+    except (OSError, WorkflowError) as exc:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "frozen canonical authority cannot be re-read unchanged") from exc
+    if original != current:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "frozen canonical authority differs from current rules")
+    return original
+
+
+def _derive_stage_facts(
+    stage: dict[str, Any],
+    frozen: dict[str, Any],
+    digest_document: Any,
+) -> dict[str, Any]:
+    """Build one stage's acceptance facts from its original Task and producer files."""
+    if not isinstance(stage, dict):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "stage is not an object")
+    declared = _DECLARED_STAGE_FACTS & set(stage)
+    if declared:
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED",
+            "stage acceptance facts must be derived from the original files",
+        )
+    root_value = stage.get("resource_root") or frozen.get("target_root")
+    if not isinstance(root_value, str) or not root_value:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "stage resource root is missing")
+    root = Path(root_value)
+    task = _load_stage_json(root, stage.get("task_ref"), "task_ref")
+    parameters = _task_parameters(task)
+    _schema_errors(parameters, _CONFORMANCE_PARAMETER_SCHEMA_ID, "stage parameter schema is invalid")
+    audit_input = _audit_input_from_task(root, parameters, digest_document)
+    _check_original_task_input(task, audit_input)
+    identity = _stage_identity_from_task(stage, parameters, audit_input)
+    phase = identity["audit_phase"]
+    base = {field: audit_input[field] for field in _BASE_FIELDS}
+    if phase == "final":
+        if "result_ref" in stage:
+            raise _stage_error(
+                "STAGE_REFERENCE_REJECTED",
+                "final result is created after the original stages are combined",
+            )
+        if "audit_input" in parameters:
+            raise _stage_error(
+                "STAGE_RESIGN_REJECTED",
+                "final cannot inline audit_input or re-sign a stage result",
+            )
+        task_digest = _task_document_digest(task)
+        derived = {
+            **identity,
+            "task_ref": stage.get("task_ref"),
+            "task_digest": task_digest,
+            "foundation_task_digest": task_digest,
+            "base": base,
+            "stage_results": _copied_json(parameters.get("stage_results")),
+        }
+        if "supersedes" in parameters:
+            derived["supersedes"] = parameters["supersedes"]
+        if "revealed_dependencies" in stage:
+            derived["revealed_dependencies"] = stage["revealed_dependencies"]
+        return derived
+    missing_refs = [name for name in _REVIEW_STAGE_REFS if name not in stage]
+    if missing_refs:
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED",
+            "review stage is missing an original resource reference",
+        )
+    result = _load_stage_json(root, stage["result_ref"], "result_ref")
+    domain = _load_stage_json(root, stage["domain_result_ref"], "domain_result_ref")
+    _verify_stage_exchange(root, task, result)
+    _schema_errors(domain, _CONFORMANCE_RESULT_SCHEMA_ID, "stage domain schema is invalid")
+    if result.get("state") != "succeeded":
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED",
+            "transport success does not cover a rejected domain result",
+        )
+    if _embedded_domain(result) != domain:
+        raise _stage_error(
+            "STAGE_REFERENCE_REJECTED",
+            "wrapped domain result does not match the original domain file",
+        )
+    task_digest = _accepted_task_digest(result)
+    if task_digest != _task_document_digest(task):
+        raise _stage_error(
+            "STAGE_RESIGN_REJECTED",
+            "stage result re-signed the foundation task digest",
+        )
+    body = domain["conformance_result"]
+    for field in ("run_id", "target_type", "platform", "execution_profile"):
+        if body.get(field) != audit_input.get(field):
+            raise _stage_error("STAGE_REFERENCE_REJECTED", f"original domain {field} differs from audit_input")
+    if body.get("target_digest") != _stage_target_digest(parameters, audit_input):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original domain target_digest differs from audit_input")
+    semantic = _semantic_binding_from_domain(domain, task_digest)
+    verified_evidence_refs: list[dict[str, str]] = []
+    contexts, result_contexts = _context_lists(stage, root, semantic_result=semantic,
+        task_digest=task_digest, parameters=parameters, domain=domain,
+        verified_evidence_refs=verified_evidence_refs)
+    # A production full round freezes the canonical authority. Recompute its
+    # census from that authority and this original Task's evidence, rather
+    # than trusting group counters copied out of the original domain.
+    canonical_receipt = _read_frozen_canonical_authority(frozen)
+    if canonical_receipt is not None:
+        projection = strict_read_json(canonical_receipt, "STAGE_REFERENCE_REJECTED", "frozen canonical rules")
+        applicability = canonical_rule_applicability(load_json(TRUST_POLICY), frozen["target_type"],
+            frozen["platform"], projection, canonical_receipt["sha256"])
+        registry, registry_digest = load_semantic_group_registry()
+        view = _semantic_evidence_view(parameters)
+        census_plan = {
+            "execution_profile": "full",
+            "in_scope_rule_ids": [rule["canonical_id"] for rule in projection["rules"]],
+            "in_scope_rule_set_digest": body["coverage"]["in_scope_rule_set_digest"],
+            "semantic_group_registry_digest": registry_digest,
+        }
+        census = _semantic_profile_preflight_result(_semantic_profile_preflight(
+            census_plan, registry, applicability, projection["rules"], view,
+            foundation_task_digest=task_digest, evidence_set_digest=_evidence_set_digest(view)))
+        if body.get("semantic_preflight") != census:
+            raise _stage_error("STAGE_REFERENCE_REJECTED", "original semantic preflight differs from its bound evidence and rules")
+    contributions = _contributions_from_producer(
+        parameters, domain, _frozen_rule_index(frozen),
+    )
+    derived = {
+        **identity,
+        "task_ref": stage["task_ref"],
+        "result_ref": stage["result_ref"],
+        "domain_result_ref": stage["domain_result_ref"],
+        "context_plan_ref": stage["context_plan_ref"],
+        "task_digest": task_digest,
+        "foundation_task_digest": task_digest,
+        "exchange_valid": True,
+        "domain_schema_valid": True,
+        "transport_succeeded": True,
+        "domain_result_accepted": True,
+        "base": base,
+        "context_plan": contexts,
+        "contributions": contributions,
+        "verified_evidence_refs": verified_evidence_refs,
+    }
+    if result_contexts is not None:
+        derived["context_results"] = result_contexts
+        derived["context_results_ref"] = stage["context_results_ref"]
+    if "audit_input" in parameters:
+        derived["audit_input"] = parameters["audit_input"]
+    if "supersedes" in parameters:
+        derived["supersedes"] = parameters["supersedes"]
+    if "revealed_dependencies" in stage:
+        derived["revealed_dependencies"] = stage["revealed_dependencies"]
+    if semantic is not None:
+        derived["parent_review_request_digest"] = semantic["review_request_digest"]
+        derived["semantic_review_result"] = semantic
+    body = domain["conformance_result"]
+    for field in _DOMAIN_ENVELOPE_FIELDS:
+        if field in body:
+            derived[field] = body[field]
+        elif field in domain:
+            derived[field] = domain[field]
+    return derived
+
+
+def _task_parameters(task: dict[str, Any]) -> dict[str, Any]:
+    params = task.get("params")
+    parameters = params.get("parameters") if isinstance(params, dict) else None
+    if not isinstance(parameters, dict):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original task parameters are missing")
+    return parameters
+
+
+def _embedded_domain(result: dict[str, Any]) -> dict[str, Any]:
+    outputs = result.get("outputs")
+    domain = outputs.get("domainResult") if isinstance(outputs, dict) else None
+    if not isinstance(domain, dict):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original result has no domain result")
+    return domain
+
+
+def _accepted_task_digest(result: dict[str, Any]) -> str:
+    outputs = result.get("outputs")
+    binding = outputs.get("taskBinding") if isinstance(outputs, dict) else None
+    digest = binding.get("taskDigest") if isinstance(binding, dict) else None
+    if not isinstance(digest, str) or not _STAGE_HEX64.fullmatch(digest):
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "original task digest is missing")
+    return digest
+
+
+def _verify_stage_exchange(root: Path, task: dict[str, Any], result: dict[str, Any]) -> None:
+    outcome = _foundation({
+        "operation": "verify-exchange",
+        "root": str(root),
+        "task": task,
+        "result": result,
+    })
+    if not isinstance(outcome, dict) or outcome.get("valid") is not True:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "stage exchange is invalid")
+
+
+def _stage_result_row(stage: dict[str, Any]) -> dict[str, Any]:
+    row = {
+        "audit_phase": stage["audit_phase"],
+        "task_digest": stage["task_digest"],
+        "foundation_task_digest": stage["foundation_task_digest"],
+    }
+    parent = stage.get("parent_review_request_digest")
+    if isinstance(parent, str):
+        row["parent_review_request_digest"] = parent
+    for name in (
+        "task_ref",
+        "result_ref",
+        "domain_result_ref",
+        "context_plan_ref",
+        "context_results_ref",
+    ):
+        ref = stage.get(name)
+        if isinstance(ref, dict):
+            row[name] = ref
+    return row
+
+
+def combine_staged_round(
+    frozen: dict[str, Any],
+    stages: list[dict[str, Any]],
+    *,
+    observed_base: dict[str, Any] | None = None,
+    audit_input_path: Path | str | None = None,
+    digest_document: Any = None,
+) -> dict[str, Any]:
+    """Accept one round only when all seven DESIGN-025 §4.5 checks hold.
+
+    ``final`` composes the original stage results. It does not merge stages
+    into one semantic-review-result v2 and does not replace that v2's four
+    digests. A legal reordering inside one stage is accepted.
+    """
+    if not isinstance(frozen, dict) or not isinstance(stages, list) or not stages:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "staged round is incomplete")
+    _reobserve_material_closure(frozen)
+    final_rows = []
+    for stage in stages:
+        if not isinstance(stage, dict):
+            raise _stage_error("STAGE_REFERENCE_REJECTED", "stage is not an object")
+        root = Path(stage.get("resource_root") or frozen["target_root"])
+        task = _load_stage_json(root, stage.get("task_ref"), "task_ref")
+        if _task_parameters(task).get("audit_phase") == "final":
+            final_rows.append(stage)
+    if len(final_rows) != 1:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "the round needs one original final Task")
+    final_row = final_rows[0]
+    final = _derive_stage_facts(final_row, frozen, digest_document)
+    bound_stages = final.get("stage_results")
+    external_stages = [stage for stage in stages if stage is not final_row]
+    if not isinstance(bound_stages, list) or not bound_stages or bound_stages != external_stages:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "round stages differ from final Task stage_results")
+    stages = [_derive_stage_facts(stage, frozen, digest_document) for stage in bound_stages] + [final]
+    expected_digest = _digest_value(frozen, digest_document)
+    if audit_input_path is not None:
+        reloaded = reload_audit_input(
+            audit_input_path, expected_digest, digest_document=digest_document
+        )
+        if reloaded != frozen:
+            raise _stage_error(
+                "AUDIT_INPUT_DIGEST_MISMATCH", "reloaded audit_input does not match the frozen object"
+            )
+    review_stages = [stage for stage in stages if stage.get("audit_phase") in {"early", "late"}]
+    final_stages = [stage for stage in stages if stage.get("audit_phase") == "final"]
+    if not review_stages or len(final_stages) != 1:
+        raise _stage_error("STAGE_REFERENCE_REJECTED", "the round needs review stages and one final")
+    final = final_stages[0]
+    if "audit_input" in final or final.get("semantic_review_result") is not None:
+        raise _stage_error(
+            "STAGE_RESIGN_REJECTED", "final cannot inline audit_input or re-sign a stage result"
+        )
+    if any("audit_input" in stage for stage in review_stages[1:]) or "audit_input" not in review_stages[0]:
+        raise _stage_error("AUDIT_INPUT_BACKFILL_REJECTED", "audit_input must be inlined once on the first real stage")
+    if review_stages[0]["audit_input"] != frozen:
+        raise _stage_error("AUDIT_INPUT_DIGEST_MISMATCH", "inlined audit_input is not the frozen object")
+    frozen_keys = [_rule_key(rule) for rule in frozen["executable_rules"]]
+    if len(frozen_keys) != len(set(frozen_keys)):
+        raise _stage_error("STAGE_COVERAGE_REJECTED", "frozen executable set has duplicate rules")
+
+    owners: dict[str, str] = {}
+    semantic_results: list[dict[str, Any]] = []
+    retained: list[dict[str, Any]] = []
+    contributions_by_task: dict[str, dict[tuple[str, str, str, str], dict[str, Any]]] = {}
+    early_keys: set[tuple[str, str, str, str]] = set()
+    late_original_keys: set[tuple[str, str, str, str]] = set()
+    superseded: dict[tuple[str, str], tuple[str, str, str, str]] = {}
+    edges: list[tuple[str, str]] = []
+
+    for stage in review_stages + [final]:
+        if stage.get("run_id") != frozen["run_id"]:
+            raise _stage_error("AUDIT_INPUT_ROUND_MISMATCH", "a stage from another round cannot be mixed in")
+        operation_id = stage.get("operation_id")
+        if not isinstance(operation_id, str) or not operation_id.startswith(f"{frozen['run_id']}:"):
+            raise _stage_error("AUDIT_INPUT_ROUND_MISMATCH", "operation_id is not derived from this run_id")
+        if stage.get("audit_input_digest") != expected_digest:
+            raise _stage_error("AUDIT_INPUT_DIGEST_MISMATCH", "stage audit_input_digest drifted")
+        task_digest = stage.get("task_digest")
+        if (
+            not isinstance(task_digest, str)
+            or not _STAGE_HEX64.fullmatch(task_digest)
+            or stage.get("foundation_task_digest") != task_digest
+        ):
+            raise _stage_error("STAGE_REFERENCE_REJECTED", "stage task digest does not match its foundation task digest")
+        if stage.get("audit_phase") == "final":
+            if (
+                "result_ref" in stage
+                or "exchange_valid" in stage
+                or "domain_schema_valid" in stage
+            ):
+                raise _stage_error(
+                    "STAGE_REFERENCE_REJECTED",
+                    "final result is created after the original stages are combined",
+                )
+        else:
+            if stage.get("exchange_valid") is not True or stage.get("domain_schema_valid") is not True:
+                raise _stage_error(
+                    "STAGE_REFERENCE_REJECTED",
+                    "stage exchange and domain schema must both be accepted",
+                )
+            if stage.get("transport_succeeded") is True and stage.get("domain_result_accepted") is not True:
+                raise _stage_error(
+                    "STAGE_REFERENCE_REJECTED",
+                    "transport success does not cover a rejected domain result",
+                )
+        base = _stage_base(stage)
+        for field in _BASE_FIELDS:
+            if base[field] != frozen[field]:
+                raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "stage base closure drifted")
+        if observed_base is not None:
+            for field in _BASE_FIELDS:
+                if observed_base.get(field) != frozen[field]:
+                    raise _stage_error("AUDIT_INPUT_BASE_DRIFT", "observed base closure drifted")
+
+    for stage in review_stages:
+        task_digest = stage["task_digest"]
+        plan = _context_index(stage.get("context_plan") or [], "context_plan")
+        if "context_results" in stage:
+            results = _context_index(stage.get("context_results"), "context_results")
+            if set(plan) != set(results):
+                raise _stage_error(
+                    "STAGE_CONTEXT_REJECTED",
+                    "context set is unknown, duplicate, missing, truncated, or cross-stage swapped",
+                )
+            for digest, plan_row in plan.items():
+                if not _context_identity_matches(plan_row, results[digest]):
+                    raise _stage_error(
+                        "STAGE_CONTEXT_REJECTED",
+                        "context revision, method, binding_id, or citation identity differs from the stage plan",
+                    )
+        for digest in plan:
+            if digest in owners:
+                raise _stage_error("STAGE_CONTEXT_REJECTED", "context digest is claimed by two stages")
+            owners[digest] = task_digest
+        review = stage.get("semantic_review_result")
+        semantic_methods = [
+            item for item in stage.get("contributions") or []
+            if isinstance(item, dict) and item.get("check_method") == "semantic_review"
+        ]
+        if review is None:
+            if any(
+                isinstance(item, dict) and item.get("status") in _COMPLETED_SEMANTIC_STATUSES
+                for item in semantic_methods
+            ):
+                raise _stage_error(
+                    "STAGE_RESIGN_REJECTED", "stage semantic result is missing its four digests"
+                )
+        elif not isinstance(review, dict) or any(field not in review for field in _SEMANTIC_V2_DIGESTS):
+            raise _stage_error("STAGE_RESIGN_REJECTED", "stage semantic result is missing its four digests")
+        else:
+            if review["foundation_task_digest"] != task_digest:
+                raise _stage_error(
+                    "STAGE_RESIGN_REJECTED",
+                    "stage semantic result re-signed the foundation task digest",
+                )
+            if review["review_request_digest"] != stage.get("parent_review_request_digest"):
+                raise _stage_error(
+                    "STAGE_RESIGN_REJECTED",
+                    "stage semantic result changed the parent request digest",
+                )
+            semantic_results.append({field: review[field] for field in _SEMANTIC_V2_DIGESTS})
+        stage_contributions: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+        for contribution in stage.get("contributions") or []:
+            key = _rule_key(contribution)
+            if key in stage_contributions:
+                raise _stage_error("STAGE_COVERAGE_REJECTED", "a stage repeated a rule contribution")
+            record = _rule_record(contribution)
+            record["task_digest"] = task_digest
+            record["audit_phase"] = stage["audit_phase"]
+            stage_contributions[key] = record
+            retained.append(record)
+        contributions_by_task[task_digest] = stage_contributions
+        supersede_keys = set()
+        if stage["audit_phase"] == "early" and stage.get("supersedes"):
+            raise _stage_error("STAGE_SUPERSEDES_REJECTED", "supersedes is only valid on a new late stage")
+        for entry in stage.get("supersedes") or []:
+            key = _rule_key(entry)
+            source_digest = entry.get("stage_task_digest")
+            if not isinstance(source_digest, str) or source_digest == task_digest:
+                raise _stage_error("STAGE_SUPERSEDES_REJECTED", "supersedes must point at another stage task")
+            source = contributions_by_task.get(source_digest, {}).get(key)
+            if source is None or key not in stage_contributions:
+                raise _stage_error(
+                    "STAGE_SUPERSEDES_REJECTED",
+                    "supersedes must point at an existing item and include its real re-review",
+                )
+            if not stage_contributions[key].get("status"):
+                raise _stage_error("STAGE_SUPERSEDES_REJECTED", "the re-review has no real status")
+            supersede_keys.add(key)
+            superseded[(source_digest, key)] = key
+            edges.append((source_digest, task_digest))
+        if stage["audit_phase"] == "early":
+            for contribution in stage_contributions.values():
+                if contribution.get("professional_dependencies") != []:
+                    raise _stage_error(
+                        "STAGE_DEPENDENCY_REJECTED",
+                        "early contains a rule whose independence is not verified",
+                    )
+            early_keys |= set(stage_contributions)
+        else:
+            late_original_keys |= set(stage_contributions) - supersede_keys
+        for revealed in stage.get("revealed_dependencies") or []:
+            revealed_key = _rule_key(revealed)
+            if revealed_key not in early_keys or not any(
+                key == revealed_key for key in supersede_keys
+            ):
+                raise _stage_error(
+                    "STAGE_DEPENDENCY_REJECTED",
+                    "late evidence shows an early rule depended on a professional result and was not re-reviewed",
+                )
+
+    for digest, owner in list(owners.items()):
+        for stage in review_stages:
+            if "context_results" not in stage:
+                continue
+            result_digests = _context_digests(stage.get("context_results"), "context_results")
+            if digest in result_digests and owner != stage["task_digest"]:
+                raise _stage_error("STAGE_CONTEXT_REJECTED", "a context result was swapped across stages")
+    if early_keys & late_original_keys:
+        raise _stage_error("STAGE_COVERAGE_REJECTED", "early and late partitions overlap")
+
+    seen_edges: set[str] = set()
+    for source, target in edges:
+        stack = [target]
+        seen_edges.add(source)
+        while stack:
+            current = stack.pop()
+            if current == source:
+                raise _stage_error("STAGE_SUPERSEDES_REJECTED", "supersedes is cyclic")
+            stack.extend(item_target for item_source, item_target in edges if item_source == current)
+
+    effective: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    for task_digest, contributions in contributions_by_task.items():
+        for key, contribution in contributions.items():
+            if (task_digest, key) in superseded:
+                continue
+            if key in effective:
+                raise _stage_error("STAGE_COVERAGE_REJECTED", "a rule has two effective contributions")
+            effective[key] = contribution
+    if set(effective) != set(frozen_keys):
+        raise _stage_error(
+            "STAGE_COVERAGE_REJECTED",
+            "the effective contribution union does not equal the frozen set; missing results are not PASS",
+        )
+    for key in frozen_keys:
+        if effective[key].get("status") in {None, ""}:
+            raise _stage_error("STAGE_COVERAGE_REJECTED", "missing results are not PASS")
+
+    professional: list[Any] = []
+    for stage in stages:
+        consumption = stage.get("professional_consumption")
+        if consumption is not None:
+            professional.append(consumption)
+    return {
+        "accepted": True,
+        "effective_contributions": [effective[key] for key in frozen_keys],
+        "retained_results": retained,
+        "stage_results": [
+            _stage_result_row(stage)
+            for stage in stages
+        ],
+        "stage_semantic_results": semantic_results,
+        "final_resigns_stage_digest": False,
+        "professional_consumption": professional,
+        "executable_rules": [_rule_record(rule) for rule in frozen["executable_rules"]],
+        "derived_stages": stages,
+    }
+
+
+def _professional_selection(parameters: dict[str, Any]) -> list[str]:
+    selection = parameters.get("professional_selection")
+    if isinstance(selection, list):
+        return [item for item in selection if isinstance(item, str)]
+    consumption = parameters.get("professional_consumption")
+    items = consumption.get("items") if isinstance(consumption, dict) else None
+    if not isinstance(items, list):
+        return []
+    return [
+        item["provider_id"]
+        for item in items
+        if isinstance(item, dict) and isinstance(item.get("provider_id"), str)
+    ]
+
+
+def _authoritative_product_version() -> str:
+    """Read the product version from the layout that actually contains it."""
+    for parent in Path(__file__).resolve().parents:
+        for name in ("package.json", "platform-manifest.json", "manifest.json"):
+            candidate = parent / name
+            if candidate.is_symlink() or not candidate.is_file():
+                continue
+            try:
+                document = json.loads(candidate.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            version = document.get("version") if isinstance(document, dict) else None
+            if isinstance(version, str) and version:
+                return version
+    raise _stage_error("AUDIT_INPUT_INVALID", "authoritative product version is missing")
+
+
+def _audited_resource_root(target: str) -> Path:
+    """The closure root is the audited directory. A file target stays a file."""
+    path = Path(target)
+    if path.is_symlink():
+        raise _stage_error("AUDIT_INPUT_INVALID", "evidence path is a symlink")
+    try:
+        resolved = path.resolve()
+    except OSError as exc:
+        raise _stage_error("AUDIT_INPUT_INVALID", "evidence path is missing") from exc
+    if resolved.is_file():
+        return resolved.parent
+    return resolved
+
+
+def _files_inside_resource_root(root: Path) -> list[str]:
+    """Regular files strictly inside a directory target.
+
+    Foundation resource-closure rejects the root itself. A source tree
+    therefore closes the files it contains, not ``.``.
+    """
+    files: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        current = Path(dirpath)
+        dirnames[:] = [
+            name for name in dirnames if not (current / name).is_symlink()
+        ]
+        for name in filenames:
+            path = current / name
+            if path.is_symlink() or not path.is_file():
+                continue
+            relative = path.resolve().relative_to(root).as_posix()
+            if relative and relative not in files:
+                files.append(relative)
+    return files
+
+
+def _split_base_materials(
+    target_root: Path, evidence_set: list[Any]
+) -> tuple[list[str], list[dict[str, str]]]:
+    """Bind the original evidence contract, including explicitly supplied external inputs."""
+    relatives: set[str] = set()
+    bound: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for index, item in enumerate(evidence_set):
+        if isinstance(item, dict) and item.get("kind") == "source_tree":
+            _RUN_TREE_DIGEST_CACHE.pop(Path(item.get("path", "")), None)
+        error = _evidence_entry_error(item, f"evidence_set[{index}]")
+        if error:
+            raise _stage_error("AUDIT_INPUT_INVALID", error)
+        if item["evidence_id"] in seen:
+            raise _stage_error("AUDIT_INPUT_INVALID", "evidence_id is duplicated")
+        seen.add(item["evidence_id"])
+        path = Path(item["path"])
+        try:
+            path.relative_to(target_root)
+        except ValueError:
+            bound.append(dict(item))
+            continue
+        if item["kind"] == "source_tree":
+            relatives.update(
+                (path / relative).relative_to(target_root).as_posix()
+                for relative in _files_inside_resource_root(path)
+            )
+        else:
+            relatives.add(path.relative_to(target_root).as_posix())
+    return sorted(relatives), bound
+
+
+def _authority_source(path: Path) -> dict[str, str]:
+    return {"path": str(path), "sha256": foundation_file_digest(path)}
+
+
+def _ledger_method_items(
+    canonical_rules: list[dict[str, Any]],
+    bindings: dict[tuple[str, str], dict[str, Any]],
+    routes: dict[str, dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """One item per ledger method. A missing semantic binding does not drop it."""
+    known_methods = MECHANICAL_CHECK_METHODS | set(semantic_review.NON_MECHANICAL_CHECK_METHODS)
+    executable: list[dict[str, Any]] = []
+    binding_rows: list[dict[str, Any]] = []
+    for rule in canonical_rules:
+        if not isinstance(rule, dict):
+            raise _stage_error("STAGE_COVERAGE_REJECTED", "the method ledger row is invalid")
+        canonical_id = rule.get("canonical_id")
+        revision_digest = rule.get("revision_digest")
+        revision = rule.get("revision")
+        methods = rule.get("check_methods")
+        route = routes.get(canonical_id) if isinstance(canonical_id, str) else None
+        if (
+            not isinstance(canonical_id, str)
+            or not isinstance(revision_digest, str)
+            or not isinstance(methods, list)
+            or not methods
+            or len(methods) != len(set(methods))
+            or any(method not in known_methods for method in methods)
+            or not isinstance(route, dict)
+            or route.get("revision_digest") != revision_digest
+            or set(route.get("check_methods") or []) != set(methods)
+        ):
+            raise _stage_error(
+                "STAGE_COVERAGE_REJECTED",
+                "the method ledger does not name this rule's check methods",
+            )
+        identity = (canonical_id, revision_digest)
+        binding = bindings.get(identity)
+        if binding is not None:
+            row = {
+                "binding_id": binding["binding_id"],
+                "canonical_id": binding["canonical_id"],
+                "revision_digest": binding["revision_digest"],
+            }
+            if "professional_dependencies" in binding:
+                row["professional_dependencies"] = list(binding["professional_dependencies"])
+            binding_rows.append(row)
+        executor = route.get("executor_baseline_rule_id")
+        for method in methods:
+            if binding is not None:
+                binding_id = semantic_review._method_binding_id(binding["binding_id"], method)
+            elif method in MECHANICAL_CHECK_METHODS:
+                if not isinstance(executor, str) or not executor:
+                    raise _stage_error(
+                        "STAGE_COVERAGE_REJECTED",
+                        "a mechanical method is missing its ledger identity",
+                    )
+                binding_id = f"{executor}#{method}"
+            else:
+                if not isinstance(revision, int):
+                    raise _stage_error(
+                        "STAGE_COVERAGE_REJECTED",
+                        "a semantic method is missing its ledger identity",
+                    )
+                binding_id = f"semantic:{canonical_id}@{revision}#{method}"
+            item = {
+                "canonical_id": canonical_id,
+                "revision_digest": revision_digest,
+                "check_method": method,
+                "binding_id": binding_id,
+            }
+            if binding is not None and "professional_dependencies" in binding:
+                item["professional_dependencies"] = list(binding["professional_dependencies"])
+            executable.append(item)
+    return executable, binding_rows
+
+
+def plan_staged_full_audit(
+    parameters: dict[str, Any],
+    *,
+    run_id: str,
+    digest_document: Any,
+    provider_failures: list[str] | None = None,
+) -> dict[str, Any]:
+    """Plan one full audit from the method ledger. Omitted dependencies wait.
+
+    Semantic bindings are extra input for methods that have them. A missing
+    binding stays a gap and does not remove the rule. The returned first stage
+    is the only production task ``run`` creates for a full audit.
+    """
+    if not isinstance(parameters, dict) or not isinstance(run_id, str) or not run_id:
+        raise _stage_error("AUDIT_INPUT_INVALID", "full audit plan input is invalid")
+    evidence_set = parameters.get("evidence_set")
+    if not isinstance(evidence_set, list) or not evidence_set:
+        raise _stage_error("AUDIT_INPUT_INVALID", "evidence_set is required")
+    target_type = parameters.get("target_type")
+    if target_type not in TARGET_TYPES:
+        raise _stage_error("AUDIT_INPUT_INVALID", "target_type is not the entry target type")
+    platform = str(parameters.get("platform") or "all")
+    trust_policy = load_json(TRUST_POLICY)
+    expected = trust_policy.get("canonical_rule_projection", {})
+    receipt = foundation_read_file_strict(
+        AUDIT_PACKAGE_ROOT,
+        CANONICAL_PROJECTION_RELATIVE,
+        expected.get("digest"),
+    )
+    projection = json.loads(receipt["content"])
+    canonical_rules = projection["rules"] if isinstance(projection, dict) else projection
+    applicability = canonical_rule_applicability(
+        trust_policy,
+        target_type,
+        platform,
+        projection,
+        receipt["sha256"],
+    )
+    bindings = semantic_review.load_bindings(canonical_rules)
+    routes = _governed_route_rows()
+    executable, binding_rows = _ledger_method_items(canonical_rules, bindings, routes)
+    classified = {
+        row.get("canonical_id")
+        for row in applicability.get("rules", [])
+        if isinstance(row, dict)
+    }
+    if {item["canonical_id"] for item in executable} != classified:
+        raise _stage_error(
+            "STAGE_COVERAGE_REJECTED",
+            "the executable set dropped a rule before applicability judgment",
+        )
+    target_value = parameters.get("target_project_path")
+    if not isinstance(target_value, str) or not target_value:
+        first = evidence_set[0]
+        target_value = first.get("path") if isinstance(first, dict) else ""
+    if not isinstance(target_value, str) or not target_value:
+        raise _stage_error("AUDIT_INPUT_INVALID", "evidence path is missing")
+    target_root = _audited_resource_root(target_value)
+    relatives, bound = _split_base_materials(target_root, evidence_set)
+    closure = foundation_resource_closure(target_root, relatives)
+    if bound:
+        closure["bound_base_materials"] = bound
+    closure["authority_sources"] = [
+        _authority_source(CANONICAL_PROJECTION),
+        _authority_source(AUDIT_PACKAGE_ROOT / METHOD_ASSURANCE_ROUTING_SOURCE_RELATIVE),
+        _authority_source(semantic_review.BINDINGS_PATH),
+    ]
+    closure["applicability_digest"] = applicability.get("applicability_digest")
+    document = {
+        "run_id": run_id,
+        "audit_version": _authoritative_product_version(),
+        "target_root": str(target_root),
+        "target_project_path": target_value,
+        "target_type": target_type,
+        "platform": platform,
+        "scope_selector": str(parameters.get("scope_selector") or ""),
+        "execution_profile": str(parameters.get("execution_profile") or "full"),
+        "permission": str(parameters.get("permission") or "read-only"),
+        "professional_selection": _professional_selection(parameters),
+        "evidence_set": evidence_set,
+        "resource_closure": closure,
+        "executable_rules": executable,
+        "bindings": binding_rows,
+        "selectors": {
+            "semantic_group_ids": list(parameters.get("semantic_group_ids") or []),
+            "canonical_rule_ids": list(parameters.get("canonical_rule_ids") or []),
+        },
+    }
+    packed = freeze_audit_input(
+        document,
+        digest_document=digest_document,
+        provider_failures=provider_failures,
+    )
+    frozen = packed["audit_input"]
+    ready_rule_keys = set()
+    for rule in frozen["executable_rules"]:
+        binding = bindings.get((rule["canonical_id"], rule["revision_digest"]))
+        if binding is not None:
+            refs = _descriptor_evidence_refs(binding, evidence_set)
+            if set(binding["required_evidence_roles"]) <= {ref["role"] for ref in refs}:
+                ready_rule_keys.add(_rule_key(rule))
+    assigned = assign_rule_stages(frozen["executable_rules"], ready_rule_keys=ready_rule_keys)
+    reference = audit_input_resource(
+        f"{run_id}-audit-input.json",
+        packed["audit_input_digest"],
+        resource_id=f"{run_id}-audit-input",
+    )
+    stages = build_stage_task_parameters(
+        frozen,
+        packed["audit_input_digest"],
+        audit_input_ref=reference,
+        early_rules=assigned["early"],
+        late_rules=assigned["late"],
+    )
+    first = next(item for item in stages if "audit_input" in item)
+    return {
+        "audit_input": frozen,
+        "audit_input_digest": packed["audit_input_digest"],
+        "stages": stages,
+        "first_stage_parameters": {
+            "audit_phase": first["audit_phase"],
+            "audit_input": first["audit_input"],
+            "audit_input_digest": packed["audit_input_digest"],
+            "stage_rules": first["stage_rules"],
+        },
+        "executable_rules": list(frozen["executable_rules"]),
+    }
+
+
 def foundation_resource_closure(root: Path, relative_paths: list[str]) -> dict[str, Any]:
     return _foundation({
         "operation": "resource-closure",
@@ -886,7 +2797,7 @@ def foundation_estimate_tokens(
     *,
     profile_spi_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Estimate one frozen context through Foundation 0.14's public API.
+    """Estimate one frozen context through the pinned Foundation public API.
 
     The normal production root is derived from the already verified managed
     Bundle.  Tests may inject a complete ``foundation/profile-spi`` closure;
@@ -1445,6 +3356,1088 @@ def _semantic_group_members(
     return members
 
 
+def _load_invoked_stage_rules(args: argparse.Namespace) -> list[dict[str, Any]] | None:
+    """Read the stage subset for an early or late invocation.
+
+    Absent ``audit_phase`` keeps the existing full engine. ``final`` never
+    enters that engine.
+    """
+    phase = getattr(args, "audit_phase", None)
+    if not phase:
+        return None
+    if phase == "final":
+        raise WorkflowError(
+            "STAGE_REFERENCE_REJECTED",
+            "final combines original stage results and does not execute the audit",
+        )
+    if phase not in {"early", "late"}:
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "audit_phase is not a staged phase")
+    raw = getattr(args, "stage_rules", None)
+    if not isinstance(raw, str) or not raw:
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "a staged phase requires stage_rules")
+    path = Path(raw)
+    if path.is_symlink() or not path.is_file():
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "stage_rules must be a real file")
+    rows = load_json(path).get("stage_rules")
+    if not isinstance(rows, list) or not rows:
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "stage_rules must be a non-empty array")
+    rules: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for row in rows:
+        key = _rule_key(row)
+        if key in seen:
+            raise WorkflowError("STAGE_COVERAGE_REJECTED", "stage_rules repeat a method")
+        seen.add(key)
+        rules.append(_rule_record(row))
+    return rules
+
+
+def _restrict_plan_to_stage(
+    plan: dict[str, Any], stage_rules: list[dict[str, Any]]
+) -> None:
+    """Narrow one existing profile plan to the invoked method-ledger subset."""
+    governed = _governed_route_rows()
+    allowed: dict[tuple[str, str], set[str]] = {}
+    selected = set(plan.get("selected_rule_ids", []))
+    for rule in stage_rules:
+        entry = governed.get(rule["canonical_id"])
+        if (
+            entry is None
+            or entry["revision_digest"] != rule["revision_digest"]
+            or rule["check_method"] not in entry["check_methods"]
+            or rule["canonical_id"] not in selected
+        ):
+            raise WorkflowError(
+                "STAGE_COVERAGE_REJECTED",
+                "stage_rules are outside the method ledger",
+            )
+        allowed.setdefault(
+            (rule["canonical_id"], rule["revision_digest"]), set()
+        ).add(rule["check_method"])
+    stage_ids = {rule["canonical_id"] for rule in stage_rules}
+    for field in (
+        "selected_rule_ids",
+        "deterministic_rule_ids",
+        "first_tier_semantic_rule_ids",
+    ):
+        plan[field] = [canonical_id for canonical_id in plan.get(field, []) if canonical_id in stage_ids]
+    plan["selected_deterministic_rule_count"] = len(plan["deterministic_rule_ids"])
+    plan["selected_rule_set_digest"] = foundation_document_digest([
+        {"canonical_id": identity, "revision_digest": plan["revision_by_canonical"][identity]}
+        for identity in plan["selected_rule_ids"]
+    ])
+    plan["selected_semantic_group_ids"] = sorted(
+        group for group, members in plan["group_members"].items() if stage_ids.intersection(members)
+    )
+    plan["stage_check_methods"] = allowed
+
+
+def _rules_matching_stage(
+    rules: list[dict[str, Any]],
+    canonical_lineage: dict[str, dict[str, str]],
+    allowed: dict[tuple[str, str], set[str]],
+) -> list[dict[str, Any]]:
+    """Keep baseline carriers whose check type is in this stage's methods."""
+    kept: list[dict[str, Any]] = []
+    for rule in rules:
+        lineage = canonical_lineage.get(rule.get("ruleId"), {})
+        identity = (
+            lineage.get("canonical_id"),
+            lineage.get("canonical_revision_digest"),
+        )
+        methods = allowed.get(identity, set())
+        check_type = rule.get("checkType")
+        if check_type == "static" and not methods:
+            continue
+        if check_type == "semantic" and "semantic_review" not in methods:
+            continue
+        if check_type not in {"static", "semantic"}:
+            continue
+        kept.append(rule)
+    return kept
+
+
+_FROZEN_RESULT_FIELDS = ("execution_profile", "run_id", "target_type", "platform")
+_TERMINAL_RESULT_FIELDS = (
+    "target_digest",
+    "target_type",
+    "platform",
+    "rule_set_digest",
+    "semantic_request_digest",
+    "method_assurance",
+    "run_id",
+)
+
+
+def _copied_json(value: Any) -> Any:
+    return json.loads(json.dumps(value))
+
+
+def _envelope_from_stages(stages: list[dict[str, Any]], field: str) -> Any:
+    """Copy one envelope field already stored on an original stage row."""
+    for stage in stages:
+        if not isinstance(stage, dict):
+            continue
+        if field in stage:
+            return _copied_json(stage[field])
+        domain = stage.get("conformance_result")
+        if isinstance(domain, dict) and field in domain:
+            return _copied_json(domain[field])
+    return None
+
+
+def _list_from_stages(stages: list[dict[str, Any]], field: str) -> list[Any]:
+    items: list[Any] = []
+    for stage in stages:
+        if isinstance(stage, dict) and isinstance(stage.get(field), list):
+            items.extend(_copied_json(stage[field]))
+    return items
+
+
+def _field_from_round(
+    frozen: dict[str, Any], stages: list[dict[str, Any]], field: str
+) -> Any:
+    if field in _FROZEN_RESULT_FIELDS and field in frozen:
+        return frozen[field]
+    staged = _envelope_from_stages(stages, field)
+    if staged is not None:
+        return staged
+    if field in frozen:
+        return frozen[field]
+    return None
+
+
+def _objects_from_stages(stages: list[dict[str, Any]], field: str) -> list[Any]:
+    """Copy one field from every original stage that already carries it."""
+    found: list[Any] = []
+    for stage in stages:
+        if not isinstance(stage, dict):
+            continue
+        if field in stage:
+            found.append(_copied_json(stage[field]))
+            continue
+        domain = stage.get("conformance_result")
+        if isinstance(domain, dict) and field in domain:
+            found.append(_copied_json(domain[field]))
+    return found
+
+
+def _coverage_identity_rows(
+    contributions: list[dict[str, Any]], canonical_ids: list[str]
+) -> list[dict[str, str]]:
+    """Canonical identity rows for one combined rule set, in canonical order."""
+    wanted = set(canonical_ids)
+    by_canonical: dict[str, str] = {}
+    for contribution in contributions:
+        if contribution.get("canonical_id") not in wanted:
+            continue
+        canonical_id = contribution["canonical_id"]
+        revision = contribution["revision_digest"]
+        previous = by_canonical.get(canonical_id)
+        if previous is not None and previous != revision:
+            raise WorkflowError(
+                "STAGE_REFERENCE_REJECTED",
+                "staged round canonical revision drifted",
+            )
+        by_canonical[canonical_id] = revision
+    return [
+        {"canonical_id": canonical_id, "revision_digest": by_canonical[canonical_id]}
+        for canonical_id in sorted(by_canonical)
+    ]
+
+
+def _union_string_list(rows: list[dict[str, Any]], field: str) -> list[str]:
+    found: list[str] = []
+    for row in rows:
+        values = row.get(field)
+        if not isinstance(values, list) or any(not isinstance(item, str) for item in values):
+            raise WorkflowError(
+                "STAGE_REFERENCE_REJECTED",
+                "staged round coverage list is incomplete",
+            )
+        for item in values:
+            if item not in found:
+                found.append(item)
+    return sorted(found)
+
+
+def _agreed_registry_digest(coverages: list[dict[str, Any]]) -> str:
+    found: list[str] = []
+    for coverage in coverages:
+        digest = coverage.get("semantic_group_registry_digest")
+        if not isinstance(digest, str) or not digest:
+            raise WorkflowError(
+                "STAGE_REFERENCE_REJECTED",
+                "staged round is missing the semantic group registry digest",
+            )
+        if digest not in found:
+            found.append(digest)
+    if len(found) != 1:
+        raise WorkflowError(
+            "STAGE_REFERENCE_REJECTED",
+            "staged round semantic group registry digests differ",
+        )
+    return found[0]
+
+
+_EXECUTION_METRIC_FIELDS = (
+    "semantic_model_call_count",
+    "semantic_context_count",
+    "estimated_input_tokens",
+    "semantic_rules_sent_to_model_count",
+    "semantic_rules_skipped_missing_evidence_count",
+)
+_NULLABLE_EXECUTION_METRICS = {
+    "semantic_model_call_count",
+    "semantic_rules_sent_to_model_count",
+}
+_PREFLIGHT_COUNT_FIELDS = (
+    "rule_count",
+    "applicable_rule_count",
+    "not_applicable_rule_count",
+    "undetermined_rule_count",
+    "ready_rule_count",
+    "missing_rule_count",
+    "review_required_rule_count",
+)
+
+
+def _combine_execution_metrics(stages: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Sum observed stage costs. A null observation stays unknown."""
+    rows = [
+        row
+        for row in _objects_from_stages(stages, "execution_metrics")
+        if isinstance(row, dict)
+    ]
+    if not rows:
+        return None
+    combined: dict[str, Any] = {}
+    for field in _EXECUTION_METRIC_FIELDS:
+        values: list[Any] = []
+        for row in rows:
+            if field not in row:
+                raise WorkflowError(
+                    "STAGE_REFERENCE_REJECTED",
+                    "staged round execution metrics are incomplete",
+                )
+            values.append(row[field])
+        if field in _NULLABLE_EXECUTION_METRICS and any(value is None for value in values):
+            combined[field] = None
+            continue
+        if any(type(value) is not int for value in values):
+            raise WorkflowError(
+                "STAGE_REFERENCE_REJECTED",
+                "staged round execution metrics are incomplete",
+            )
+        combined[field] = sum(values)
+    return combined
+
+
+def _combine_semantic_preflight(stages: list[dict[str, Any]], frozen: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Keep the unreduced census, allowing bound late proof availability.
+
+    Rule scope and denominators remain identical. A late original Task may
+    add professional citations; its ready/missing census then describes the
+    final evidence view, without changing any early method observation.
+    """
+    canonical_receipt = _read_frozen_canonical_authority(frozen) if frozen is not None else None
+    rows = [
+        (stage, row)
+        for stage in sorted(stages, key=lambda item: item.get("audit_phase") == "late")
+        for row in _objects_from_stages([stage], "semantic_preflight")
+        if isinstance(row, dict)
+    ]
+    if not rows:
+        return None
+    merged: dict[str, dict[str, Any]] = {}
+    origins: dict[str, dict[str, Any]] = {}
+    for stage, row in rows:
+        groups = row.get("groups")
+        if not isinstance(groups, list) or type(row.get("performed")) is not bool:
+            raise WorkflowError(
+                "STAGE_REFERENCE_REJECTED",
+                "staged round semantic preflight is incomplete",
+            )
+        for group in groups:
+            if not isinstance(group, dict) or not isinstance(group.get("group_id"), str):
+                raise WorkflowError(
+                    "STAGE_REFERENCE_REJECTED",
+                    "staged round semantic preflight is incomplete",
+                )
+            group_id = group["group_id"]
+            roles = group.get("missing_evidence_roles")
+            if (
+                not isinstance(roles, list)
+                or any(not isinstance(role, str) or not role for role in roles)
+                or any(type(group.get(field)) is not int for field in _PREFLIGHT_COUNT_FIELDS)
+            ):
+                raise WorkflowError(
+                    "STAGE_REFERENCE_REJECTED",
+                    "staged round semantic preflight is incomplete",
+                )
+            census = {
+                "group_id": group_id,
+                **{field: group[field] for field in _PREFLIGHT_COUNT_FIELDS},
+                "missing_evidence_roles": sorted(set(roles)),
+            }
+            current = merged.get(group_id)
+            if current is None:
+                merged[group_id] = census
+                origins[group_id] = stage
+                continue
+            if current != census:
+                previous = origins[group_id]
+                previous_binding = previous.get("semantic_review_result") or {}
+                binding = stage.get("semantic_review_result") or {}
+                original_view = previous_binding.get("evidence_set_digest")
+                late_view = binding.get("evidence_set_digest")
+                fixed_fields = set(_PREFLIGHT_COUNT_FIELDS) - {"ready_rule_count", "missing_rule_count"}
+                if (
+                    canonical_receipt is not None
+                    and previous.get("audit_phase") == "early" and stage.get("audit_phase") == "late"
+                    and original_view and late_view and original_view != late_view
+                    and all(current[field] == census[field] for field in fixed_fields)
+                    and census["ready_rule_count"] >= current["ready_rule_count"]
+                    and census["missing_rule_count"] <= current["missing_rule_count"]
+                    and census["ready_rule_count"] + census["missing_rule_count"]
+                        == current["ready_rule_count"] + current["missing_rule_count"]
+                    and set(census["missing_evidence_roles"]).issubset(current["missing_evidence_roles"])
+                ):
+                    merged[group_id] = census
+                    origins[group_id] = stage
+                    continue
+                raise WorkflowError(
+                    "STAGE_REFERENCE_REJECTED",
+                    "staged round semantic preflight censuses differ",
+                )
+    return {
+        "performed": all(row["performed"] is True for _, row in rows),
+        "groups": [merged[group_id] for group_id in sorted(merged)],
+    }
+
+
+def _aggregate_method_statuses(statuses: list[Any], verified_evidence_refs: list[dict[str, str]] | None = None) -> str:
+    """Fold one canonical rule's methods.
+
+    Status strings keep the historical route ladder so callers that only have
+    statuses stay stable. Contribution dicts aggregate mechanical methods
+    first, then combine the real non-mechanical result. Mechanical
+    NOT_APPLICABLE does not paint a semantic PASS.
+    """
+    if not statuses:
+        return "REVIEW_REQUIRED"
+    if isinstance(statuses[0], dict):
+        return _aggregate_typed_method_statuses(statuses, verified_evidence_refs)
+    return _combine_route_status({item for item in statuses if isinstance(item, str)})
+
+
+def _aggregate_typed_method_statuses(items: list[Any], verified_evidence_refs: list[dict[str, str]] | None = None) -> str:
+    if any(not isinstance(item, dict) or not isinstance(item.get("status"), str) for item in items):
+        return "REVIEW_REQUIRED"
+    statuses = {item["status"] for item in items}
+    if "FAIL" in statuses:
+        return "FAIL"
+    if statuses & {"EVIDENCE_MISSING", "NOT_RUN"}:
+        return "EVIDENCE_MISSING"
+    if "REVIEW_REQUIRED" in statuses:
+        return "REVIEW_REQUIRED"
+    mechanical = [
+        item for item in items if item.get("check_method") in MECHANICAL_CHECK_METHODS
+    ]
+    others = [
+        item for item in items if item.get("check_method") not in MECHANICAL_CHECK_METHODS
+    ]
+    if any(item["status"] not in {"PASS", "NOT_APPLICABLE"} for item in mechanical):
+        return "REVIEW_REQUIRED"
+    # An unevidenced mechanical NA cannot be hidden by another PASS. A rule
+    # whose mechanical methods are only NA keeps that status; coverage still
+    # refuses the unevidenced row.
+    unevidenced_na = [
+        item for item in mechanical
+        if item["status"] == "NOT_APPLICABLE"
+        and not rule_method_assurance.mechanical_na_is_evidenced(item, verified_evidence_refs)
+    ]
+    if unevidenced_na and any(item["status"] == "PASS" for item in items):
+        return "EVIDENCE_MISSING"
+    if not mechanical:
+        mechanical_aggregate = None
+    elif any(item["status"] == "PASS" for item in mechanical):
+        mechanical_aggregate = "PASS"
+    else:
+        mechanical_aggregate = "NOT_APPLICABLE"
+    other_statuses = {item["status"] for item in others}
+    if mechanical_aggregate is None:
+        return _combine_route_status(other_statuses)
+    if not other_statuses:
+        return mechanical_aggregate
+    if other_statuses == {"PASS"}:
+        # A semantic PASS stays PASS when every mechanical method is PASS
+        # or evidenced NOT_APPLICABLE.
+        return "PASS"
+    if other_statuses == {"NOT_APPLICABLE"} and mechanical_aggregate == "PASS":
+        return "NOT_APPLICABLE"
+    if other_statuses == {"NOT_APPLICABLE"} and mechanical_aggregate == "NOT_APPLICABLE":
+        return "NOT_APPLICABLE"
+    return "REVIEW_REQUIRED"
+
+
+def _method_obligation(record: dict[str, Any]) -> tuple[str, str, str] | None:
+    identity = (
+        record.get("canonical_id"),
+        record.get("revision_digest"),
+        record.get("check_method"),
+    )
+    if all(isinstance(part, str) and part for part in identity):
+        return identity  # type: ignore[return-value]
+    return None
+
+
+def _combine_method_assurance(
+    stages: list[dict[str, Any]], effective_contributions: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Select each obligation from its accepted original Task, retaining stage observations."""
+    review = [
+        stage for stage in stages
+        if isinstance(stage, dict) and stage.get("audit_phase") != "final"
+    ]
+    rows = [
+        (stage, stage["method_assurance"])
+        for stage in review
+        if isinstance(stage.get("method_assurance"), dict)
+    ]
+    if not rows:
+        return None
+    scalars = (
+        "kind",
+        "schema_version",
+        "run_id",
+        "target_digest",
+        "target_type",
+        "platform",
+        "rule_set_digest",
+        "semantic_request_digest",
+        "trust_projection_digest",
+    )
+    if any(row.get("complete") is not False for _stage, row in rows):
+        raise WorkflowError(
+            "STAGE_REFERENCE_REJECTED",
+            "staged round method assurance is incomplete",
+        )
+    observations = [row.get("trusted_observation") for _stage, row in rows]
+    if any(not isinstance(item, dict) for item in observations):
+        raise WorkflowError(
+            "STAGE_REFERENCE_REJECTED",
+            "staged round method assurance is incomplete",
+        )
+    first = observations[0]
+    for item in observations[1:]:
+        if any(item.get(field) != first.get(field) for field in scalars):
+            raise WorkflowError(
+                "STAGE_REFERENCE_REJECTED",
+                "staged round method assurance observations differ",
+            )
+    owners = {
+        (item["canonical_id"], item["revision_digest"], item["check_method"]): item["task_digest"]
+        for item in effective_contributions
+    }
+    unique: dict[tuple[str, str, str], dict[str, Any]] = {}
+    stage_observations = []
+    observation_results = []
+    for stage, row in rows:
+        records = row.get("records")
+        if not isinstance(records, list):
+            raise WorkflowError("STAGE_REFERENCE_REJECTED", "staged round method assurance is incomplete")
+        task_digest = stage["task_digest"]
+        stage_observations.append({
+            "task_digest": task_digest,
+            "audit_phase": stage["audit_phase"],
+            "trusted_observation": _copied_json(row["trusted_observation"]),
+            "obligation_set_digest": row.get("obligation_set_digest"),
+            "counts": {key: row[key] for key in (
+                "total", "method_distribution", "declared_not_proven", "receipt_succeeded",
+                "receipt_untrusted", "receipt_non_success", "proven", "not_proven",
+                "trusted_observed", "trusted_unavailable",
+            ) if key in row},
+        })
+        for record in records:
+            identity = _method_obligation(record)
+            if identity is None:
+                raise WorkflowError("STAGE_REFERENCE_REJECTED", "staged round method assurance is incomplete")
+            if owners.get(identity) != task_digest:
+                continue
+            if identity in unique:
+                raise WorkflowError("STAGE_REFERENCE_REJECTED", "original task repeats a method obligation")
+            unique[identity] = _copied_json(record)
+        for result in row["trusted_observation"].get("rule_results") or []:
+            mechanical = [sub for sub in result.get("check_method_subresults") or []
+                          if sub.get("check_method") in MECHANICAL_CHECK_METHODS]
+            if mechanical and all(
+                owners.get((result.get("canonical_id"), result.get("revision_digest"),
+                            sub.get("check_method"))) == task_digest for sub in mechanical
+            ):
+                # The whole payload and its complete method route remain bound
+                # to the original digest. Split observations stay stage-local.
+                observation_results.append(_copied_json(result))
+    records = [unique[identity] for identity in owners if identity in unique]
+    distribution: dict[str, int] = {}
+    observed = 0
+    unavailable = 0
+    proven = 0
+    for record in records:
+        method = record.get("check_method")
+        if isinstance(method, str):
+            distribution[method] = distribution.get(method, 0) + 1
+        if record.get("assurance_status") == "PROVEN":
+            proven += 1
+        observation = record.get("trusted_observation")
+        status = observation.get("status") if isinstance(observation, dict) else None
+        if not isinstance(status, str) or not status:
+            continue
+        if status in {"EVIDENCE_MISSING", "NOT_RUN"}:
+            unavailable += 1
+        else:
+            observed += 1
+    combined: dict[str, Any] = {
+        "total": len(records),
+        "method_distribution": dict(sorted(distribution.items())),
+        "receipt_succeeded": proven,
+        "proven": proven,
+        "not_proven": len(records) - proven,
+        "complete": False,
+        "trusted_observation": {**_copied_json(first), "rule_results": observation_results},
+        "stage_observations": stage_observations,
+        "trusted_observed": observed,
+        "trusted_unavailable": unavailable,
+        "records": records,
+    }
+    single_original_scope = len(rows) == 1 and {
+        _method_obligation(record) for record in rows[0][1]["records"]
+    } == set(unique)
+    for field in ("declared_not_proven", "receipt_untrusted", "receipt_non_success"):
+        # Original counters have no event identity. A subset also changes scope.
+        combined[field] = rows[0][1].get(field) if single_original_scope else None
+    combined["obligation_set_digest"] = foundation_document_digest([
+        list(_method_obligation(record)) for record in records
+    ])
+    return combined
+
+
+_INCOMPLETE_PROFESSIONAL_MARKERS = frozenset({
+    "professional_incomplete",
+    "professional_wrong_target",
+    "partial",
+    "not-performed",
+    "not_performed",
+    "wrong-target",
+    "wrong_target",
+    "unverified",
+    "out_of_scope",
+    "out-of-scope",
+})
+
+
+def _observation_blobs(item: dict[str, Any]) -> list[dict[str, Any]]:
+    blobs: list[dict[str, Any]] = [item]
+    evidence = item.get("evidence")
+    if isinstance(evidence, dict):
+        blobs.append(evidence)
+        nested = evidence.get("semantic_review")
+        if isinstance(nested, dict):
+            blobs.append(nested)
+        conclusion = evidence.get("conclusion")
+        if isinstance(conclusion, dict):
+            blobs.append(conclusion)
+            outcome = conclusion.get("outcome")
+            if isinstance(outcome, dict):
+                blobs.append(outcome)
+    review = item.get("semantic_review")
+    if isinstance(review, dict):
+        blobs.append(review)
+    conclusion = item.get("conclusion")
+    if isinstance(conclusion, dict):
+        blobs.append(conclusion)
+        outcome = conclusion.get("outcome")
+        if isinstance(outcome, dict):
+            blobs.append(outcome)
+    return blobs
+
+
+def _marker_blocks_completion(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    normalized = value.strip().lower().replace(" ", "_").replace("-", "_")
+    blocked = {
+        marker.replace("-", "_") for marker in _INCOMPLETE_PROFESSIONAL_MARKERS
+    }
+    return normalized in blocked
+
+
+def _policy_accepted_higher_version(item: dict[str, Any]) -> bool:
+    """Read an executor annotation. Do not re-derive the version relation."""
+    if item.get("status") != "PASS":
+        return False
+    for blob in _observation_blobs(item):
+        mode = blob.get("professional_mode") or blob.get("mode")
+        if (
+            blob.get("version_relation") == "higher"
+            and mode == "version_policy"
+            and blob.get("does_not_mean_rescan") is True
+        ):
+            return True
+    return False
+
+
+def _professional_observation_blocks_completion(item: dict[str, Any]) -> bool:
+    """Partial, unverified, wrong-target, or unfinished scans are not complete.
+
+    A higher-version professional contribution already accepted by the public
+    entry stays accepted. The original partial conclusion does not reverse it.
+    Same-version partial, wrong-target, and unfinished scans still block.
+    """
+    policy_accepted = _policy_accepted_higher_version(item)
+    for blob in _observation_blobs(item):
+        if not policy_accepted:
+            for key in ("professional_issue", "completion", "code", "reader_conclusion"):
+                if _marker_blocks_completion(blob.get(key)):
+                    return True
+        elif _marker_blocks_completion(blob.get("professional_issue")) and (
+            str(blob.get("professional_issue")).strip().lower().replace("-", "_")
+            in {"professional_wrong_target", "wrong_target"}
+        ):
+            return True
+        if blob.get("truncated") is True or blob.get("unavailable") is True:
+            return True
+        gap = blob.get("redaction_capability_gap")
+        if isinstance(gap, dict) and gap:
+            return True
+        unavailable = blob.get("unavailable")
+        if isinstance(unavailable, list) and unavailable and blob.get("scanner"):
+            return True
+    return False
+
+
+def _nonempty_text(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _checked_absence_recorded(item: dict[str, Any], verified_evidence_refs: list[dict[str, str]] | None = None) -> bool:
+    """Name the material type, the authorized location, and what is missing.
+
+    A reason code, a missing-role list, an ``executor_`` prefix, a free
+    rationale, or a role plus an unbound locator is not enough. The citation
+    must be a bound evidence_id, sha256, locator, and role from a review that
+    already checked the absence.
+    """
+    if item.get("check_method") in MECHANICAL_CHECK_METHODS:
+        evidence = item.get("evidence")
+        if not isinstance(evidence, dict) or evidence.get("reason") != "checked_required_input_missing":
+            return False
+    for blob in _observation_blobs(item):
+        if not _nonempty_text(blob.get("rationale")):
+            continue
+        refs = blob.get("evidence_refs")
+        if isinstance(refs, list) and refs and all(
+            rule_method_assurance._bound_citation_ref(ref) and ref in (verified_evidence_refs or []) for ref in refs
+        ):
+            return True
+    return False
+
+
+def _nested_semantic_review(item: dict[str, Any]) -> dict[str, Any] | None:
+    """The finalized review the producer stores beside, or inside, evidence."""
+    review = item.get("semantic_review")
+    if isinstance(review, dict):
+        return review
+    evidence = item.get("evidence")
+    if isinstance(evidence, dict):
+        nested = evidence.get("semantic_review")
+        if isinstance(nested, dict):
+            return nested
+        if evidence.get("check_method") == "semantic_review" and evidence.get("canonical_id"):
+            return evidence
+    return None
+
+
+def _semantic_na_citation_complete(item: dict[str, Any], verified_evidence_refs: list[dict[str, str]] | None = None) -> bool:
+    """A semantic NOT_APPLICABLE is complete only with bound condition citations.
+
+    The producer row sets ``evidence`` to the review's ``evidence_refs`` list
+    and leaves the condition code on ``semantic_review``. A later method row
+    may wrap that same review under ``evidence``. Neither shape is a mechanical
+    locator. Six-rule citations must use an authority code that is allowed to
+    be NOT_APPLICABLE. The original status stays on the item.
+    """
+    if item.get("status") != "NOT_APPLICABLE":
+        return False
+    review = _nested_semantic_review(item)
+    evidence = item.get("evidence")
+    refs = item.get("evidence_refs")
+    if not isinstance(refs, list) and isinstance(evidence, list):
+        refs = evidence
+    if not isinstance(refs, list) and isinstance(evidence, dict):
+        refs = evidence.get("evidence_refs")
+    if not isinstance(refs, list) and isinstance(review, dict):
+        refs = review.get("evidence_refs")
+    if not isinstance(refs, list) or not refs:
+        return False
+    if not all(rule_method_assurance._bound_citation_ref(ref) and ref in (verified_evidence_refs or []) for ref in refs):
+        return False
+    canonical_id = item.get("canonical_id")
+    if not isinstance(canonical_id, str):
+        lineage = item.get("canonical_lineage")
+        if isinstance(lineage, dict):
+            canonical_id = lineage.get("canonical_id")
+    if not isinstance(canonical_id, str) and isinstance(review, dict):
+        canonical_id = review.get("canonical_id")
+    branches = semantic_review._SIX_RULE_CONDITIONS.get(canonical_id)
+    if branches is None:
+        return True
+    reason_code = item.get("reason_code")
+    if not isinstance(reason_code, str) or not reason_code:
+        reason_code = review.get("reason_code") if isinstance(review, dict) else None
+    condition = branches.get(reason_code)
+    return bool(
+        isinstance(condition, dict)
+        and condition.get("na") is True
+        and item.get("status") in condition.get("statuses", ())
+    )
+
+
+def _method_determination_complete(item: dict[str, Any], verified_evidence_refs: list[dict[str, str]] | None = None) -> bool:
+    """A checked absence is coverage; an unexecuted method is not.
+
+    PASS and FAIL are terminal by themselves. Mechanical NOT_APPLICABLE
+    counts only with a real applicability citation. Semantic NOT_APPLICABLE
+    counts when the finalized citation list is bound to the request.
+    """
+    if not isinstance(item, dict):
+        return False
+    if _professional_observation_blocks_completion(item):
+        return False
+    status = item.get("status")
+    if status in {"PASS", "FAIL"}:
+        return True
+    if status == "NOT_APPLICABLE":
+        if item.get("check_method") in MECHANICAL_CHECK_METHODS:
+            return rule_method_assurance.mechanical_na_is_evidenced(item, verified_evidence_refs)
+        if (
+            item.get("check_method") in rule_method_assurance.NON_MECHANICAL_CHECK_METHODS
+            or isinstance(item.get("evidence"), list)
+            or isinstance(item.get("evidence_refs"), list)
+        ):
+            return _semantic_na_citation_complete(item, verified_evidence_refs)
+        return rule_method_assurance.mechanical_na_is_evidenced(item, verified_evidence_refs)
+    if status != "EVIDENCE_MISSING":
+        return False
+    if conformance_human_route._is_audit_internal_missing(item):
+        return False
+    return _checked_absence_recorded(item, verified_evidence_refs)
+
+
+def _canonical_executable_coverage(
+    frozen: dict[str, Any], grouped: dict[str, list[dict[str, Any]]],
+    verified_evidence_refs: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    identities: list[str] = []
+    methods_by_id: dict[str, list[str]] = {}
+    for rule in frozen.get("executable_rules") or []:
+        if not isinstance(rule, dict):
+            continue
+        canonical_id = rule.get("canonical_id")
+        method = rule.get("check_method")
+        if not isinstance(canonical_id, str) or not isinstance(method, str):
+            continue
+        if canonical_id not in methods_by_id:
+            identities.append(canonical_id)
+            methods_by_id[canonical_id] = []
+        if method not in methods_by_id[canonical_id]:
+            methods_by_id[canonical_id].append(method)
+    required = len(identities)
+    covered = 0
+    for canonical_id in identities:
+        expected = methods_by_id[canonical_id]
+        observed = {
+            item.get("check_method"): item
+            for item in grouped.get(canonical_id) or []
+            if isinstance(item, dict)
+        }
+        if expected and all(
+            _method_determination_complete(observed.get(method, {}), verified_evidence_refs) for method in expected
+        ):
+            covered += 1
+    if required == 0:
+        reason = "CANONICAL_EXECUTABLE_COVERAGE_ZERO"
+        complete = False
+    elif covered == required:
+        reason = "CANONICAL_EXECUTABLE_COVERAGE_COMPLETE"
+        complete = True
+    else:
+        reason = "CANONICAL_EXECUTABLE_COVERAGE_INCOMPLETE"
+        complete = False
+    return {
+        "required_executable_rule_count": required,
+        "covered_executable_rule_count": covered,
+        "complete": complete,
+        "reason_code": reason,
+    }
+
+
+def _project_professional_consumption(combined: dict[str, Any]) -> dict[str, Any] | None:
+    items: list[Any] = []
+    for consumption in combined.get("professional_consumption") or []:
+        if consumption is None:
+            continue
+        found = consumption.get("items") if isinstance(consumption, dict) else None
+        if not isinstance(found, list):
+            raise WorkflowError(
+                "STAGE_REFERENCE_REJECTED",
+                "staged round professional consumption is incomplete",
+            )
+        items.extend(found)
+    if not items:
+        return None
+    return {"items": items}
+
+
+def _copy_explanation(value: Any) -> Any:
+    if isinstance(value, (dict, list)):
+        return json.loads(json.dumps(value))
+    return value
+
+
+def _projected_rule_row(
+    canonical_id: str, items: list[dict[str, Any]], status: str
+) -> dict[str, Any]:
+    """One public rule row. Method identities stay on effective contributions."""
+    revision = items[0]["revision_digest"]
+    if any(item.get("revision_digest") != revision for item in items):
+        raise WorkflowError(
+            "STAGE_REFERENCE_REJECTED", "staged round canonical revision drifted"
+        )
+    semantic = next(
+        (item for item in items if item.get("check_method") == "semantic_review"),
+        None,
+    )
+    source = next((item for item in items if item.get("status") == status), items[0])
+    row: dict[str, Any] = {
+        "rule_id": canonical_id,
+        "rule_revision_digest": revision,
+        "status": status,
+    }
+    for field in ("reason_code", "rationale", "semantic_review"):
+        if field in source:
+            row[field] = _copy_explanation(source[field])
+    if semantic is not None and isinstance(semantic.get("semantic_review"), dict):
+        row["semantic_review"] = _copy_explanation(semantic["semantic_review"])
+    if status not in _TERMINAL_METHOD_STATUSES and "evidence" in source:
+        row["evidence"] = _copy_explanation(source["evidence"])
+    if any(item.get("status") not in _TERMINAL_METHOD_STATUSES for item in items):
+        row["check_method_subresults"] = [
+            {key: _copy_explanation(item[key]) for key in (
+                "check_method", "status", "reason_code", "rationale", "evidence",
+                "missing_evidence_roles", "semantic_review", "task_digest", "audit_phase",
+            ) if key in item}
+            for item in items
+        ]
+    mechanical_roles = None
+    for item in items:
+        roles = item.get("missing_evidence_roles")
+        if item.get("check_method") in MECHANICAL_CHECK_METHODS and isinstance(roles, list):
+            mechanical_roles = list(roles)
+            if mechanical_roles:
+                break
+    if mechanical_roles:
+        row["missing_evidence_roles"] = mechanical_roles
+    elif isinstance(source.get("missing_evidence_roles"), list):
+        row["missing_evidence_roles"] = list(source["missing_evidence_roles"])
+    return row
+
+
+def project_staged_conformance_result(
+    frozen: dict[str, Any],
+    combined: dict[str, Any],
+    stages: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Project one accepted round onto the conformance-result envelope.
+
+    Effective contributions stay one row per rule method. Public rule results,
+    coverage counts, and canonical executable coverage aggregate by canonical
+    rule identity. Domain status is only ``derive_conformance_status``.
+    Method assurance keeps one record per obligation and sums retry counters
+    only when the stages recorded different events. Stage semantic-review-result
+    v2 objects
+    stay on ``combine_staged_round`` and are not merged or re-digested here.
+    """
+    contributions = combined.get("effective_contributions")
+    if not isinstance(contributions, list):
+        raise WorkflowError(
+            "STAGE_REFERENCE_REJECTED", "staged round has no effective contributions"
+        )
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for contribution in contributions:
+        status = contribution.get("status") if isinstance(contribution, dict) else None
+        binding_id = contribution.get("binding_id") if isinstance(contribution, dict) else None
+        canonical_id = contribution.get("canonical_id") if isinstance(contribution, dict) else None
+        revision = contribution.get("revision_digest") if isinstance(contribution, dict) else None
+        check_method = contribution.get("check_method") if isinstance(contribution, dict) else None
+        if (
+            not isinstance(status, str)
+            or not status
+            or not isinstance(binding_id, str)
+            or not binding_id
+            or not isinstance(canonical_id, str)
+            or not canonical_id
+            or not isinstance(revision, str)
+            or not isinstance(check_method, str)
+            or not check_method
+        ):
+            raise WorkflowError(
+                "STAGE_COVERAGE_REJECTED", "effective contribution is incomplete"
+            )
+        grouped.setdefault(canonical_id, []).append(contribution)
+    selected: list[str] = []
+    for rule in frozen.get("executable_rules") or []:
+        canonical_id = rule.get("canonical_id") if isinstance(rule, dict) else None
+        if isinstance(canonical_id, str) and canonical_id in grouped and canonical_id not in selected:
+            selected.append(canonical_id)
+    for canonical_id in grouped:
+        if canonical_id not in selected:
+            selected.append(canonical_id)
+    verified_evidence_refs = [ref for stage in combined.get("derived_stages", [])
+        for ref in stage.get("verified_evidence_refs", [])]
+    status_by_id = {
+        canonical_id: _aggregate_method_statuses(grouped[canonical_id], verified_evidence_refs)
+        for canonical_id in selected
+    }
+    rule_results = [
+        _projected_rule_row(canonical_id, grouped[canonical_id], status_by_id[canonical_id])
+        for canonical_id in selected
+    ]
+    profile = frozen.get("execution_profile")
+    try:
+        coverage_core = conformance_profiles.derive_coverage(
+            selected, selected, status_by_id
+        )
+        domain_status = conformance_profiles.derive_conformance_status(
+            profile, selected, selected, status_by_id
+        )
+    except ValueError as exc:
+        raise WorkflowError("CONFORMANCE_PROFILE_RESULT_INVALID", str(exc)) from exc
+    coverages = [
+        row
+        for row in _objects_from_stages(stages, "coverage")
+        if isinstance(row, dict)
+    ]
+    if not coverages and isinstance(frozen.get("coverage"), dict):
+        coverages = [_copied_json(frozen["coverage"])]
+    semantic_preflight = _combine_semantic_preflight(stages, frozen)
+    execution_metrics = _combine_execution_metrics(stages)
+    if not coverages or semantic_preflight is None or execution_metrics is None:
+        raise WorkflowError(
+            "STAGE_REFERENCE_REJECTED", "staged round is missing the result envelope"
+        )
+    selected_ids = list(selected)
+    attempted_ids = list(coverage_core["attempted"])
+    deterministic_ids = {
+        contribution["canonical_id"]
+        for contribution in contributions
+        if contribution.get("canonical_id") in set(selected_ids)
+        and contribution.get("check_method") in MECHANICAL_CHECK_METHODS
+    }
+    coverage = {
+        "in_scope_rule_set_digest": foundation_document_digest(
+            _coverage_identity_rows(contributions, selected_ids)
+        ),
+        "in_scope_count": coverage_core["in_scope_count"],
+        "selected_rule_set_digest": foundation_document_digest(
+            _coverage_identity_rows(contributions, selected_ids)
+        ),
+        "selected_count": coverage_core["selected_count"],
+        "attempted_rule_set_digest": foundation_document_digest(
+            _coverage_identity_rows(contributions, attempted_ids)
+        ),
+        "attempted_count": coverage_core["attempted_count"],
+        "not_run_count": coverage_core["not_run_count"],
+        "coverage_complete": coverage_core["coverage_complete"],
+        "conclusion_complete": coverage_core["conclusion_complete"],
+        "requested_semantic_group_ids": _union_string_list(
+            coverages, "requested_semantic_group_ids"
+        ),
+        "requested_canonical_rule_ids": _union_string_list(
+            coverages, "requested_canonical_rule_ids"
+        ),
+        "selected_semantic_group_ids": _union_string_list(
+            coverages, "selected_semantic_group_ids"
+        ),
+        "selected_deterministic_rule_count": len(deterministic_ids),
+        "semantic_group_registry_digest": _agreed_registry_digest(coverages),
+    }
+    domain: dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "run_id": frozen.get("run_id"),
+        "status": domain_status,
+        "execution_profile": profile,
+        "coverage": coverage,
+        "semantic_preflight": semantic_preflight,
+        "execution_metrics": execution_metrics,
+        "rule_results": rule_results,
+        "semantic_review_binding": None,
+        "stage_results": _copied_json(combined.get("stage_results") or []),
+        "effective_contributions": _copied_json(contributions),
+    }
+    assurance = _combine_method_assurance(stages, contributions)
+    if assurance is not None:
+        domain["method_assurance"] = assurance
+    consumption = _project_professional_consumption(combined)
+    if consumption is not None:
+        domain["professional_consumption"] = consumption
+    domain["canonical_executable_coverage"] = _canonical_executable_coverage(
+        frozen, grouped, verified_evidence_refs
+    )
+    for field in _TERMINAL_RESULT_FIELDS:
+        if field in domain:
+            continue
+        value = _field_from_round(frozen, stages, field)
+        if value is not None:
+            domain[field] = value
+    if domain_status in {"SUCCEEDED", "FAILED", "PARTIAL"} and any(
+        domain.get(field) is None or domain.get(field) == ""
+        for field in _TERMINAL_RESULT_FIELDS
+    ):
+        raise WorkflowError(
+            "STAGE_REFERENCE_REJECTED", "staged round is missing the result envelope"
+        )
+    return {
+        "conformance_result": domain,
+        "rule_findings": _list_from_stages(stages, "rule_findings"),
+        "evidence_list": _list_from_stages(stages, "evidence_list"),
+        "remediation_plan": _list_from_stages(stages, "remediation_plan"),
+    }
+
+
+def combine_final_stage(args: argparse.Namespace) -> dict[str, Any]:
+    """Combine original stage results. This branch does not re-run semantic review."""
+    raw = getattr(args, "staged_round", None)
+    if not isinstance(raw, str) or not raw:
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "final requires the original stage round")
+    path = Path(raw)
+    if path.is_symlink() or not path.is_file():
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "staged round must be a real file")
+    document = load_json(path)
+    frozen = document.get("audit_input")
+    stages = document.get("stages")
+    if not isinstance(frozen, dict) or not isinstance(stages, list):
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "staged round is incomplete")
+    combined = combine_staged_round(
+        frozen,
+        stages,
+        digest_document=foundation_document_digest,
+    )
+    return project_staged_conformance_result(
+        frozen, combined, combined["derived_stages"]
+    )
+
+
 def _profile_execution_plan(
     args: argparse.Namespace,
     rules: list[dict[str, Any]],
@@ -1657,7 +4650,23 @@ def _profile_not_run_results(
     for canonical_id in plan["in_scope_rule_ids"]:
         if canonical_id in selected:
             continue
-        rule = plan["rule_by_canonical"][canonical_id]
+        rule = plan["rule_by_canonical"].get(canonical_id)
+        if rule is None:
+            # 完整档的范围内身份可以没有基线载体。阶段只收窄 selected，
+            # 未选中的这类身份仍须各有一行 NOT_RUN，且不能编造基线载体。
+            rows.append({
+                "rule_id": canonical_id,
+                "rule_revision_digest": plan["revision_by_canonical"][canonical_id],
+                "canonical_id": canonical_id,
+                "canonical_only": True,
+                "status": "NOT_RUN",
+                "evidence": {
+                    "reason_code": "NOT_SELECTED_BY_EXECUTION_PROFILE",
+                    "execution_profile": plan["execution_profile"],
+                },
+                "worker": "conformance-profile-selection",
+            })
+            continue
         lineage = canonical_lineage[rule["ruleId"]]
         rows.append({
             "rule_id": rule["ruleId"],
@@ -1941,6 +4950,29 @@ def _descriptor_evidence_refs(
     )
 
 
+def _six_rule_minimum_materials(canonical_id: str, covered_roles: set[str]) -> bool:
+    """Minimum locatable facts that may open a §12.2 condition review.
+
+    These facts do not satisfy the pass-role set. A limitation disclosure
+    alone cannot open REGISTRY-007.
+    """
+    if canonical_id == "SFA-METHOD-005":
+        return "new_entry_declaration" in covered_roles
+    if canonical_id == "SFA-METHOD-011":
+        return "duplicate_entry_inventory" in covered_roles
+    if canonical_id == "SFA-PUBLISH-014":
+        return bool(covered_roles & {"package_metadata", "public_metadata_surfaces"})
+    if canonical_id == "SFA-REGISTRY-007":
+        return "method_and_protocol_contract" in covered_roles
+    if canonical_id == "SFA-FOUNDATION-012":
+        return bool(covered_roles & {"foundation_authority", "harness_consumer_source"})
+    if canonical_id == "SFA-FOUNDATION-014":
+        return bool(
+            covered_roles & {"consumer_parameters_and_mapping", "contracts_authority"}
+        )
+    return False
+
+
 def _semantic_review_candidate_descriptors(
     plan: dict[str, Any],
     preflight: dict[str, Any],
@@ -2012,6 +5044,7 @@ def _semantic_review_candidate_descriptors(
                  and {"adopted_version_lock", "compatibility_range_declaration"} <= covered_roles)
                 or (canonical_id == "SFA-PUBLISH-017"
                     and {"release_process_declaration", "release_skill_reference"} <= covered_roles)
+                or _six_rule_minimum_materials(canonical_id, covered_roles)
             )
         )
         if conditional_premise or (
@@ -2059,6 +5092,16 @@ def _selected_nonmechanical_obligations(
         )
         if nonmechanical:
             obligations[(canonical_id, revision_digest)] = nonmechanical
+    allowed = plan.get("stage_check_methods")
+    if isinstance(allowed, dict):
+        narrowed: dict[tuple[str, str], list[str]] = {}
+        for identity, methods in obligations.items():
+            keep = [
+                method for method in methods if method in allowed.get(identity, ())
+            ]
+            if keep:
+                narrowed[identity] = keep
+        obligations = narrowed
     return dict(sorted(obligations.items()))
 
 
@@ -2205,6 +5248,459 @@ def _bounded_security_observation(
     }
 
 
+_BOUNDED_SECURITY_RULE_IDS = (
+    "SFA-DATASEC-002",
+    "SFA-PERM-007",
+    "SFA-SECRET-002",
+)
+
+
+def _bounded_security_rule_consumptions(observation: dict[str, Any]) -> list[dict[str, Any]]:
+    """Cite one bounded scan under three rule identities.
+
+    The scanner status is not a business PASS. Truncation, an unavailable
+    root, or a redaction capability gap leaves each identity incomplete.
+    SECRET-003 remains the redaction rule version and is not copied.
+    """
+    unavailable = observation.get("unavailable")
+    gap = observation.get("redaction_capability_gap")
+    paths = observation.get("paths")
+    empty_scope = paths == [] or observation.get("path_count") == 0
+    unfinished = (
+        empty_scope
+        or observation.get("truncated") is True
+        or unavailable is True
+        or (isinstance(unavailable, list) and bool(unavailable))
+        or (isinstance(gap, dict) and bool(gap))
+        or observation.get("status") not in _TERMINAL_METHOD_STATUSES
+    )
+    return [
+        {
+            "canonical_id": canonical_id,
+            "observation_identity": "audit-bounded-material-security-observation",
+            "scanner_status": observation.get("status"),
+            "complete": not unfinished,
+            "copied_secret_003_pass": False,
+        }
+        for canonical_id in _BOUNDED_SECURITY_RULE_IDS
+    ]
+
+
+def _security_ledger_observation(
+    observation: dict[str, Any], canonical_id: str,
+) -> dict[str, Any]:
+    """Write one rule's copy of the shared bounded scan. Scanner PASS is not business PASS."""
+    consumption = next(
+        row for row in _bounded_security_rule_consumptions(observation)
+        if row["canonical_id"] == canonical_id
+    )
+    return {
+        "status": "PASS" if consumption["complete"] else "EVIDENCE_MISSING",
+        "check_method": "static_scan",
+        "canonical_id": canonical_id,
+        "observation_source": "bounded_material_security",
+        "reason_code": "BOUNDED_MATERIAL_SECURITY_OBSERVATION",
+        "evidence": {
+            "observation_identity": consumption["observation_identity"],
+            "canonical_id": canonical_id,
+            "scanner_status": observation.get("status"),
+            "paths": list(observation.get("paths") or []),
+            "path_count": observation.get("path_count"),
+            "truncated": observation.get("truncated") is True,
+            "unavailable": observation.get("unavailable"),
+            "redaction_capability_gap": observation.get("redaction_capability_gap"),
+            "copied_secret_003_pass": False,
+            "business_pass": False,
+            "complete": consumption["complete"],
+        },
+        "proof_eligible": False,
+    }
+
+
+def _retained_gap_observation(
+    rule: dict[str, Any], method: str,
+    review: dict[str, Any] | None = None,
+    verified_refs: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Consume this rule's finalized object judgment, never infer it from prose."""
+    review = review if isinstance(review, dict) else {}
+    refs = verified_refs or []
+    code = review.get("reason_code") if refs and review.get("rationale") else None
+    absent = code == "MECHANICAL_OBJECTS_ABSENT" or (
+        method == "schema_validation" and code == "MACHINE_SCHEMA_NOT_ADOPTED"
+        or method == "static_scan" and code == "STATIC_WIRING_NOT_ADOPTED"
+        or method == "digest_verification" and code == "BYTE_CORRESPONDENCE_NOT_DECLARED"
+    )
+    missing = (
+        method == "schema_validation" and code == "SCHEMA_INPUTS_MISSING"
+        or method == "static_scan" and code == "STATIC_INPUTS_MISSING"
+        or method == "digest_verification" and code == "DIGEST_INPUTS_MISSING"
+    )
+    status = "NOT_APPLICABLE" if absent else "EVIDENCE_MISSING" if missing else "NOT_RUN"
+    evidence = {
+        "reason": "mechanical_object_not_adopted" if absent else "checked_required_input_missing" if missing else "mechanical_object_scope_unresolved",
+        "object": rule.get("applicability"),
+        "required_capability": rule.get("evidence_requirements"),
+        "rationale": review.get("rationale"),
+        "evidence_refs": refs,
+        "copied_from_semantic_pass": False,
+    }
+    if not (absent or missing):
+        evidence["kind"] = "method_not_executed"
+        evidence["gap"] = "No finalized object determination or matching original professional output is available."
+    return {
+        "status": status, "check_method": method, "canonical_id": rule.get("canonical_id"),
+        "reason_code": code or "MECHANICAL_METHOD_NOT_EXECUTED",
+        "observation_source": "retained_mechanical_object_judgment",
+        "evidence": evidence, "proof_eligible": False,
+    }
+
+
+def _retained_professional_observation(
+    rule: dict[str, Any], method: str, review: dict[str, Any], refs: list[dict[str, str]],
+    professional: dict[str, Any] | None, evidence_set: list[dict[str, Any]], target: Path | None,
+) -> dict[str, Any] | None:
+    """Consume original public provider outputs for the reviewed object only."""
+    if not refs or review.get("reason_code") not in {
+        "MECHANICAL_OBJECTS_PRESENT",
+        "BYTE_BASELINE_OUTSIDE_MANAGED_FILES", "SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS",
+    }:
+        return None
+    cid = rule["canonical_id"]
+    if (review["reason_code"] == "BYTE_BASELINE_OUTSIDE_MANAGED_FILES"
+            and not (method == "digest_verification"
+                     or cid == "SFA-ARTIFACT-025" and method == "static_scan")):
+        return None
+    if review["reason_code"] == "SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS" and method != "schema_validation":
+        return None
+    cited_ids = {ref["evidence_id"] for ref in refs}
+    cited = [entry for entry in evidence_set if entry.get("evidence_id") in cited_ids]
+    original_documents = []
+    for entry in cited:
+        path = Path(entry["path"])
+        if not path.is_file() or path.is_symlink():
+            continue
+        try:
+            document = strict_read_json(foundation_read_file_strict(
+                path.parent, path.name, entry["sha256"],
+            ), "MECHANICAL_OBJECT_INPUT_INVALID", "reviewed mechanical object")
+        except (WorkflowError, ValueError, OSError):
+            continue
+        if isinstance(document, dict):
+            original_documents.append((entry, document))
+    # These public document discriminants select a consumer scope only. The
+    # provider still performs every structural check, including invalid objects.
+    registry_documents = []
+    for entry, document in original_documents:
+        if document.get("schemaVersion") == 1 and "catalog" in document:
+            registry_documents.append((entry, "v1"))
+        elif document.get("schemaVersion") == 2 and document.get("documentKind") in {
+            "v2-implementation", "v2-inventory", "v2-binding", "v2-projection",
+            "v2-run-lock", "v2-migration-plan",
+        }:
+            registry_documents.append((entry, "v2"))
+    # COMPOSE-002's finalized method-object premise owns this routing. A
+    # composer_authority citation is context, not a machine-contract object.
+    compose_object_ids = {ref["evidence_id"] for ref in refs
+                          if ref["role"] in {"method_contract_attributes", "method_registry_entry"}}
+    compose_registry_object = (cid == "SFA-COMPOSE-002"
+        and review["reason_code"] == "MECHANICAL_OBJECTS_PRESENT"
+        and any(entry["evidence_id"] in compose_object_ids for entry, _ in registry_documents))
+    provider = "foundation"
+    required: set[str] = set()
+    if cid in {"SFA-ARTIFACT-008", "SFA-ARTIFACT-021", "SFA-ARTIFACT-023", "SFA-ARTIFACT-026",
+               "SFA-ARTIFACT-033", "SFA-DEPEND-011", "SFA-METHOD-010", "SFA-METHOD-012", "SFA-WORKER-011"} or compose_registry_object:
+        provider = "registry"
+        if method == "schema_validation":
+            required = {"schema"}
+            if cid in {"SFA-ARTIFACT-021", "SFA-METHOD-010"}:
+                required.add("merge")
+            if cid == "SFA-DEPEND-011":
+                required.add("provider")
+        elif method == "digest_verification":
+            required = {"freshness"}
+        elif cid == "SFA-ARTIFACT-023":
+            required = {"provider"}
+        elif cid in {"SFA-METHOD-012", "SFA-WORKER-011"}:
+            required = {"merge", "provider"}
+        else:
+            required = {"merge", "freshness"}
+    elif cid in {"SFA-ARTIFACT-022", "SFA-PRODUCT-001"}:
+        provider = "artifact"
+        required = {"validate"}
+    if provider != "foundation" and review.get("reason_code") in {
+        "BYTE_BASELINE_OUTSIDE_MANAGED_FILES", "SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS",
+    }:
+        return None
+    # Foundation's public mechanical report only covers the two formal
+    # structures and managed byte drift. Other reviewed objects are a real
+    # capability gap; a semantic engineering review is not that report.
+    outside_public_scope = provider == "foundation" and (
+        review.get("reason_code") == "BYTE_BASELINE_OUTSIDE_MANAGED_FILES"
+        or method == "schema_validation" and review.get("reason_code") == "SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS"
+        or method == "static_scan" and cid in {
+            "SFA-COMPOSE-012", "SFA-COMPOSE-016", "SFA-DEPEND-003", "SFA-DEPEND-005",
+            "SFA-DEPEND-006", "SFA-DEPEND-008", "SFA-WORKER-004", "SFA-WORKER-010", "SFA-METHOD-003",
+        }
+    )
+    public_scope_gap = {
+        "reason": "provider_capability_missing", "provider_capability_missing": True,
+        "public_entry": "foundation-engineering-check/runChecks",
+        "gap": "The reviewed object is outside runChecks contracts (project-manifest/managed-file-lock) and drift (managed-file-lock bytes); a semantic review does not execute this mechanical method.",
+    }
+    items = (professional or {}).get("items", [])
+    item = next((item for item in items if item.get("provider_id") == provider), None)
+    base = _retained_gap_observation(rule, method, review, refs)
+    ev = base["evidence"]
+    ev.update({"provider_id": provider, "object_refs": refs})
+    if cid == "SFA-COMPOSE-002" and provider == "foundation" and not outside_public_scope:
+        if not any(document.get("kind") in {
+            "skill-family.project-manifest", "skill-family.managed-file-lock",
+        } for entry, document in original_documents if entry["evidence_id"] in compose_object_ids):
+            ev.pop("provider_id")
+            ev.update({"reason": "mechanical_object_scope_unresolved",
+                       "gap": "The bound object is not identified as a Registry or Foundation contract; no provider or incapability is inferred."})
+            return base
+    if item is None:
+        if outside_public_scope:
+            ev.update(public_scope_gap)
+            return base
+        base["status"] = "EVIDENCE_MISSING"
+        ev.update({"reason": "professional_proof_missing", "public_entry":
+            "diagnoseRegistry professional-scan/read-proof" if provider == "registry" else
+            "check-professional/read-proof" if provider == "artifact" else "foundation-engineering-check/runChecks"})
+        return base
+    conclusion = item.get("conclusion")
+    conclusion = conclusion if isinstance(conclusion, dict) else {}
+    subject = conclusion.get("subject", {}).get("ref")
+    # Public Graph uses file URLs. No target or provider scope is inferred from a label.
+    from urllib.parse import unquote, urlparse
+    subject_path = unquote(urlparse(subject).path) if isinstance(subject, str) and subject.startswith("file:") else subject
+    objects = [entry for entry in cited if isinstance(subject_path, str)
+               and Path(entry["path"]).resolve() == Path(subject_path).resolve()]
+    target_matches = target is not None and isinstance(subject_path, str) and Path(subject_path).is_absolute() and Path(subject_path).resolve() == target.resolve()
+    ev.update({"professional_consumption": item, "conclusion": conclusion,
+               "professional_mode": item.get("mode"), "version_relation": item.get("version_relation"),
+               "does_not_mean_rescan": item.get("does_not_mean_rescan") is True})
+    if not objects and not target_matches:
+        ev.update({"reason": "professional_wrong_target", "professional_issue": "professional_wrong_target"})
+        return base
+    if item.get("status") == "pass" and item.get("version_relation") == "higher" and item.get("mode") == "version_policy":
+        base["status"] = "PASS"
+        base["observation_source"] = "retained_professional_consumption"
+        ev.update({"reason": "professional_version_policy", "policy_acceptance": True, "not_this_scan": True})
+        return base
+    outcome = conclusion.get("outcome", {})
+    if item.get("version_relation") != "same" or outcome.get("completion") not in {"complete", "partial"} or item.get("reader_status") not in {"pass", "not_pass"}:
+        ev.update({"reason": "professional_incomplete", "professional_issue": "professional_incomplete"})
+        return base
+    details = conclusion.get("details", {})
+    checked = conclusion.get("scope", {}).get("checked", [])
+    checks = details.get("checks", [])
+    if provider == "registry":
+        # Select only the version of the exact bound subject. Other scopes in
+        # the same original conclusion remain evidence, never this object's result.
+        object_scopes = {scope for entry, scope in registry_documents if entry in objects
+                         and (cid != "SFA-COMPOSE-002" or entry["evidence_id"] in compose_object_ids)}
+        if len(object_scopes) != 1:
+            ev.update({"reason": "professional_object_scope_missing", "required_checks": sorted(required)})
+            return base
+        object_scope = next(iter(object_scopes))
+        ev["registry_object_scope"] = object_scope
+        if object_scope == "v2":
+            required = {"v2-schema" if name == "schema" else "v2-snapshot" if name == "freshness" else "v2-projection" if name == "merge" else name for name in required}
+        rows = [row for row in checks if isinstance(row, dict) and row.get("id") in required]
+        covered = {row.get("id") for row in rows}
+        complete = required <= set(checked) and covered == required and all(row.get("status") in {"pass", "fail"} for row in rows)
+        failure = any(row.get("id") in checked and row.get("status") == "fail" for row in rows)
+        # This rule also needs the original graph relation result. Do not turn
+        # two unrelated provider successes into a cross-product mapping proof.
+        if cid == "SFA-ARTIFACT-033" and method == "static_scan":
+            complete = False
+            ev["gap"] = "Registry mapping is present; the corresponding Graph relation/object mapping is not established by this result."
+    elif provider == "artifact":
+        rows = [row for row in checks if isinstance(row, dict) and row.get("name") in required]
+        complete = target_matches and required <= set(checked) and {row.get("name") for row in rows} == required and all(row.get("status") == "completed" for row in rows)
+        failure = any(row.get("issueCount", 0) for row in rows)
+    else:
+        supported_documents = [(entry, document) for entry, document in original_documents
+            if target is not None and document.get("kind") in {
+                "skill-family.project-manifest", "skill-family.managed-file-lock",
+            } and Path(entry["path"]).resolve() == (target / (document["kind"] + ".json")).resolve()]
+        supported_structure = bool(supported_documents)
+        supported_bytes = any(document.get("kind") == "skill-family.managed-file-lock"
+                              for _, document in supported_documents)
+        byte_method = method == "digest_verification" or (
+            method == "static_scan" and cid == "SFA-ARTIFACT-025")
+        supported = supported_bytes if byte_method else method == "schema_validation" and supported_structure
+        if not supported:
+            if not outside_public_scope:
+                ev.update({"reason": "professional_object_scope_missing",
+                           "gap": "The finalized citations do not identify the precise public contracts/drift object; no provider incapability is inferred."})
+                return base
+            ev.update(public_scope_gap)
+            return base
+        required = {"drift" if byte_method else "contracts"}
+        source_refs = {ref for check in details.get("review", {}).get("checks", [])
+                       for ref in check.get("sourceRefs", []) if isinstance(ref, str)}
+        reports = [(entry, document) for entry, document in original_documents
+                   if document.get("kind") == "skill-family.check-report"
+                   and (entry["path"] in source_refs or Path(entry["path"]).name in source_refs)]
+        if len(reports) != 1:
+            base["status"] = "EVIDENCE_MISSING"
+            ev.update({"reason": "professional_original_output_missing", "required_checks": sorted(required),
+                       "public_entry": "runChecks",
+                       "gap": "The supported object is present, but the reviewed public sourceRefs do not identify one bound original runChecks report."})
+            return base
+        original = reports[0][1]
+        rows = [row for row in original.get("classes", []) if row.get("name") in required]
+        complete = (target_matches and original.get("target", {}).get("root") == "."
+                    and original.get("mechanism") is False
+                    and {row.get("name") for row in rows} == required
+                    and all(row.get("selected") is True and row.get("completed") is True for row in rows))
+        failure = any(row.get("findings", 0) for row in rows)
+        ev["original_report"] = original
+    ev.update({"required_checks": sorted(required), "original_checks": rows})
+    if not complete or outcome.get("completion") != "complete":
+        ev.update({"reason": "professional_scope_incomplete", "professional_issue": "professional_incomplete"})
+        if not failure:
+            return base
+        # Preserve a performed failing check even when another selected check
+        # did not finish. The original partial scope still blocks completeness.
+    base["status"] = "FAIL" if failure else "PASS"
+    base["observation_source"] = "retained_professional_consumption"
+    ev["reason"] = "original_professional_mechanical_result"
+    return base
+
+
+def _matching_original_mechanical(
+    trusted_observation: dict[str, Any],
+    canonical_id: str,
+    revision_digest: str,
+    method: str,
+) -> dict[str, Any] | None:
+    """Consume an original mechanical output only when identity and method match."""
+    for result in trusted_observation.get("rule_results") or []:
+        if (
+            result.get("canonical_id") != canonical_id
+            or result.get("revision_digest") != revision_digest
+        ):
+            continue
+        for sub in result.get("check_method_subresults") or []:
+            if not isinstance(sub, dict) or sub.get("check_method") != method:
+                continue
+            evidence = sub.get("evidence") if isinstance(sub.get("evidence"), dict) else {}
+            if evidence.get("kind") == "method_not_executed":
+                continue
+            if evidence.get("reason") in {
+                "non_mechanical_method", "method_not_executed",
+            }:
+                continue
+            status = sub.get("status")
+            if status not in {"PASS", "FAIL", "NOT_APPLICABLE", "EVIDENCE_MISSING"}:
+                continue
+            return {
+                "status": status,
+                "check_method": method,
+                "canonical_id": canonical_id,
+                "observation_source": sub.get("observation_source") or "original_mechanical_output",
+                "evidence": evidence,
+                "proof_eligible": False,
+            }
+    return None
+
+
+def _record_retained_mechanical_judgments(
+    method_assurance: dict[str, Any],
+    projection: dict[str, Any],
+    security_observation: dict[str, Any],
+    trusted_observation: dict[str, Any],
+    selected_rule_ids: set[str] | None = None,
+    *, internal_semantic_reviews: dict[Any, Any] | None = None,
+    internal_semantic_binding: dict[str, Any] | None = None,
+    internal_review_request: dict[str, Any] | None = None,
+    foundation_task_digest: str | None = None,
+    professional: dict[str, Any] | None = None,
+    evidence_set: list[dict[str, Any]] | None = None,
+    target: Path | None = None,
+) -> None:
+    """Bind selected semantic-route methods to their actual observations.
+
+    Security identities retain the bounded scan under their own canonical id.
+    Other mechanical rows consume the finalized object premise and public
+    professional output. Semantic observations keep their own method identity.
+    """
+    rules = {
+        row.get("canonical_id"): row
+        for row in projection.get("rules") or []
+        if isinstance(row, dict)
+    }
+    observed = 0
+    unavailable = 0
+    for record in method_assurance.get("records") or []:
+        if selected_rule_ids is not None and record.get("canonical_id") not in selected_rule_ids:
+            continue
+        if isinstance(record.get("trusted_observation"), dict):
+            continue
+        method = record.get("check_method")
+        rule = rules.get(record.get("canonical_id"))
+        if not isinstance(rule, dict) or rule.get("lifecycle_status") != "ACTIVE_SEMANTIC":
+            continue
+        if method not in MECHANICAL_CHECK_METHODS:
+            review = (internal_semantic_reviews or {}).get(
+                (record["canonical_id"], record["revision_digest"], method),
+            )
+            if not isinstance(review, dict):
+                continue
+            # This is the already finalized review for this exact method. It
+            # remains independent of every mechanical object determination.
+            observation = {
+                "status": review["status"], "check_method": method,
+                "canonical_id": record["canonical_id"],
+                "observation_source": f"conformance-skill-{method}",
+                "evidence": review,
+            }
+        elif (
+            method == "static_scan"
+            and record.get("canonical_id") in _BOUNDED_SECURITY_RULE_IDS
+        ):
+            observation = _security_ledger_observation(
+                security_observation, record["canonical_id"],
+            )
+        else:
+            original = _matching_original_mechanical(
+                trusted_observation,
+                record["canonical_id"],
+                record["revision_digest"],
+                method,
+            )
+            review = (internal_semantic_reviews or {}).get((record["canonical_id"], record["revision_digest"], "semantic_review"), {})
+            refs = _verified_static_evidence_refs(
+                internal_semantic_reviews, internal_semantic_binding, internal_review_request,
+                foundation_task_digest, record["canonical_id"], record["revision_digest"],
+            )
+            judgment = _retained_gap_observation(rule, method, review, refs)
+            observation = original or (judgment if judgment["status"] in {"NOT_APPLICABLE", "EVIDENCE_MISSING"} else
+                _retained_professional_observation(rule, method, review, refs, professional, evidence_set or [], target)
+                or judgment)
+        record["trusted_observation"] = {
+            key: value for key, value in observation.items() if key != "proof_eligible"
+        }
+        status = observation.get("status")
+        if status in {"EVIDENCE_MISSING", "NOT_RUN"}:
+            record["assurance_status"] = f"{status}_NOT_PROVEN"
+            unavailable += 1
+        else:
+            record["assurance_status"] = "TRUSTED_OBSERVED_NOT_PROVEN"
+            observed += 1
+    method_assurance["trusted_observed"] = (
+        method_assurance.get("trusted_observed", 0) + observed
+    )
+    method_assurance["trusted_unavailable"] = (
+        method_assurance.get("trusted_unavailable", 0) + unavailable
+    )
+
+
 def _context_document(
     canonical_ids: list[str],
     *,
@@ -2282,6 +5778,10 @@ def _context_document(
                 "unavailable_required_material": "EVIDENCE_MISSING",
                 "conditional_rule_without_subject": "NOT_APPLICABLE",
                 "not_applicable_requires_citable_scope_fact": True,
+                "current_lifecycle_source": "rule.lifecycle_status",
+                "dated_prior_lifecycle_mentions": "historical_trace_not_current_status",
+                "adjudication_notes": "preserve_current_interpretation_and_distinguish_dated_revision_history",
+                "historical_status_difference_alone_requires_review": False,
             },
             "result_contract": {
                 "kind": "skill-family-audit.semantic-context-result",
@@ -2340,6 +5840,7 @@ def _build_semantic_context_plan(
         "contexts": [],
         "blocked_rule_ids": [],
         "estimated_input_tokens": 0,
+        "semantic_review_request": request,
     }
     if (
         plan["execution_profile"] in {"mechanical", "economy"}
@@ -2794,13 +6295,11 @@ def canonical_rule_applicability(
             raise WorkflowError("CANONICAL_RULE_APPLICABILITY_INVALID",
                                 f"保留规则范围观察非法: {canonical_id}")
         active = lifecycle_status in {"ACTIVE_MECHANICAL", "ACTIVE_SEMANTIC"}
-        executable = active and (
-            target_type == "project_adoption"
-            or (
-                target_type == "family_source"
-                and rule.get("execution_scope") in {"all_families", "family_scoped"}
-            )
-        ) and platform_matches
+        # execution_scope is legacy carrier eligibility, not the rule's
+        # detailed object applicability (W5 finalization). Both complete source
+        # and adoption audits must reach the existing object-aware route.
+        executable = (active and target_type in {"project_adoption", "family_source"}
+                      and platform_matches)
         execution_route, execution_route_detail = canonical_rule_execution_route(rule)
         if lifecycle_unfrozen != (execution_route == ROUTE_UNROUTED_CANDIDATE):
             raise WorkflowError(
@@ -3179,6 +6678,7 @@ def _canonical_coverage_from_results(
     bindings: dict[str, dict[str, str]],
     results: list[dict[str, Any]],
     method_assurance: dict[str, Any] | None = None,
+    verified_evidence_refs: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Count only real execution results carrying the verified lineage tuple."""
     required = {
@@ -3208,10 +6708,28 @@ def _canonical_coverage_from_results(
                 "BASELINE_RULE_LINEAGE_INVALID",
                 f"执行结果未绑定已验证 canonical lineage: {baseline_id}",
             )
-        # A lineage-bound result is only executed coverage when its method
-        # actually reached a terminal determination.  Missing evidence is a
-        # real non-passing result, but never proof that the rule was executed.
+        # A checked absence is a non-passing terminal determination. Bare
+        # missing-evidence placeholders do not establish method execution.
+        # A null or NOT_PROVEN mechanical ledger row is not covered, even when
+        # the rule row itself is a semantic PASS.
         method_subresults = result.get("check_method_subresults")
+
+        def _coverage_subject(item: dict[str, Any]) -> dict[str, Any]:
+            record = method_records.get((
+                binding["canonical_id"],
+                binding["canonical_revision_digest"],
+                item.get("check_method"),
+            ))
+            if isinstance(record, dict):
+                observation = record.get("trusted_observation")
+                if isinstance(observation, dict):
+                    return observation
+                return {
+                    "status": "NOT_RUN",
+                    "check_method": item.get("check_method"),
+                }
+            return item
+
         method_terminal = (
             True
             if method_subresults is None
@@ -3220,8 +6738,7 @@ def _canonical_coverage_from_results(
                 and bool(method_subresults)
                 and all(
                     isinstance(item, dict)
-                    and item.get("status")
-                    not in {"EVIDENCE_MISSING", "NOT_RUN"}
+                    and _method_determination_complete(_coverage_subject(item), verified_evidence_refs)
                     for item in method_subresults
                 )
             )
@@ -3240,16 +6757,27 @@ def _canonical_coverage_from_results(
             # retain their original non-mechanical NOT_RUN observation.
             method_terminal = bool(method_subresults) and all(
                 isinstance(item, dict)
-                and method_records.get((
-                    binding["canonical_id"], binding["canonical_revision_digest"],
-                    item.get("check_method"),
-                ), {}).get("trusted_observation", {}).get("status")
-                in {"PASS", "FAIL", "NOT_APPLICABLE"}
+                and _method_determination_complete(_coverage_subject(item), verified_evidence_refs)
                 for item in method_subresults
             )
-        if result.get("status") in {
-            "PASS", "FAIL", "NOT_APPLICABLE",
-        } and method_terminal:
+        mechanical_ledger = [
+            record for key, record in method_records.items()
+            if key[0] == binding["canonical_id"]
+            and key[1] == binding["canonical_revision_digest"]
+            and key[2] in MECHANICAL_CHECK_METHODS
+        ]
+        if mechanical_ledger:
+            method_terminal = method_terminal and all(
+                _method_determination_complete(
+                    record.get("trusted_observation")
+                    if isinstance(record.get("trusted_observation"), dict)
+                    else {}, verified_evidence_refs,
+                )
+                for record in mechanical_ledger
+            )
+        if (_method_determination_complete(result, verified_evidence_refs)
+                or (result.get("status") == "EVIDENCE_MISSING" and bool(method_subresults))
+                ) and method_terminal:
             covered.add(
                 (binding["canonical_id"], binding["canonical_revision_digest"])
             )
@@ -5882,11 +9410,12 @@ METHOD_ASSURANCE_REJECTS_SUCCEEDED_SUMMARY = (
 def _method_assurance_gated_status(
     provisional_status: str,
     report: dict[str, Any],
+    verified_evidence_refs: list[dict[str, str]] | None = None,
 ) -> str:
     if (
         provisional_status == "SUCCEEDED"
         and not rule_method_assurance.trusted_observation_accepts_top_level(
-            report
+            report, verified_evidence_refs
         )
     ):
         # 原 Schema 要求 FAILED 必须含真实规则 FAIL；门禁拒绝成功不等于已证违规。
@@ -5934,6 +9463,11 @@ def _verified_static_evidence_refs(
     refs = review.get("evidence_refs") if isinstance(review, dict) else None
     if not isinstance(refs, list):
         return []
+    request_rule = next((item for item in internal_review_request.get("rules", [])
+        if semantic_review.review_identity(item) == (canonical_id, revision_digest, "semantic_review")), None)
+    if request_rule is None or review.get("binding_id") != request_rule.get("binding_id"):
+        return []
+    request_evidence = {item.get("evidence_id"): item for item in internal_review_request.get("evidence", [])}
     copied: list[dict[str, str]] = []
     for ref in refs:
         if not isinstance(ref, dict):
@@ -5945,6 +9479,10 @@ def _verified_static_evidence_refs(
                 return []
             row[key] = value
         if not re.fullmatch(r"[0-9a-f]{64}", row["sha256"]):
+            return []
+        member = request_evidence.get(row["evidence_id"])
+        kinds = request_rule.get("required_evidence_roles", {}).get(row["role"], [])
+        if not isinstance(member, dict) or member.get("sha256") != row["sha256"] or member.get("kind") not in kinds:
             return []
         copied.append(row)
     return copied
@@ -6084,6 +9622,63 @@ def _static_evidence_ref_rows(refs: Any) -> list[dict[str, str]]:
     return rows
 
 
+def _measure_skill_context(scope: dict[str, Any], target: Path, profile_spi_root: Path | None = None, evidence_set: Any = ()) -> dict[str, Any]:
+    """Measure actual logical sources and declared projections with Foundation."""
+    observation = scope.get("plugin_project") or {}
+    skills, projections = observation.get("skills") or [], observation.get("projections") or []
+    if not skills or not projections:
+        return {"reason": "audit_context_object_scope_unresolved", "measurements": [],
+                "object": "logical SKILL.md and its declared release platform projections"}
+    if profile_spi_root is None:
+        profile_spi_root = checker.foundation_runner().parent.parent / "profile-spi"
+    profile_spi_root = Path(profile_spi_root)
+    provenance_receipt = foundation_read_file_strict(profile_spi_root, "foundation-profile-spi-projection.json")
+    provenance = strict_read_json(provenance_receipt, "FOUNDATION_TOKEN_ESTIMATION_FAILED", "Profile SPI provenance")
+    rows = []
+    for skill in skills:
+        objects = [("logical", skill["path"])]
+        for projection in projections:
+            logical_ids = {skill["id"]}
+            family_id = observation.get("plugin", {}).get("id")
+            if family_id:
+                logical_ids.add(f"{family_id}:{skill['id']}")
+            matches = [m for m in projection["mappings"] if m["skillId"] in logical_ids]
+            if len(matches) != 1:
+                return {"reason": "audit_context_projection_unresolved", "object": skill["id"],
+                        "platform": projection["platform"], "measurements": rows}
+            objects.append((projection["platform"], str(Path(projection["manifest"]).parent / matches[0]["path"])))
+        measured = []
+        for platform, relative in objects:
+            receipt = foundation_read_file_strict(target, relative)
+            estimate = foundation_estimate_tokens(receipt["content"], profile_spi_root=profile_spi_root)
+            measured.append({"platform": platform, "path": str(target / relative),
+                             "sha256": receipt["sha256"], "estimate": estimate})
+        rows.append({"skill": skill["id"], "objects": measured,
+                     "maximum_tokens": max(item["estimate"]["tokens"] for item in measured)})
+    # Existing optional budget material is evidence, not a new required file
+    # or a declaration of successful intervention. Read it only when covered
+    # by this Task's already validated material set.
+    product_root = (scope.get("declared_product") or {}).get("product_root") or str(target)
+    budget_path = governance_dir({"product_root": product_root}) / "context-budget.json"
+    assessment_materials = []
+    if budget_path.is_file():
+        for item in evidence_set:
+            original = Path(item["path"])
+            if (original == budget_path or
+                    item["kind"] == "source_tree" and budget_path.is_relative_to(original)):
+                receipt = foundation_read_file_strict(budget_path.parent, budget_path.name,
+                    item["sha256"] if original == budget_path else None)
+                assessment_materials.append({"evidence_id": item["evidence_id"],
+                    "path": str(budget_path), "sha256": receipt["sha256"],
+                    "document": strict_read_json(receipt, "CONTEXT_BUDGET_INVALID", "existing context budget")})
+                break
+    return {"reason": "actual_skill_context_measured", "measurements": rows,
+            "assessment_materials": assessment_materials,
+            "source_refs": list(evidence_set),
+            "foundation_source_authority": {"path": str(profile_spi_root / "foundation-profile-spi-projection.json"),
+                "sha256": provenance_receipt["sha256"], "source": provenance["source"], "packages": provenance["packages"]}}
+
+
 def _w2b1_executor_outcome(
     rule_id: str,
     scope: dict[str, Any],
@@ -6130,6 +9725,10 @@ def _w2b1_executor_outcome(
         # 来源只限已终审的同身份引用。scope 和 args 上的审阅原文不在这里读取。
         "verified_evidence_refs": _static_evidence_ref_rows(verified_evidence_refs),
     }
+    if method_route.get("canonical_id") in {"SFA-CONTEXT-001", "SFA-CONTEXT-002"}:
+        ctx["measure_skill_context"] = lambda: _measure_skill_context(
+            scope, target, getattr(args, "foundation_profile_spi_root", None),
+            evidence_set if method_route.get("canonical_id") == "SFA-CONTEXT-002" else ())
     installed = scope.get("installed_root")
     if isinstance(installed, str) and installed:
         installed_root = target / installed
@@ -6492,6 +10091,73 @@ def _participating_route_statuses(
     return statuses
 
 
+def _mechanical_na_is_evidenced(observation: dict[str, Any], verified_evidence_refs: list[dict[str, str]] | None = None) -> bool:
+    """A mechanical NOT_APPLICABLE cites a real object fact, not a placeholder."""
+    return rule_method_assurance.mechanical_na_is_evidenced(observation, verified_evidence_refs)
+
+
+def _statuses_without_painting_mechanical_na(
+    route: dict[str, Any] | None,
+    lineage: dict[str, Any],
+    method_records: dict[tuple[str, str, str], dict[str, Any]],
+    statuses: set[str],
+    verified_evidence_refs: list[dict[str, str]] | None = None,
+) -> set[str]:
+    """Keep mechanical NOT_APPLICABLE off the whole-rule disposition.
+
+    PASS plus an evidenced mechanical NOT_APPLICABLE is a mechanical PASS.
+    An all-not-applicable mechanical branch does not replace another method.
+    A semantic or behavior NOT_APPLICABLE stays in the set. An unevidenced
+    mechanical NOT_APPLICABLE stays incomplete.
+    """
+    if not isinstance(route, dict) or "NOT_APPLICABLE" not in statuses:
+        return statuses
+    required = [
+        method for method in route.get("required_mechanical_methods") or []
+        if isinstance(method, str)
+    ]
+    if not required:
+        return statuses
+    observations: list[dict[str, Any]] = []
+    for method in required:
+        observation = method_records.get((
+            lineage.get("canonical_id"), lineage.get("revision_digest"), method,
+        ), {}).get("trusted_observation")
+        observations.append(observation if isinstance(observation, dict) else {})
+    mechanical_statuses = [item.get("status", "NOT_RUN") for item in observations]
+    if any(status in {"FAIL", "NOT_RUN", "REVIEW_REQUIRED", "EVIDENCE_MISSING"}
+           for status in mechanical_statuses):
+        return statuses
+    nonmechanical_na = False
+    for method in route.get("check_methods") or []:
+        if method in required or method not in rule_method_assurance.NON_MECHANICAL_CHECK_METHODS:
+            continue
+        observation = method_records.get((
+            lineage.get("canonical_id"), lineage.get("revision_digest"), method,
+        ), {}).get("trusted_observation") or {}
+        if isinstance(observation, dict) and observation.get("status") == "NOT_APPLICABLE":
+            nonmechanical_na = True
+    evidenced = [
+        _mechanical_na_is_evidenced(item, verified_evidence_refs)
+        for item in observations
+        if item.get("status") == "NOT_APPLICABLE"
+    ]
+    if evidenced and not all(evidenced):
+        return set(statuses) | {"EVIDENCE_MISSING"}
+    if not evidenced and "NOT_APPLICABLE" in mechanical_statuses:
+        return set(statuses) | {"EVIDENCE_MISSING"}
+    folded = set(statuses)
+    if all(status in {"PASS", "NOT_APPLICABLE"} for status in mechanical_statuses):
+        if "PASS" in mechanical_statuses and not nonmechanical_na:
+            folded.discard("NOT_APPLICABLE")
+            folded.add("PASS")
+        elif "PASS" not in mechanical_statuses and not nonmechanical_na:
+            others = folded - {"NOT_APPLICABLE"}
+            if others:
+                folded.discard("NOT_APPLICABLE")
+    return folded
+
+
 def _combine_route_status(statuses: set[str]) -> str:
     """行级规则终态聚合阶梯（route method ledger + executor 行状态的并集判定）。
 
@@ -6515,6 +10181,20 @@ def _combine_route_status(statuses: set[str]) -> str:
     if statuses == {"PASS", "NOT_APPLICABLE"}:
         return "NOT_APPLICABLE"
     return "REVIEW_REQUIRED"
+
+
+def _write_context_plan(path_value: str | None, plan: dict[str, Any]) -> None:
+    """Persist the context plan the producer already built. Do not rebuild it."""
+    if not isinstance(path_value, str) or not path_value:
+        return
+    path = Path(path_value)
+    if path.is_symlink():
+        raise WorkflowError("STAGE_CONTEXT_REJECTED", "context plan output is a symlink")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(plan, ensure_ascii=False, sort_keys=True),
+        encoding="utf-8",
+    )
 
 
 def run_workflow(args: argparse.Namespace) -> dict[str, Any]:
@@ -6651,9 +10331,8 @@ def _execute_conformance_workflow(
         else:
             target = None
             evidence_only = True
-    evidence_set = _augment_evidence_set_with_workspace_selection(
-        evidence_set, args.target
-    )
+    if getattr(args, "audit_phase", None) not in {"early", "late"}:
+        evidence_set = _augment_evidence_set_with_workspace_selection(evidence_set, args.target)
     stage.evidence_set = evidence_set
     evidence_set_digest = _evidence_set_digest(evidence_set)
     index, manifest, is_fixture, trust_policy = bundled_rules or load_rules(
@@ -6739,6 +10418,9 @@ def _execute_conformance_workflow(
         semantic_group_registry,
         semantic_group_registry_digest,
     )
+    stage_rules = _load_invoked_stage_rules(args)
+    if stage_rules is not None:
+        _restrict_plan_to_stage(profile_plan, stage_rules)
     stage.rule_scope_resolved = True
     _record_after_scope(stage, args=args, profile_plan=profile_plan)
     retained_trial_ids = _retained_targeted_trial_ids(
@@ -6764,6 +10446,10 @@ def _execute_conformance_workflow(
         or canonical_lineage[rule["ruleId"]]["canonical_id"]
         in selected_canonical_ids
     ]
+    if stage_rules is not None:
+        rules = _rules_matching_stage(
+            rules, canonical_lineage, profile_plan["stage_check_methods"]
+        )
     rule_set_digest = bound_rule_set_digest(
         all_rules, canonical_applicability, canonical_lineage
     )
@@ -6833,6 +10519,13 @@ def _execute_conformance_workflow(
         not isinstance(foundation_task_digest, str)
         or not re.fullmatch(r"[0-9a-f]{64}", foundation_task_digest)
     ):
+        empty_plan = {
+            "semantic_input_budget": SEMANTIC_INPUT_BUDGET,
+            "contexts": [],
+            "blocked_rule_ids": [],
+            "estimated_input_tokens": 0,
+        }
+        _write_context_plan(getattr(args, "context_plan_out", None), empty_plan)
         return {
             "semantic_review_request": {
                 "kind": "skill-family-audit.semantic-review-request",
@@ -6846,12 +10539,7 @@ def _execute_conformance_workflow(
                     else "NO_ACTIVE_BOUND_SEMANTIC_RULES"
                 ),
             },
-            "semantic_context_plan": {
-                "semantic_input_budget": SEMANTIC_INPUT_BUDGET,
-                "contexts": [],
-                "blocked_rule_ids": [],
-                "estimated_input_tokens": 0,
-            },
+            "semantic_context_plan": empty_plan,
         }
     if (
         not isinstance(foundation_task_digest, str)
@@ -6861,20 +10549,22 @@ def _execute_conformance_workflow(
             "FOUNDATION_TASK_DIGEST_MISSING",
             "完整 conformance 执行必须绑定由 Quickstart 创建并计算的 Foundation Task digest",
         )
+    semantic_evidence = _semantic_evidence_view(parameters)
+    semantic_evidence_digest = _evidence_set_digest(semantic_evidence)
     semantic_profile_preflight = _semantic_profile_preflight(
         profile_plan,
         semantic_group_registry,
         canonical_applicability,
         assurance_canonical_projection.get("rules", []),
-        evidence_set,
+        semantic_evidence,
         foundation_task_digest=foundation_task_digest,
-        evidence_set_digest=evidence_set_digest,
+        evidence_set_digest=semantic_evidence_digest,
     )
     semantic_descriptors = _semantic_review_candidate_descriptors(
         profile_plan,
         semantic_profile_preflight,
         all_semantic_descriptors,
-        evidence_set,
+        semantic_evidence,
         canonical_applicability,
     )
     semantic_missing_evidence_roles = (
@@ -6882,7 +10572,7 @@ def _execute_conformance_workflow(
             profile_plan,
             semantic_profile_preflight,
             all_semantic_descriptors,
-            evidence_set,
+            semantic_evidence,
             canonical_applicability,
         )
     )
@@ -6897,10 +10587,10 @@ def _execute_conformance_workflow(
         try:
             internal_review_request = semantic_review.build_review_request(
                 foundation_task_digest=foundation_task_digest,
-                evidence_set_digest=evidence_set_digest,
+                evidence_set_digest=semantic_evidence_digest,
                 rule_set_digest=rule_set_digest,
                 descriptors=semantic_descriptors,
-                evidence_set=evidence_set,
+                evidence_set=semantic_evidence,
                 digest_document=foundation_document_digest,
             )
         except semantic_review.SemanticReviewError as exc:
@@ -6922,6 +10612,7 @@ def _execute_conformance_workflow(
         target_digest=semantic_target_digest,
         profile_spi_root=injected_spi_root,
     )
+    _write_context_plan(getattr(args, "context_plan_out", None), semantic_model_plan)
     execution_plan_event = conformance_human_route._build_execution_plan_event(
         profile_plan,
         semantic_profile_preflight,
@@ -7041,6 +10732,14 @@ def _execute_conformance_workflow(
             )
         except semantic_review.SemanticReviewError as exc:
             raise WorkflowError(exc.code, str(exc)) from exc
+    verified_evidence_refs = [
+        ref for canonical_id, revision, method in internal_semantic_reviews
+        if method == "semantic_review"
+        for ref in _verified_static_evidence_refs(
+            internal_semantic_reviews, internal_semantic_binding, internal_review_request,
+            foundation_task_digest, canonical_id, revision,
+        )
+    ]
     retained_trial_results: list[dict[str, Any]] = []
     canonical_by_id = {
         row["canonical_id"]: row
@@ -7186,6 +10885,14 @@ def _execute_conformance_workflow(
     ))
     # 证据受限审阅不进入源码扫描循环（results 已由 _evidence_only_results 填充）。
     for rule in rules if not evidence_only else []:
+        lineage = canonical_lineage.get(rule["ruleId"], {})
+        invoked_methods = profile_plan.get("stage_check_methods", {}).get((
+            lineage.get("canonical_id"), lineage.get("canonical_revision_digest"),
+        ), set())
+        semantic_stage_only = (
+            "semantic_review" in invoked_methods
+            and not invoked_methods.intersection(MECHANICAL_CHECK_METHODS)
+        )
         if (
             scope.get("logical_skill_count") == 1
             and rule.get("ruleId", "").startswith(CROSS_SKILL_RULE_PREFIX)
@@ -7199,7 +10906,7 @@ def _execute_conformance_workflow(
                 },
                 "worker": "deterministic-applicability",
             }
-        elif rule.get("checkType") == "semantic":
+        elif rule.get("checkType") == "semantic" or semantic_stage_only:
             lineage = canonical_lineage.get(rule["ruleId"], {})
             internal = internal_semantic_reviews.get((
                 lineage.get("canonical_id"),
@@ -7215,7 +10922,7 @@ def _execute_conformance_workflow(
                 }
             else:
                 # 外部结果始终只是待审证据；调用方 PASS 不能形成规则 PASS。
-                review = reviews[rule["ruleId"]]
+                review = reviews.get(rule["ruleId"], {"status": "EVIDENCE_MISSING", "evidence": []})
                 outcome = {
                     "status": (
                         "EVIDENCE_MISSING"
@@ -7460,10 +11167,8 @@ def _execute_conformance_workflow(
         foundation_document_digest,
         lifecycle_statuses={"ACTIVE_MECHANICAL", "ACTIVE_SEMANTIC"},
     )
-    # The method ledger covers managed static executor routes only.  Pure
-    # semantic terminal rules are consumed directly by the rule-level result
-    # path above and must not be presented to the static-route ledger as an
-    # unknown identity.
+    # The static observation projector accepts only its managed routes.
+    # Selected semantic-route observations are bound to the same ledger below.
     method_assurance_semantic_reviews = {
             identity: review
             for identity, review in internal_semantic_reviews.items()
@@ -7480,7 +11185,23 @@ def _execute_conformance_workflow(
             _method_assurance_executor_family_of,
             trusted_result_digest,
             finalized_semantic_reviews=method_assurance_semantic_reviews,
+            verified_evidence_refs=verified_evidence_refs,
         )
+    )
+    security_observation = _bounded_security_observation(
+        target, assurance_canonical_projection,
+    )
+    _record_retained_mechanical_judgments(
+        method_assurance,
+        assurance_canonical_projection,
+        security_observation,
+        trusted_observation,
+        {item.get("canonical_lineage", {}).get("canonical_id") for item in results},
+        internal_semantic_reviews=internal_semantic_reviews,
+        internal_semantic_binding=internal_semantic_binding,
+        internal_review_request=internal_review_request,
+        foundation_task_digest=foundation_task_digest,
+        professional=professional_consumption, evidence_set=evidence_set, target=target,
     )
     _record_after_scope(stage, method_assurance=method_assurance)
     method_records = {
@@ -7503,6 +11224,7 @@ def _execute_conformance_workflow(
         selected_methods = selected_nonmechanical_obligations.get(
             canonical_identity, []
         )
+        semantic_route_methods = None
         if route is not None and review_methods:
             statuses = _participating_route_statuses(
                 item, lineage, route, method_records
@@ -7533,16 +11255,22 @@ def _execute_conformance_workflow(
                 held.add(item["status"])
                 statuses = held
         elif selected_methods:
-            statuses = set(_nonmechanical_obligation_statuses(
-                lineage["canonical_id"],
-                lineage["revision_digest"],
-                selected_methods,
-                internal_semantic_reviews,
-                scheduled_review_identities,
-                semantic_missing_evidence_roles.get(
-                    lineage["canonical_id"], []
-                ),
-            ).values())
+            nonmechanical = _nonmechanical_obligation_statuses(
+                lineage["canonical_id"], lineage["revision_digest"], selected_methods,
+                internal_semantic_reviews, scheduled_review_identities,
+                semantic_missing_evidence_roles.get(lineage["canonical_id"], []),
+            )
+            semantic_route_methods = [
+                {"check_method": method, "status": method_status}
+                for method, method_status in nonmechanical.items()
+            ]
+            semantic_route_methods.extend(
+                {**(record.get("trusted_observation") or {"status": "NOT_RUN"}),
+                 "check_method": identity[2]}
+                for identity, record in method_records.items()
+                if identity[:2] == canonical_identity and identity[2] in MECHANICAL_CHECK_METHODS
+            )
+            statuses = {row["status"] for row in semantic_route_methods}
         else:
             combined_results.append(_present_professional_finding(item))
             continue
@@ -7578,8 +11306,16 @@ def _execute_conformance_workflow(
                 # This rule cannot turn an unbound or contradicted NA into a
                 # passing rule via the generic PASS + NA combination.
                 statuses.add("EVIDENCE_MISSING")
-        combined_status = _combine_route_status(statuses)
+        combined_status = _combine_route_status(
+            _statuses_without_painting_mechanical_na(
+                route, lineage, method_records, statuses, verified_evidence_refs,
+            )
+        )
+        if semantic_route_methods is not None:
+            combined_status = _aggregate_method_statuses(semantic_route_methods, verified_evidence_refs)
         combined = {**item, "status": combined_status}
+        if semantic_route_methods is not None:
+            combined["check_method_subresults"] = semantic_route_methods
         internal = internal_semantic_reviews.get((
             lineage["canonical_id"],
             lineage["revision_digest"],
@@ -7588,6 +11324,46 @@ def _execute_conformance_workflow(
         if internal is not None:
             combined["semantic_review"] = internal
         combined_results.append(_present_professional_finding(combined))
+    if stage_rules is not None:
+        # Preserve method outcomes in the original producer. Final must never
+        # split an aggregate rule verdict into invented method successes.
+        observed_methods = _index_method_statuses({
+            "conformance_result": {"method_assurance": method_assurance},
+            "rule_findings": combined_results,
+        })
+        combined_results = [dict(item) for item in combined_results]
+        for item in combined_results:
+            lineage = item.get("canonical_lineage", {})
+            canonical_id = lineage.get("canonical_id") or item.get("canonical_id")
+            revision = lineage.get("revision_digest") or item.get("rule_revision_digest")
+            methods = profile_plan["stage_check_methods"].get((canonical_id, revision), set())
+            if not methods:
+                continue
+            nonmechanical = _nonmechanical_obligation_statuses(
+                canonical_id, revision,
+                sorted(methods.intersection(semantic_review.NON_MECHANICAL_CHECK_METHODS)),
+                internal_semantic_reviews, scheduled_review_identities,
+                semantic_missing_evidence_roles.get(canonical_id, []),
+            )
+            subresults = []
+            for method in sorted(methods):
+                observation = observed_methods.get((canonical_id, revision, method))
+                if observation is not None:
+                    method_status, detail = observation
+                    evidence = detail.get("evidence", detail)
+                elif item.get("canonical_only") and item["status"] == "NOT_APPLICABLE":
+                    method_status, evidence = "NOT_APPLICABLE", item.get("evidence", {})
+                elif method in nonmechanical:
+                    method_status = nonmechanical[method]
+                    missing_roles = semantic_missing_evidence_roles.get(canonical_id, [])
+                    evidence = ({"reason_code": "REQUIRED_EVIDENCE_ROLE_MISSING",
+                                 "missing_evidence_roles": missing_roles}
+                                if missing_roles else item.get("evidence", {}))
+                else:
+                    method_status = "EVIDENCE_MISSING"
+                    evidence = {"reason_code": "MECHANICAL_METHOD_NOT_EXECUTED"}
+                subresults.append({"check_method": method, "status": method_status, "evidence": evidence})
+            item["check_method_subresults"] = subresults
     results = combined_results + _profile_not_run_results(
         profile_plan,
         canonical_lineage,
@@ -7643,7 +11419,7 @@ def _execute_conformance_workflow(
         ],
     }
     canonical_coverage = _canonical_coverage_from_results(
-        canonical_applicability, canonical_lineage, results, method_assurance
+        canonical_applicability, canonical_lineage, results, method_assurance, verified_evidence_refs
     )
     canonical_guidance = (
         _canonical_guidance_from_results(
@@ -7814,7 +11590,7 @@ def _execute_conformance_workflow(
         domain["professional_consumption"] = professional_consumption
     domain["method_assurance"] = method_assurance
     domain["status"] = _method_assurance_gated_status(
-        domain["status"], domain["method_assurance"]
+        domain["status"], domain["method_assurance"], verified_evidence_refs
     )
     if domain["status"] != status:
         domain["baseline_rule_set"]["status"] = "NON_PASSING"
@@ -7823,9 +11599,6 @@ def _execute_conformance_workflow(
             domain["summary"] = METHOD_ASSURANCE_REJECTS_SUCCEEDED_SUMMARY
     credibility = (
         "self_reported" if is_fixture or index.get("selfAudit") is True else "verified"
-    )
-    security_observation = _bounded_security_observation(
-        target, assurance_canonical_projection
     )
     results.extend({
         "kind": "skill-family-audit.safe-sensitive-finding",
@@ -7846,11 +11619,8 @@ def _execute_conformance_workflow(
         "path": str(target),
         "sha256": semantic_target_digest,
         "source": "conformance-check-existing-target-enumeration",
-        "canonical_rule_ids": [
-            "SFA-DATASEC-002",
-            "SFA-EVIDENCESEC-001",
-            "SFA-SECRET-003",
-        ],
+        "canonical_rule_ids": list(_BOUNDED_SECURITY_RULE_IDS),
+        "rule_consumptions": _bounded_security_rule_consumptions(security_observation),
         "observation": security_observation,
         "credibility": credibility,
     })
@@ -7901,6 +11671,10 @@ def parser() -> argparse.ArgumentParser:
         help="targeted 档位请求的精确 canonical rule ID；与语义组互斥",
     )
     value.add_argument("--semantic-result")
+    value.add_argument(
+        "--context-plan-out",
+        help="把本次已经生成的语义上下文计划原样写入该文件",
+    )
     value.add_argument("--foundation-task-digest")
     value.add_argument("--profile-selection-reason")
     semantic_mode = value.add_mutually_exclusive_group()
@@ -7915,6 +11689,19 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--professional-consumption",
         help="专业消费 JSON；进入同一次 Task 与符合性结果，不得携带待执行命令",
+    )
+    value.add_argument(
+        "--audit-phase",
+        choices=("early", "late", "final"),
+        help="分阶段全审的领域阶段；缺省时仍走原有整次执行",
+    )
+    value.add_argument(
+        "--stage-rules",
+        help="early/late 的可执行子集 JSON 对象，键为 stage_rules",
+    )
+    value.add_argument(
+        "--staged-round",
+        help="final 汇合用的原 audit_input 与 stage 结果 JSON 对象",
     )
     return value
 
@@ -8234,6 +12021,18 @@ def before_rule_selection_result(
 
 def main() -> int:
     args = parser().parse_args()
+    if args.audit_phase == "final":
+        try:
+            result = combine_final_stage(args)
+        except (WorkflowError, OSError, ValueError) as exc:
+            result = before_rule_selection_result(
+                exc,
+                evidence_set=getattr(exc, "evidence_set", None),
+            )
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+            return 2
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        return 0 if result["conformance_result"]["status"] == "SUCCEEDED" else 1
     if args.semantic_review_stdin:
         result = before_rule_selection_result(
             WorkflowError(

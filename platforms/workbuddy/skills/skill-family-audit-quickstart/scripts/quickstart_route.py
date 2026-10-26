@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -833,6 +834,62 @@ def _load_conformance_workflow():
     return module
 
 
+def _workflow_for_script(script: Path):
+    """Load the conformance workflow that owns the staged full-audit plan."""
+    parent = str(script.resolve().parent)
+    saved_path = list(sys.path)
+    if parent not in sys.path:
+        sys.path.insert(0, parent)
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "skill_family_audit_full_audit_workflow", script
+        )
+        if spec is None or spec.loader is None:
+            raise RouteError("METHOD_IMPLEMENTATION_MISSING")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        sys.path[:] = saved_path
+
+
+def _write_stage_rules(rules: list[dict[str, Any]]) -> str:
+    """Hand the first stage's executable subset to the existing workflow process."""
+    handle = tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", suffix=".json", prefix="sfa-stage-rules-", delete=False
+    )
+    try:
+        json.dump({"stage_rules": rules}, handle, ensure_ascii=False)
+        handle.close()
+    except Exception:
+        handle.close()
+        Path(handle.name).unlink(missing_ok=True)
+        raise
+    return handle.name
+
+
+def _discard_stage_file(path: str | None) -> None:
+    if path:
+        Path(path).unlink(missing_ok=True)
+
+
+def _full_audit_first_stage(
+    script: Path,
+    parameters: dict[str, Any],
+    *,
+    run_id: str,
+    digest_document: Any,
+) -> dict[str, Any]:
+    """Bind only the first real full-audit stage. Later stages are not this task."""
+    workflow = _workflow_for_script(script)
+    planned = workflow.plan_staged_full_audit(
+        parameters,
+        run_id=run_id,
+        digest_document=digest_document,
+    )
+    return planned["first_stage_parameters"]
+
+
 def prepare_conformance_evidence_document(target: Path) -> dict[str, Any]:
     """创建 Task 前从目标路径派生真实证据集合；不写入文件。"""
     if not isinstance(target, Path):
@@ -1409,12 +1466,16 @@ def extract_business_parameters(
                 raise RouteError("PROFESSIONAL_CONSUMPTION_COMMAND_REJECTED")
             parameters["professional_consumption"] = consumption
         if "scope_selector" in parameters:
-            parameters["scope_selector"] = {
+            raw_target_type = parameters["scope_selector"]
+            scope_selector = {
                 "single_skill": "skill",
                 "family_source": "plugin",
                 "project_adoption": "plugin",
                 "release_artifact": "release",
-            }.get(parameters["scope_selector"], parameters["scope_selector"])
+            }.get(raw_target_type)
+            if scope_selector is not None:
+                parameters["target_type"] = raw_target_type
+                parameters["scope_selector"] = scope_selector
         return parameters, resource
 
     resource = _trusted_input_file(
@@ -1532,7 +1593,15 @@ def create_foundation_task(
     operation_id: str,
     method: str,
     parameters: dict[str, Any],
+    stage_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    if method == "conformance-audit" and parameters.get("audit_phase") == "final":
+        workflow = _load_conformance_workflow()
+        parameters = workflow.bind_final_stage_parameters(
+            parameters,
+            stage_results if stage_results is not None else parameters.get("stage_results"),
+            resource_root=resource.parent,
+        )
     return call_foundation(
         runner,
         "create-task",
@@ -1737,6 +1806,22 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             ["--profile-selection-reason", human_route["selection_reason"]]
         )
         human_explanations = human_route["source_number_explanations"]
+    if (
+        intent == "conformance"
+        and human_intent != "release_preparation"
+        and parameters.get("execution_profile") == "full"
+    ):
+        parameters = {
+            **parameters,
+            **_full_audit_first_stage(
+                script,
+                parameters,
+                run_id=args.run_id,
+                digest_document=lambda document: call_foundation(
+                    runner, "digest-document", {"document": document}
+                ).get("digest"),
+            ),
+        }
     task = create_foundation_task(
         runner,
         resource,
@@ -1755,9 +1840,21 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         args.run_id,
         foundation_task_digest=task_digest,
     )
+    stage_rules_path = None
+    if (
+        intent == "conformance"
+        and isinstance(parameters.get("audit_phase"), str)
+        and isinstance(parameters.get("stage_rules"), list)
+    ):
+        stage_rules_path = _write_stage_rules(parameters["stage_rules"])
+        invocation_args.extend([
+            "--audit-phase", parameters["audit_phase"],
+            "--stage-rules", stage_rules_path,
+        ])
 
     parameter_outcome = validate_by_schema_id(runner, parameter_schema_id, parameters)
     if not parameter_outcome["valid"]:
+        _discard_stage_file(stage_rules_path)
         result = wrap_foundation_result(
             runner,
             task,
@@ -1781,13 +1878,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "result": result,
         }
 
-    completed = subprocess.run(
-        [_python_binary(), str(script), *invocation_args],
-        text=True,
-        capture_output=True,
-        env={**os.environ, "SFA_AUDIT_BUNDLE_RUNNER_REF": str(runner)},
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            [_python_binary(), str(script), *invocation_args],
+            text=True,
+            capture_output=True,
+            env={**os.environ, "SFA_AUDIT_BUNDLE_RUNNER_REF": str(runner)},
+            check=False,
+        )
+    finally:
+        _discard_stage_file(stage_rules_path)
     try:
         response = json.loads(completed.stdout)
     except json.JSONDecodeError:
@@ -1816,6 +1916,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     domain,
                     human_registry,
                     {"intent": human_intent},
+                    professional_context=task["params"]["parameters"].get("professional_consumption"),
                 )
             except (KeyError, TypeError, ValueError):
                 human_summary = None
@@ -1849,6 +1950,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     response["conformance_result"],
                     human_registry,
                     {"intent": human_intent},
+                    professional_context=task["params"]["parameters"].get("professional_consumption"),
                 )
                 state = "succeeded"
                 domain_result = response

@@ -1630,10 +1630,7 @@ SECRET_REDACTION_RULE_ID = "SFA-SECRET-003"
 
 def _redaction_source_disposition(source_id: str) -> dict | None:
     """只读权威库存去向表，返回该来源编号的退出与承接条目。"""
-    root = _package_root()
-    if root is None:
-        return None
-    path = root / "governance" / "rules" / "canonical-rule-inventory.json"
+    path = Path(__file__).resolve().parent.parent / "refs" / "canonical-rule-projection.json"
     try:
         inventory = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -1690,7 +1687,10 @@ def _secret_redaction_material_state(
                 }
             return {"status": "unavailable", "reason": "redaction_revision_invalid"}
     if disposition is None:
-        disposition = _redaction_source_disposition(SECRET_REDACTION_RULE_ID)
+        dispositions = projection.get("source_dispositions")
+        if isinstance(dispositions, list):
+            disposition = next((row for row in dispositions if isinstance(row, dict)
+                                and row.get("source_id") == SECRET_REDACTION_RULE_ID), None)
     if not isinstance(disposition, dict):
         return {"status": "unavailable", "reason": "redaction_rule_disposition_absent"}
     successors = sorted(
@@ -1714,7 +1714,8 @@ def _secret_redaction_material_state(
                 "successor_status": "RETAINED_UNIMPLEMENTED",
             },
         }
-    if all(lifecycle.get(carrier) for carrier in successors):
+    if all(lifecycle.get(carrier) in {"ACTIVE_MECHANICAL", "ACTIVE_SEMANTIC"}
+           for carrier in successors):
         return {
             "status": "successor_implemented",
             "rule_id": SECRET_REDACTION_RULE_ID,

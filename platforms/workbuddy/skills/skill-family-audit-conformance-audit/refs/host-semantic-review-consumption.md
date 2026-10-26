@@ -14,7 +14,7 @@
 | 模块 | 路径 | 函数 |
 |---|---|---|
 | Quickstart 路由 | 逻辑 Skill `skill-family-audit:quickstart` 的 `scripts/quickstart_route.py` | `human_entry_decision`、`human_entry_clarification`、`identified_scope_statement`、`professional_scan_clarification`、`professional_scan_decision`、`prepare_conformance_evidence_document`、`extract_business_parameters`、`resolve_conformance_human_route`、`resolve_method_contract`、`create_foundation_task`、`call_foundation`、`validate_by_schema_id`、`wrap_foundation_result`、`assert_foundation_exchange` |
-| 领域工作流 | 本 Skill 的 `scripts/conformance_workflow.py` | `run_workflow`、`_merge_semantic_context_results`、`before_rule_selection_result`、`WorkflowError` |
+| 领域工作流 | 本 Skill 的 `scripts/conformance_workflow.py` | `run_workflow`、`plan_staged_full_audit`、`combine_final_stage`、`combine_staged_round`、`parser`、`_merge_semantic_context_results`、`before_rule_selection_result`、`WorkflowError` |
 | 人类摘要 | 本 Skill 的 `scripts/conformance_human_route.py` | `render_human_summary` |
 
 `runner` 来自同一平台包的受管 Bundle。产品单选用
@@ -76,11 +76,11 @@
 
 构造多选候选和创建 Task 之前，宿主按目标里已经存在的采用材料裁剪 Registry。目标没有既有 Registry 采用登记时，不把 registry 放进候选，也不把它送进适用缺证。用户未选择不等于不适用。工作流不扫描目标，也不改写已绑定的 applicable 或 selected。
 
-提供方描述仅从当前平台或源码清单的 `professionalProviders` 读取，通过 `load_professional_providers` 获取。宿主依据实际安装状态发现所选公开入口，不得基于证明正文中的命令进行追溯，亦不可将登记状态误认为已安装发布。已有专业证明时优先调用对应 reader；若需刷新，则另写新证明。把真实宿主选择和可定位的 `proof_root`/`proof_path` 写入 `--professional-consumption`；reader 原始 JSON 有实际返回就完整加入，交由 `extract_business_parameters` 处理，进入同一 `create_foundation_task` 与 `validate_by_schema_id` 流程。
+提供方描述仅从当前平台或源码清单的 `professionalProviders` 读取，通过 `load_professional_providers` 获取。宿主依据实际安装状态发现所选公开入口，不得基于证明正文中的命令进行追溯，亦不可将登记状态误认为已安装发布。已有专业证明时优先调用对应 reader；若需刷新，则另写新证明。把真实宿主选择和可定位的 `proof_root`/`proof_path` 写入 `--professional-consumption`；reader 原始 JSON 有实际返回就完整加入，交由 `extract_business_parameters` 处理。`targeted` 仍进入同一次 `create_foundation_task` 与 `validate_by_schema_id`。完整档的专业消费只进入 `late` 或 `final` 的阶段参数，不写入 `audit_input`。
 
 当证明可定位但 reader 未返回原始 JSON 时，仍应传入真实宿主选择与证明定位信息，`reader_result` 字段可省略，不得伪造 reader 结果、状态、动作或入口可用性。不得手填 status、version_relation、reader_status、baseline 或通过摘要。工作流从这些输入调用 `consume_professional_proof`，严格读取并核对身份与原始结论，基准由同一清单派生。同版本缺少 reader 返回仍未通过；有实际返回则完整传递。版本政策仅执行 `semver.valid/compare` 判断：可读高版本身份按政策通过，低版本未通过并建议刷新；同版本须比较未经改写的完整共同证明，并核验顶层 provider 的 `id`、`version`、`entry`，任一缺失或错配均不通过。
 
-高低版本政策不变，同版匹配后再采用 reader 的 `pass` / `not_pass` / `unavailable`。FOUNDATION-012/014 使用该次消费结果。结果出现在 `conformance_result.professional_consumption` 与 `render_human_summary` 中的 `coverage.professional_items` 及 `blocking_findings`。摘要中需列出通过与未通过项，保留原 `conclusion` 的范围、发现与局限。完整且 `completion=complete` 的原生 `not_pass` 使用已有 `REVIEW_REQUIRED`，沿用九级顺序取待处理动作；缺证、未完成或读取不可用情形分别保留其真实原因。
+高低版本政策不变。高版本证明按政策接受，与本次是否实际开展检查为两个独立事实。同版匹配后再采用 reader 的 `pass` / `not_pass` / `unavailable`；同版本 partial、unverified 或范围不匹配不计完成。FOUNDATION-012/014 使用该次消费结果。结果出现在 `conformance_result.professional_consumption` 与 `render_human_summary` 中的 `coverage.professional_items` 及 `blocking_findings`。摘要中需列出通过与未通过项，保留原 `conclusion` 的范围、发现与局限。完整且 `completion=complete` 的原生 `not_pass` 使用已有 `REVIEW_REQUIRED`，沿用九级顺序取待处理动作；缺证、未完成或读取不可用情形分别保留其真实原因。
 
 现有发布收据消费仍委托 release-skill 0.9.17 的 `verify-records` 接口，与专业证明的 `read-proof` 分开处理。未知提供方按未知输入拒绝；`docs` 的 `siteBuildingRequired` 为 `false`，机械证明身份为 `skill-family-doc-render`。
 
@@ -127,7 +127,9 @@ human = workflow.conformance_human_route
 
 `mechanisms-cli.mjs` 与 `adoption-cli.mjs` 位于同一平台的 `foundation/quickstart-profile`，不在 `profile-spi`。后续 Quickstart 函数通过 `quickstart` 调用，领域工作流函数通过 `workflow` 调用，摘要函数通过 `human` 调用；`platform_root`、`platform` 和 `runner` 均沿用上段实际返回值，不另猜路径或重写传输调用。
 
-## 审阅消费（同一 Task）
+## 审阅消费（阶段内同一 Task，完整档跨阶段组合）
+
+`targeted`、经济档、机械档和发布审计仍是一次 Task，不传 `--audit-phase`、`--stage-rules`、`--staged-round`。完整档 `full` 使用 `early`、`late`、`final`。`plan_staged_full_audit` 冻结共同 `audit_input`。缺 `professional_dependencies` 表示独立性尚未核实，机械方法与语义方法都等待到 `late`；已核实的 `[]` 进入 `early`；非空依赖进入 `late`。`audit_input` 只在首个真实阶段内联一次：有已核实独立规则时是 `early`，否则是首个 `late`。后续阶段和 `final` 用 `audit_input_ref` 回读原文件并核对 `audit_input_digest`，不得倒填。`early` / `late` 把 `--audit-phase` 和 `--stage-rules` 传给现有 `run_workflow`。阶段内部仍用 `_merge_semantic_context_results` 合并该阶段自己的 context，并保留该阶段原 Task、父请求摘要和 semantic-review-result v2 的四项摘要。`final` 传 `--audit-phase final` 与 `--staged-round`，只调用 `combine_final_stage`（其内部调用 `combine_staged_round`）组合原 `stage_results`，不再调用 `run_workflow`，不把不同阶段拼成一份 v2，也不重签早期或晚期判断。提供方失败不缩小冻结的应执行集合。下面的步骤 1 至 5 是每个审阅阶段内部的工序；步骤 6 按阶段收尾。
 
 每一步均等待当前函数返回，读取返回值后进入下一步。宿主将步骤 6 转入后台时，沿现有前台等待或 TaskOutput 等支持的续接方式等待真实领域结果，再完成步骤 7、8；不因内部任务标为完成、进程退出 0 或只读到执行计划就宣称 Task completed。后台中止、前台恢复与实际回复各自保留；未观察的退出码和成因保持未知。已获取 Task、预检请求或某项 `reviews` 时直接复用，不因屏幕未显示输出而重复调用创建或预检。不新增 runner、缓存、状态文件或恢复程序。身份字段从当前返回值或该项 `request` 读取，不手抄修订、binding 或摘要。
 
@@ -138,24 +140,24 @@ human = workflow.conformance_human_route
    专业消费文件用 `--professional-consumption`，仅含真实宿主选择、可定位证明和实际取得的 reader 原始返回；没有 reader 原返回时省略 `reader_result`，不补造 JSON；该内容进入同一 `parameters`。工作流再调用既有消费路径。Task 创建前须沿用 Quickstart `run` 中已有的档位解析与参数绑定：  
    `human_route, group_registry, human_module, human_intent, route_identity = resolve_conformance_human_route(request, method_args, runner)`。  
    此处 `request` 为本次完整业务原话。将返回的 `execution_profile` 写入 `parameters`；非空 `semantic_group_ids`、`canonical_rule_ids` 也从该返回值绑定。  
-   不得假定 `extract_business_parameters` 已自动复制这些字段。将同一档位、选择器和目标传给后续两次 `run_workflow`，不得通过省略参数回退默认。  
+   不得假定 `extract_business_parameters` 已自动复制这些字段。非完整档把同一档位、选择器和目标传给后续两次 `run_workflow`。完整档的 `early` / `late` 在这两次调用上追加 `--audit-phase` 与 `--stage-rules`；`final` 不调用 `run_workflow`，改为 `--audit-phase final` 与 `--staged-round` 后调用 `combine_final_stage`。不得通过省略 `--audit-phase` 回退到未分阶段的整次引擎。  
    `parameter_schema, result_schema = resolve_method_contract(platform_root, "conformance")`  
    `parameter_schema` 与 `result_schema` 均为该函数返回的 Schema ID 字符串，直接传给 `validate_by_schema_id`；不转为 `Path`，也不按文件路径解析。调用参数的类型错误由原职责纠正，不修改校验器、序列化器或原结果。  
    保留 `extract_business_parameters` 返回的全部参数，包括由 `--target-type` 映射的 `scope_selector`、原 `evidence_set` 和专业消费。读取  
    `validate_by_schema_id(runner, parameter_schema, parameters)` 的返回值，仅当 `valid is True` 时才创建 Task；否则按原错误停止，不丢弃缺项继续。
 
-3. `task = create_foundation_task(runner, resource, operation_id=run_id, method="conformance-audit", parameters=parameters)`  
+3. `targeted` 仍执行一次 `task = create_foundation_task(runner, resource, operation_id=run_id, method="conformance-audit", parameters=parameters)`。完整档的这一次调用只绑定首个真实阶段：`quickstart_route.run` 在 `execution_profile == "full"` 时把 `plan_staged_full_audit` 的 `first_stage_parameters` 并入 parameters，不在规则选择前失败之后再创建 `late` 或 `final`。后续阶段各自另建 Task，`final` 不重签。  
    等待返回后再取 `foundation_task_digest = call_foundation(runner, "digest-document", {"document": task})["digest"]`。  
    立即保存该 `task` 的完整原值，再进行后续调用；不使用记忆中的旧 Task 或另一次创建结果替换本次返回值。
 
 4. 沿 Quickstart `run` 的既有参数组装，并调用  
    `execution_method_args("conformance", routed_args, run_id, foundation_task_digest=foundation_task_digest)`  
    取得 `invocation_args`。`routed_args` 包含原方法参数、已解析档位、非空精确选择器和原 `profile_selection_reason`；不要手写一份不完整的 `argparse.Namespace`。  
-   第一次使用 `workflow.parser().parse_args([*invocation_args, "--semantic-review-preflight"])` 取得参数后调用 `run_workflow(args)`，其中：  
+   第一次按档位解析参数，再调用 `run_workflow(args)`。`targeted`、经济档、机械档和发布准备（`release_preparation`）使用 `workflow.parser().parse_args([*invocation_args, "--semantic-review-preflight"])`，不传 `--audit-phase`、`--stage-rules`、`--staged-round`。完整档的 `early` / `late` 使用 `workflow.parser().parse_args([*invocation_args, "--semantic-review-preflight", "--audit-phase", audit_phase, "--stage-rules", stage_rules_path])`。`audit_phase` 只能是该阶段的 `early` 或 `late`。`stage_rules_path` 指向内容为 `{"stage_rules": [...]}` 的真实普通文件，不要传裸数组，也不要借用 `--canonical-rule-id` 代替阶段子集。预检不传 `--staged-round`。其中：  
    - `semantic_review_preflight=True`  
    - `internal_semantic_review=None`  
    - `internal_semantic_context_results=None`  
-   并传入已冻结的 `target`、`evidence_set`、`target_type`、`run_id`、`execution_profile`、`foundation_task_digest`、`platform`。  
+   并传入已冻结的 `target`、`evidence_set`、`target_type`、`run_id`、`execution_profile`、`foundation_task_digest`、`platform`。缺 `--audit-phase` 时完整档会落回未分阶段的整次引擎。  
    进程内与 CLI `main()` 同样消费失败，不要自行拼只含 status/reason/summary 的残缺 JSON：
 
    ```text
@@ -174,9 +176,9 @@ human = workflow.conformance_human_route
 
    成功时返回 `{"semantic_review_request": request, "semantic_context_plan": context_plan}`。这不是最终报告。完整档未指定精确选择器时，保留解析器默认的 `semantic_group_ids=None`、`canonical_rule_ids=None`，不改为空列表。等待此次返回后方可进入步骤 5。
 
-5. 预检返回后，主控按实际处理对象、共享证据和必要关系，把 `context_plan["contexts"]` 中明确相关的原 context 组成相关规则组，并为每个相关组使用宿主原生新上下文。分派单位是相关规则组，不是一条规则、一个装箱包或一个 `review_family` 固定一个会话。同组可在同一原生新上下文中按原计划顺序逐个消费多个原 context；每项仍单独交回 `{"context_digest": 当前 context_digest, "reviews": 该项 reviews}`，立即保存后再处理下一项。不得重组 `context_plan`、不得改写原 `request`、不要先生成全部判断再拆成多个文件，也不要自行把多项合成一批。禁止用 `for i in …; judgement-00$i.json` 这类批写拼两位数文件名。不要在同一助手消息里后台并行多个 Agent。短调用应对 `for context in context_plan["contexts"]` 审阅 `context["request"]`；相关组内保存一项结果后再处理下一项，各组结果收齐后进入步骤 6。
+5. 预检返回后，主控按实际处理对象、共享证据和必要关系，把 `context_plan["contexts"]` 中明确相关的原 context 组成相关规则组，并为每个相关组使用宿主原生新上下文。分派单位是相关规则组，不是一条规则、一个装箱包或一个 `review_family` 固定一个会话。同组可在同一原生新上下文中按原计划顺序逐个消费多个原 context；每项仍单独交回 `{"context_digest": 当前 context_digest, "reviews": 该项 reviews}`，立即保存后再处理下一项。不得重组 `context_plan`、不得改写原 `request`、不要先生成全部判断再拆成多个文件，也不要自行把多项合成一批。禁止用 `for i in …; judgement-00$i.json` 这类批写拼两位数文件名。不共享前序上下文的相关组可以使用宿主原生并行；共享前序上下文的组仍按原顺序。主控占一个名额，总名额 4 时子名额是 3，不得把 3 个子名额报成 4。短调用应对 `for context in context_plan["contexts"]` 审阅 `context["request"]`；相关组内保存一项结果后再处理下一项，各组结果收齐后进入步骤 6。
    每个原生新上下文完整传入该项当前 `control`、`permissions`、`untrusted_data`、冻结绑定材料和判断所需的必要关系；不传入父会话完整历史、其他组答案或旧审计答案。共用原始证据可在各组按需读取，但不能把其他组已经作出的判断当作本项事实。Codex 可明确使用 `fork_turns=none` 取得不继承对话历史的新上下文；不得声称其他平台已经过运行验证。原生新上下文不等于认知独立，`cognitive_independence=not_attested` 与四项接受条件保持不变。当前宿主没有可用原生新上下文时，明确记录受影响分支的能力缺口并停止该完整档消费，不回退到持续累积的单一会话冒充完成。
-   主控只保留归属、结果定位和必要跨组事实，串行委派相关组。组间或跨规则判断出现分歧时，回读原规则和原证据解释，保留原结果，不投票，也不覆盖子结果。不为每项机械另起模型、门禁或独立审阅程序，也不在扫描中修复目标。单项非阻断发现保留原结果，继续其余可独立执行的项；全部项完成并收齐问题后，再沿步骤 6 使用原 `_merge_semantic_context_results` 合并。真实必需输入缺失、权限拒绝或原合同失败关闭仍保护对应分支，不绕过原停点。不新增实现代码、调度器、合并入口或第二套结果合同。
+   主控只保留归属、结果定位和必要跨组事实，按原 context 身份做宿主原生并行汇合。阶段内合法乱序可以接受。组间或跨规则判断出现分歧时，回读原规则和原证据解释，保留原结果，不投票，也不覆盖子结果。不为每项机械另起模型、门禁或独立审阅程序，也不在扫描中修复目标。单项非阻断发现保留原结果，继续其余可独立执行的项；全部项完成并收齐问题后，再沿步骤 6 使用原 `_merge_semantic_context_results` 合并。真实必需输入缺失、权限拒绝或原合同失败关闭仍保护对应分支，不绕过原停点。不新增实现代码、调度器、合并入口或第二套结果合同。
 
    `reviews` 覆盖该项冻结规则子集，字段以该项
    `request["control"]["result_contract"]["required_review_fields"]` 为准。`result_contract` 只规定输出形状，不提供审计事实，也不预填结论。旧语义答案、旧摘要或旧通过结论不能代替本次审计的规则和证据。
@@ -209,7 +211,32 @@ human = workflow.conformance_human_route
 
    将该项原始 `request`、实际判断依据及交回的 `context_digest` 与 `reviews` 立即保存到已允许的持久运行目录，再进入下一项。不用旧上下文或事后重建的结果替换本项材料。
 
-6. 全部项交回后，或步骤4返回正常的空审阅计划时，先用 `workflow.parser().parse_args(invocation_args)` 取得与首次相同的冻结参数，再次调用 `run_workflow`。此时：
+6. 全部项交回后，或步骤 4 返回正常的空审阅计划时，按档位调用已有函数，不另写执行器。
+
+   `targeted`、经济档、机械档和发布准备（`release_preparation`）不传 `--audit-phase`、`--stage-rules`、`--staged-round`。先用 `workflow.parser().parse_args(invocation_args)` 取得与首次相同的冻结参数，再执行下面的非 `final` 片段并调用 `run_workflow`。
+
+   完整档的 `early` 或 `late` 必须把阶段参数传进同一次工作流。`audit_phase` 只能是该阶段的 `early` 或 `late`。`stage_rules_path` 是普通文件，内容为 `{"stage_rules": [...]}`。不要传裸数组，也不要借用 `--canonical-rule-id` 代替阶段子集。缺 `--audit-phase` 时，未分阶段的整次引擎会继续执行。先解析阶段参数，再执行同一段非 `final` 片段：
+
+   ```python
+   args = parser().parse_args([
+       *invocation_args,
+       "--audit-phase", audit_phase,
+       "--stage-rules", stage_rules_path,
+   ])
+   ```
+
+   完整档收尾使用 `final`。这一步不再调用 `run_workflow`。把原 `audit_input` 与各阶段原结果写成 `{"audit_input", "stages"}`，路径交给 `--staged-round`。`parser` 与 `combine_final_stage` 都是已加载的 `workflow` 上的函数。`main()` 见到 `--audit-phase final` 时调用同一个 `combine_final_stage`，`combine_final_stage` 再调用 `combine_staged_round`。组合保留各阶段原摘要，不重签，也不把各阶段拼成一份 semantic-review-result v2。
+
+   ```python
+   final_args = parser().parse_args([
+       *invocation_args,
+       "--audit-phase", "final",
+       "--staged-round", staged_round_path,
+   ])
+   workflow_result = combine_final_stage(final_args)
+   ```
+
+   非 `final` 片段如下。此时：
 
    - `semantic_review_preflight` 设为 `False`  
    - `internal_semantic_review` 保持 `None`  
@@ -219,7 +246,7 @@ human = workflow.conformance_human_route
      - `context_plan.contexts` 为空列表  
      - `context_plan.blocked_rule_ids` 为空列表  
 
-   此分支不产生内部审阅结果，禁止将 `None` 替换为 `[]`。其他分支保留原 `context_results` 和原停点，不因空 contexts 而略过预算或输入错误。正常空计划沿同一次 Task 的原工作流完成确定性检查或缺证终态，再做步骤 7、8 的校验与六段报告。
+   此分支不产生内部审阅结果，禁止将 `None` 替换为 `[]`。其他分支保留原 `context_results` 和原停点，不因空 contexts 而略过预算或输入错误。正常空计划沿同一次 Task 的原工作流完成确定性检查或缺证终态，再做步骤 7、8 的校验与六段报告。`final` 不执行这一段。
 
    若出现预算阻塞、真实必需输入缺失、权限拒绝或其他合同错误，仍沿用原失败关闭逻辑，不得以空 `contexts` 作为替代条件跳过检查。
 
@@ -272,7 +299,7 @@ human = workflow.conformance_human_route
 
    `result_schema` 沿步骤 2 保持原 Schema ID 字符串。`assert_foundation_exchange` 成功时返回 `None`，保留原断言调用和真实成功或异常记录；不将 `None` 改造为 `valid=true` 收据。不得用 `try/except` 吞掉该断言异常，也不得把命令 stdout/stderr 经 `2>&1 | tail` 截掉断言行；完整输出须保留 OK 或 raised 原文。失败应进入 `failed`，不得靠 exit 0 与残页声称交换成功。语义判断需纠正时，先取得并保留实际重新审阅的结果，再交步骤 8 的原摘要函数呈现；不能在摘要中改写机器状态。
 
-8. `render_human_summary(domain_result, group_registry, journey_facts)`  
+8. `render_human_summary(domain_result, group_registry, journey_facts, professional_context=professional_context)`  
    `domain_result` 取已消费的 `workflow_result["conformance_result"]`，包括 `exc.result` 信封。  
    `journey_facts` 带上宿主实际观察的 `semantic_model_call_count`、`semantic_context_count`、`semantic_rules_sent_to_model_count`；未观察则传 `None`，摘要渲染为 `unknown`。不以上下文数或结果数量推算调用次数。
 
@@ -299,3 +326,67 @@ human = workflow.conformance_human_route
    - 不用人类摘要改写 `domain_result` 中的机器状态。规则冲突导致无法判断时，说明 Audit 尚不能作出该条结论，不将其写成已确认的目标违规。
 
 `--semantic-review-stdin` 仍以退出码 2、顶层 `BLOCKED` 和 `SEMANTIC_REVIEW_PRODUCER_UNTRUSTED` 失败关闭。
+
+
+## 专业材料与阶段绑定
+
+审计流程中，`audit_input` 与原始 `Task.parameters.evidence_set` 保持冻结，不作任何修改。在 `late Task` 阶段，`professional_consumption` 所指向的实际证明，由严格读取接口生成阶段内语义证据视图：包含基础证据，以及可引用原证明的 `receipt`、`path`、`sha256`、`evidence_id`。宿主直接消费预检返回的请求与上下文，不手工补写证据集合。
+
+在 `final` 阶段，需从原始 `late Task` 重建同一视图，核验原始 `Task`、`parent request`、`context` 与原始引用。任何字节漂移、内容替换或任务错配均拒绝通过。取得专业证明不自动等同于 `FOUNDATION-012/014` 的语义通过；原对象、范围、不完整项与限制条件仍需参与判断。
+
+高版本证明按政策接受，与本次是否实际开展检查为两个独立事实。报告须保留 `selected`、`action`，以及原 `conclusion` 的 `outcome`、`scope`、`limitations`。`action=scan` 仅表示所选动作，不能据此声称已完成完整扫描；实际尝试但未开展、部分完成或完整完成，须依据原始结果如实说明。不得因 `version_policy` 断言本次未调用检查，也不得因原 `reader` 的 `not_pass` 撤销已批准的高版本接受。
+
+## 核清实际对象再判断
+
+每条现行义务的判断，必须基于实际对象与已绑定材料，不得从目录名、角色标签或文件数量推导额外要求。跨规则使用相同材料时，须先确认比较对象一致，再对事实作统一解释；不同义务可得出不同结论，禁止将其他义务的结论直接复制为本条结论。
+
+- `scripts` 目录不自动代表内部实现不公开。若 `README` 或 `Skill` 中明确说明用途、调用方式与支持边界，相关辅助工具可属于公开支持范围；未独立注册为 `Skill` 本身，不能证明违规。不得将全部脚本自动视为公开能力。
+- `author` 是作者元数据，`LICENSE` 中的版权所有者是权利归属，两者无需一致。须先查阅约定事实源、版权条款、变更依据与所需授权；若无法获取相关材料，应说明缺证，不得仅因作者与版权主体不同即要求修改作者字段或历史版权。
+- 公开包快照与父工程配置属于不同范围。包内缺失某份工程文件，不能证明父工作区未采用、豁免或校验；无法取得获准工程材料时，报告本次材料缺口，不得断言整个工程违规，也不得据此免除真实义务。
+- `userInvocable` 仅说明人类可调用，不能单独证明其承担领域助手角色，或已由 `Registry` 解析为方法提供方。判断须基于真实角色与解析对象。
+- 插件编辑真源与消费者站点内容真源为不同对象。消费者站点配置的权威性，不能证明插件自身多副本维护符合规范；对同一插件源码及投影关系的判断，须使用一致的事实解释。
+- 平台族与宿主安装标识为不同计数对象。须先核实合并、别名与映射关系，再判断支持范围冲突。错误的计数理由应纠正；若存在独立真实反例，仍保留对应结论。
+
+## 条件判断、恢复与同对象一致性
+
+对六条条件规则，须从当前请求准确读取 `reason_code`、`allowed_statuses` 与证据角色。`METHOD005_NEW_ENTRY_ABSENT` 与 `METHOD011_SHARED_ENTRIES_ABSENT` 为本请求中实际列出的代码示例，不得以近义代码替代；适用条件未知时，`reason_code` 应选择对应 `*_CONDITION_UNKNOWN`，其值为标识符而非状态，实际 `status` 由 `allowed_statuses` 字段定义。`rationale` 中提及的代码仅用于说明判断依据，不得替代 `reason_code` 字段；真正支持判断的引用必须完整放入 `evidence_refs`。
+
+原 context 内必要纠正须基于原始请求与已保存的判断进行核对。若返回 `REVIEW_REQUIRED` 或 `EVIDENCE_MISSING` 仅因代码拼写错误，且原材料支持对应分支，应在原上下文内重新审阅并修正，保留首次原结果与纠正后的真实返回，再交由原合并与 finalize 流程。代码拼写修正不改变事实判断，材料不足或前提未知时仍应明确保留不足状态，不可批量修改状态或泛化 finalizer，不得重复触发其他 context 的重跑。
+
+METHOD-004 的业务价值流与方法划分不因未采用 Registry 而退出；METHOD-002 仍保留对 Registry 的限定要求。PROGRAM-012/013 适用性以当前义务、适用范围与实际行为为准，位于 `scripts`、仅读或不调用模型、属辅助工具者，不自动排除；需检查适用程序的实际输入输出、退出与错误合同。ARTIFACT-028 按其依赖、安装与环境诊断对象判断，未联网不构成排除实际配置存在性诊断的理由。所有判断均基于当前事实，不预设通过或失败，未确认对象或材料不充分时应明确保留不足。
+
+PLAT-033 需比对同一能力、同一次变更的实际发布承诺。交叉查阅 `README`、`Skill`、变更记录与版本说明中关于“已分发”与“尚未发布”的表述，确认是否指向同一对象与时期。无关功能的包版本变化不能自动消解真实矛盾，不同版本安装示例亦不能单独证明冲突。专业结论中的版本关系应以当前消费返回的实际结果为准，同版不视为高版本接受，不预填目标结论，引用支持判断的具体材料。
+
+## 提交可消费的机械对象判断
+
+当当前 `request` 要求机械对象前提时，实际判断必须填写在已有 `reason_code` 中，`rationale` 需解释该前提及本条业务结论，`evidence_refs` 必须引用本条真正读取的绑定材料。仅在 `rationale` 中写出某代码，而 `reason_code` 仍为一般说明时，无法完成机械对象判断。不得通过解析 `rationale` 推测 `NA`。
+
+单方法使用请求列出的现有码：
+
+- `MACHINE_SCHEMA_NOT_ADOPTED` 仅用于 `schema_validation` 的对象未采用；
+- `STATIC_WIRING_NOT_ADOPTED` 仅用于 `static_scan` 的接线对象未采用；
+- `BYTE_CORRESPONDENCE_NOT_DECLARED` 仅用于 `digest_verification` 的字节对应关系未声明。
+
+只有当所有列出的机械对象均确认不存在，且本条不要求它们时，才可使用 `MECHANICAL_OBJECTS_ABSENT`。无材料不等于无对象。真实对象存在但输入缺失、对象存在且可消费专业结果、已确认公共范围之外或对象仍未知，均须根据请求现有码及实际证据分别提交；不得将语义通过当作机械通过。
+
+一个 `review` 身份仅对应一个 `reason_code`。不同机械方法的混合事实无法由现有单字段表达时，保持未能表达的方法为未完成；不得拼接复合代码、不得编码列表、不得重复同身份 `review`，不得将一个方法的 `NA` 扩展至其他方法或整条规则。当前义务的语义判断仍独立保留。`STATE-007/TASK-015` 读取指令与说明性样例；不要求旧运行记录、不运行目标，不将 LLM 阅读冒充 `schema` 校验。
+
+## 按实际原因说明阻断
+
+六段报告须逐项保留原 `reason` 与 `evidence`，说明对象、检查范围、责任与下一步。仅当具体反例证明目标与规则要求不一致时，才要求目标修复。目标材料未提供时，说明实际所需材料与获准范围；原专业检查因输入或能力不足未完成时，保留其具体范围；`Audit` 未派发、未完成对象判断、漏接材料或内部异常由 `Audit` 处理。不得将全部缺证与未执行项归责于目标，不得要求目标改业务、补造证明或创建私有治理 `JSON` 来掩盖 `Audit` 未完成。
+
+`next_action.primary_action` 保持函数原值与含义。`fix_failed_rules` 仅解释为修复已有充分反例的目标问题，不将 `Audit` 未完成项混入其中。状态与责任仍在现有报告中说明，不新增责任分类状态机，不修改旧报告或原结果。
+
+## 专业动作来源与报告生成上下文
+
+调用 `render_human_summary` 时，通过可选参数 `professional_context` 传入已校验的 `Task.parameters.professional_consumption`。该参数仅用于补充报告中 `selected` 与 `action` 的显示内容，不改变 `domain_result`、`Task`、`audit_input`、专业结论或高版本接受政策的任何语义。
+
+若无有效 `professional_context`，或同一提供方在多个原始 `late Task` 中出现且上下文无法唯一对应，则 `selected`、`action`、`scan_performed_this_time` 均为 `None`，人类报告中应写为 `unknown`。不得依据 `version_policy` 推断本次未执行扫描，不得将 `action=scan` 的计划状态误写为已完成扫描。实际检查范围与执行状态仍以原始 `conclusion` 中的 `outcome`、`scope`、`details.review` 记录为准。
+
+完整档必须先成功完成 `combine_final_stage` 的阶段绑定核验，再从最终 `Task` 的 `stage_results` 取原 `late Task` 的定位，沿已有 `_load_stage_json` 和 `_task_parameters` 读取原输入。不得用最终 `Task` 的缺省选择覆盖原 `late` 选择，也不得添加第二个 `reader` 或持久账本。相同提供方在多个原 `late Task` 中重复出现而上下文无法唯一对应时，`selected`、`action`、`scan_performed_this_time` 保持为 `None`，报告中写 `unknown`。Quickstart 两处原始摘要调用仅从当前已校验 `Task` 传入该参数。
+
+现有步骤8调用签名更新为：
+
+`render_human_summary(domain_result, group_registry, journey_facts, professional_context=professional_context)`
+
+其余六段顺序与动作不变。

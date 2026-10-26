@@ -141,10 +141,25 @@ def check_context_001(ctx: dict[str, Any]) -> dict[str, Any]:
     达到告警线必须声明预算告警已产生；权威估算器落地前，启发式口径超限
     清单仅作证据，不作整改依据。
     """
+    measure = ctx.get("measure_skill_context")
+    if callable(measure):
+        try:
+            observation = measure()
+        except (RuntimeError, ValueError, OSError) as exc:
+            return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed",
+                          object="logical SKILL.md and declared platform projections", detail=str(exc))
+        if observation.get("reason") != "actual_skill_context_measured":
+            return result("EVIDENCE_MISSING", **observation)
+        over = [row for row in observation["measurements"] if row["maximum_tokens"] >= 2000]
+        return result("PASS", **observation, warning_threshold=2000,
+                      budget_warnings=[{"skill": row["skill"], "tokens": row["maximum_tokens"],
+                                        "recommendation": "Reduce redundant context while preserving the business contract."} for row in over])
     document = _doc(ctx, "context-budget")
     if document is None:
-        return result("PASS", measurements_declared=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed", object="logical SKILL.md and declared platform projections", mechanical_half=True)
     rows = rows_of(document, "measurements", "context-budget")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed", object="logical SKILL.md and declared platform projections", mechanical_half=True)
     violations = []
     evidence_only = []
     for index, row in enumerate(rows):
@@ -450,8 +465,14 @@ def check_context_033(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = _doc(ctx, "context-budget")
     if document is None:
-        return result("PASS", detail_placements_declared=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='领域细则、平台差异、长示例或结构定义的实际放置位置与读取条件',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     rows = rows_of(document, "detail_content_placements", "context-budget")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='领域细则、平台差异、长示例或结构定义的实际放置位置与读取条件',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     violations = []
     for index, row in enumerate(rows):
         kind = row.get("content_kind")

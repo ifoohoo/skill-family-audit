@@ -12,13 +12,13 @@
     "source-truth-declaration.schema.json"
   ],
   "kind": "skill-family-audit.foundation-handoff",
-  "payloadDigest": "be11fff54f6bde104436ef4a344f2404946c33cd4cc9d9714daf631b92cf8844",
+  "payloadDigest": "a827cd157c5d91dea04418065d635e0a59dbc6b118ef922c54f242c470156d8a",
   "profile": {
     "contractsVersion": "1.20.0",
     "id": "quickstart-profile",
     "version": 2
   },
-  "provenanceDigest": "3755bced9fa9724a53ca30304d6f237dc43708bcccb6910699290863d00b4b42",
+  "provenanceDigest": "5f074aef41f01c37d31804b85ac89103903385741e4c7d0cc8ce844436428865",
   "receipt": {
     "kind": "skill-family.source-authority-receipt",
     "sha256": "9a6ffadef519d41fb38c4c04693698eb5c9ab5641f45813454704ac99bcefe0a"

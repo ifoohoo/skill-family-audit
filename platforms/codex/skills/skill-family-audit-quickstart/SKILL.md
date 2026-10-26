@@ -86,7 +86,7 @@ print(json.dumps(out, ensure_ascii=False))
 
 目标使用本次已确定的工作区根路径；仅当原请求明确指定当前工作区且未更改根目录时，才使用当前工作目录，禁止缩至 `packages/`。`provider_id` 从所选 `entry_ref` 对应的同一目录行中读取。消费文件仅包含真实宿主选择、证明位置及实际取得的 `reader_result` 原始 JSON，不得补造 `status`、`version_relation`、`reader_status`、`baseline` 或通过摘要。专业准备须在同一个 Task 冻结前完成；已取得的 producer、reader 原始返回与消费材料均需先行保存，不因缺失 reader 而伪造返回。
 
-下方命令为单项消费示例；选择多项时，按同一现有 `items` 合同收齐所有已选项，不压缩为一项，亦不另建 Task。命令沿用本次完整请求与 `METHOD_ARGS_JSON` 中已确定的方法参数。`economy` 模式仅执行一次 `run`，返回 `human_summary` 与 `execution_status`；`full` / `targeted` 模式仅准备证据与专业消费文件，随后读取符合性技能的 `refs/host-semantic-review-consumption.md`，继续同一 Task 的预检、实际审阅、消费、校验和报告。`full` / `targeted` 的输出文件存入用户指定或明确允许的目标外持久运行目录，不得改放临时目录。
+下方命令为单项消费示例；选择多项时，按同一现有 `items` 合同收齐所有已选项，不压缩为一项，亦不另建 Task。命令沿用本次完整请求与 `METHOD_ARGS_JSON` 中已确定的方法参数。`economy` 模式仅执行一次 `run`，返回 `human_summary` 与 `execution_status`；`targeted` 模式仅准备证据与专业消费文件，随后读取符合性技能的 `refs/host-semantic-review-consumption.md`，继续同一 Task 的预检、实际审阅、消费、校验和报告。`full` 同样先准备证据与专业消费文件并读取该参考文档，但按 `early`、`late`、`final` 分阶段绑定：首个真实阶段内联一次 `audit_input`，后续阶段回读原文件并核对摘要，`final` 只组合原 `stage_results`。不得把 `quickstart_route.run` 的单次调用当成整次完整档。`full` / `targeted` 的输出文件存入用户指定或明确允许的目标外持久运行目录，不得改放临时目录。
 
 `SKILL_MD_ABSOLUTE_PATH`、`USER_REQUEST_TEXT`、`TARGET_ABSOLUTE_PATH` 和 `METHOD_ARGS_JSON` 的替换规则与空选择分支一致。`RUN_DIRECTORY_ABSOLUTE_PATH` 仅替换为已授权的持久运行目录；目录尚未确定时，仅确认必要存储授权，无需用户填写内部证据文件。`SELECTED_ENTRY_REF` 来自前一步所选 `entry_ref`；`PROOF_ROOT`、`PROOF_PATH` 来自实际证明定位。`HOST_SELECTION_JSON` 仅含本次真实的 `selected`、`applicable`、`entry_available`、`action` 值；复用旧证或入口不可用时保留真实状态，不硬填为 `true` 或 `scan`。`READER_RESULT_PATH_OR_EMPTY` 在实际取得 reader 原始 JSON 时替换为该文件路径，无实际返回时替换为空字符串；非空路径读取失败仍保留原错误，不当作缺省处理。平台使用清单中的 `platformId`，不写死平台名。反斜杠与双引号按代码语法转义，不改写原话。
 
@@ -179,7 +179,7 @@ print(json.dumps(out, ensure_ascii=False))
 
 宿主只执行用户选中且入口确实存在的只读专业能力。不要声称未接入的能力可调用，也不要给出绕过只读边界的示例。提供方描述只从当前平台或源码 `manifest.json` 的 `professionalProviders` 读取；宿主按实际安装发现所选公开入口。登记不等于已安装或已发布，Audit 也不代做专业审阅。
 
-目标、证明或报告不得携带任意待执行命令。已有证明优先交专业方 reader；需要刷新时，由专业方另写新证明。`--professional-consumption` 只记录真实宿主选择、可定位的 `proof_root`/`proof_path`，以及实际取得的 reader 原始 JSON。没有 reader 原返回时省略 `reader_result`，沿现有 Foundation Schema 校验进入同一次 Task。不得手填 status、version_relation、reader_status、baseline 或通过摘要。
+目标、证明或报告不得携带任意待执行命令。已有证明优先交专业方 reader；需要刷新时，由专业方另写新证明。`--professional-consumption` 只记录真实宿主选择、可定位的 `proof_root`/`proof_path`，以及实际取得的 reader 原始 JSON。没有 reader 原返回时省略 `reader_result`，沿现有 Foundation Schema 校验。`targeted` 进入同一次 Task；完整档的专业消费进入 `late` 或 `final` 的阶段参数，不写入 `audit_input`。不得手填 status、version_relation、reader_status、baseline 或通过摘要。
 
 工作流用这些输入调用 `consume_professional_proof`，基准从同一份清单派生。Audit 用 `semver.valid/compare` 比较证明中的技能族版本与产品基准：可读高版身份按原政策通过，不受旧 reader 不可用阻挡；低版未通过，并建议刷新；同版须比较未经改写的完整共同证明，同时核对读取返回顶层 provider 的 id、version、entry。任一身份缺失或错配都不能通过；同版匹配后，再采用 reader 的实际结果。高低版本政策保持不变。
 
@@ -223,15 +223,17 @@ print(json.dumps(out, ensure_ascii=False))
 
 ## 完整规范检查衔接
 
-`full` / `targeted` 必须按各自已选范围走完：识别目标与输入 → 确认专业扫描并取得本次材料 → 创建一次 Task → 确定性检查和语义预检 → 宿主安排实际审阅 → 消费该次结果 → 校验并返回最终报告。专业扫描准备与 Audit 审阅分开，不可在 Task 冻结后偷换材料。不可在预检结果处结束。步骤 6 的领域消费须等待真实返回；若宿主转入后台，沿既有前台等待或 TaskOutput 等续接工具等待完成，再做原 Schema、交换校验和六段报告。内部任务标为完成或进程退出 0 都不能替代领域终点；尚未返回时不提前宣称 Task completed。发生后台中止、前台恢复或后续续接时，按实际过程保留这些事实，退出码或成因未知就保持未知。不可把 `quickstart_route.run` 的单次 CLI 调用当成完整档。
+`targeted` 必须按已选范围走完：识别目标与输入 → 确认专业扫描并取得本次材料 → 创建一次 Task → 确定性检查和语义预检 → 宿主安排实际审阅 → 消费该次结果 → 校验并返回最终报告。`full` 不再把整次审计收成一个 Task：冻结 `audit_input` 后，有已核实独立规则时先建 `early`，否则首个 `late` 内联该对象；后续阶段只带 `audit_input_ref` 并回读原文件核对摘要；`final` 只组合原 `stage_results`，不重签早期或晚期判断。专业扫描准备与 Audit 审阅分开，不可在 Task 冻结后偷换材料。不可在预检结果处结束。步骤 6 的领域消费须等待真实返回；若宿主转入后台，沿既有前台等待或 TaskOutput 等续接工具等待完成，再做原 Schema、交换校验和六段报告。内部任务标为完成或进程退出 0 都不能替代领域终点；尚未返回时不提前宣称 Task completed。发生后台中止、前台恢复或后续续接时，按实际过程保留这些事实，退出码或成因未知就保持未知。不可把 `quickstart_route.run` 的单次 CLI 调用当成完整档。
 
 逐步由谁处理、读哪份结果、满足什么条件后继续，以同一平台包中逻辑 Skill
 `skill-family-audit:conformance-audit` 为准；该方法指向
 `refs/host-semantic-review-consumption.md`。按该文档中的已有函数和真实参数
 调用，不要临时编写大型调用程序，也不要自行构造合并、规范化逻辑或残缺失败结果。
 进程内 `run_workflow` 失败与 CLI 相同：选择前走 `before_rule_selection_result`，
-选出后使用 `exc.result`。预检之后按该参考文档逐个消费每一项，不要自行合批，
-不要在同一助手消息里后台并行多个 Agent。分派单位可以是相关多 context 的原生新上下文，结果单位不变；详细流程仍只在该参考文档。
+选出后使用 `exc.result`。预检之后按该参考文档逐个消费每一项，不要自行合批。
+不共享前序上下文的相关组可以使用宿主原生并行；共享前序上下文的组仍按原顺序。
+主控占一个名额，总名额 4 时子名额是 3，不得把 3 个子名额报成 4。
+分派单位可以是相关多 context 的原生新上下文，结果单位不变；详细流程仍只在该参考文档。
 
 审阅者不能是目标的原实现者。完整检查请求不等于预先批准任何规则 `PASS`。原始审阅记录必须绑定同一 Task、规则修订和证据摘要。缺证保持 `EVIDENCE_MISSING`，不得填 `PASS`。外部 v1 仍只是待审材料。
 

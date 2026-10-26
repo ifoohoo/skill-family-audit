@@ -1940,13 +1940,16 @@ def check_qualify_001(ctx: dict[str, Any]) -> dict[str, Any]:
     claims = _qualification(ctx)
     result_rows: list[dict[str, Any]] = []
     extra: dict[str, Any] = {}
-    if claims is None:
+    rows = rows_of(claims, "release_claims", "qualification-claims") if claims is not None else []
+    if not rows:
+        evidence = {"reason": "audit_mechanical_object_unresolved",
+                    "object": '实际品质标签的含义、承诺范围、已知限制与公开入口设计',
+                    "source_refs": list(ctx.get("evidence_set") or [])}
         if run_schema:
-            result_rows.append(_schema_row("PASS", reason="no_declared_qualification"))
+            result_rows.append(_schema_row("EVIDENCE_MISSING", **evidence))
         if run_digest:
-            result_rows.append(_doc_digest_row(ctx, ("qualification-claims",)))
-        return _completed(result_rows, qualification_declared=False)
-    rows = rows_of(claims, "release_claims", "qualification-claims")
+            result_rows.append(_digest_row("EVIDENCE_MISSING", **evidence))
+        return _completed(result_rows, **evidence)
     if run_schema:
         violations = []
         for row in rows:
@@ -2182,53 +2185,18 @@ def check_qualify_004(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_qualify_006(ctx: dict[str, Any]) -> dict[str, Any]:
-    """未达整体门槛的范围必须显式排除。
-
-    机械断言：低于稳定门槛的范围必须携带实验/暂缺/不在本次稳定支持标记，
-    不得被稳定版本静默包含。
-    """
-    claims = _qualification(ctx)
-    if claims is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_qualification"),
-                _doc_digest_row(ctx, ("qualification-claims",)),
-            ],
-            qualification_declared=False,
-        )
-    threshold = claims.get("stable_threshold", 2)
-    if not isinstance(threshold, int):
-        raise ExecutorEvidenceError(
-            "GOVERNANCE_DOCUMENT_INVALID", "qualification-claims.stable_threshold 必须是整数"
-        )
-    scopes = rows_of(claims, "scopes", "qualification-claims")
-    violations = []
-    for row in scopes:
-        level = row.get("level")
-        if not isinstance(level, int):
-            violations.append({"scope_id": row.get("scope_id"), "reason": "level_invalid"})
-            continue
-        if level >= threshold:
-            continue
-        if row.get("explicit_exclusion_mark") not in _EXCLUSION_MARKS:
-            violations.append({"scope_id": row.get("scope_id"), "reason": "exclusion_mark_missing"})
-        if row.get("silently_included_in_stable") is True:
-            violations.append({"scope_id": row.get("scope_id"), "reason": "silently_included_in_stable"})
-    if violations:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations", violations=violations),
-                _doc_digest_row(ctx, ("qualification-claims",)),
-            ],
-            below_threshold_scopes_not_excluded=violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", scopes_checked=len(scopes)),
-            _doc_digest_row(ctx, ("qualification-claims",)),
-        ],
-        scopes_checked=len(scopes),
-    )
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _qualification(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Applicable machine structure for actual experimental or excluded stable-support declarations', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 CHECKS = {

@@ -1086,56 +1086,18 @@ def check_qualify_005(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_qualify_007(ctx: dict[str, Any]) -> dict[str, Any]:
-    """项目政策只能加严验证档位，不得降低最低档位。
-
-    机械断言：已声明项目政策档位必须 ≥ 规范政策最低档位；低于即违反。
-    """
-    claims = _qualification(ctx)
-    if claims is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="no_declared_qualification"),
-                _doc_digest_row(ctx, ("qualification-claims",)),
-            ],
-            qualification_declared=False,
-        )
-    project_level = claims.get("project_policy_level")
-    minimum_level = claims.get("spec_minimum_level")
-    if project_level is None and minimum_level is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="policy_levels_not_declared"),
-                _doc_digest_row(ctx, ("qualification-claims",)),
-            ],
-            policy_levels_declared=False,
-        )
-    if not isinstance(project_level, int) or not isinstance(minimum_level, int):
-        raise ExecutorEvidenceError(
-            "GOVERNANCE_DOCUMENT_INVALID",
-            "qualification-claims 项目政策档位与最低档位必须是整数",
-        )
-    if project_level < minimum_level:
-        return _finish(
-            [
-                _schema_row("FAIL", reason="schema_violations"),
-                _doc_digest_row(ctx, ("qualification-claims",)),
-            ],
-            project_level=project_level,
-            spec_minimum_level=minimum_level,
-        )
-    return _finish(
-        [
-            _schema_row(
-                "PASS",
-                reason="schema_checks_passed",
-                project_level=project_level,
-                spec_minimum_level=minimum_level,
-            ),
-            _doc_digest_row(ctx, ("qualification-claims",)),
-        ],
-        project_level=project_level,
-        spec_minimum_level=minimum_level,
-    )
+    """Keep the actual object and method boundary; declarations are not checks."""
+    declared = _qualification(ctx)
+    evidence = {"reason": "audit_mechanical_object_unresolved",
+                "object": 'Project-specific requirements, their scope and recorded special treatment against adopted requirements', "declared_material": declared,
+                "source_refs": list(ctx.get("evidence_set") or []),
+                "project_observation": ctx.get("scope", {}).get("plugin_project"),
+                "mechanical_half": True}
+    if declared:
+        evidence["detail"] = "Declarations are present; the corresponding original mechanical observation has not been established."
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 CHECKS = {

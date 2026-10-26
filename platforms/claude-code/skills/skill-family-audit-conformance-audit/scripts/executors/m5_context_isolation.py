@@ -90,10 +90,48 @@ def check_context_002(ctx: dict[str, Any]) -> dict[str, Any]:
     - 权威估算器口径达到阈值必须声明干预（减量或拆分）；
     - 权威估算器落地前，启发式口径超限仅作证据，不强制整改。
     """
+    measure = ctx.get("measure_skill_context")
+    if callable(measure):
+        try:
+            observation = measure()
+        except (RuntimeError, ValueError, OSError) as exc:
+            return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed",
+                          object="logical SKILL.md and declared platform projections", detail=str(exc))
+        if observation.get("reason") != "actual_skill_context_measured":
+            return result("EVIDENCE_MISSING", **observation)
+        over = [row for row in observation["measurements"] if row["maximum_tokens"] >= CONTEXT_HARD_TOKENS]
+        assessments = []
+        for row in over:
+            materials = []
+            for material in observation.get("assessment_materials", []):
+                document = material["document"]
+                if not isinstance(document, dict):
+                    raise ExecutorEvidenceError("GOVERNANCE_DOCUMENT_INVALID", "context-budget must be an object")
+                matches = [item for item in rows_of(document, "measurements", "context-budget")
+                           if item.get("skill") == row["skill"]]
+                if matches:
+                    materials.append({**material, "matching_measurements": matches})
+            assessments.append({"skill": row["skill"], "tokens": row["maximum_tokens"],
+                "required": "applicable budget and reduction or responsibility-split result retaining necessary business information",
+                "materials": materials})
+        if assessments:
+            # The existing measurement contract's intervention string neither
+            # establishes its result nor proves required information survived.
+            # No published complete mechanical consumer for that assessment is
+            # available here. Preserve original material without inventing a
+            # private result format or treating the trigger as a prohibition.
+            return result("EVIDENCE_MISSING", **{**observation, "reason": "audit_mechanical_object_unresolved"},
+                object="corresponding Skill applicable budget and intervention result",
+                hard_threshold=CONTEXT_HARD_TOKENS, assessment_required=assessments,
+                threshold_violations=[])
+        return result("PASS", **observation, hard_threshold=CONTEXT_HARD_TOKENS,
+                      assessment_required=[], threshold_violations=[])
     document = load_governance_document(ctx, "context-budget")
     if document is None:
-        return result("PASS", measurements_declared=0, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed", object="logical SKILL.md and declared platform projections", mechanical_half=True)
     rows = rows_of(document, "measurements", "context-budget")
+    if not rows:
+        return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed", object="logical SKILL.md and declared platform projections", mechanical_half=True)
     violations = []
     evidence_only = []
     for index, row in enumerate(rows):
@@ -966,14 +1004,10 @@ def check_harness_005(ctx: dict[str, Any]) -> dict[str, Any]:
     """
     document = load_governance_document(ctx, "harness-interfaces")
     if document is None:
-        return _finish(
-            [
-                _schema_row("PASS", reason="harness_not_declared"),
-                _static_row("PASS", reason="harness_not_declared"),
-            ],
-            harness_declared=False,
-            mechanical_half=True,
-        )
+        return _finish([
+            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='声明外部观察器集成时适用；未声明时不适用。 提供者中性的观察器 binding 声明; provider、协议、证据位置、事件、责任与不可用处置字段', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='声明外部观察器集成时适用；未声明时不适用。 提供者中性的观察器 binding 声明; provider、协议、证据位置、事件、责任与不可用处置字段', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
+        ], reason="audit_mechanical_object_unresolved", object='声明外部观察器集成时适用；未声明时不适用。 提供者中性的观察器 binding 声明; provider、协议、证据位置、事件、责任与不可用处置字段', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     binding = document.get("observer_binding_interface")
     if not isinstance(binding, dict):
         return _finish(
@@ -1265,7 +1299,9 @@ def check_selfheal_001(ctx: dict[str, Any]) -> dict[str, Any]:
     """自愈政策必须预先声明动作、重试、返工、预算、终止与升级条件。"""
     policy = _selfheal_policy(ctx)
     if policy is None:
-        return result("PASS", selfheal_declared=False, mechanical_half=True)
+        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                      object='自动恢复的实际适用范围、预先政策、停止和用户介入条件',
+                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
     missing = [field for field in SELFHEAL_POLICY_FIELDS if field not in policy]
     if missing:
         return result("FAIL", policy_fields_missing=missing, mechanical_half=True)
