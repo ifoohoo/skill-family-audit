@@ -1,0 +1,78 @@
+{
+  "fixtureId": "orchestration-blueprint.positive.valid",
+  "contract": "orchestration-blueprint",
+  "class": "positive",
+  "description": "合法的 orchestration-blueprint 候选契约文档通过严格校验。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/orchestration-blueprint.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": true
+  },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.orchestration-blueprint",
+    "blueprintId": "bp-fixture-001",
+    "skillFamilyId": "fictional-family",
+    "version": "0.1.0",
+    "title": "虚构最小多会话编排蓝图",
+    "summary": "用于契约正例校验的最小编排定义。",
+    "entryNodeId": "n-1",
+    "terminalNodeIds": [
+      "n-1"
+    ],
+    "toolContracts": [],
+    "nodes": [
+      {
+        "nodeId": "n-1",
+        "executor": "llm_session",
+        "role": "coordinator",
+        "decisionAuthority": "none",
+        "title": "入口节点",
+        "responsibility": "执行只读核查",
+        "modelTier": "flagship_reasoning",
+        "allowedHosts": [
+          "deepseek-harness"
+        ],
+        "sideEffectCeiling": "read_only",
+        "allowedWriteSet": [],
+        "allowedTools": [],
+        "skillBindings": [],
+        "isolation": {
+          "workspaceMode": "fresh_readonly",
+          "mergeBack": "none",
+          "contextMode": "fresh"
+        },
+        "onFailure": {
+          "route": "abort",
+          "maxRetries": 0
+        },
+        "hostRequirements": {
+          "requiredCapabilities": []
+        },
+        "hostFallbackPolicy": [],
+        "completionCriteria": []
+      }
+    ],
+    "edges": [],
+    "expectedEvidence": [],
+    "hitlGates": [],
+    "budgetAndSafetyPolicy": {
+      "contextPolicy": {
+        "warnRatioBp": 4000,
+        "hardStopRatioBp": null,
+        "onWarn": "warn_and_handoff"
+      },
+      "maxTotalTokens": null,
+      "maxCostMicroUsd": null,
+      "maxWallClockSeconds": null,
+      "onBudgetExceeded": "abort",
+      "sandboxPolicy": {
+        "requireOsSandbox": true,
+        "networkAccess": "none"
+      }
+    }
+  }
+}

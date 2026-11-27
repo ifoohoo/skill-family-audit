@@ -2,7 +2,7 @@
   "schemaVersion": "1.0.0-candidate",
   "methodId": "skill-family-audit:release-audit",
   "name": "发布门禁检查",
-  "description": "汇总已审发布评估，并用调用方显式提供、精确字节锁定的 Release Skill 0.9.17 公共 CLI 核验发布记录；Node 22 由既有 Foundation host 提供，不接受调用方选择解释器。不声明远端当前状态，也不重新执行符合性审计、行为验证、运行评估或 Release Skill 的计划/运行/批准算法。方法只绑定一个 release-audit-input Resource，不接受调用方内嵌验证器 JSON 形成成功结果。业务验收引用族能力 cap:skill-family-audit.family 的 business_result 共用可观察验收；下列 acceptanceCriteria 的特有标准是补充要求。同一冻结输入重复调用时只做只读重算；输入变化时重新评估；重复调用不重放批准或发布。",
+  "description": "只读汇总已审发布评估（conformance、platforms、exceptions、release_policy）及显式静态证据摘要，不启动任何外部子进程，不反向调用 Release Skill CLI；领域结果可单向投影为 professional-conclusion 供发布方消费。不声明远端当前状态，也不重新执行符合性审计、行为验证、运行评估或发布计划/运行/批准状态机。方法只绑定一个 release-audit-input Resource。业务验收引用族能力 cap:skill-family-audit.family 的 business_result 共用可观察验收；下列 acceptanceCriteria 的特有标准是补充要求。同一冻结输入重复调用时只做只读重算；输入变化时重新评估；重复调用不重放批准或发布。",
   "capability": {
     "capabilityRef": "cap:skill-family-audit.family",
     "capabilityDigest": "sha256:9010b74dedab3cb0cc24d5b3a9ca18f13f0f67cc635d52d366fc37397b3ba6d3",
@@ -31,7 +31,7 @@
     "filesystem": [
       "read"
     ],
-    "processExecution": "release-skill@0.9.17:verify-records-only",
+    "processExecution": "none",
     "dependencyInstall": "none",
     "networkRead": "none",
     "externalWrite": "none",
@@ -43,13 +43,12 @@
   "acceptanceCriteria": [
     "业务验收引用 cap:skill-family-audit.family 的 business_result 共用可观察验收；以下各项是本方法补充要求，不降低原标准",
     "同一冻结输入的重复调用只做只读重算，不重放批准或发布；输入变化时重新评估",
-    "只汇总发布评估，并执行 Release Skill 0.9.17 公共 verify-records 命令",
-    "CLI 与自包含 bundle 在执行前后都必须匹配固定公开字节锁",
-    "Node 22 由既有 Foundation host 提供，CLI 由调用方显式提供绝对路径，不接受解释器输入或 PATH fallback",
-    "只读取显式 plan、approval、target run 与 source runs，不扫描 .release-skill 或跟随记录内路径",
-    "原始输入 bytesSha256、上游输出 digests、候选身份、stdout 摘要及 exit/status 必须闭合",
-    "不重新执行符合性审计、行为验证、运行评估或 Release Skill 的计划/运行/批准算法",
-    "缺少正式 CLI 或显式输入时确定性 BLOCKED，字节锁或输出绑定矛盾时 FAILED",
+    "只做发布评估汇总与显式静态记录摘要核对，processExecution 固定为 none，不反向执行外部发布工具子进程",
+    "单向产出领域结论与 professional-conclusion 供下游发布门禁只读消费",
+    "只读取显式 assessments_ref 与可选静态记录引用，不扫描受检目录或跟随未声明路径",
+    "原始输入 bytesSha256、上游评估 digests 与候选身份必须闭合",
+    "不重新执行符合性审计、行为验证、运行评估或外部发布状态机",
+    "缺少显式输入或必要评估项时确定性 BLOCKED，摘要矛盾或结论失败时 FAILED",
     "门禁条件逐项判定",
     "阻断条件精确到规则"
   ],

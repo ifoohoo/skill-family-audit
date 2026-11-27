@@ -1,0 +1,181 @@
+{
+  "title": "Capability Projection",
+  "description": "JSON Schema for a v2 capability projection / effective index v2 in agent-method-registry",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["documentKind", "schemaVersion", "inputs", "snapshotDigest", "entries"],
+  "properties": {
+    "documentKind": {
+      "const": "v2-projection",
+      "description": "Discriminator for v2 projection documents"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "inputs": {
+      "$ref": "#/$defs/projectionInputs"
+    },
+    "snapshotDigest": {
+      "$ref": "#/$defs/contentHash"
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/projectionEntry" }
+    }
+  },
+  "$defs": {
+    "contentHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "projectionInputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["familyApiId", "familyApiMajor", "apiRevisionDigest", "implementationDigest", "inventoryDigest", "bindingDigest"],
+      "properties": {
+        "familyApiId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "familyApiMajor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "apiRevisionDigest": { "$ref": "#/$defs/contentHash" },
+        "implementationDigest": { "$ref": "#/$defs/contentHash" },
+        "inventoryDigest": { "$ref": "#/$defs/contentHash" },
+        "bindingDigest": { "$ref": "#/$defs/contentHash" }
+      }
+    },
+    "projectionCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "serviceId",
+        "apiId",
+        "apiMajor",
+        "apiRevisionDigest",
+        "familyImplementationId",
+        "serviceImplementationId",
+        "version",
+        "bundleRoots",
+        "installation",
+        "enablement",
+        "compatibility",
+        "trust",
+        "conformanceAttestation",
+        "verificationAttestationDigest"
+      ],
+      "properties": {
+        "serviceId": { "type": "string", "minLength": 1 },
+        "apiId": { "type": "string", "minLength": 1 },
+        "apiMajor": { "type": "integer", "minimum": 1 },
+        "apiRevisionDigest": { "$ref": "#/$defs/contentHash" },
+        "familyImplementationId": { "type": "string", "minLength": 1 },
+        "serviceImplementationId": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "provider": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scope", "pluginId", "host", "canonicalRoot", "skillPath", "packageDigest", "bundleDigest", "provenance"],
+          "properties": {
+            "scope": { "type": "string", "enum": ["plugin", "project"] },
+            "pluginId": { "type": "string", "minLength": 1 },
+            "projectAuthority": { "type": "string", "pattern": "^project\\.[a-z][a-z0-9-]*$" },
+            "host": { "type": "string" },
+            "canonicalRoot": { "type": "string" },
+            "skillPath": { "type": "string" },
+            "packageDigest": { "$ref": "#/$defs/contentHash" },
+            "bundleDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "provenance": { "type": "string" }
+          }
+        },
+        "bundleRoots": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "installation": { "type": "string", "enum": ["INSTALLED", "NOT_INSTALLED"] },
+        "enablement": { "type": "string", "enum": ["ENABLED", "NOT_ENABLED"] },
+        "compatibility": { "type": "string", "enum": ["COMPATIBLE", "INCOMPATIBLE", "UNKNOWN"] },
+        "trust": { "type": "string", "enum": ["VERIFIED", "UNVERIFIED", "REJECTED"] },
+        "conformanceAttestation": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" },
+        "verificationAttestationDigest": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" }
+        ,"authorization": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sideEffectBudget", "granted"],
+          "properties": {
+            "sideEffectBudget": { "type": "string", "enum": ["none", "read-only", "write-authorized-artifacts", "write-review-result", "write-project-artifacts"] },
+            "granted": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "projectionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref",
+        "serviceId",
+        "apiId",
+        "apiMajor",
+        "apiRevisionDigest",
+        "kind",
+        "intents",
+        "summary",
+        "mixSafe",
+        "apiRecognition",
+        "installation",
+        "enablement",
+        "compatibility",
+        "trust",
+        "resolution",
+        "selectionSource",
+        "candidates"
+      ],
+      "properties": {
+        "ref": { "type": "string", "minLength": 1 },
+        "serviceId": { "type": "string", "minLength": 1 },
+        "apiId": { "type": "string", "minLength": 1 },
+        "apiMajor": { "type": "integer", "minimum": 1 },
+        "apiRevisionDigest": { "$ref": "#/$defs/contentHash" },
+        "kind": { "type": "string", "enum": ["workflow", "operation"] },
+        "intents": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "summary": { "type": "string" },
+        "sideEffectCeiling": { "type": "string" },
+        "mixSafe": { "type": "boolean" },
+        "apiRecognition": {
+          "type": "string",
+          "enum": ["STANDARD", "THIRD_PARTY", "PROJECT"]
+        },
+        "installation": {
+          "type": "string",
+          "enum": ["INSTALLED", "NOT_INSTALLED"]
+        },
+        "enablement": {
+          "type": "string",
+          "enum": ["ENABLED", "NOT_ENABLED"]
+        },
+        "compatibility": {
+          "type": "string",
+          "enum": ["COMPATIBLE", "INCOMPATIBLE", "UNKNOWN"]
+        },
+        "trust": {
+          "type": "string",
+          "enum": ["VERIFIED", "UNVERIFIED", "REJECTED"]
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["NONE", "UNIQUE_COMPATIBLE", "EXPLICIT_BINDING", "AMBIGUOUS"]
+        },
+        "selectionSource": {
+          "type": ["string", "null"],
+          "enum": ["unique-compatible", "project-binding", null]
+        },
+        "selectedCandidateId": { "type": "string" },
+        "candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectionCandidate" }
+        }
+      }
+    }
+  }
+}

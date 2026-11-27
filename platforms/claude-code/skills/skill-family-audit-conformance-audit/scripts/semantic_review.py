@@ -31,6 +31,31 @@ REVIEW_STATUSES = {
 # 非机械审阅方法只按当前权威的 check_methods 取值：behavior_verification 已从
 # 数据真源剥除（T1 账本修复、T6-1b 复核），消费侧不再保留该值。
 NON_MECHANICAL_CHECK_METHODS = ("semantic_review",)
+REVIEW_CONTRACT_VERSION = "3.0.0"
+MECHANICAL_PREMISE_CODES = {
+    method: {
+        absent: "NOT_APPLICABLE",
+        missing: "EVIDENCE_MISSING",
+        "MECHANICAL_OBJECTS_PRESENT": "REVIEW_REQUIRED",
+        "MECHANICAL_OBJECT_SCOPE_UNKNOWN": "REVIEW_REQUIRED",
+        **extra,
+    }
+    for method, absent, missing, extra in (
+        ("static_scan", "STATIC_WIRING_NOT_ADOPTED", "STATIC_INPUTS_MISSING", {}),
+        ("schema_validation", "MACHINE_SCHEMA_NOT_ADOPTED", "SCHEMA_INPUTS_MISSING",
+         {"SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS": "REVIEW_REQUIRED"}),
+        ("digest_verification", "BYTE_CORRESPONDENCE_NOT_DECLARED", "DIGEST_INPUTS_MISSING",
+         {"BYTE_BASELINE_OUTSIDE_MANAGED_FILES": "REVIEW_REQUIRED"}),
+    )
+}
+
+
+def valid_review_purpose(method: str, purpose: str) -> bool:
+    if not isinstance(method, str) or not isinstance(purpose, str):
+        return False
+    return (method == "semantic_review" and purpose == "semantic_conclusion") or (
+        method in MECHANICAL_PREMISE_CODES and purpose == "mechanical_object_premise"
+    )
 
 
 def review_identity(row: dict[str, Any]) -> tuple[str, str, str]:
@@ -422,6 +447,7 @@ def bound_rule_descriptors(
                 "canonical_id": identity[0],
                 "canonical_revision_digest": identity[1],
                 "check_method": check_method,
+                "review_purpose": "semantic_conclusion",
                 "name": canonical_rule["name"],
                 "obligation": canonical_rule["obligation"],
                 "binding_id": _method_binding_id(
@@ -443,7 +469,6 @@ def bound_rule_descriptors(
                 "exception_policy": canonical_rule["exception_policy"],
             })
             _attach_condition_contract(descriptors[-1])
-            _attach_mechanical_object_context(descriptors[-1], canonical_rule)
     return sorted(descriptors, key=review_identity)
 
 
@@ -487,6 +512,7 @@ def retained_trial_descriptors(
                 "canonical_id": canonical_id,
                 "canonical_revision_digest": revision_digest,
                 "check_method": check_method,
+                "review_purpose": "semantic_conclusion",
                 "name": canonical_rule["name"],
                 "obligation": canonical_rule["obligation"],
                 "binding_id": _method_binding_id(
@@ -506,7 +532,6 @@ def retained_trial_descriptors(
                 "exception_policy": canonical_rule["exception_policy"],
             })
             _attach_condition_contract(descriptors[-1])
-            _attach_mechanical_object_context(descriptors[-1], canonical_rule)
     return sorted(descriptors, key=review_identity)
 
 
@@ -518,6 +543,7 @@ def build_review_request(
     descriptors: list[dict[str, Any]],
     evidence_set: list[dict[str, Any]],
     digest_document: Callable[[Any], str],
+    _schema_version: str = REVIEW_CONTRACT_VERSION,
 ) -> dict[str, Any]:
     """Freeze the exact review input after the Foundation Task already exists."""
     for label, value in (
@@ -529,9 +555,19 @@ def build_review_request(
             raise SemanticReviewError(
                 "SEMANTIC_REVIEW_REQUEST_INVALID", f"{label} must be a SHA-256 digest"
             )
+    # The legacy version is used only to re-read an original frozen request.
+    # Production callers always use the current default, with no mode switch.
+    if _schema_version not in {"1.0.0", REVIEW_CONTRACT_VERSION}:
+        raise SemanticReviewError("SEMANTIC_REVIEW_REQUEST_INVALID", "unsupported request version")
+    for descriptor in descriptors:
+        if _schema_version == REVIEW_CONTRACT_VERSION:
+            if not valid_review_purpose(descriptor.get("check_method"), descriptor.get("review_purpose")):
+                raise SemanticReviewError("SEMANTIC_REVIEW_REQUEST_INVALID", "review purpose does not match method")
+        elif descriptor.get("check_method") != "semantic_review" or "review_purpose" in descriptor:
+            raise SemanticReviewError("SEMANTIC_REVIEW_REQUEST_INVALID", "legacy request has a new review purpose")
     body = {
         "kind": "skill-family-audit.semantic-review-request",
-        "schema_version": "1.0.0",
+        "schema_version": _schema_version,
         "producer_method_id": METHOD_ID,
         "cognitive_independence": COGNITIVE_INDEPENDENCE,
         "foundation_task_digest": foundation_task_digest,
@@ -551,6 +587,8 @@ def build_review_request(
                 "canonical_id": item["canonical_id"],
                 "canonical_revision_digest": item["canonical_revision_digest"],
                 "check_method": item["check_method"],
+                **({"review_purpose": item["review_purpose"]}
+                   if _schema_version == REVIEW_CONTRACT_VERSION else {}),
             }
             for item in descriptors
         ]),
@@ -588,40 +626,6 @@ def public_condition_contract(canonical_id: str) -> dict[str, Any] | None:
             "citation_required": True,
         })
     return {"authority": "DESIGN-025-12.2", "conditions": conditions}
-
-
-def _attach_mechanical_object_context(descriptor: dict[str, Any], canonical_rule: dict[str, Any]) -> None:
-    methods = sorted(set(canonical_rule.get("check_methods", [])) & {
-        "static_scan", "schema_validation", "digest_verification",
-    })
-    if (canonical_rule.get("lifecycle_status") != "ACTIVE_SEMANTIC" or not methods
-            or descriptor.get("canonical_id") in _SIX_RULE_CONDITIONS):
-        return
-    # Keep the rule's own object conditions in the existing request. These are
-    # reviewer instructions, not a second method catalog or an NA inference.
-    descriptor["evidence_requirements"] = [*descriptor["evidence_requirements"],
-        "For this rule, independently review the actual mechanical objects required by its "
-        "applicability and evidence requirements for these methods: " + ", ".join(methods) + ". "
-        "Put the actual object-premise code in the existing reason_code field, not only in rationale. "
-        "rationale explains that premise and the business conclusion; evidence_refs must cite actual bound materials. "
-        "Do not submit a generic semantic reason_code with a mechanical code only in prose. "
-        "One review identity has one reason_code: do not combine codes, encode a list, or repeat the review. "
-        "If a mixed multi-method premise cannot be represented by one existing code, keep other methods unresolved. "
-        "Use the existing reason_code and cite the checked scope in evidence_refs: "
-        "MECHANICAL_OBJECTS_ABSENT only when every listed mechanical object is absent and not required; "
-        "MACHINE_SCHEMA_NOT_ADOPTED only for schema_validation; "
-        "STATIC_WIRING_NOT_ADOPTED only for static_scan; "
-        "BYTE_CORRESPONDENCE_NOT_DECLARED only for digest_verification. "
-        "Each absence code requires the corresponding object to be absent and not required by this rule. "
-        "For actual checked missing inputs use SCHEMA_INPUTS_MISSING, STATIC_INPUTS_MISSING or "
-        "DIGEST_INPUTS_MISSING and state required material, authorized checked locations and missing content. "
-        "Use MECHANICAL_OBJECTS_PRESENT when the relevant declared objects and inputs exist; "
-        "BYTE_BASELINE_OUTSIDE_MANAGED_FILES identifies an existing byte baseline outside Foundation managed-file-lock. "
-        "SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS identifies an existing adopted formal schema and its object outside "
-        "Foundation project-manifest/managed-file-lock and Registry method structures; cite both actual inputs. "
-        "Insufficient scope remains MECHANICAL_OBJECT_SCOPE_UNKNOWN. These codes never grant semantic PASS, "
-        "waive required roles, infer absence from missing evidence, or attest a professional scan. "
-        "The review status still assesses the full business obligation; a mechanical absence alone does not make the rule NOT_APPLICABLE."]
 
 
 def _attach_condition_contract(descriptor: dict[str, Any]) -> None:
@@ -864,14 +868,23 @@ def finalize_review(
     payload: dict[str, Any],
     *,
     digest_document: Callable[[Any], str],
+    allow_partial: bool = False,
     ) -> tuple[dict[tuple[str, str, str], dict[str, Any]], dict[str, Any]]:
-    """Validate an internal Skill review and conservatively project its statuses."""
+    """Validate an internal Skill review and conservatively project its statuses.
+
+    ``allow_partial`` accepts a non-empty subset of frozen identities so unread
+    scheduled reviews stay unexecuted. A parent payload still requires exact
+    coverage when the flag is false.
+    """
     if not isinstance(payload, dict):
         raise SemanticReviewError(
             "SEMANTIC_REVIEW_RESULT_INVALID", "semantic review result must be an object"
         )
+    current = request.get("schema_version") == REVIEW_CONTRACT_VERSION
+    if not current and request.get("schema_version") != "1.0.0":
+        raise SemanticReviewError("SEMANTIC_REVIEW_REQUEST_INVALID", "unsupported frozen request version")
     expected_header = {
-        "schema_version": "2.0.0",
+        "schema_version": REVIEW_CONTRACT_VERSION if current else "2.0.0",
         "kind": "skill-family-audit.semantic-review-result",
         "producer_method_id": METHOD_ID,
         "cognitive_independence": COGNITIVE_INDEPENDENCE,
@@ -914,7 +927,7 @@ def finalize_review(
             "reason_code",
             "rationale",
             "evidence_refs",
-        }:
+        } | ({"review_purpose"} if current else set()):
             raise SemanticReviewError(
                 "SEMANTIC_REVIEW_RESULT_INVALID", "review shape is invalid"
             )
@@ -934,6 +947,11 @@ def finalize_review(
             or review.get("binding_id") != rule["binding_id"]
             or review.get("rule_revision_digest")
             != rule["canonical_revision_digest"]
+            or (current and (
+                review.get("review_purpose") != rule.get("review_purpose")
+                or not valid_review_purpose(check_method, review.get("review_purpose"))
+            ))
+            or (not current and check_method != "semantic_review")
             or status not in REVIEW_STATUSES
             or not isinstance(review.get("reason_code"), str)
             or not review["reason_code"]
@@ -972,19 +990,33 @@ def finalize_review(
                     f"evidence reference does not match the frozen request: {canonical_id}",
                 )
             covered_roles.add(role)
+            if current and (ref in normalized_refs or (
+                "evidence_refs" in rule and ref not in rule["evidence_refs"]
+            )):
+                raise SemanticReviewError(
+                    "SEMANTIC_REVIEW_EVIDENCE_MISMATCH", "citation is duplicated or outside the frozen candidates",
+                )
             normalized_refs.append(dict(ref))
-        projected_status, projected_reason, missing_roles = _project_review_status(
-            canonical_id=canonical_id,
-            status=status,
-            reason_code=review["reason_code"],
-            lifecycle_status=rule["lifecycle_status"],
-            covered_roles=covered_roles,
-            required_roles=set(rule["required_evidence_roles"]),
-            has_refs=bool(normalized_refs),
-        )
+        if current and review["review_purpose"] == "mechanical_object_premise":
+            if (not normalized_refs or MECHANICAL_PREMISE_CODES[check_method].get(review["reason_code"]) != status):
+                raise SemanticReviewError(
+                    "SEMANTIC_REVIEW_RESULT_INVALID", "mechanical premise requires its method's code, status and bound citations",
+                )
+            projected_status, projected_reason, missing_roles = status, review["reason_code"], []
+        else:
+            projected_status, projected_reason, missing_roles = _project_review_status(
+                canonical_id=canonical_id,
+                status=status,
+                reason_code=review["reason_code"],
+                lifecycle_status=rule["lifecycle_status"],
+                covered_roles=covered_roles,
+                required_roles=set(rule["required_evidence_roles"]),
+                has_refs=bool(normalized_refs),
+            )
         observed[identity] = {
             "canonical_id": canonical_id,
             "check_method": check_method,
+            **({"review_purpose": review["review_purpose"]} if current else {}),
             "rule_revision_digest": rule["canonical_revision_digest"],
             "binding_id": rule["binding_id"],
             "status": projected_status,
@@ -995,7 +1027,11 @@ def finalize_review(
             "lifecycle_status": rule["lifecycle_status"],
             "submitted_status": status,
         }
-    if set(observed) != set(expected_rules):
+    observed_ids = set(observed)
+    expected_ids = set(expected_rules)
+    extra = observed_ids - expected_ids
+    missing = expected_ids - observed_ids
+    if extra or (missing and not allow_partial) or (allow_partial and not observed_ids):
         raise SemanticReviewError(
             "SEMANTIC_REVIEW_COVERAGE_MISMATCH",
             "semantic review must cover every and only frozen rule identity",

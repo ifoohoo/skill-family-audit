@@ -1,0 +1,159 @@
+{
+  "title": "Family Implementation Descriptor",
+  "description": "JSON Schema for a v2 family implementation descriptor in agent-method-registry",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["documentKind", "schemaVersion", "familyImplementationId", "version", "pluginId", "implements", "services", "bundle", "lifecycle", "conformance"],
+  "properties": {
+    "documentKind": {
+      "const": "v2-implementation",
+      "description": "Discriminator for v2 implementation descriptors; required when passing to validateCatalog"
+    },
+    "schemaVersion": {
+      "const": 2,
+      "description": "Must be 2 for v2 implementation descriptors"
+    },
+    "familyImplementationId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9-]*)+$",
+      "description": "Reverse-domain family implementation identity (e.g., io.github.mzdbxqh.e2e-test)"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Semantic version of this family implementation"
+    },
+    "pluginId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Explicit plugin identity for exact inventory matching (must equal inventory entry pluginId)"
+    },
+    "projectAuthority": {
+      "type": "string",
+      "pattern": "^project\\.[a-z][a-z0-9-]*$",
+      "description": "Explicit project authority when lifecycle.ownership is project-local"
+    },
+    "implements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apiId", "apiMajor", "apiRevisionDigest"],
+      "properties": {
+        "apiId": {
+          "type": "string",
+          "pattern": "^(?:artifact\\.[a-z][a-z0-9-]*-family|project\\.[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*-family|(?!(?:artifact|project)\\.)(?:[a-z][a-z0-9-]*\\.){2,}[a-z][a-z0-9-]*-family)$",
+          "description": "Family API identity (e.g., artifact.e2e-test-family)"
+        },
+        "apiMajor": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Major version of the Family API being implemented"
+        },
+        "apiRevisionDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Immutable SHA-256 digest of the Family API revision being implemented"
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["serviceImplementationId", "skill"],
+        "properties": {
+          "serviceImplementationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9-]*)+$",
+            "description": "Reverse-domain service implementation identity"
+          },
+          "skill": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Relative POSIX path to the skill directory/file"
+          }
+        }
+      },
+      "description": "Map of serviceId to service implementation declaration"
+    },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roots", "treeDigest"],
+      "properties": {
+        "roots": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Root directories included in the bundle"
+        },
+        "treeDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Deterministic SHA-256 digest of the bundle tree"
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownership", "maturity"],
+      "properties": {
+        "ownership": {
+          "type": "string",
+          "enum": ["bundled", "independent", "project-local"],
+          "description": "Who owns this implementation"
+        },
+        "maturity": {
+          "type": "string",
+          "enum": ["experimental", "incubating", "stable", "deprecated"],
+          "description": "Maturity level of this implementation"
+        },
+        "channel": {
+          "type": "string",
+          "enum": ["stable", "incubator"],
+          "description": "Release channel"
+        }
+      }
+    },
+    "hostSupport": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "skillPath": { "type": "string", "minLength": 1 },
+          "available": { "type": "boolean" }
+        }
+      },
+      "description": "Host-specific support declarations"
+    },
+    "conformance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deterministicAttestation", "behaviorQualification"],
+      "properties": {
+        "deterministicAttestation": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA-256 digest of deterministic conformance attestation, or null if not yet attested"
+        },
+        "behaviorQualification": {
+          "type": ["string", "null"],
+          "description": "Path to behavior qualification evidence, or null if NOT_RUN"
+        },
+        "interopTckAttestations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "description": "Interop TCK result digests this implementation has passed"
+        }
+      }
+    }
+  }
+}

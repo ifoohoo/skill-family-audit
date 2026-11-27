@@ -1,3 +1,6 @@
+// @feature FND-FR-005
+// @decision FND-ADR-023
+// @design FND-DES-007
 import { lstat, readFile } from "node:fs/promises";
 import { TextDecoder } from "node:util";
 import { HarnessError } from "../harness/errors.mjs";

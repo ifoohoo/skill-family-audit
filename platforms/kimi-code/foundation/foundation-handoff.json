@@ -12,20 +12,20 @@
     "source-truth-declaration.schema.json"
   ],
   "kind": "skill-family-audit.foundation-handoff",
-  "payloadDigest": "a827cd157c5d91dea04418065d635e0a59dbc6b118ef922c54f242c470156d8a",
+  "payloadDigest": "b34fc800aa931cdd33e4a9e127472381098eab26b5c2b6027818698566ebe964",
   "profile": {
-    "contractsVersion": "1.20.0",
+    "contractsVersion": "1.23.0",
     "id": "quickstart-profile",
     "version": 2
   },
-  "provenanceDigest": "5f074aef41f01c37d31804b85ac89103903385741e4c7d0cc8ce844436428865",
+  "provenanceDigest": "44994e8205ab4070eaf4499e3a4037056177f4faabd5b929a0c14cb4a8a0799f",
   "receipt": {
     "kind": "skill-family.source-authority-receipt",
-    "sha256": "9a6ffadef519d41fb38c4c04693698eb5c9ab5641f45813454704ac99bcefe0a"
+    "sha256": "659961b441b5b0a35de7c30bf024dcdda5bf20c1510f16df3c534edeb95f7e53"
   },
   "schemaVersion": 2,
   "source": {
-    "baseCommit": "f2ba5a3751823adf45c229cff27802a1e0d0f467",
+    "baseCommit": "c13afe2964e1caa90aec80b219b3d4ac7c821ecf",
     "repository": "ifoohoo/skill-family-foundation-workspace"
   }
 }

@@ -14,7 +14,7 @@
     "path": "packages/skill-family-harness-node/src/native/binding.gyp",
     "sha256": "1631420afe903b1978a856dbeadd37a655a704cd7ded9d1ab6696f87e1116d7f"
   },
-  "manifestSha256": "a730d45fab7a61eb5d39f898684d55ace6fc01ea149e4b0f101985b0726c4a41",
+  "manifestSha256": "3af5006633982427a5062ca4932569f072d346e006b10aa655050d1e49fbe8d8",
   "inputs": [
     {
       "platformKey": "darwin-arm64",
@@ -35,6 +35,24 @@
       "platformKey": "linux-x64-gnu",
       "platformReceiptSha256": "5e8cf755503058e7164ae36652df811d7c16c47ab5c65fe9a4748486574b2b0e",
       "binarySha256": "ec40dc02bb666ccae585c78f59211951dcc2001bf71c828a59b0d5b821ebfae0"
+    },
+    {
+      "platformKey": "win32-x64",
+      "platformReceiptSha256": "98158e7a6cfbf67bbc745b4d8b82488819e50e443cd27f2175060bce5cd6b60f",
+      "binarySha256": "aa2b04236652eddd852441920d2c8cf723b9067c36db1b740aa126cee89175b9"
     }
-  ]
+  ],
+  "platformSources": {
+    "win32-x64": {
+      "path": "packages/skill-family-harness-node/src/native/windows_process.c",
+      "sha256": "58272972703876877c7f698dc1a39891c1e2619cc11a44f9afb4a66cdc0822a5"
+    }
+  },
+  "platformBuildRecipes": {
+    "win32-x64": {
+      "path": "packages/skill-family-harness-node/src/native/binding.gyp",
+      "sha256": "77e63e3796b1f54c5d572bb7e29a3819702bdd5041d6c9ccfffe0c3791816480",
+      "commandSha256": "3488fb37b343ec27845363ed3861f6ef1574498bf67cf1a480d4948f42f96599"
+    }
+  }
 }

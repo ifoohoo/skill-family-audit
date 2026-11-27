@@ -1,0 +1,38 @@
+{
+  "fixtureId": "internal-dependency-resolution-receipt.positive.resolved",
+  "contract": "internal-dependency-resolution-receipt",
+  "class": "positive",
+  "description": "单次会话内按固定 0.x 主版本与最低可用版本命中最高已验证兼容版本的选版收据。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/internal-dependency-resolution-receipt.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.internal-dependency-resolution-receipt",
+    "projectId": "fictional-orchid",
+    "policy": "fixed-major-min-version-v1",
+    "status": "resolved",
+    "sessionId": "session-001",
+    "resolvedAt": "2026-11-21T16:00:00Z",
+    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "resolutions": [
+      {
+        "packageName": "skill-family-contracts",
+        "mode": "range",
+        "major": 0,
+        "minVersion": "0.38.0",
+        "verifiedCeiling": null,
+        "selectedVersion": "0.39.0",
+        "selectedDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "selectedSource": "workspace",
+        "status": "resolved",
+        "candidatesEvaluated": ["0.38.0", "0.39.0"],
+        "reason": "在 0.x 主版本轨道且 >= 0.38.0 的已验证候选中命中最高兼容版本 0.39.0。"
+      }
+    ],
+    "digest": "adc7d9350775901c0acc9d402c496e7027d92fd6f64af4f3babead503e0b36d1"
+  }
+}

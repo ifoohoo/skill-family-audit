@@ -1,0 +1,20 @@
+{
+  "fixtureId": "fixed-set-generation-result.negative.failed-indeterminate-commit",
+  "contract": "fixed-set-generation-result",
+  "class": "negative",
+  "description": "A failed generation result cannot combine an indeterminate commit with a not-performed verification.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-result.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-generation-result",
+    "status": "failed",
+    "commitState": "indeterminate",
+    "verification": "not-performed",
+    "durability": "not-requested",
+    "generationRoot": "C:/fictional/store/gen-1",
+    "pointer": null,
+    "previous": null,
+    "error": { "kind": "generation-pre-commit", "message": "contradictory commit state" }
+  }
+}

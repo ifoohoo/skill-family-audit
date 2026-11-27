@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.skill-family.example/quickstart-profile/v2/task.json",
   "title": "QuickstartTask",
-  "description": "Candidate narrow profile (v2) over the stable operation-request envelope. The single operation is the business-neutral execute-method; params.method and params.parameters are caller-owned and Foundation never interprets them. The Task digest binds the complete canonical Task, so the optional requestedAt timestamp is excluded from this profile.",
+  "description": "构建在稳定 operation-request 信封之上的 Quickstart 候选收窄配置（v2）。唯一操作固定为业务中立的 execute-method；params.method 与 params.parameters 归调用方所有，Foundation 不解释其业务含义。任务摘要绑定完整规范化任务正文，因此排除可选的 requestedAt 时间戳字段。",
   "allOf": [
     {
       "$ref": "https://contracts.skill-family.example/v1/operation-request.json"

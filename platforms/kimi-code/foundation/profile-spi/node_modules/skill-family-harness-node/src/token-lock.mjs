@@ -1,9 +1,12 @@
+// @feature FND-FR-003
+// @decision FND-ADR-004
+// @design FND-DES-003
 import { createHash, randomBytes } from "node:crypto";
 import { constants as FS_CONSTANTS } from "node:fs";
 import { lstat, open, realpath, unlink } from "node:fs/promises";
 import path from "node:path";
 import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";
-import { publishFileExclusive } from "./atomic.mjs";
+import { publishFileExclusive, syncForDurability } from "./atomic.mjs";
 import { resolveContained } from "./paths.mjs";
 
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/;
@@ -75,12 +78,7 @@ async function readRecord(target, { optional = false } = {}) {
 }
 
 async function syncParent(target) {
-  const handle = await open(path.dirname(target), FS_CONSTANTS.O_RDONLY);
-  try {
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
+  await syncForDurability(path.dirname(target), { directory: true });
 }
 
 async function unlinkSame(target, stats) {
@@ -101,6 +99,12 @@ async function unlinkSame(target, stats) {
   }
 }
 
+/** POSIX keeps owner-only mode. Windows uses the protected publication kind and never a POSIX mode. */
+export function filesystemLockPublicationOptions(platform = process.platform) {
+  if (platform === "win32") return Object.freeze({ internalMaterial: "windows-protected" });
+  return Object.freeze({ mode: 0o600 });
+}
+
 /** Nonblocking acquisition: one exclusive create attempt, never a retry. */
 export async function acquireFilesystemLock(root, relPath, { owner } = {}) {
   assertOwner(owner);
@@ -113,7 +117,7 @@ export async function acquireFilesystemLock(root, relPath, { owner } = {}) {
   };
   let receipt;
   try {
-    receipt = await publishFileExclusive(root, relPath, `${JSON.stringify(record)}\n`, { mode: 0o600 });
+    receipt = await publishFileExclusive(root, relPath, `${JSON.stringify(record)}\n`, filesystemLockPublicationOptions());
   } catch (cause) {
     if (cause?.details?.kind === HARNESS_ERROR_KINDS.EXCLUSIVE_PUBLISH_CONFLICT) {
       throw mechanismError(HARNESS_ERROR_KINDS.STORE_LOCKED, "filesystem lock is already held");

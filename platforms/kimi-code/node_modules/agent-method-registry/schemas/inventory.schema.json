@@ -1,0 +1,85 @@
+{
+  "title": "Trusted Host Inventory",
+  "description": "JSON Schema for a v2 trusted host inventory in agent-method-registry",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["documentKind", "schemaVersion", "snapshotDigest", "snapshotFreshness", "entries"],
+  "properties": {
+    "documentKind": {
+      "const": "v2-inventory",
+      "description": "Discriminator for v2 inventory documents"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "snapshotDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "snapshotFreshness": {
+      "type": "string",
+      "enum": ["fresh", "stale", "missing"]
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/inventoryEntry"
+      },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "inventoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pluginId", "canonicalRoot", "version", "packageDigest", "provenance", "host"],
+      "properties": {
+        "pluginId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable plugin identifier"
+        },
+        "projectAuthority": {
+          "type": "string",
+          "pattern": "^project\\.[a-z][a-z0-9-]*$"
+        },
+        "canonicalRoot": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Canonical root path of the plugin installation"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Installed version"
+        },
+        "packageDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA-256 digest of the package tarball"
+        },
+        "provenance": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source of the installation (e.g., npm, local)"
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Host identifier (e.g., claude-code, codex)"
+        },
+        "snapshotDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Digest of the inventory snapshot"
+        },
+        "snapshotFreshness": {
+          "type": "string",
+          "enum": ["fresh", "stale", "missing"],
+          "description": "Freshness of the inventory snapshot"
+        }
+      }
+    }
+  }
+}

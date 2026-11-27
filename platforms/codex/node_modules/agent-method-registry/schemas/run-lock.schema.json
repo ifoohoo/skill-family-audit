@@ -1,0 +1,135 @@
+{
+  "title": "Run Method Lock",
+  "description": "JSON Schema for a v2 run method lock in agent-method-registry",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "serviceId",
+    "apiId",
+    "apiMajor",
+    "apiRevisionDigest",
+    "familyImplementationId",
+    "serviceImplementationId",
+    "implementationVersion",
+    "provider",
+    "bundleRoots",
+    "bundleDigest",
+    "artifactContractRevisionDigest",
+    "sourceDigest",
+    "bindingDigest",
+    "indexDigest",
+    "queryDigest",
+    "projectFactsEvidenceDigest",
+    "conformanceAttestationDigest",
+    "sideEffectSummary"
+  ],
+  "properties": {
+    "documentKind": {
+      "const": "v2-run-lock"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "serviceId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*){2,}$",
+      "description": "Service identity (e.g., artifact.e2e-test.author)"
+    },
+    "apiId": {
+      "type": "string",
+      "pattern": "^(?:artifact\\.[a-z][a-z0-9-]*-family|project\\.[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*-family|(?!(?:artifact|project)\\.)(?:[a-z][a-z0-9-]*\\.){2,}[a-z][a-z0-9-]*-family)$"
+    },
+    "apiMajor": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "apiRevisionDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "familyImplementationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "serviceImplementationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "implementationVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "pluginId", "host", "canonicalRoot", "skillPath", "packageDigest", "provenance"],
+      "properties": {
+        "scope": { "type": "string", "enum": ["plugin", "project"] },
+        "pluginId": { "type": "string", "minLength": 1 },
+        "projectAuthority": { "type": "string", "pattern": "^project\\.[a-z][a-z0-9-]*$" },
+        "host": { "type": "string" },
+        "canonicalRoot": { "type": "string", "minLength": 1 },
+        "skillPath": { "type": "string", "minLength": 1 },
+        "packageDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "provenance": { "type": "string", "minLength": 1 }
+      }
+    },
+    "bundleRoots": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "bundleDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "artifactContractRevisionDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "sourceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "bindingDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "indexDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "queryDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "projectFactsEvidenceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "conformanceAttestationDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "sideEffectSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ceiling", "budget", "authorized"],
+      "properties": {
+        "ceiling": {
+          "type": "string",
+          "enum": ["none", "read-only", "write-authorized-artifacts", "write-review-result", "write-project-artifacts"]
+        },
+        "budget": {
+          "type": "string",
+          "enum": ["none", "read-only", "write-authorized-artifacts", "write-review-result", "write-project-artifacts"]
+        },
+        "authorized": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,3 +1,6 @@
+// @feature FND-FR-003
+// @decision FND-ADR-007
+// @design FND-DES-001
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";

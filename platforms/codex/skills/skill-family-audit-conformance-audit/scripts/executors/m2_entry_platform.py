@@ -431,7 +431,7 @@ def _platform_projections(ctx: dict[str, Any]) -> list[dict[str, Any]] | None:
 
 
 def check_plat_005(ctx: dict[str, Any]) -> dict[str, Any]:
-    """Mapping observations do not establish source-to-projection byte relations."""
+    """Bound direction/reference originals and a real byte baseline are required."""
     from .m2_entry_platform_b2 import _finish, _static_row, _digest_row
     declared = _platform_projections(ctx)
     project = ctx.get("scope", {}).get("plugin_project") or {}
@@ -442,9 +442,9 @@ def check_plat_005(ctx: dict[str, Any]) -> dict[str, Any]:
         for row in mappings)
     static = _static_row("EVIDENCE_MISSING",
                          reason="audit_mechanical_object_unresolved",
-                         object="Common business definitions, adaptation rules and actual projection generation relation",
+                         object="Complete same-mapping source/generated direction and actual fixed generator/manifest references",
                          logical_mapping_complete=complete,
-                         detail="Matching logical names are observed but do not establish a common generator or absence of duplicated business protocols.",
+                         detail="Logical mappings are context only; static_scan needs both original public observations, and semantic_review owns business derivation.",
                          project_observation=project, source_refs=list(ctx.get("evidence_set") or []))
     digest = _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
                          object="Source-to-projection synchronization baseline and corresponding byte relation",

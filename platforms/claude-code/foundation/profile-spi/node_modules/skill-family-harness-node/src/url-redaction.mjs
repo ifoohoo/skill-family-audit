@@ -1,3 +1,6 @@
+// @feature FND-FR-010
+// @decision FND-ADR-019
+// @design FND-DES-012
 /**
  * Generic URL credential redaction (FG-2).
  *

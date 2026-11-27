@@ -4617,7 +4617,7 @@ def _release_verifier_shape_problems(value: dict[str, Any]) -> list[str]:
 def _release_verifier_mechanical_half(ctx: dict[str, Any]) -> dict[str, Any]:
     """薄消费 release-skill@0.9.17 输出，只核形状、候选身份与原始字节摘要。
 
-    上游状态静态映射与 ``release_receipts.audit_release_receipts`` 一致：
+    上游状态静态映射与 静态发布记录规则 一致：
     CONSISTENT 表示本次记录一致性检查成功，CONTRADICTED 失败，INSUFFICIENT
     与输入字节缺失保持 EVIDENCE_MISSING。``historicalTerminalStatus``
     （VERIFIED、PUBLISHED、PARTIAL 或合同允许的缺省）只是提供方事实，原样

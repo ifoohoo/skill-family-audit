@@ -1,0 +1,9 @@
+{
+  "fixtureId": "fixed-set-generation-pointer.dialect-boundary.unsupported",
+  "contract": "fixed-set-generation-pointer",
+  "class": "dialect-boundary",
+  "description": "Unsupported dialects fail before validating the generation pointer.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-pointer.json", "dialect": "draft-04", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": { "schemaVersion": 1, "kind": "skill-family.fixed-set-generation-pointer" }
+}

@@ -11,7 +11,7 @@ behavior_verification_also_required=true；执行器只覆盖机械半区
   stage-isolation / tier1-runtime（B1 文档）+ stage-task-budget /
   runtime-observer（B2 文档）扩展消费本批新增轴：
   * context-budget.skill_content_sections（SFA-CONTEXT-032）
-  * context-budget.detail_content_placements（SFA-CONTEXT-033）
+  * SFA-CONTEXT-033 uses the bound actual fixed-reference professional output, not context-budget flags.
   * context-budget.reference_navigations（SFA-CONTEXT-034）
   * stage-task-budget.stage_results 扩展（SFA-CONTEXT-006/019/026/027）
   * stage-task-budget.focused_observations（SFA-CONTEXT-020）
@@ -56,14 +56,6 @@ SKILL_CORE_CONTENT_CATEGORIES = {
     "core_protocol",
     "safety_boundaries",
     "resource_navigation",
-}
-
-#: SFA-CONTEXT-033：必须进入按需参考资料的内容类别。
-DETAIL_CONTENT_KINDS = {
-    "detailed_domain_rules",
-    "platform_differences",
-    "long_examples",
-    "structure_definitions",
 }
 
 #: SFA-CONTEXT-029：必须单独治理的非词元指标。
@@ -458,41 +450,10 @@ def check_context_032(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_context_033(ctx: dict[str, Any]) -> dict[str, Any]:
-    """详细内容进入按需参考资料。
-
-    机械断言：已声明详细内容项（详细领域规则、平台差异、长示例、结构定义）
-    必须放置于按需加载的 references，且不得声明每次技能触发都加载。
-    """
-    document = _doc(ctx, "context-budget")
-    if document is None:
-        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
-                      object='领域细则、平台差异、长示例或结构定义的实际放置位置与读取条件',
-                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    rows = rows_of(document, "detail_content_placements", "context-budget")
-    if not rows:
-        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
-                      object='领域细则、平台差异、长示例或结构定义的实际放置位置与读取条件',
-                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    violations = []
-    for index, row in enumerate(rows):
-        kind = row.get("content_kind")
-        if kind not in DETAIL_CONTENT_KINDS:
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                f"context-budget.detail_content_placements 第 {index} 行内容类别非法: {kind!r}",
-            )
-        problems = []
-        if row.get("placement") != "references_on_demand":
-            problems.append("not_placed_in_references_on_demand")
-        if row.get("loaded_on_every_trigger") is True:
-            problems.append("loaded_on_every_trigger")
-        if problems:
-            violations.append({"index": index, "item": row.get("item_id"), "problems": problems})
-    if violations:
-        return result(
-            "FAIL", detail_content_not_on_demand=violations, mechanical_half=True
-        )
-    return result("PASS", detail_placements=len(rows), mechanical_half=True)
+    """Fixed reading references need their original public check and premise."""
+    return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+                  object="Complete actual fixed reading references, resolution bases and target files",
+                  source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
 
 
 def check_context_034(ctx: dict[str, Any]) -> dict[str, Any]:

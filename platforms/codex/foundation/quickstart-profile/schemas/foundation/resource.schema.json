@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.skill-family.example/quickstart-profile/v2/resource.json",
   "title": "QuickstartResource",
-  "description": "Candidate Resource profile (v2) for one content-addressed observation, output, or evidence item. location.path and location.uri are mutually exclusive; URIs are only structurally checked and never fetched.",
+  "description": "Quickstart 候选资源配置（v2），用于描述单个按内容寻址的观察输入、输出结果或证据项。location.path 与 location.uri 互斥；URI 仅做结构格式校验，绝不发起网络抓取。",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "kind", "id", "location", "role", "digest"],

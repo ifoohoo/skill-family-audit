@@ -638,6 +638,14 @@ def _default_node_candidates() -> list[Path]:
                 entry = version_dir / "bin" / "node"
                 if entry.is_file() and not entry.is_symlink():
                     candidates.append(entry)
+    fnm_root = Path.home() / ".local" / "share" / "fnm" / "node-versions"
+    if fnm_root.is_dir() and not fnm_root.is_symlink():
+        for version_dir in sorted(fnm_root.iterdir(), key=lambda item: item.name):
+            if not version_dir.name.startswith("v22"):
+                continue
+            entry = version_dir / "installation" / "bin" / "node"
+            if entry.is_file() and not entry.is_symlink():
+                candidates.append(entry)
     nvm_root = Path.home() / ".nvm" / "versions" / "node"
     if nvm_root.is_dir() and not nvm_root.is_symlink():
         for version_dir in sorted(nvm_root.iterdir(), key=lambda item: item.name):
@@ -1170,7 +1178,14 @@ def _run_foundation_cli(node_path: Path, cli: Path, request: dict) -> object:
             )
         except TimeoutError as exc:
             _terminate_worker_proc(proc)
-            raise RuntimeError(f"Foundation CLI worker request timed out: {exc}") from exc
+            operation = request.get("operation")
+            if type(operation) is not str or re.fullmatch(
+                r"[A-Za-z][A-Za-z0-9_.-]{0,63}", operation
+            ) is None:
+                operation = "<unknown>"
+            raise RuntimeError(
+                f"Foundation CLI worker request timed out: {exc} (operation={operation})"
+            ) from exc
         if not response_line:
             _terminate_worker_proc(proc)
             detail = _drain_worker_stderr(proc)

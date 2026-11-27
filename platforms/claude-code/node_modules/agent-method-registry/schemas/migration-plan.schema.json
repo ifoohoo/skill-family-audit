@@ -1,0 +1,166 @@
+{
+  "title": "Migration Plan",
+  "description": "JSON Schema for a v1/v2 migration plan in agent-method-registry",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["documentKind", "schemaVersion", "planDigest", "syntheticIdentities", "bindingConversions", "collisionReport", "sourceManifest", "targetFiles"],
+  "properties": {
+    "documentKind": {
+      "const": "v2-migration-plan",
+      "description": "Discriminator for v2 migration plan documents"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "planDigest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Deterministic digest of the migration plan"
+    },
+    "syntheticIdentities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/syntheticIdentity"
+      },
+      "description": "Synthetic v2 identities generated from v1 entries"
+    },
+    "bindingConversions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/bindingConversion"
+      },
+      "description": "v1 override to v2 binding conversions"
+    },
+    "collisionReport": {
+      "$ref": "#/$defs/collisionReport"
+    },
+    "sourceManifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "digest"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "targetFiles": {
+      "type": "object",
+      "additionalProperties": {}
+    },
+    "snapshot": {
+      "$ref": "#/$defs/migrationSnapshot"
+    }
+  },
+  "$defs": {
+    "syntheticIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v1Ref", "familyImplementationId", "serviceImplementationId", "syntheticDigest"],
+      "properties": {
+        "v1Ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original v1 catalog ref"
+        },
+        "familyImplementationId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Synthetic family implementation identity"
+        },
+        "serviceImplementationId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Synthetic service implementation identity"
+        },
+        "syntheticDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Digest of the stable input fields used for synthesis"
+        },
+        "provenance": {
+          "type": "string",
+          "minLength": 1,
+          "description": "v1 source provenance"
+        },
+        "conversionAlgorithmVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Version of the conversion algorithm used"
+        }
+      }
+    },
+    "bindingConversion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v1Ref", "v2Binding", "sourceDigest", "conversionAlgorithmVersion", "conversionDigest"],
+      "properties": {
+        "v1Ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original v1 override ref"
+        },
+        "v2Binding": {
+          "type": "object",
+          "description": "Converted v2 binding"
+        },
+        "sourceDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Digest of the original v1 override"
+        },
+        "conversionAlgorithmVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conversionDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Digest of the conversion result"
+        }
+      }
+    },
+    "collisionReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hasCollisions", "collisions"],
+      "properties": {
+        "hasCollisions": { "type": "boolean" },
+        "collisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ref", "type", "details"],
+            "properties": {
+              "ref": { "type": "string", "minLength": 1 },
+              "type": {
+                "type": "string",
+                "enum": ["identity-collision", "binding-collision", "unsafe-aggregation", "unresolved-mapping"]
+              },
+              "details": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "migrationSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshotDigest", "timestamp"],
+      "properties": {
+        "snapshotDigest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO 8601 timestamp of snapshot creation"
+        }
+      }
+    }
+  }
+}

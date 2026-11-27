@@ -1,3 +1,6 @@
+// @feature FND-FR-009
+// @decision FND-ADR-018
+// @design FND-DES-011
 import { lstat, opendir } from "node:fs/promises";
 import { TextDecoder } from "node:util";
 import path from "node:path";

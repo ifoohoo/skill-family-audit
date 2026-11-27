@@ -1,3 +1,6 @@
+// @decision FND-ADR-007
+// @decision FND-ADR-009
+// @design FND-DES-001
 import { ContractsError, isRegisteredErrorCode } from "skill-family-contracts";
 
 /**

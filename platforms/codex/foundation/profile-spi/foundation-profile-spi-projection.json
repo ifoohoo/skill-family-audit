@@ -1,7 +1,7 @@
 {
-  "closureSha256": "9015ff1a534700614b727b81f0a9b335e4801a9fe419cf7aea126c7404449dd8",
+  "closureSha256": "2a98cc7611ff76019998a1d9e7471366338153899d4642a951484fdfabf8690f",
   "entry": "node_modules/skill-family-engineering-kit/profile-spi/index.mjs",
-  "fileCount": 794,
+  "fileCount": 841,
   "files": [
     {
       "path": "node_modules/@pnpm/constants/lib/index.js",
@@ -777,7 +777,7 @@
     },
     {
       "path": "node_modules/graceful-fs/package.json",
-      "sha256": "5747d4ba6b17165c6ecac30ab3a331715f41c7ad546e1f1574dab1bdcb116181"
+      "sha256": "7cc365c012febc9c44ef6d998b49d749840c852d91db3302b19eb6eca07ead3d"
     },
     {
       "path": "node_modules/graceful-fs/polyfills.js",
@@ -1185,7 +1185,7 @@
     },
     {
       "path": "node_modules/semver/classes/range.js",
-      "sha256": "a6544485aa8575aa9854c67e2caa67726815de18a482d0ceb8a1003244de3bc1"
+      "sha256": "301811a48b055bb62a0c49240c64cc0b701cb926b67c425758df45920ff985dc"
     },
     {
       "path": "node_modules/semver/classes/semver.js",
@@ -1297,7 +1297,7 @@
     },
     {
       "path": "node_modules/semver/internal/constants.js",
-      "sha256": "38a112baf27ceca0260082ff26ac2fd7a9861cab1af12dd65e720277f68e6ce9"
+      "sha256": "8274b2f7ce15171895c43ef98c0da88aeeda1cf937bffe3c23893f159f3cddaa"
     },
     {
       "path": "node_modules/semver/internal/debug.js",
@@ -1320,8 +1320,12 @@
       "sha256": "5833262888e2b5d843a69193f83c05e374818dbe55379b497819b5bf58e48cd8"
     },
     {
+      "path": "node_modules/semver/internal/trim-comparator-whitespace.js",
+      "sha256": "828e567bc845d9d26a04f66fc442b48be3b2d8e27161733fae15325cd7ea428b"
+    },
+    {
       "path": "node_modules/semver/package.json",
-      "sha256": "7c94cb7f2a53c27b20d76386ec144c062894dbcc909cfabd0f728c37874b1776"
+      "sha256": "0a3f93689bb0be4e2fcdabc585da62ae24695f1abefc6974d68968c8918af381"
     },
     {
       "path": "node_modules/semver/ranges/gtr.js",
@@ -1401,39 +1405,39 @@
     },
     {
       "path": "node_modules/skill-family-contracts/package.json",
-      "sha256": "e1a1d9a9466da66e8d3b3c59dfad02e82864511ee92ffbe7a5bf8093d0c73796"
+      "sha256": "32c531ca5e400f2740c1a32bf6af6b1867de0e4b0448a3b7d2c28b5bcdeded10"
     },
     {
       "path": "node_modules/skill-family-contracts/src/audit-surface.mjs",
-      "sha256": "eef7e4afe8df78b7055223b3e90ea5f677d7da09761121a1c58b04be83f67deb"
+      "sha256": "c8adf01a53672ef1ee6fa32f23867a0d5c06ed61fb482c733483ff4411698d37"
     },
     {
       "path": "node_modules/skill-family-contracts/src/checker.mjs",
-      "sha256": "dea68f2d32401553403a06e317f174dcf4195d3f9fd363812025552f4d4abaaf"
+      "sha256": "7edb9256c39bcb973698a41859b7a2de74deea37896f97d03dea8eb58061ec5b"
     },
     {
       "path": "node_modules/skill-family-contracts/src/consumer-contract-vectors.json",
-      "sha256": "b56aa4d202b43649bb38a4bc2f52adc0625c901b7f1289a22d024265e80d42f1"
+      "sha256": "d92f804038ceccbd444ed0cbee0f748557c33d97689eaa9faac4ceb5dade01b0"
     },
     {
       "path": "node_modules/skill-family-contracts/src/consumer-contract-vectors.mjs",
-      "sha256": "115c2d82cd01d54d0980d3965d52dabe2086af7ffaf914fae3167aadaa4b2309"
+      "sha256": "4627c19a44c53691e4a37b6fdf08973ab3603750d0c160ebc51d0728ac2212f0"
     },
     {
       "path": "node_modules/skill-family-contracts/src/engineering-baseline.mjs",
-      "sha256": "04f7b513a4477f8b2eb9439088830b01eb94b56255cc75d302cec5419c28f945"
+      "sha256": "046f8985f3eed8ea0de68e759a93eaf9472aea1adb2013e597a70155f8053f87"
     },
     {
       "path": "node_modules/skill-family-contracts/src/error-codes.json",
-      "sha256": "69e10ba43484384b4d165dddca49a58142dfe1b144626ad9df04a956f29725f8"
+      "sha256": "091cc4d3f1b11f6968fdb1bd8905af6451bc8b84326a448c6f16a4878d35a035"
     },
     {
       "path": "node_modules/skill-family-contracts/src/errors.mjs",
-      "sha256": "94f120ba1eae2a0a064ad9593c3cd5907fa1f7b14fa7fc451fb473b7a9053bf4"
+      "sha256": "8fbefaed3d74d1cbdaf59cf6cdb1a491eb377c94c0ecca7ae1594105fbd8ef7b"
     },
     {
       "path": "node_modules/skill-family-contracts/src/fixtures.mjs",
-      "sha256": "fdadd51146c07dc1d775a1ce261cb7706966081a178600548ffd6410374ee715"
+      "sha256": "2d3514225fbc2923cceef6321da0f224609af597569dba3ebcd1a2ccea85d640"
     },
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/adapter-build-manifest/dialect-01-unsupported.json",
@@ -1496,6 +1500,18 @@
       "sha256": "80d6ab46616fe078e919f89a870413e97f60204fb5d5563d308504d9405daf4f"
     },
     {
+      "path": "node_modules/skill-family-contracts/src/fixtures/consumer-contract-vector/dialect-01-unsupported.json",
+      "sha256": "1126c2acec22b5aba84c536237c4eb47aa29bffed5d0125fd2dd2173a6dd6f93"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/consumer-contract-vector/negative-01-unknown-field.json",
+      "sha256": "6b74477431bd653db09ec6cfb4d485d134ef9146dfc87269349b89d72dddd0dc"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/consumer-contract-vector/positive-01-valid.json",
+      "sha256": "791c52654beca55f7e1de0698253b1640eace76ebf482d786f5e65ea1be63f38"
+    },
+    {
       "path": "node_modules/skill-family-contracts/src/fixtures/declared-read-surface-result/dialect-01-unsupported.json",
       "sha256": "d4c2e58276df7013b5bfa0f7cc2c0d9e1bc078a453c4ac40814574c5e169e62e"
     },
@@ -1530,6 +1546,14 @@
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/executable-identity-observation/negative-01-private-root.json",
       "sha256": "77183886dcadb3d97e2020f0586fbf398188d43b094b6ed8dfda6ca7ffe23da0"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/executable-identity-observation/negative-02-windows-posix-interpreter.json",
+      "sha256": "0874a0d70c7e6864779bd38b1bc9779f81c086857f42d7e5dfc5f570b884b900"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/executable-identity-observation/negative-03-windows-nested-posix-entry.json",
+      "sha256": "f062d177f6d219fbc8efac08e6cc10e9d17ddb73bd6aaa6aabbe501a0f73736c"
     },
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/executable-identity-observation/positive-01-explicit-search.json",
@@ -1632,6 +1656,54 @@
       "sha256": "7cb82fa12bd00f66a077e96ed466d088e36240d5db5f63431bd350e529fd426a"
     },
     {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-pointer/dialect-01-unsupported.json",
+      "sha256": "42cde0e24215bacc8fa9816d18ae61e5f9156a2503ba17306fe1568e778e3f67"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-pointer/negative-01-unknown-field.json",
+      "sha256": "e4785cb47c18136b777c6a80b63c129b9cd627900c8cc0a7eae7d856805ccd9b"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-pointer/positive-01-generation.json",
+      "sha256": "bf0dcffcffeef2ddf8bd879a3087847634d4f355e548c507075390f15935bd1e"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-resolution/dialect-01-unsupported.json",
+      "sha256": "722b31c17fe74ff3523afa05c567402c4d9596de08b9183605776c08afc83ad5"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-resolution/negative-01-unknown-field.json",
+      "sha256": "e251c6e92fdc1d78ae310e44bd868d6bd294324882e8d46f1cb569e6ede51ca4"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-resolution/positive-01-resolution.json",
+      "sha256": "b6fd03593823fa1380fe6240119e962ea780bea0018b9cfb7d33b7b02a2ba98f"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-result/dialect-01-unsupported.json",
+      "sha256": "a0e4d65b89990aef62fe4fd679c99079a689c850fd4e6dc1554d470535b6a689"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-result/negative-01-unknown-field.json",
+      "sha256": "4247672205f91969c63cc673fe039139b1eb438de3438070fd8e6217a8f5dfdf"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-result/negative-02-relative-root.json",
+      "sha256": "b3c25e6d4ac399862c5fd70673048f78ad66f9c474654f68256ba7eecf5efc09"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-result/negative-03-failed-indeterminate-commit.json",
+      "sha256": "0ca9d4c26a8359f54fcd337f024fbc9e5289b02279afd45b8910e4556f4dda3e"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-result/negative-04-committed-not-performed.json",
+      "sha256": "79d7625028313632caa19b93c9f60c6f3685c91dd5ea9717e9fe5d4706c082ae"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-generation-result/positive-01-flush-requested.json",
+      "sha256": "609e57695a78c2ed657a04f5f23f8320efed453e93039aad53621689bfb0be72"
+    },
+    {
       "path": "node_modules/skill-family-contracts/src/fixtures/fixed-set-publication-manifest/dialect-01-unsupported.json",
       "sha256": "3d2bc5bd9def150d622f01e578bc814e702f418c727177f6e15ba7ca9f43f613"
     },
@@ -1718,6 +1790,10 @@
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/host-descriptor/positive-05-cursor.json",
       "sha256": "8e69c07dff5a1789182496d402aa969c9f594e490da57098efc1b07d75c30e5e"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/host-descriptor/positive-06-antigravity.json",
+      "sha256": "5e1cecefa44ddc9555ab340acd9c88c111f54a8a4f635061528169ef2e4d8e55"
     },
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/host-operation-plan/dialect-01-unsupported.json",
@@ -1818,6 +1894,18 @@
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/host-verification-result/positive-05-execution-failed-zero-exit.json",
       "sha256": "a69929496dbb0dc30473e2f43e160bce1a8ab8c2cbe616a00a73733463adb466"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/internal-dependency-resolution-receipt/dialect-01-unsupported.json",
+      "sha256": "ab349dbcb2daf97f61f750c947ab76cb63472760ac3a128483e4e25aa4e93cf8"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/internal-dependency-resolution-receipt/negative-01-unknown-field.json",
+      "sha256": "58033a36196c1ffc839ef555082b0824e8c5c005b5879add6ec913cacfacd701"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/internal-dependency-resolution-receipt/positive-01-resolved.json",
+      "sha256": "b5cc3a2610710885f509e981fa53514f585bb8cd5333702787bb889bec1e0388"
     },
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/managed-file-lock/dialect-01-coerce-integer-tolerant.json",
@@ -1980,6 +2068,18 @@
       "sha256": "c3d1d74046c53cf3ba8ab2cca55a0db9a9ae857fc898b371db9627413a434c50"
     },
     {
+      "path": "node_modules/skill-family-contracts/src/fixtures/orchestration-blueprint/dialect-01-unsupported.json",
+      "sha256": "b39fa370bbbed7af464caf4555738db7b738257d7df0b478572cee576ac23482"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/orchestration-blueprint/negative-01-unknown-field.json",
+      "sha256": "ba3573b409a6dbd0bfbb7a85c00c846790431a6fa57824182b9447cf58b58383"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/orchestration-blueprint/positive-01-valid.json",
+      "sha256": "00b30b062159898f3fc173d836908c97c29f0cde9c5daea976cf8d266beb6a55"
+    },
+    {
       "path": "node_modules/skill-family-contracts/src/fixtures/platform-difference-registry/dialect-01-unsupported.json",
       "sha256": "a4e3d29d5b218e6f39346dcdd61ee32e9ac895c4cdb2d68552be04439dbbbfb9"
     },
@@ -2120,12 +2220,24 @@
       "sha256": "1504a31093332a41c38f7c7ae22a589bf2f01a2ed94178c4a08c584e2e3b0809"
     },
     {
+      "path": "node_modules/skill-family-contracts/src/fixtures/project-manifest/negative-04-mismatched-internal-dependency-major.json",
+      "sha256": "e85bdf062cc6664256af6b01c7b7657d43b236f03c8474fab63016485e2ac8c0"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/project-manifest/negative-05-invalid-adopted-capabilities.json",
+      "sha256": "5b947019ef03805e5347eb058b26e9f8048d95a0f02364ad7cc3eb6134b702df"
+    },
+    {
       "path": "node_modules/skill-family-contracts/src/fixtures/project-manifest/positive-01-minimal.json",
       "sha256": "b1ffceb0e0799f16adc519972ba7729ad3af316bc0f4e7398dfc0f08f81269e3"
     },
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/project-manifest/positive-02-engineering-declaration.json",
       "sha256": "6652d84074593bdd97a658a68bd895951668b893e60b073ce30d716f94692669"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/project-manifest/positive-03-internal-dependencies.json",
+      "sha256": "05fb76c33990731d087d93d8400611fc530f21fc054cb251d52ec1a3fe8257ac"
     },
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/project-profile/dialect-01-unsupported.json",
@@ -2214,6 +2326,18 @@
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/report-model/positive-02-empty-sections-en.json",
       "sha256": "ca3b940ffc87e7ca5df72322e14567edc43e4213a17216a2b06e8a749835af66"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/session-trace-bundle/dialect-01-unsupported.json",
+      "sha256": "7ff23dd4825bcbd409f5ed2a6a80cc079f0b10b3eef092cc84ba4ef868b8fe06"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/session-trace-bundle/negative-01-unknown-field.json",
+      "sha256": "cb9288d1785f06d73c311c6ba5974848a5a89393b13555af059a8ff4a6d893a3"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/session-trace-bundle/positive-01-valid.json",
+      "sha256": "e3bd80eadf30aabd4d63486b3292a2fb4cb3b7acb2acbecf29f9692cf4f24f6f"
     },
     {
       "path": "node_modules/skill-family-contracts/src/fixtures/skill-family-directory-verification-request/dialect-01-unsupported.json",
@@ -2320,6 +2444,18 @@
       "sha256": "b584bfa78bcd16e46b2ee78c41d4b23edfe1866bd4f06b8db5a66431b7627dca"
     },
     {
+      "path": "node_modules/skill-family-contracts/src/fixtures/task-handoff-envelope/dialect-01-unsupported.json",
+      "sha256": "2e74490e4bec6cae4b8060838e076a269a7007402098b7144f2d81f0289f5e38"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/task-handoff-envelope/negative-01-unknown-field.json",
+      "sha256": "2e2788557dc638452c1007ae473d9bc2aa533de0d77d0fa5a893117229217002"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/fixtures/task-handoff-envelope/positive-01-valid.json",
+      "sha256": "8db9752152000294cc967f64ffe0423643797736465605241c426be9b3782a64"
+    },
+    {
       "path": "node_modules/skill-family-contracts/src/fixtures/timeout-policy/dialect-01-unsupported.json",
       "sha256": "7f9dcb39883a0b000b9d9bfcd38ae59faae2fe3a8458dbd7e05beb3cc3264af8"
     },
@@ -2413,11 +2549,15 @@
     },
     {
       "path": "node_modules/skill-family-contracts/src/index.mjs",
-      "sha256": "0f91c4870cc2270fa91f61b7949dd167e1f620727309fa847297d46b5062ffae"
+      "sha256": "7a3a9f61703b4fd053dd41c150f0371bec2c34890a8e64f80318f77eab5c5115"
     },
     {
       "path": "node_modules/skill-family-contracts/src/inert-json.mjs",
-      "sha256": "a7016f55f87d95faa73b00a72ae79b1c47d2bb5abf5072e5372866a2488fd1d2"
+      "sha256": "dbfa2b721a64fbc7c4cb34cb125dc8ea07616550a4153662c91f3247146ddeaa"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/internal-dependencies.mjs",
+      "sha256": "7f6d9a4c26664b07a3f31faf5bf06255e81e7ee6650d30d3d518f59bb3abad4a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/kernel-protocol.json",
@@ -2425,255 +2565,303 @@
     },
     {
       "path": "node_modules/skill-family-contracts/src/kernel.mjs",
-      "sha256": "db48f77df16621ca2899e1f36a14e9cdf880ee70252a1da7ca2f758a73ecd538"
+      "sha256": "b60182e88e2d70f96a901e71f1edd151c638e2caaac1fc344ff0bbd56f7709f0"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/orchestration-blueprint-structure.mjs",
+      "sha256": "8000863954e6631a092bcbd34bcefb3297badfd1ae847db168cdedbae33eb3cb"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/orchestration-blueprint.mjs",
+      "sha256": "0a832613ec8ca2b0755921b8fe7ce9e3e1d7dbf0e2665cddbac8f7d5f336a082"
     },
     {
       "path": "node_modules/skill-family-contracts/src/registry.json",
-      "sha256": "eae4cf1b36d0f2c1d4f019e89980d4708f040893c1ee81e919b7e33b73955d7c"
+      "sha256": "34edf140dcad050f16e0efe213c85d513aa44dfc773ebf0d2e495bc4beb540cd"
     },
     {
       "path": "node_modules/skill-family-contracts/src/registry.mjs",
-      "sha256": "5f48a960a48a8a9f87984bec7fca622b70ca9c1dcf4457ec7cc2546366f813b7"
+      "sha256": "d943586bc100d4b9ebd5d1f3bd15294e470251c9473ed39e2314089c4d86e8cb"
     },
     {
       "path": "node_modules/skill-family-contracts/src/rules.json",
-      "sha256": "35d0076580f055d06deb5a6a28bda1f052ac66d2f5e2f3b3228348da89ae70de"
+      "sha256": "6cbaba973a38030b10c9755271a04db8ceb8e0e7483acb9f28fdaa68a2e98480"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/adapter-build-manifest.schema.json",
-      "sha256": "48e07bddd1d13a6942fff15a1843c6bb36706c83da1b584ad9b0773afeb4e829"
+      "sha256": "380a066be4dad57c122275b0023d615273b6b7766c32dc15807379b0fc1304e0"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/adapter-peer-verification-request.schema.json",
-      "sha256": "965d2017f130c39ad20abd28bb250a793004ec60c41b9394e54cdc2a2e0752c1"
+      "sha256": "3e4f4bcb164da355471d9ae3d1a17c104f60a5566c266ebb4e944d873570adc5"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/adapter-peer-verification-result.schema.json",
-      "sha256": "574c0adf1337a16dde4fa96ca3361a145faa678d4d4fbc1c270edc7a26dbc7dc"
+      "sha256": "533853e304c8278f0f01c46b81c3b21ed6d2766a649f20de5a91bfd143f0fe4e"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/adapter-source.schema.json",
-      "sha256": "32d2647baead350e5784fe7d3ef52217e2e20f94b262e1b8cead23b757282d22"
+      "sha256": "ffc222fc0c0ec38b3d64ab3834ba0b7bfa843767544e72ca03ff5001e09fcafa"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/audit-baseline-pin.schema.json",
-      "sha256": "5084590fe3870acbdd651946b5ab88541d042eaec19d03c8b01e466b149a5253"
+      "sha256": "08bc3b067f05c5ce3b91fc38c9f96f0d49e555a147608668756db22c4d279f1c"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/consumer-contract-vector.schema.json",
-      "sha256": "71a42a6c500ad6fbc2e7514428fb89b6329c329892ed641cd7bfb5f0fa9544ff"
+      "sha256": "b460e3a0517c6c46349d700fefa88715c0c2a5ea7a028f8cb07bef7bbd66f246"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/declared-read-surface-result.schema.json",
-      "sha256": "5ab26f874818602ff640bd4cee3c743db3eb6767d676a43520b199b554cb0783"
+      "sha256": "8c8285b28142d4ad0f71d8d894461c75e4603d6c862f5c2f21ba24ba1fdd56e1"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/engineering-baseline.schema.json",
-      "sha256": "97a3199c3361ae5b7de01c8eb515ea345563d09c198b829c85677de87c257df7"
+      "sha256": "e11b139323223ef090ed8f31b234e454767a1a2339c73bfd4a12d36e6a76245f"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/executable-identity-observation.schema.json",
-      "sha256": "334a7cc5f1368a24ce7241b3c223b5246a567468c7e87c990796a68862b01732"
+      "sha256": "4181ff6477817912b6ea6737cb012a3661ad7642e4ecc5d64a5d41065dfd4938"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/file-set-apply-request.schema.json",
-      "sha256": "142af3ed205fc93165c4ad12afa8dab39ba772e6f5e32df3ddc9f5b14c9b0fc9"
+      "sha256": "10760f51ee7b11769fa41559e48c86fd1e356c6ab5017fc96a1febbd0f448f67"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/file-set-event-payload.schema.json",
-      "sha256": "ce747f97b02fec33a0d4d4ab4889a0c4193fee0b5b749cbbfb2b4d615b793066"
+      "sha256": "676f4c6c60a31154e3c6156e16567bfb9de184c780c8ae991a97dadcff45b8f9"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/file-set-prune-request.schema.json",
-      "sha256": "cb28b721e978246dca1cf458933a0f1b81fc0459a317c36c36f67c204e14abd0"
+      "sha256": "4ae705b9631097472928977b2d5446d5a87f7667740f4489576f0057fac7607a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/file-set-recovery-request.schema.json",
-      "sha256": "9d51637e989de8626a9f925c23110cf05fd4eb3c85c462ebbc8660353e172135"
+      "sha256": "6f50e803bae8fec398d3a3da0dec9c910e58763d4c61ce5a2e1466eaa273d571"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/file-set-result.schema.json",
-      "sha256": "c909e6aea3d78fe3dc7d8ee26ad8f9fc1e85d3349785310a8fd5abeca9543fd7"
+      "sha256": "8c21fec60a8c5cf0400e14308b971e7d633c39a56789e553caa9923ffcaada3f"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/filesystem-root-binding.schema.json",
-      "sha256": "5e54c0febdc6c831fcc94b7d1cfb8f14aef838d718eb5e80a4f1b63bef1e3e61"
+      "sha256": "bffd5aa884d4f89e930b16ac10675941acafde2954795dbe472251204b788a1a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/filesystem-tree-observation.schema.json",
-      "sha256": "ca9133b0f257342dd191e79d006a7c6dfd356650f5b487dabe567b30aabe70e1"
+      "sha256": "933ba8935b76abfc6994c983fb2bb7842617a370ca7c0124beeb0765b0601063"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/schemas/fixed-set-generation-pointer.schema.json",
+      "sha256": "937ce4cbad4a8cf0b0a66a65ba177d65d80f50f41b3e14239c4dd172e6c146cd"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/schemas/fixed-set-generation-resolution.schema.json",
+      "sha256": "06601bf1eaa8b86653d1e1a258d22320fc27381999da512e1e2e7f406a3d4e12"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/schemas/fixed-set-generation-result.schema.json",
+      "sha256": "1e8745cad87370edb7afe4c1048a3d2c4f9dba84d2a93743cd057612bbb5e540"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/fixed-set-publication-manifest.schema.json",
-      "sha256": "382bbf8fd1ba99ddefb1e3f6077f379f30cd58cbafbaf3c4191151b3703c2ed2"
+      "sha256": "0e42ea073dab2f1d69b7f88e3f42ade6e88eb0044dd2312938fe20a6dd10c7fa"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/fixed-set-publication-receipt.schema.json",
-      "sha256": "ed460c723d8a041b4cb9355c251b9c8f78e4dc03cddaa06af21ed8b2b86389a8"
+      "sha256": "bbe8c8c714c387f6965f51127c7f9d48416514a98ff3e53611fae55685b27e1a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/host-capability-fact.schema.json",
-      "sha256": "120de1d79649e5d9a905c2039211565a7eb68aa6ce170fe0c60bb0d77ae92b22"
+      "sha256": "53f40f80f3226f7108732205bb6b823931d02d6f415add67b28acec2e59536bf"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/host-descriptor.schema.json",
-      "sha256": "5d7f0b41a9cb2cf07397dd2ffe0c5e8a6202f986b734d5d7e8a0e51bac4e9d02"
+      "sha256": "a49d6a4d1b245ba46ae5ded11076303195175bc13f6f7e0d0fee63b53bfa04ff"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/host-operation-plan.schema.json",
-      "sha256": "536766652ab73aef2e2133f3379a9db967e765521f132749fb358bc91ba2a1d4"
+      "sha256": "d658d09a0ee327475d82164015a2b119b3fce5d1ddeb4065037ec9c1fa914da7"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/host-operation-receipt.schema.json",
-      "sha256": "be0901a0bd7c7d133031a9d5572b738ae697c2c5c019e6aa7d7e1b470d5b2fc5"
+      "sha256": "acb2b281a8ea4579125b9190f0bd6f0e5bc0681554826e8ee72aa868a1795ca5"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/host-probe-result.schema.json",
-      "sha256": "decd7ed048e0a511e67c7c7142456257577e737f56eccfeb9acd8c6a7caf03ef"
+      "sha256": "8c6b695bfb266ceff2369ba12a187fd654d05bd5d7e9b3d12a1a5cc4227bef15"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/host-registry.schema.json",
-      "sha256": "1fab4fa7c2bf8973dd314711e901ea7b7d8ab41f1f90eb45dc4b0c47a23bd241"
+      "sha256": "4696a32b450ece24aed8aee3ce2dbfce1fde3fab62ba2e67552fa58dcf265fd5"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/host-verification-request.schema.json",
-      "sha256": "1b145aca7f422ace5d5d5606ac644ad5e0b92b1eb42efad8ab4a04159c3e220f"
+      "sha256": "2031c73ec6c03e2657b0f8197b4ea2e38f27b36ab892bff08b4b6a2e709b7b13"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/host-verification-result.schema.json",
-      "sha256": "e4b40721b76b144f7709a27c82d657788a88f7bb1da16ab54f73e4fa42ae212a"
+      "sha256": "795bd35f17b66fa320863c6958c2ad9678a8c64107a59c4d6cab127a8a79b1c5"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/schemas/internal-dependency-resolution-receipt.schema.json",
+      "sha256": "977185b08b5c82bb0838b2929fddfa25b92e655b7210b9c6244b15a2a116e990"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/managed-file-lock.schema.json",
-      "sha256": "1b182ac2276a6ca2827a59e754b7cefbbe4c2d67a79f79e448620c56749eee51"
+      "sha256": "7f0a04df219ab4fb2371957b826cd4f4ca0b0631c16124a61b5fb9d33788d92a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/migration-manifest.schema.json",
-      "sha256": "ff5ea2f22c61301b6d30f508d7e2182bc89fe3c340eb64e733e9bebc11120e50"
+      "sha256": "ce7a5d31540f4cbba0bb82b692cd4125e2757f3887da110c8ece992d90ab3c39"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/observation-scope.schema.json",
-      "sha256": "bc02d18a985335d2cd4e844705092decd47a3f2ec11433c67a0722ce6e1b3d01"
+      "sha256": "82de3abc6ac01b4c3fcea3d90ab36ab4df795b44355b40fbc810920abe89078d"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/operation-request.schema.json",
-      "sha256": "4553f7936c01a290d9c7b5f7e3467050788a6dd1758289815b9484e1557c5f71"
+      "sha256": "02c7cf2dc7206ab6645f2c4a98504df06afe0858b66b00521f026ec38f7f99f1"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/operation-result.schema.json",
-      "sha256": "ed3c1d6473be94ffa60d2113a73169a12bb841f3887ab2c8e243aba21a1e15a1"
+      "sha256": "ce2d6e5490aec9833bc95fb967bd14b4a9f4adbca7d42bc42b728915bccca702"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/schemas/orchestration-blueprint.schema.json",
+      "sha256": "377464df7eacf06be30556652b2f37b2844fd45f897cf63082a5eea4ce616ddd"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/platform-difference-registry.schema.json",
-      "sha256": "9665995a3a061bae37dbd0df3bb8d86f6de0faf772e8ac3d3fe30ef11668bc44"
+      "sha256": "442bf862638ce5e5c82b42c378b01b689bac6d52772252e7651e95460838dd93"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/plugin-verification-request.schema.json",
-      "sha256": "3df01a29d3d8f18f88a765ca8e9e05e2b3868cb78c8673cd4d168d670f1fc917"
+      "sha256": "65bd091f8eb348e4747ecd852cb34bce42edea66b0a874f327d29bf06e9f7abb"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/plugin-verification-result.schema.json",
-      "sha256": "f890ad77dc9a96ba9ca489ffc5a46991262934459641ec412aacd75f1b19c4f9"
+      "sha256": "f16e5e63606861a61199e96beb048f5682509b41c0a7f6bb0e0a17b0ae62f448"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/professional-conclusion.schema.json",
-      "sha256": "9ab21faace8664b9b18b2be7f1c019e8c79abc1c33c1f9dd423e8c23f78c9938"
+      "sha256": "97f08386040ff1e3323705ccc19fd01be03f425fa07765f96ddbb278bc5f73d6"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/profile-adoption-declaration.schema.json",
-      "sha256": "24603f16dd32e924da5d7b760063d8d7241e597d8fdc155fd8a0bf0dfa4e17c0"
+      "sha256": "a49ef7655e830b8fd8570ccfd07af268c45508e3f85fca5bc237645cc55273f0"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/profile-descriptor.schema.json",
-      "sha256": "603b166944aa1b1b8b944d1317b906f7a0a6d1e2f0e7e2f7108ffd3755985ec5"
+      "sha256": "de5decf302a52c54d918e5ba0c8864658cb600318d8c4c728969e1043eee988a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/project-manifest.schema.json",
-      "sha256": "acbeb137cab709c3e143972f3ae9f609e37ed25b28af011e639f26cb82f6be2f"
+      "sha256": "2038dda84bf92a2eca84a78f1f45e2b7995d12a85b2f206675b6deece7c81ec7"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/project-profile.schema.json",
-      "sha256": "228cb23a0983d746eaddd265deb270ccbf22f93b22d65f7ccab1ca469f3fc85d"
+      "sha256": "91aa1fd6b80aa919b9e36c0fa3c614ce842839a17273ce589715456c7a9d2732"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/public-boundary-declaration.schema.json",
-      "sha256": "a22ae3dcf65138ea38058c8059fb06cff832f3017e339a50332ddf679c96195c"
+      "sha256": "aec2c2c380d5d24b459a67b0d3cb0d18961e18615698215bc4476748cd0269cf"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/report-binding.schema.json",
-      "sha256": "8307e2e39ce4bc44d5c2921a0eb46fd269d416b61933468be39cc8e9ad0185c6"
+      "sha256": "e75191129df888834cf61101f472623d248c73b6cb31081fe5f6f6d58eaf9db0"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/report-model.schema.json",
-      "sha256": "edaaadec9459609a68f81f27d9a8c7404c32aea0db054240c8e34e3d7e09a461"
+      "sha256": "316eb2f19d0b83a2e50e37cd0aab4b20b2ce5af58f03d63b51afd974a74ed1ba"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/schemas/session-trace-bundle.schema.json",
+      "sha256": "670a0c78b4fff2f9a9d84ccd5296f442f8c29abe4628c91946b4e93c431f9543"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/skill-family-directory-verification-request.schema.json",
-      "sha256": "f78c7b6f2527f62cd104cdcd5c99e74fef5ad5e6eb1aa5f493f8ecb624ebfd01"
+      "sha256": "ee126c836197f2d0c49ef0e36115668be980ea1a03e008b7bf2b6d3e623c5423"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/skill-family-directory-verification-result.schema.json",
-      "sha256": "e9b752fb4009cfb1f4aecc7e54265ca3cdbb6aa1a1cd37c4c45d965bd4a23ac5"
+      "sha256": "be094250e3d9ada7a456f308464027ab3c136b0a5140c182edd4fc21c4153c2a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/source-authority-receipt.schema.json",
-      "sha256": "e512a0bd6583f7ec58bc344827b5ffd2cb9c496acfab946e3fa29d6aa095cedc"
+      "sha256": "d44fc016a58dd63dcd0f2af71a289c7e4fbfd743ddcd969d07737bbff83348bd"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/state-event-envelope.schema.json",
-      "sha256": "93a727af23c157a98798e7942005b508a69489b755a411afb809dee470f1c6de"
+      "sha256": "2a109ddf6ab4360f02c1262262ea7ab4ffe46d033c909f2bd29c113392af7333"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/state-snapshot-metadata.schema.json",
-      "sha256": "0b17ad49d0be9355b3ac04091daf3c554547c9584e8e58ef4d0c9d782b681de2"
+      "sha256": "6ba33d073e106d3caf0deb3a19fde5d29d5142bff0d8b7bf26eca3f560228140"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/state-store-recovery-observation.schema.json",
-      "sha256": "ac1ddf73d9b5ecd181b1f7888d18c608426b97af4324ddab3d39d092d57bda26"
+      "sha256": "5d6419b3f175dc9c63a14aa32c156be5eb8344614f1f8cd804ec72c86fb150a5"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/structured-scan-policy.schema.json",
-      "sha256": "81cd438da6ac6c81d1533796dfbd209becadc30c2483e3881b19a9923b767929"
+      "sha256": "c9d39fa78a8e22a346a15d233915738fd49f950e63d6d68b5cfa3e80d0069a0c"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/surface-scan-policy.schema.json",
-      "sha256": "5617ac4ca58a9a35f55c58d67a5246ae3805a817744bdaadbdfc51475f2fb9e4"
+      "sha256": "e997f03b7a6b73cd01e6f3afbe4a8a113164926259f38c1f7036f488e08d952a"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/schemas/task-handoff-envelope.schema.json",
+      "sha256": "294fe945c1ca455502cbe686eddbcfee6b061d738e12c9d5bd702533029dc94c"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/timeout-policy.schema.json",
-      "sha256": "671ac0fcb1ca82db0ee5fa5a4aae70a0597ee2628a70340eb4dda8f5bcaa4c33"
+      "sha256": "747ddc8d6a3dcec50fd9bc6a4047914ce1fd97406489658091dce89dfdae4c6a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/token-estimate-record.schema.json",
-      "sha256": "b34b6bc215cf20f50ddd3d453cb5799644f7c665ac596162a3270a0ec8a1ff2a"
+      "sha256": "1ab6edd6b9528d9959ea019b330ab4b5afb0b88edb21208d548df73ee195738a"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/token-estimate-result.schema.json",
-      "sha256": "941621696604ed7aec425e19cff2f0c66612417f949b26d415e41bf124565e14"
+      "sha256": "3a840a5eaa06945f2f84f12fb381346d11d3c275f84d1c582ed1bb2c029ceb38"
     },
     {
       "path": "node_modules/skill-family-contracts/src/schemas/watchdog-termination-envelope.schema.json",
-      "sha256": "9c5f6e356a2300c89ac8dcfa758751a93cd5281604a5bb54ad4506ba1042a3c5"
+      "sha256": "4450e18f1c6386f49eaa3ce863745775e29a591fb339bd161564289eed2cc2ff"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/session-trace-bundle-invariants.mjs",
+      "sha256": "05e8452afe692d6710a9e245d2e749904a75151ed7ef36290ad942acc37a8fd0"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/session-trace-bundle.mjs",
+      "sha256": "e2ff23480bff87cce3ad46ac4344d5f52f1a6f71be47074fe78ace66c16276df"
     },
     {
       "path": "node_modules/skill-family-contracts/src/source-authority.mjs",
-      "sha256": "2968a2ad36d613f7b457c90a36499167da7ae21d006ed1d83007731ec1b3621a"
+      "sha256": "07f1374fae0d2cec5cca9e5f7e7bacbcd23dea76f1d83c58776137b353fe01af"
     },
     {
       "path": "node_modules/skill-family-contracts/src/stability.mjs",
-      "sha256": "3e34ef68ecaa992d76f56bfc71f1266fe44a8475e48eb421216fcfb2ad975feb"
+      "sha256": "bca203e1ba1e6e44a09d815315a7fdeacafc2654914aa3bc1c5d2935f6a37ae3"
+    },
+    {
+      "path": "node_modules/skill-family-contracts/src/task-handoff-envelope.mjs",
+      "sha256": "e01b46e624ef9f8776972bd4325cc8f08e622a89300ae443b107338a1c9d5e1f"
     },
     {
       "path": "node_modules/skill-family-contracts/src/token-estimate-consumption.mjs",
-      "sha256": "7d812cbdf0418e2395cce55ebf6cb5b14362b5c1ae164488aeba1390ae8efbf7"
+      "sha256": "9be80235b092cb27ed6c3991d8906d2f8a50d5e603a46087486b8db8f7fef8dd"
     },
     {
       "path": "node_modules/skill-family-contracts/src/validator.mjs",
-      "sha256": "c1c705d11c1f6750cf0664bde0766c89fd1df9dd9f74294ca9cbe163f4a67fc2"
+      "sha256": "e1b7c4e1954aa56e354565a833ae422d456de4648f5c4f87249fc4dff2bcd0f3"
     },
     {
       "path": "node_modules/skill-family-engineering-kit/package.json",
-      "sha256": "f394640b3ea8b84f5a9ae59f1424efb1cbc341d7c0c335c97c417cb20aa5d057"
+      "sha256": "a61c7603b49805c87c307d6ff887323433046af7843585245d656410915eb1d8"
     },
     {
       "path": "node_modules/skill-family-engineering-kit/profile-spi/extension-spi.json",
@@ -2685,15 +2873,15 @@
     },
     {
       "path": "node_modules/skill-family-engineering-kit/profile-spi/profile-adoption.schema.json",
-      "sha256": "81b5467e9a7062579cc5784b5049a3a54f8d2373ab339e31cc7519b86cae7894"
+      "sha256": "cda612a113abba00b5a426f34b2fbd496869f72698da6743ae67d6de1e608069"
     },
     {
       "path": "node_modules/skill-family-engineering-kit/profile-spi/profile-descriptor.schema.json",
-      "sha256": "603b166944aa1b1b8b944d1317b906f7a0a6d1e2f0e7e2f7108ffd3755985ec5"
+      "sha256": "de5decf302a52c54d918e5ba0c8864658cb600318d8c4c728969e1043eee988a"
     },
     {
       "path": "node_modules/skill-family-engineering-kit/profile-spi/project-profile.schema.json",
-      "sha256": "228cb23a0983d746eaddd265deb270ccbf22f93b22d65f7ccab1ca469f3fc85d"
+      "sha256": "91aa1fd6b80aa919b9e36c0fa3c614ce842839a17273ce589715456c7a9d2732"
     },
     {
       "path": "node_modules/skill-family-engineering-kit/profile-spi/rule-baseline-catalog.json",
@@ -2701,19 +2889,19 @@
     },
     {
       "path": "node_modules/skill-family-harness-node/package.json",
-      "sha256": "9e2b53120036beb7800fe83708742bde9664e0b689d36d1d704367826f3d226c"
+      "sha256": "3d2e12259483010fb523b8912496e71496aeaadfd6e0219e71ba9aa27e47fcef"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/atomic.mjs",
-      "sha256": "324e5b092415c3c1fd19128bb372ad7b8fdb52569af3b3d57bf4a08687af062d"
+      "sha256": "75c2bd8bb19dd5e7301360335ed01ebd64558aed17b71e6b5f504f0020b91104"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/baseline.mjs",
-      "sha256": "2f9433fbf38710a5623abf86e8aad8d35c76f10834d15298630e0f66f24869f3"
+      "sha256": "546ae853e4edfa096f3e0b52b23cb2007606ac8f8ebebdf11cb8dd83cf9297f2"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/bound-read.mjs",
-      "sha256": "18b076b6cea239569b9c203308df34569fb917b066580a1c66b86692d661ff5b"
+      "sha256": "b89a9c7f14e3063c631c31ccdb8bbdf90fcac813905bfbd4f7631d85ba3c43bf"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/budget-guard.mjs",
@@ -2721,115 +2909,115 @@
     },
     {
       "path": "node_modules/skill-family-harness-node/src/chokepoint.mjs",
-      "sha256": "0761cb0efa6f61bc6f1fc252bbb4f526e2683dd29c03459168693bfe9d6ecaa5"
+      "sha256": "73a64360c948a4ae0f1459b385899609b0f9400496d61cac310f147c3a96370a"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/closure.mjs",
-      "sha256": "0cf6ba19a3564efac82be51a0e907b166bc933dc96f04dd9bbe7c34cf0344121"
+      "sha256": "7f0f709cc798b7610eeac2fa8dc379daa3656deef4127afa98d44626f9340551"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/declared-read-surface.mjs",
-      "sha256": "f15f4c834eae0b3c970e01c98104bd07e95a1a8504d6278a8ac94bfc90e55ec2"
+      "sha256": "250859daf1440435cb44e58bed7c7c10cc220930ad41acf96b02ec7e597095f5"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/errors.mjs",
-      "sha256": "942ab2252be5b05e83e55ffa87e391d2cdcc9ee280b46122578f8f2b2436ffa1"
+      "sha256": "56d8a08a7cabdd58a2827c80c5475507e5c4a17bac694736a83da13c6865792e"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/executable-identity.mjs",
-      "sha256": "426be38eb40533af3252eae9ffdd94d0391dbbdf72a7ebee0a93a246e379ad6b"
+      "sha256": "e8988d214b83a10eb8bf65744e3a1e7bf6a0a94b44b0539dbd5e97af36595cbd"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/file-set-recovery.mjs",
-      "sha256": "c6d60c37e775c05fd0cb9e0014ffa6d791e0077c37fdc457f58aa5ea1e6188ef"
+      "sha256": "74c4fbe814184b34a704a272ea0b50fcc4083f0bf60571ede8cd78cb22546b04"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/filesystem-observation.mjs",
-      "sha256": "af94c03ad9ec74b41cbca5fff5e63a82653eaaa03f74363d6663ac01080e19c1"
+      "sha256": "5b8bf875ee3ce98d27d1c2410805b182c75be52c1a72af7bf0d1a7438de4399c"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/fixed-set-publication-loader.mjs",
-      "sha256": "4e2c7f1a0ffc3b747d22a8d2bb78e7b8687d9a9c227b3698f2a1c0720f01bf9c"
+      "sha256": "4fcbf6f22de1e27e68516855182c7a7092a1440a19e053c6d577f41e1cf713c0"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/fixed-set-publication.mjs",
-      "sha256": "e97aa6ca99069842ac521f1a5f5c1decb0a415de78d28c15842cec1dbf1b2595"
+      "sha256": "53c2a824b66ecb3d778cb335fe685574b3cf38b199a640d538ffc37df9ed8aa7"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/host.mjs",
-      "sha256": "247014dd6b580fe8126fdf797266c985a2dafd13875da0d106c5120598bef7e4"
+      "sha256": "697aa27b898cdfa2da37fb96c913e308d8c37fb11dffe40e973c08a058d0d706"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/index.mjs",
-      "sha256": "ad6db9ecff1d62afba1c58ac5789b5dea08f9acc377f7abc5093737018b79125"
+      "sha256": "6bc226ab18b128d96e1b6fed765de57116438a5e902cf347320d02fb08167c37"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/native/loader.mjs",
-      "sha256": "9c65adb1e9e88d25548d09feb55899eabd12381b719377ed7b070de174795a18"
+      "sha256": "bc8a50873b05a20381b3f64449fe4a820ac943c194193b2c8a6618a94843ecf5"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/paths.mjs",
-      "sha256": "9e5bee6a906e11d4538daf27cd0c95b3fb800712137a7ccdaa45835958d5b6e0"
+      "sha256": "5da8b3ea25c805ba5a14143f5a645465696809a0362673001737b6869a81606b"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/peer-adapter.mjs",
-      "sha256": "ae53388b2922ec586b00fe4ba071ac4a747748aaa501e79efa3e07622c938aa7"
+      "sha256": "3b739243622042e3d451aa8ef74d121afcb4b1416bc9dd38e360cccb82982a65"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/report-version.mjs",
-      "sha256": "d7aa1425c7baf17ef38173b8abced293473ab53729330c8e9f4852e450f59bf5"
+      "sha256": "fb272b4101f8d61589f704bd77a99b8ba6e99748923d6c1f35559d6b806b55bf"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/report.mjs",
-      "sha256": "a5cc15a4ccfc013425c013deab32015e54747e85501833dbb15b60b661fac52c"
+      "sha256": "6552be47049253bf8b3abed6d8e31dc9c5005c02886b61f23769f82e1bdd61b7"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/request.mjs",
-      "sha256": "40d795450a8925ed58961057bfc364a504fcc91bc7f6343d2b35a25544aa07c8"
+      "sha256": "20df74645308979d3bb5e773ce3dfe03078e78121ef44941eb084f78151df621"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/state-store.mjs",
-      "sha256": "f1692cad7d435d6fa7a46cfec20289ce8be1078b70b0b4ee2aea90e63cda364d"
+      "sha256": "0376acf124bbcfacd36abd92cc27f2434187403aecdbf883f9b8c676dbe8886b"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/strict-read.mjs",
-      "sha256": "946b3b3d835ca6eab861ce25569366df42ac98bbd3852c69d2c93e6e4780516c"
+      "sha256": "73b44e759dbefdf2c9a720ae1660542d28e1a83c6a8073b7aab4554b808232f6"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/structured-scan.mjs",
-      "sha256": "e6cfc893bbce721820147e1e103f22bd156b0abe42784bc3f050a496d10255df"
+      "sha256": "445391908c1103e88fda7c09af46ad88ebbd8a749f5fdbe0f875303fc04a8288"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/supervise-process.mjs",
-      "sha256": "c68a59bd606e5245adcdc51fc4e19ec9c53d2606c4c33af7f5eab2609f47ad16"
+      "sha256": "c588b671c2f1ce0b482a931ab48a042226bf9264cb39f3326818fd06ba7db134"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/surface-scan.mjs",
-      "sha256": "971b002a0cc7d01eee580f711542027385c2e0764f9787bbd597ffd100b7be09"
+      "sha256": "f451a997e527ce5edae32c6b22404e3bc3f8c721a75cba6e271f93ff0ca0fdf3"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/token-estimate.mjs",
-      "sha256": "3ccda2fa800d7339247a7e8bfadbff62b47c9fcd8a4f1d27bce4a61c9970eeca"
+      "sha256": "47f3667a5a60b5c948a5a250fff641d9bb8816c6469fa9e27b7e95ec236a4de2"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/token-lock.mjs",
-      "sha256": "554f45243af54aa7c9d3bc0a90c96156fe4960fdad9ccddc1ab55faa2563d16c"
+      "sha256": "aac472d3bbc51ce6c533aa916ba3003eb2dbe32013dec876854beba33f45896c"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/url-redaction.mjs",
-      "sha256": "1148b64545d3e72e6f1f15474edd2c3b6a8e50787491c1bc35719b1429062298"
+      "sha256": "873a82eac31ce21bd12c3335bcff82f96fbe6b8cef61920b34b6dee26c29f7da"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/validation.mjs",
-      "sha256": "d487b7496414c32aad8708c5ca6305164539482af9382bdee0b8785dcb316cad"
+      "sha256": "b8a36617125c3ed78da9a1be141073f960df9c0121b5d5ae507f9dc6aff4887e"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/version.mjs",
-      "sha256": "3a200ab25f61606d870bc433e3fe7da6dc55389bceadebf8a735015d3e93b4a4"
+      "sha256": "27b8ad6191f6a4a8530de576b19b1e1d214ea91d68763d1ce55368f04d38885f"
     },
     {
       "path": "node_modules/skill-family-harness-node/src/workspace.mjs",
-      "sha256": "89530ba362c70da2f3e15868dbef3a342f93fabe0ec92a794ab821a8706d419a"
+      "sha256": "db1b932bb01a64651a125c3593499211d702920d1c3ea6a77c5389fdb5f5d5e5"
     },
     {
       "path": "node_modules/sort-keys/index.js",
@@ -3185,18 +3373,18 @@
   "packages": [
     {
       "name": "skill-family-contracts",
-      "sha256": "e7d8569b2b5d547c5ab4c08222448ff137d1e0f9bea34889d878d0c6da316c77",
-      "version": "0.22.0"
+      "sha256": "6df032874e4738aaff8b360564ca1cf44c063cacfcf41ef33f113bbb307a5ac3",
+      "version": "0.39.2"
     },
     {
       "name": "skill-family-engineering-kit",
-      "sha256": "9c680ea6bc5a357733f249edcd18fe533f260c7958a1e7a0a70bbd5ff01cae00",
-      "version": "0.22.0"
+      "sha256": "fce4f09f883d0b7483b3cbe7b06b32ffc1cbab10a45ccc4d21cda163fb00eea5",
+      "version": "0.39.2"
     },
     {
       "name": "skill-family-harness-node",
-      "sha256": "a1bd014a5863d8e9cf3e3e07c6baefbf8bb4c42ad2458c2cd9649929b49f93fb",
-      "version": "0.22.0"
+      "sha256": "f270a6fb09963625c0331e179bca54023b06984cdaf90f08e7bdd2ad20e9333b",
+      "version": "0.39.2"
     }
   ],
   "profile": {
@@ -3205,8 +3393,8 @@
   },
   "schemaVersion": 1,
   "source": {
-    "baseCommit": "f2ba5a3751823adf45c229cff27802a1e0d0f467",
-    "receiptSha256": "9a6ffadef519d41fb38c4c04693698eb5c9ab5641f45813454704ac99bcefe0a",
+    "baseCommit": "c13afe2964e1caa90aec80b219b3d4ac7c821ecf",
+    "receiptSha256": "659961b441b5b0a35de7c30bf024dcdda5bf20c1510f16df3c534edeb95f7e53",
     "repository": "ifoohoo/skill-family-foundation-workspace"
   }
 }

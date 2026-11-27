@@ -309,8 +309,8 @@
         },
         {
           "canonical_id": "SFA-ARTIFACT-003",
-          "revision": 2,
-          "revision_digest": "b46e6f2334baea95c2ddd3f1c7800de264a0b96aecc9e685bad5bc63b0453435",
+          "revision": 3,
+          "revision_digest": "a91cfee759ffc02cc794e3914d822a9e4d058a819f3248091c55e2f331a3c90e",
           "scan_packs": [
             "declaration",
             "source"
@@ -1638,8 +1638,8 @@
         },
         {
           "canonical_id": "SFA-METHOD-009",
-          "revision": 2,
-          "revision_digest": "5eb7929eadffc3f151badbe02e0e9bf2d6778839ee6e4f3ea85f2020ac4f8fe9",
+          "revision": 3,
+          "revision_digest": "09bab57dbf6ed1360cb24220f091e7d72eb9a1e5ec6037b9afc7095af55ac1ac",
           "scan_packs": [
             "declaration",
             "execution_record",
@@ -1991,8 +1991,8 @@
         },
         {
           "canonical_id": "SFA-PROFILE-004",
-          "revision": 2,
-          "revision_digest": "91275c4d14c587ab3f6a3b76e56a31d2c1915d9a499dfb6202d6d6cd6b23a6bf",
+          "revision": 3,
+          "revision_digest": "60f5621aa2600721466e0598c89c98ef14c988976d2609068f1bedefbb516b70",
           "scan_packs": [
             "declaration",
             "source"
@@ -2534,8 +2534,8 @@
         },
         {
           "canonical_id": "SFA-WORKER-020",
-          "revision": 2,
-          "revision_digest": "84355cffdd0a1d4c8c656b18275f06a69f1ce092b8b53673395b70cd2a9c46db",
+          "revision": 3,
+          "revision_digest": "e07cdf44ae7faa6857d822493b94c523b088b25790873ffaf1feed0da76bb62b",
           "scan_packs": [
             "declaration",
             "platform",

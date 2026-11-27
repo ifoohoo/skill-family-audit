@@ -5,11 +5,9 @@ isolation-policy.json / selfheal-policy.json / stage-isolation.json /
 tier1-runtime.json / run-record.json。全部约束"已声明者"：文档缺失 =
 无可判违反事实 → PASS；形状非法失败关闭。
 
-SFA-CONTEXT-002 消费 W1 SG-33 冻结的 foundation 词元估算消费契约
-（skill-family-contracts:token-estimate-consumption）语义：取数字段
-tokens、接受裸整数降级形态与记录对象形态、降级不放宽阈值、失败关闭。
-权威估算器（harness-node token-estimation，foundation 0.6.0）落地前，
-启发式口径超限清单仅作证据（BIND-0020 登记）。
+SFA-CONTEXT-002 从实际逻辑源和全部声明投影消费 Foundation 计量及来源，
+只报告2400词元触发事实；减量或职责拆分评估与必要信息保留由语义方法完成。
+共享词元形态消费函数仍供 CONTEXT-001 的既有路径使用。
 """
 from __future__ import annotations
 
@@ -82,96 +80,29 @@ def _consume_token_estimate(value: Any) -> tuple[int, str]:
 
 
 def check_context_002(ctx: dict[str, Any]) -> dict[str, Any]:
-    """单个 SKILL.md 达到 2400 词元必须执行上下文减量或职责拆分。
-
-    机械断言（消费 SG-33 冻结契约）：
-    - 估算必须可消费（tokens 取数、降级形态合法、失败关闭）；
-    - 双口径判定：逻辑源与最坏平台投影取较大者；
-    - 权威估算器口径达到阈值必须声明干预（减量或拆分）；
-    - 权威估算器落地前，启发式口径超限仅作证据，不强制整改。
-    """
+    """记录真实入口计量；达到2400词元后的评估由独立语义方法判断。"""
     measure = ctx.get("measure_skill_context")
-    if callable(measure):
-        try:
-            observation = measure()
-        except (RuntimeError, ValueError, OSError) as exc:
-            return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed",
-                          object="logical SKILL.md and declared platform projections", detail=str(exc))
-        if observation.get("reason") != "actual_skill_context_measured":
-            return result("EVIDENCE_MISSING", **observation)
-        over = [row for row in observation["measurements"] if row["maximum_tokens"] >= CONTEXT_HARD_TOKENS]
-        assessments = []
-        for row in over:
-            materials = []
-            for material in observation.get("assessment_materials", []):
-                document = material["document"]
-                if not isinstance(document, dict):
-                    raise ExecutorEvidenceError("GOVERNANCE_DOCUMENT_INVALID", "context-budget must be an object")
-                matches = [item for item in rows_of(document, "measurements", "context-budget")
-                           if item.get("skill") == row["skill"]]
-                if matches:
-                    materials.append({**material, "matching_measurements": matches})
-            assessments.append({"skill": row["skill"], "tokens": row["maximum_tokens"],
-                "required": "applicable budget and reduction or responsibility-split result retaining necessary business information",
-                "materials": materials})
-        if assessments:
-            # The existing measurement contract's intervention string neither
-            # establishes its result nor proves required information survived.
-            # No published complete mechanical consumer for that assessment is
-            # available here. Preserve original material without inventing a
-            # private result format or treating the trigger as a prohibition.
-            return result("EVIDENCE_MISSING", **{**observation, "reason": "audit_mechanical_object_unresolved"},
-                object="corresponding Skill applicable budget and intervention result",
-                hard_threshold=CONTEXT_HARD_TOKENS, assessment_required=assessments,
-                threshold_violations=[])
-        return result("PASS", **observation, hard_threshold=CONTEXT_HARD_TOKENS,
-                      assessment_required=[], threshold_violations=[])
-    document = load_governance_document(ctx, "context-budget")
-    if document is None:
-        return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed", object="logical SKILL.md and declared platform projections", mechanical_half=True)
-    rows = rows_of(document, "measurements", "context-budget")
-    if not rows:
-        return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed", object="logical SKILL.md and declared platform projections", mechanical_half=True)
-    violations = []
-    evidence_only = []
-    for index, row in enumerate(rows):
-        estimator = row.get("estimator_source")
-        if not isinstance(estimator, str) or not estimator:
-            raise ExecutorEvidenceError(
-                "GOVERNANCE_DOCUMENT_INVALID",
-                f"context-budget 第 {index} 行必须披露估算器来源（降级也不豁免）",
-            )
-        logical, logical_shape = _consume_token_estimate(row.get("logical_source_tokens"))
-        worst, worst_shape = _consume_token_estimate(row.get("worst_projection_tokens"))
-        decisive = max(logical, worst)
-        authoritative = estimator in AUTHORITATIVE_ESTIMATORS
-        if decisive >= CONTEXT_HARD_TOKENS:
-            if authoritative:
-                if row.get("intervention") not in {"context_reduction", "responsibility_split"}:
-                    violations.append(
-                        {"index": index, "skill": row.get("skill"), "tokens": decisive}
-                    )
-            else:
-                evidence_only.append({"index": index, "skill": row.get("skill"), "tokens": decisive})
-        if not authoritative and logical_shape == "record":
-            # 记录形态是权威估算器专属；启发式只允许裸整数降级形态。
-            violations.append(
-                {"index": index, "skill": row.get("skill"), "reason": "heuristic_record_shape"}
-            )
-    if violations:
-        return result(
-            "FAIL",
-            threshold_violations=violations,
-            hard_threshold=CONTEXT_HARD_TOKENS,
-            mechanical_half=True,
-        )
-    return result(
-        "PASS",
-        measurements=len(rows),
-        evidence_only_over_limit=evidence_only,
-        hard_threshold=CONTEXT_HARD_TOKENS,
-        mechanical_half=True,
-    )
+    if not callable(measure):
+        return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed",
+                      object="logical SKILL.md and declared platform projections", mechanical_half=True)
+    try:
+        observation = measure()
+    except (RuntimeError, ValueError, OSError) as exc:
+        return result("EVIDENCE_MISSING", reason="audit_context_measurement_unperformed",
+                      object="logical SKILL.md and declared platform projections", detail=str(exc))
+    if observation.get("reason") != "actual_skill_context_measured":
+        return result("EVIDENCE_MISSING", **observation)
+    assessments = [
+        {"skill": row["skill"], "tokens": row["maximum_tokens"],
+         "required": "applicable budget and reduction or responsibility-split result retaining necessary business information",
+         "materials": observation.get("assessment_materials", [])}
+        for row in observation["measurements"]
+        if row["maximum_tokens"] >= CONTEXT_HARD_TOKENS
+    ]
+    # The trigger and original material inform L; S proves only real metering.
+    # An intervention declaration cannot establish either method's result.
+    return result("PASS", **observation, hard_threshold=CONTEXT_HARD_TOKENS,
+                  assessment_required=assessments, threshold_violations=[])
 
 
 def check_context_004(ctx: dict[str, Any]) -> dict[str, Any]:

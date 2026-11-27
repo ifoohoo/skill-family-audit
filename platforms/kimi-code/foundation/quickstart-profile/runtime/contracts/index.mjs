@@ -10,3 +10,5 @@ export {
   stableError,
 } from "./errors.mjs";
 export { canonicalJson, digestDocument } from "./canonical.mjs";
+export { SESSION_TRACE_BUNDLE_SCHEMA_ID, SESSION_TRACE_BUNDLE_KIND, verifySessionTraceBundleInvariants } from "./session-trace-bundle-invariants.mjs";
+export { ORCHESTRATION_BLUEPRINT_SCHEMA_ID, ORCHESTRATION_BLUEPRINT_KIND, verifyOrchestrationBlueprintStructure } from "./orchestration-blueprint-structure.mjs";

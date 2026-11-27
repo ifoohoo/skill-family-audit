@@ -1,3 +1,4 @@
+// @decision FND-ADR-010
 import path from "node:path";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";

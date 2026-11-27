@@ -19,7 +19,9 @@
         ],
         "lifecycle_lock_evidence": [
           "log",
-          "receipt"
+          "policy",
+          "receipt",
+          "source_file"
         ]
       }
     },
@@ -56,6 +58,24 @@
       }
     },
     {
+      "canonical_id": "SFA-ARTIFACT-003",
+      "revision_digest": "a91cfee759ffc02cc794e3914d822a9e4d058a819f3248091c55e2f331a3c90e",
+      "required_evidence_roles": {
+        "artifact_classification_claim": [
+          "manifest",
+          "source_file"
+        ],
+        "implementation_inventory": [
+          "source_file",
+          "source_tree"
+        ],
+        "promotion_authority_reference": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
       "canonical_id": "SFA-ARTIFACT-004",
       "revision_digest": "ef95cfc5502b1a9c23488591512342060d4355d62f1c15100ba8c70a7e12720d",
       "required_evidence_roles": {
@@ -74,6 +94,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -364,6 +391,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -451,6 +485,13 @@
           "manifest",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -552,7 +593,9 @@
       "revision_digest": "bdcd2c3f010d7520e18d1009a97a068a621469b0dc81201d5c6f5de84e9d89b0",
       "required_evidence_roles": {
         "contract_source_authority": [
-          "policy"
+          "manifest",
+          "policy",
+          "source_file"
         ],
         "platform_projection_boundary": [
           "manifest",
@@ -634,6 +677,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -669,6 +719,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -683,6 +740,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -1448,6 +1512,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -1484,6 +1555,13 @@
           "manifest",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -1521,6 +1599,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -1605,6 +1690,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -1688,6 +1780,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -1725,6 +1824,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -2329,6 +2435,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -2691,7 +2804,8 @@
         ],
         "role_scoped_ruleset_evidence": [
           "policy",
-          "receipt"
+          "receipt",
+          "source_file"
         ]
       }
     },
@@ -2815,6 +2929,13 @@
           "receipt",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -2935,6 +3056,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -2997,6 +3125,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -3505,6 +3640,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -3594,6 +3736,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -3615,6 +3764,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4129,6 +4285,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4385,6 +4548,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4441,6 +4611,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4578,7 +4755,8 @@
         ],
         "release_responsibility_record": [
           "policy",
-          "receipt"
+          "receipt",
+          "source_file"
         ]
       }
     },
@@ -4591,14 +4769,23 @@
           "source_file"
         ],
         "cross_platform_equivalence_claim": [
+          "manifest",
           "policy",
-          "receipt"
+          "receipt",
+          "source_file"
         ],
         "platform_independence_boundary": [
           "policy",
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4627,8 +4814,16 @@
         "executor_side_contract_evidence": [
           "manifest",
           "policy",
-          "receipt"
+          "receipt",
+          "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4788,6 +4983,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4852,6 +5054,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4867,6 +5076,13 @@
           "manifest",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4899,6 +5115,13 @@
           "manifest",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -4970,6 +5193,13 @@
           "receipt",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -5000,6 +5230,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -5028,12 +5265,14 @@
       "required_evidence_roles": {
         "facade_behavior": [
           "log",
-          "receipt"
+          "receipt",
+          "source_file"
         ],
         "migration_disposition": [
           "exception",
           "manifest",
-          "policy"
+          "policy",
+          "source_file"
         ],
         "public_surface_inventory": [
           "manifest",
@@ -5073,6 +5312,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -5403,6 +5649,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -5916,6 +6169,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6135,6 +6395,13 @@
           "policy",
           "receipt"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6187,6 +6454,13 @@
           "manifest",
           "receipt"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6219,6 +6493,13 @@
           "policy",
           "receipt"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6229,8 +6510,16 @@
           "manifest",
           "platform_support",
           "policy",
-          "receipt"
+          "receipt",
+          "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6261,6 +6550,13 @@
           "receipt",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6272,6 +6568,13 @@
           "receipt",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6302,6 +6605,13 @@
           "manifest",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6764,6 +7074,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -6914,6 +7231,24 @@
     {
       "canonical_id": "SFA-PROFILE-004",
       "revision_digest": "91275c4d14c587ab3f6a3b76e56a31d2c1915d9a499dfb6202d6d6cd6b23a6bf",
+      "required_evidence_roles": {
+        "runtime_code_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "skill_plugin_artifact_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "software_domain_addition_evidence": [
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROFILE-004",
+      "revision_digest": "60f5621aa2600721466e0598c89c98ef14c988976d2609068f1bedefbb516b70",
       "required_evidence_roles": {
         "runtime_code_inventory": [
           "manifest",
@@ -7245,6 +7580,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -7261,6 +7603,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -7277,6 +7626,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -7321,6 +7677,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -7764,6 +8127,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -7814,6 +8184,13 @@
           "source_file",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -8183,6 +8560,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -8709,6 +9093,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -8795,6 +9186,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -8999,6 +9397,13 @@
           "log",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -9323,6 +9728,13 @@
           "receipt",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -9381,6 +9793,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -9397,6 +9816,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -9539,6 +9965,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -10730,6 +11163,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -10977,6 +11417,13 @@
           "manifest",
           "source_tree"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -11004,6 +11451,21 @@
         "technical_visibility_fact": [
           "manifest",
           "platform_support"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-WORKER-020",
+      "revision_digest": "e07cdf44ae7faa6857d822493b94c523b088b25790873ffaf1feed0da76bb62b",
+      "required_evidence_roles": {
+        "business_surface_non_exposure": [
+          "manifest",
+          "source_file"
+        ],
+        "technical_visibility_fact": [
+          "manifest",
+          "platform_support",
+          "source_file"
         ]
       }
     },
@@ -11080,6 +11542,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -11095,6 +11564,13 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     },
     {
@@ -11110,6 +11586,647 @@
           "policy",
           "source_file"
         ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
+      }
+    },
+    {
+      "canonical_id": "SFA-GRAPH-007",
+      "revision_digest": "08c00293131b9038920e25c72bab631ecdd08d35c8c1e511395aa75d10eb4df4",
+      "required_evidence_roles": {
+        "current_adoption_records": [
+          "exception",
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "target_rules_and_current_objects": [
+          "exception",
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-GRAPH-009",
+      "revision_digest": "c95a05840fa080fd16b8e13f27300f0ef3f8b5bcd64e551654a77ba169ff6bd4",
+      "required_evidence_roles": {
+        "actual_roles_and_traceable_objects": [
+          "manifest",
+          "source_file"
+        ],
+        "authority_records_for_actual_objects": [
+          "manifest",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-GRAPH-026",
+      "revision_digest": "e744b1f7c2e469a9aa1a9fb3e978a74b938f3389b03744d423fcea3c41e1ee4f",
+      "required_evidence_roles": {
+        "current_special_treatment_record": [
+          "exception",
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "target_rule_object_and_treatment": [
+          "exception",
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-QUALIFY-006",
+      "revision_digest": "1ac7820f10fd9d06f21a43609d41f3f8b117052f8374c1fbde2b44da2de20126",
+      "required_evidence_roles": {
+        "known_limits_and_entry_design": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "quality_label_and_scope_explanation": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-QUALIFY-007",
+      "revision_digest": "2e1ba8a2a082a3c160524996d2d3a12287f511a1ab1816d25b5e0ac1685101e3",
+      "required_evidence_roles": {
+        "current_adoption_records": [
+          "exception",
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "target_rules_and_current_objects": [
+          "exception",
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-RULE-007",
+      "revision_digest": "09e2b1a443f2097656724551bf5fbcc54a0bcc18eb3e57af64dd0e3d5bacc995",
+      "required_evidence_roles": {
+        "current_adoption_records": [
+          "exception",
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "target_rules_and_current_objects": [
+          "exception",
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ERROR-004",
+      "revision_digest": "37f9e5e5281c41f34e7725a59cf36d801c3d570e365f8633fd8fb64e0285ba44",
+      "required_evidence_roles": {
+        "public_method_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "side_effect_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTMETHOD-013",
+      "revision_digest": "d550d5f33ffa7c9e73a0331e0a99c7476d4bfde31bed7d82e40b87b6935781a4",
+      "required_evidence_roles": {
+        "not_run_partial_and_complete_explanation": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "public_artifact_method_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-CONTEXT-033",
+      "revision_digest": "964c446fa107c8f3728b4290d15f72ad1ecdd9e75777479bf8fc684744fce3e3",
+      "required_evidence_roles": {
+        "conditional_loading_source": [
+          "source_file",
+          "source_tree"
+        ],
+        "skill_structure_scan": [
+          "source_file",
+          "source_tree"
+        ]
+      },
+      "professional_dependencies": [
+        "foundation"
+      ],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": true
+      }
+    },
+    {
+      "canonical_id": "SFA-PLAT-005",
+      "revision_digest": "7628032402a2a1aa24e370324ddb9aa571416c4fd7a8d1b1dc4aa9607952f0e8",
+      "required_evidence_roles": {
+        "generator_adaptation_facts": [
+          "log",
+          "manifest",
+          "source_file"
+        ],
+        "projection_manifest_surface": [
+          "manifest",
+          "receipt"
+        ],
+        "source_projection_authority": [
+          "manifest",
+          "source_file",
+          "source_tree"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-GRAPH-012",
+      "revision_digest": "80b98c9cceb85e3ce48440be9d70edc5e4c77d6f0aff0cbc8cdfb508fe35244c",
+      "required_evidence_roles": {
+        "family_maturity_ownership": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-GRAPH-017",
+      "revision_digest": "a5096dd31d2db59633c3669e9d56f297a1ad7a2a219ff68ca823910b9d994033",
+      "required_evidence_roles": {
+        "support_statement_consistency": [
+          "manifest",
+          "platform_support",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-HARNESS-005",
+      "revision_digest": "1b18e62638b5abe13d94b13a04a566454078db4a90b43f6dc7c27fc86d395345",
+      "required_evidence_roles": {
+        "observer_binding_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "observer_integration_declaration": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "observer_unavailability_disposition": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-MIGRATE-021",
+      "revision_digest": "ae7891961e7aa28fbeb07bf8df69de9dba97784e901448743ea7fb6eb5d8f568",
+      "required_evidence_roles": {
+        "affected_migration_scope": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "migration_disposition": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PLAT-023",
+      "revision_digest": "7a2983f7b2da5651ea681a18302713cae192b3620137998d56875fe61d1839b2",
+      "required_evidence_roles": {
+        "support_statement_consistency": [
+          "manifest",
+          "platform_support",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PLAT-028",
+      "revision_digest": "26bd8cb661f01ae48c48ea5cb6fe9ec881ab2caafdda48d2283bed419ebe83dd",
+      "required_evidence_roles": {
+        "project_or_host_environment_contract": [
+          "manifest",
+          "platform_support",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-SOURCE-009",
+      "revision_digest": "a3b3c1d8ca0a19bf8220e72592216382b6ee722369a22b39fae3759e9182bb06",
+      "required_evidence_roles": {
+        "overlay_contract_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-STATE-012",
+      "revision_digest": "82910302a8186efdf3c24240fb72e742c05798aee762c3565c59750affba6331",
+      "required_evidence_roles": {
+        "idempotence_declaration_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-STATE-014",
+      "revision_digest": "335369798d1d7ab7c8e8b40d820294e16c7ebed996c0f4cf9aa85764901840aa",
+      "required_evidence_roles": {
+        "cleanup_boundary_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROGRAM-006",
+      "revision_digest": "48e759c612fdcc97bfa3e91144f34f3ce6893d070553791c3d0f229bfaf95b3f",
+      "required_evidence_roles": {
+        "program_reference_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-PROGRAM-010",
+      "revision_digest": "b427a926f61fdb6f6a98789c1d4c97f835eb6285ccaa991675578ddb4094623d",
+      "required_evidence_roles": {
+        "program_reference_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-RUNTIMEPKG-006",
+      "revision_digest": "b55c8d111c2276c49fad04949d2c9496f11709111cdef26de42a28477d019d46",
+      "required_evidence_roles": {
+        "runtime_declaration_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTMETHOD-006",
+      "revision_digest": "688db8440ab8d850372717c934a293d602b0e7583258f23917854c361d61e10a",
+      "required_evidence_roles": {
+        "conversion_contract_limits": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTMETHOD-014",
+      "revision_digest": "8d76e0ec0caf2f200de7d83ba516839d8bd8924c00b6746bb20d720b79ca7950",
+      "required_evidence_roles": {
+        "public_artifact_method_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTMETHOD-016",
+      "revision_digest": "52e46f8f2ed980d34b197e09e9fe2cd295c9c436e34cc53c1ea82610323cd184",
+      "required_evidence_roles": {
+        "conversion_contract_limits": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ERROR-002",
+      "revision_digest": "fdfc26d590cb4dbf111feeb78d81285ddc499c11724fdb5975a64265cd709817",
+      "required_evidence_roles": {
+        "public_method_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "result_contract_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ERROR-003",
+      "revision_digest": "0a71151da62f5e098f6904669f180f3f3042e779b9c5227a2d64f706640e7ffe",
+      "required_evidence_roles": {
+        "result_contract_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ERROR-007",
+      "revision_digest": "3972fce467a34c39e6264626ffd508c7cff3daff9c3c185d90cb675dd5f7e784",
+      "required_evidence_roles": {
+        "optional_capability_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ERROR-008",
+      "revision_digest": "5ccee70f946a7d903b32520e79e00386121d283e4f0036b27b4aa8ab8df560e5",
+      "required_evidence_roles": {
+        "fail_closed_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ERROR-009",
+      "revision_digest": "ef5dfa36188c3c7075505eb23af05c3b15bf975fdd5dff533b0bda8371f420e8",
+      "required_evidence_roles": {
+        "lifecycle_status_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ERROR-010",
+      "revision_digest": "0a413e54f29ba629d7ec5678382c5ac8889c21592a3588ccdbd32a16a7a870d6",
+      "required_evidence_roles": {
+        "downstream_admission_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-STATE-003",
+      "revision_digest": "88bd038fa2c849bf771152db818f42538d8b8dbb68101fb0bc6d37c6a3eb30ff",
+      "required_evidence_roles": {
+        "result_contract_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-STATE-007",
+      "revision_digest": "b92323915a9c9b6106d5205476d1427ddb5e5b5debddb0f4d7e39c8ef3c72582",
+      "required_evidence_roles": {
+        "checkpoint_contract_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TASK-015",
+      "revision_digest": "fbc7d27e9d3f21933a54c6ddbe930ed6fa5a6c56ae5089368ce245c6cea7236a",
+      "required_evidence_roles": {
+        "task_result_contract_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TASK-016",
+      "revision_digest": "465ffae2d2d80abcbc68cdde25d11ebf22b9bed6f878cbf05b8adc096f32ddeb",
+      "required_evidence_roles": {
+        "resource_reference_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TASK-017",
+      "revision_digest": "7fe90fb7ed4670fa84a859d7d9421d2e2e886c7c731820e9212a224222cb08d4",
+      "required_evidence_roles": {
+        "public_method_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-REGISTRY-005",
+      "revision_digest": "b825f6c3e71782bf3dbcd55d96a94b377fdc215ff5e8193b0a189f01cbe7524c",
+      "required_evidence_roles": {
+        "public_method_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "registry_entry_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TEMPLATE-003",
+      "revision_digest": "52f94116c9488faa44bb9934a282873f444bb602cbf5be84d4cc28e37e9132a4",
+      "required_evidence_roles": {
+        "template_contract_alignment": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-FOUNDATION-003",
+      "revision_digest": "7e905fe1d377e2d89dfaa797b1e38c643a0e1fe9222a501a2235c47649d3677d",
+      "required_evidence_roles": {
+        "public_contract_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-GRAPH-013",
+      "revision_digest": "28935a474c157e4192b18b43bd0e2efa634f9eec611e7322a2fe509af0c35fb5",
+      "required_evidence_roles": {
+        "support_statement_consistency": [
+          "manifest",
+          "platform_support",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-TASK-019",
+      "revision_digest": "4dab06fc409159ff5bcad8def48b69bec0ee1137716459f257d6a529afb26152",
+      "required_evidence_roles": {
+        "machine_output_contract_surface": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "public_contract_reference": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-METHOD-009",
+      "revision_digest": "09bab57dbf6ed1360cb24220f091e7d72eb9a1e5ec6037b9afc7095af55ac1ac",
+      "required_evidence_roles": {
+        "internal_implementation_inventory": [
+          "manifest",
+          "source_tree"
+        ],
+        "normal_surface_absence": [
+          "manifest",
+          "source_file"
+        ],
+        "technical_visibility_exception": [
+          "policy",
+          "receipt",
+          "source_file"
+        ]
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTMETHOD-001",
+      "revision_digest": "2b12a4b76fa7a91953528e055f367e6e3faf94d790b0ae90b099f4e3e9816f32",
+      "required_evidence_roles": {
+        "public_artifact_method_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      },
+      "professional_dependencies": [
+        "foundation"
+      ],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": true
+      }
+    },
+    {
+      "canonical_id": "SFA-ARTMETHOD-005",
+      "revision_digest": "d87f519b7f37c884089df6ce2644b0ccfaf68326bd29537fd5d2591d7a354aec",
+      "required_evidence_roles": {
+        "public_artifact_method_contract": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      },
+      "professional_dependencies": [
+        "foundation"
+      ],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": true
+      }
+    },
+    {
+      "canonical_id": "SFA-CONTEXT-002",
+      "revision_digest": "317c9fb269b4673cfda86ca5a236200fc59622b2aecb313eb94d99f0a7d78106",
+      "required_evidence_roles": {
+        "entry_material_organization": [
+          "manifest",
+          "policy",
+          "source_file"
+        ],
+        "skill_structure_scan": [
+          "manifest",
+          "policy",
+          "source_file"
+        ]
+      },
+      "professional_dependencies": [],
+      "independence_verification": {
+        "obligations_complete": true,
+        "required_roles_checked": true,
+        "cross_rule_relations_closed": true,
+        "consumes_professional_result": false
       }
     }
   ]

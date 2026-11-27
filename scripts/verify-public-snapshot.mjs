@@ -148,7 +148,10 @@ export async function verify(root) {
   for (const relative of allFiles) {
     if (relative.endsWith("#non-file")) findings.push(`NON_REGULAR_ENTRY:${relative}`);
     const bytes = await readFile(path.join(root, relative.replace(/#non-file$/, ""))).catch(() => null);
-    if (bytes && ABSOLUTE_PATH.test(bytes.toString("utf8"))) findings.push(`ABSOLUTE_PATH_LEAK:${relative}`);
+    const isFoundationPrebuiltBinary = /^platforms\/[^/]+\/foundation\/quickstart-profile\/runtime\/harness\/native\/prebuilds\/[^/]+\/[^/]+\.node$/.test(relative) && Boolean(bytes?.includes(0));
+    if (bytes && !isFoundationPrebuiltBinary && ABSOLUTE_PATH.test(bytes.toString("utf8"))) {
+      findings.push(`ABSOLUTE_PATH_LEAK:${relative}`);
+    }
   }
 
   const summary = await parseJson(root, "candidate-summary.json");

@@ -1,0 +1,28 @@
+{
+  "fixtureId": "project-manifest.positive.internal-dependencies",
+  "contract": "project-manifest",
+  "class": "positive",
+  "description": "项目清单同时支持固定主版本范围声明（0.x 与 N.x）和向下兼容的精确版本字符串。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": { "id": "fictional-orchid", "name": "Fictional Orchid" },
+    "contracts": { "version": "1.22.0", "profile": "public-plugin" },
+    "internalDependencies": {
+      "skill-family-contracts": { "major": 0, "minVersion": "0.38.0" },
+      "skill-family-harness-node": { "major": 0, "minVersion": "0.38.0", "verifiedCeiling": "0.39.0" },
+      "fictional-domain-core": { "major": 1, "minVersion": "1.2.0", "verifiedCeiling": "1.5.0" },
+      "agent-method-registry": "0.2.0"
+    },
+    "adoptedCapabilities": [
+      "foundation.contracts.validation",
+      "foundation.harness.atomic-write"
+    ]
+  }
+}

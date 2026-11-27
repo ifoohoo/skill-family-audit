@@ -91,7 +91,7 @@ _MAXIMUM_SIDE_EFFECT_CATEGORIES = {
 }
 _FILESYSTEM_EFFECTS = {"read", "create", "modify", "overwrite", "delete", "move"}
 _RELEASE_AUDIT_METHOD_ID = "skill-family-audit:release-audit"
-_RELEASE_AUDIT_PROCESS_EXECUTION = "release-skill@0.9.17:verify-records-only"
+_RELEASE_AUDIT_PROCESS_EXECUTION = "none"
 
 
 # ---------------------------------------------------------------------------
@@ -307,67 +307,14 @@ def _artifact_method_runs(ctx: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def check_artmethod_001(ctx: dict[str, Any]) -> dict[str, Any]:
-    """操作正式制品的方法引用精确契约。
-
-    机械断言：每条已声明方法运行必须引用适用制品类型、契约主版本与
-    精确内容摘要（64 位十六进制）。
-    """
-    document = _artifact_method_runs(ctx)
-    if document is None:
-        return _finish([
-            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-        ], reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    rows = rows_of(document, "runs", "artifact-method-runs")
-    if not rows:
-        return _finish([
-            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-        ], reason="audit_mechanical_object_unresolved", object='严格方法操作正式制品时适用。 方法契约及正式制品类型引用; 契约主版本和精确摘要', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    violations = []
-    for row in rows:
-        schema_reasons = []
-        digest_reasons = []
-        if not _nonempty_str(row.get("artifact_type")):
-            schema_reasons.append("artifact_type_missing")
-        if not _nonempty_str(row.get("contract_major_version")):
-            schema_reasons.append("contract_major_version_missing")
-        if not is_hex64(row.get("contract_content_digest")):
-            digest_reasons.append("contract_content_digest_invalid")
-        if schema_reasons or digest_reasons:
-            violations.append(
-                {"run_id": row.get("run_id"), "reasons": schema_reasons + digest_reasons}
-            )
-    if violations:
-        schema_side, digest_side = _split_violations(
-            violations, ("contract_content_digest_invalid",)
-        )
-        return _finish(
-            [
-                _schema_row(
-                    "FAIL" if schema_side else "PASS",
-                    reason=(
-                        "schema_violations" if schema_side else "schema_checks_passed"
-                    ),
-                    violations=schema_side,
-                ),
-                _digest_row(
-                    "FAIL" if digest_side else "PASS",
-                    reason=(
-                        "digest_violations" if digest_side else "digest_checks_passed"
-                    ),
-                    violations=digest_side,
-                ),
-            ],
-            runs_without_precise_contract=violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", runs_checked=len(rows)),
-            _doc_digest_row(ctx, ("artifact-method-runs",)),
-        ],
-        runs_checked=len(rows),
-    )
+    """真实机器合同声明由既有专业结果消费；类型/版本字串不能替代结构检查。"""
+    evidence = {
+        "reason": "audit_mechanical_object_unresolved",
+        "object": "Actual adopted machine contract declaration and its professional comparison",
+        "source_refs": list(ctx.get("evidence_set") or []),
+        "mechanical_half": True,
+    }
+    return _finish([_schema_row("EVIDENCE_MISSING", **evidence)], **evidence)
 
 
 def check_artmethod_002(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -455,71 +402,14 @@ def check_artmethod_004(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_artmethod_005(ctx: dict[str, Any]) -> dict[str, Any]:
-    """先选择契约主版本和精确内容。
-
-    机械断言：每条契约选择必须依据制品身份/采用锁/兼容政策确定主版本，
-    用不可变内容摘要固定内容；不得使用漂移版本名或"最新"。
-    """
-    document = _artifact_method_runs(ctx)
-    if document is None or not rows_of(document, "contract_selections", "artifact-method-runs"):
-        evidence = {"reason": "audit_mechanical_object_unresolved", "object": 'Actual formal artifact contract selection and immutable content', "source_refs": list(ctx.get("evidence_set") or []), "mechanical_half": True}
-        return _finish([
-            _schema_row("EVIDENCE_MISSING", **evidence),
-            _digest_row("EVIDENCE_MISSING", **evidence),
-        ], **evidence)
-    rows = rows_of(document, "contract_selections", "artifact-method-runs")
-    violations = []
-    for row in rows:
-        schema_reasons = []
-        digest_reasons = []
-        for field in ("artifact_identity", "adoption_lock_ref", "compatibility_policy_ref"):
-            if not _nonempty_str(row.get(field)):
-                schema_reasons.append(f"{field}_missing")
-        if not _nonempty_str(row.get("contract_major_version")):
-            schema_reasons.append("contract_major_version_missing")
-        if not is_hex64(row.get("fixed_content_digest")):
-            digest_reasons.append("fixed_content_digest_invalid")
-        if row.get("uses_drifting_version_name") is True:
-            schema_reasons.append("uses_drifting_version_name")
-        if row.get("uses_latest") is True:
-            schema_reasons.append("uses_latest")
-        if schema_reasons or digest_reasons:
-            violations.append(
-                {
-                    "selection_id": row.get("selection_id"),
-                    "reasons": schema_reasons + digest_reasons,
-                }
-            )
-    if violations:
-        schema_side, digest_side = _split_violations(
-            violations, ("fixed_content_digest_invalid",)
-        )
-        return _finish(
-            [
-                _schema_row(
-                    "FAIL" if schema_side else "PASS",
-                    reason=(
-                        "schema_violations" if schema_side else "schema_checks_passed"
-                    ),
-                    violations=schema_side,
-                ),
-                _digest_row(
-                    "FAIL" if digest_side else "PASS",
-                    reason=(
-                        "digest_violations" if digest_side else "digest_checks_passed"
-                    ),
-                    violations=digest_side,
-                ),
-            ],
-            contract_selections_not_fixed=violations,
-        )
-    return _finish(
-        [
-            _schema_row("PASS", reason="schema_checks_passed", selections_checked=len(rows)),
-            _doc_digest_row(ctx, ("artifact-method-runs",)),
-        ],
-        selections_checked=len(rows),
-    )
+    """真实合同采用与解释顺序由既有专业结果消费；无原比较时保留未完成。"""
+    evidence = {
+        "reason": "audit_mechanical_object_unresolved",
+        "object": "Actual adopted machine contract selection, data binding and validation before interpretation",
+        "source_refs": list(ctx.get("evidence_set") or []),
+        "mechanical_half": True,
+    }
+    return _finish([_schema_row("EVIDENCE_MISSING", **evidence)], **evidence)
 
 
 def check_artmethod_006(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1944,8 +1834,9 @@ def _validate_with_released_registry(
     document_format: str = "json", source_bytes: bytes | None = None,
     version: str = _REGISTRY_VERSION,
     require_audit_authority: bool = True,
+    effective_index_input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """直接调用已核验精确版本 tarball 的公共 validateCatalog。"""
+    """调用已核验发布包的公共目录校验或完整 v1 索引构建。"""
     release = _registry_release_evidence(
         ctx, version, require_audit_authority=require_audit_authority
     )
@@ -1980,6 +1871,7 @@ def _validate_with_released_registry(
         "document": document,
         "documentFormat": document_format,
         "digestPayload": digest_payload,
+        "effectiveIndexInput": effective_index_input,
     }
     script = """
 import fs from 'node:fs';
@@ -1988,7 +1880,11 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 const input = JSON.parse(fs.readFileSync(0, 'utf8'));
 const packageRequire = createRequire(pathToFileURL(input.runtimePackageJson).href);
-const { validateCatalog } = await import(pathToFileURL(input.runtimeEntry).href);
+const { validateCatalog, buildEffectiveIndex } = await import(pathToFileURL(input.runtimeEntry).href);
+if (input.effectiveIndexInput !== null) {
+  process.stdout.write(JSON.stringify({ indexBuild: buildEffectiveIndex(input.effectiveIndexInput) }));
+  process.exit(0);
+}
 let document = input.document;
 try {
   if (input.documentFormat === 'yaml') {
@@ -2055,6 +1951,27 @@ process.stdout.write(JSON.stringify({ validation, apiRevisionDigest }));
         response = json.loads(completed.stdout)
     except json.JSONDecodeError:
         return {"status": "EVIDENCE_MISSING", "reason": "released_registry_response_invalid"}
+    if effective_index_input is not None:
+        built = response.get("indexBuild") if isinstance(response, dict) else None
+        invocation = {"argv": completed.args, "stdin": request,
+                      "exit_code": completed.returncode,
+                      "stdout": completed.stdout, "stderr": completed.stderr}
+        if not isinstance(built, dict) or not isinstance(built.get("ok"), bool):
+            return {"status": "EVIDENCE_MISSING", "reason": "released_registry_response_invalid",
+                    "invocation": invocation}
+        index = built.get("index")
+        valid = (built["ok"] is True and isinstance(index, dict)
+                 and index.get("schemaVersion") == 1
+                 and isinstance(index.get("entries"), list)
+                 and isinstance(index.get("disabledEntries"), list))
+        return {
+            "status": "PASS" if valid else "FAIL" if built["ok"] is False else "EVIDENCE_MISSING",
+            "reason": "released_registry_index_built" if valid else "released_registry_index_unavailable",
+            "public_api": "buildEffectiveIndex", "registry_version": version,
+            "tarball_sha256": release.get("tarball_sha256"),
+            "input": effective_index_input, "original_result": built,
+            "invocation": invocation,
+        }
     validation = response.get("validation") if isinstance(response, dict) else None
     if isinstance(response, dict) and _nonempty_str(response.get("parseError")):
         return {

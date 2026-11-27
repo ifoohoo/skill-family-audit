@@ -1,0 +1,26 @@
+{
+  "fixtureId": "fixed-set-generation-result.negative.unknown-field",
+  "contract": "fixed-set-generation-result",
+  "class": "negative",
+  "description": "A generation result rejects an unknown field.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-result.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-generation-result",
+    "status": "succeeded",
+    "commitState": "committed",
+    "verification": "verified",
+    "durability": "flush-requested",
+    "generationRoot": "gen-1",
+    "pointer": {
+      "schemaVersion": 1,
+      "kind": "skill-family.fixed-set-generation-pointer",
+      "generation": "gen-1",
+      "closureDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "previous": null,
+    "error": null,
+    "retry": true
+  }
+}

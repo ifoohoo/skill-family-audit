@@ -100,22 +100,8 @@ OWNER_BOUNDARY = {
     "release": "release-skill",
 }
 
-_AUDIT_MAINTENANCE_DOMAINS = frozenset({
-    "AUDIT",
-    "AUDITINTERNAL",
-    "AUDITMETHOD",
-    "AUDITPRODUCT",
-    "AUDITREPAIR",
-    "CHECKIMPL",
-    "RULE",
-})
-_RELEASE_DOMAINS = frozenset({"PUBLISH", "RELEASE", "INSTALL"})
-_FOUNDATION_DOMAINS = frozenset({"FOUNDATION", "WIRING", "HARNESS"})
+_RELEASE_DOMAINS = frozenset({"PUBLISH", "RELEASE"})
 _REVALIDATION_AUDIT = "skill-family-audit:conformance-audit"
-_REVALIDATION_FOUNDATION = (
-    "skill-family-foundation:foundation-engineering-check then "
-    "skill-family-audit:conformance-audit"
-)
 _REVALIDATION_RELEASE = (
     "release-skill:release-assess then skill-family-audit:conformance-audit"
 )
@@ -127,11 +113,6 @@ _REVALIDATION_EVIDENCE = (
     "existing professional or mechanical check conclusion then "
     "skill-family-audit:conformance-audit"
 )
-_CONFIRMED_RECOMMENDATION_REASON_CODES = frozenset({
-    "scaffold_recommended_file_missing",
-    "recommendation_gap",
-    "recommendation_only_difference",
-})
 _CONSUMER_CONFIGURATION_MARKERS = (
     "consumer_configuration_invalid",
     "consumer_wiring",
@@ -206,6 +187,16 @@ def _professional_consumption_record(item: dict[str, Any]) -> dict[str, Any] | N
 def _professional_original_conclusion_from_item(
     item: dict[str, Any],
 ) -> dict[str, Any] | None:
+    # A completed SOURCE method is decided by its consumed peer original;
+    # the adjacent role proof establishes scope rather than that outcome.
+    rows = item.get("check_method_subresults")
+    if isinstance(rows, list):
+        for row in rows:
+            evidence = _as_dict((_as_dict(row) or {}).get("evidence")) or {}
+            if (evidence.get("public_entry") == "runPeerAdapterCheck"
+                    and conformance_human_route._professional_issue_type(row, method_parent=item)
+                    in {"professional_pass", "professional_findings"}):
+                return evidence["original_report"]
     consumption = _professional_consumption_record(item)
     for source in (
         consumption,
@@ -247,7 +238,7 @@ def _append_reason_piece(pieces: list[str], value: Any) -> None:
 def _finding_reason_text(item: dict[str, Any]) -> str:
     pieces: list[str] = []
     _append_reason_piece(pieces, item.get("status"))
-    for key in ("reason_code", "reason", "summary"):
+    for key in ("reason_code", "reason", "summary", "rationale"):
         _append_reason_piece(pieces, item.get(key))
     semantic = _as_dict(item.get("semantic_review"))
     if semantic is not None:
@@ -266,7 +257,7 @@ def _finding_reason_text(item: dict[str, Any]) -> str:
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            for key in ("reason", "reason_code"):
+            for key in ("reason", "reason_code", "rationale"):
                 _append_reason_piece(pieces, row.get(key))
             row_evidence = _as_dict(row.get("evidence"))
             if row_evidence is not None:
@@ -421,7 +412,8 @@ def _target_professional_findings(
 
 
 def _finding_object_locator(
-    canonical_id: str, conclusion: dict[str, Any] | None
+    canonical_id: str, conclusion: dict[str, Any] | None,
+    method_results: list[dict[str, Any]] | None = None,
 ) -> str:
     parts = [canonical_id] if canonical_id else []
     if conclusion is None:
@@ -433,6 +425,112 @@ def _finding_object_locator(
             if isinstance(value, str) and value:
                 parts.append(value)
                 break
+    if (_as_dict(conclusion.get("provider")) or {}).get("entry") == "runStaticReferenceCheck":
+        # Performed references include passing items and cannot locate a gap.
+        return " / ".join(dict.fromkeys(parts))
+    if (_as_dict(conclusion.get("provider")) or {}).get("entry") == "runPeerAdapterCheck":
+        # scope.checked also contains passing pairs. Locate only an actual
+        # finding in the completed method's original, never the first pair.
+        if any(result.get("status") == "FAIL"
+               and (_as_dict(result.get("evidence")) or {}).get("original_report") == conclusion
+               for result in method_results or []):
+            pairs = (_as_dict(conclusion.get("details")) or {}).get("pairs")
+            checked = (_as_dict(conclusion.get("scope")) or {}).get("checked")
+            if isinstance(pairs, list) and isinstance(checked, list):
+                for pair in pairs:
+                    if (isinstance(pair, dict) and pair.get("status") == "findings"
+                            and isinstance(pair.get("id"), str) and pair["id"] in checked):
+                        parts.append(pair["id"])
+        return " / ".join(dict.fromkeys(parts))
+    if (_as_dict(conclusion.get("provider")) or {}).get("entry") == "runSelectedArtifactCheck":
+        # Selected-check scope lists performed checks, including passing ones.
+        # Locate the actual failing dimension from its consumed original rows.
+        for result in method_results or []:
+            dimension = {"schema_validation": "schema", "digest_verification": "bytes"}.get(result.get("check_method"))
+            evidence = _as_dict(result.get("evidence")) or {}
+            if result.get("status") != "FAIL" or evidence.get("conclusion") != conclusion or dimension is None:
+                continue
+            for original in evidence.get("original_checks") or []:
+                if not isinstance(original, dict):
+                    continue
+                check = (_as_dict(original.get("checks")) or {}).get(dimension)
+                document = _as_dict(original.get("document")) or {}
+                selection = _as_dict(original.get("selection")) or {}
+                reference = document.get("ref")
+                if (not isinstance(check, dict) or check.get("status") != "findings"
+                        or not isinstance(reference, str) or not reference
+                        or reference != selection.get("path")):
+                    continue
+                parts.append(reference)
+                if isinstance(original.get("index"), int):
+                    parts.append(f"artifact:{original['index']}:{dimension}")
+        # An unavailable or ambiguous location stays at subject scope rather
+        # than borrowing the first, potentially passing, scope.checked entry.
+        return " / ".join(dict.fromkeys(parts))
+    if (_as_dict(conclusion.get("provider")) or {}).get("entry") == "runFixedSchemaUseCheck":
+        bindings = (_as_dict(conclusion.get("details")) or {}).get("bindings")
+        checked = (_as_dict(conclusion.get("scope")) or {}).get("checked")
+        if not isinstance(bindings, list) or not isinstance(checked, list):
+            return " / ".join(dict.fromkeys(parts))
+        for result in method_results or []:
+            evidence = _as_dict(result.get("evidence")) or {}
+            if (result.get("status") != "FAIL" or result.get("check_method") != "schema_validation"
+                    or evidence.get("original_report") != conclusion):
+                continue
+            for binding in evidence.get("original_checks") or []:
+                if not isinstance(binding, dict) or binding not in bindings:
+                    continue
+                for component in evidence.get("consumed_components") or []:
+                    observation = _as_dict(binding.get(component)) or {}
+                    for comparison in observation.get("comparisons") or []:
+                        scope = comparison.get("scope") if isinstance(comparison, dict) else None
+                        if (not isinstance(scope, str) or checked.count(scope) != 1
+                                or comparison.get("status") != "findings"):
+                            continue
+                        reference = (_as_dict((_as_dict(binding.get("selection")) or {}).get(component)) or {}).get("ref")
+                        if isinstance(reference, str) and reference:
+                            parts.append(reference)
+                        parts.append(scope)
+        return " / ".join(dict.fromkeys(parts))
+    binding_entry = (_as_dict(conclusion.get("provider")) or {}).get("entry")
+    if binding_entry in {"runNativeEntryBindingCheck", "runSkillSurfaceBindingCheck", "runNativeProjectionCheck"}:
+        if (_as_dict(conclusion.get("outcome")) or {}).get("completion") != "complete":
+            return " / ".join(dict.fromkeys(parts))
+        bindings = (_as_dict(conclusion.get("details")) or {}).get("bindings")
+        checked = (_as_dict(conclusion.get("scope")) or {}).get("checked")
+        if not isinstance(bindings, list) or not isinstance(checked, list):
+            return " / ".join(dict.fromkeys(parts))
+        for result in method_results or []:
+            evidence = _as_dict(result.get("evidence")) or {}
+            if (result.get("status") != "FAIL"
+                    or result.get("check_method") not in ({"static_scan", "digest_verification"}
+                        if binding_entry == "runNativeProjectionCheck" else {"static_scan"})
+                    or evidence.get("conclusion") != conclusion
+                    or evidence.get("original_report") != conclusion):
+                continue
+            for binding in evidence.get("original_checks") or []:
+                if not isinstance(binding, dict) or binding not in bindings:
+                    continue
+                index = binding.get("index")
+                comparisons = binding.get("comparisons")
+                if not isinstance(index, int) or index < 1 or not isinstance(comparisons, list):
+                    continue
+                selected_comparisons = comparisons
+                if binding_entry == "runNativeProjectionCheck":
+                    selected_comparisons = comparisons[:4] if result.get("check_method") == "static_scan" else comparisons[4:]
+                for position, comparison in enumerate(comparisons, 1):
+                    identity = (comparison.get("scope") if isinstance(comparison, dict)
+                                and binding_entry != "runNativeEntryBindingCheck"
+                                else f"binding-{index}-comparison-{position}")
+                    if (not isinstance(comparison, dict) or comparison.get("status") != "findings"
+                            or comparison not in selected_comparisons
+                            or not isinstance(identity, str) or checked.count(identity) != 1):
+                        continue
+                    parts.append(identity)
+                    manifest_ref, mapping_index = binding.get("platformManifestRef"), binding.get("mappingIndex")
+                    if isinstance(manifest_ref, str) and manifest_ref and isinstance(mapping_index, int) and mapping_index >= 0:
+                        parts.append(f"{manifest_ref}#/logicalMappings/{mapping_index}")
+        return " / ".join(dict.fromkeys(parts))
     scope = _as_dict(conclusion.get("scope"))
     if scope is not None:
         for key in ("id", "checked"):
@@ -468,17 +566,18 @@ def _finding_object_locator(
 
 
 def _has_mandatory_secret_or_structural_failure(item: dict[str, Any], reason: str) -> bool:
+    if item.get("status") != "FAIL":
+        return False
     blob = _reason_blob(item, reason)
     if any(marker in blob for marker in _SECRET_OR_STRUCTURAL_MARKERS):
-        return True
-    effect = item.get("effect")
-    if isinstance(effect, str) and effect.lower() == "mandatory" and str(item.get("status") or "") == "FAIL":
         return True
     return False
 
 
 def _is_missing_applicable_proof(item: dict[str, Any], reason: str) -> bool:
     status = str(item.get("status") or "")
+    if status == "FAIL":
+        return False
     blob = _reason_blob(item, reason)
     if status == "EVIDENCE_MISSING":
         return True
@@ -498,62 +597,137 @@ def _confirmed_recommendation_without_mandatory_obligation(
     Secrets, missing applicable proof and real structural violations stay
     repair-or-evidence obligations. Rule IDs and keyword hits are not enough.
     """
-    if _has_mandatory_secret_or_structural_failure(item, reason):
+    if item.get("status") != "FAIL" or _has_mandatory_secret_or_structural_failure(item, reason):
         return False
     if _is_missing_applicable_proof(item, reason):
         return False
-    code = str(item.get("reason_code") or "")
-    adoption = str(item.get("adoption_mode") or "")
-    effect = str(item.get("effect") or "")
-    if effect.lower() == "mandatory":
-        return False
-    return (
-        code in _CONFIRMED_RECOMMENDATION_REASON_CODES
-        or adoption == "recommendation_only"
-        or item.get("classification") == "recommendation"
-    )
+    return str(item.get("effect") or "").lower() == "recommended"
 
 
-def finding_responsibility_route(item: dict[str, Any]) -> dict[str, str]:
-    """Classify an existing non-passing rule result for report routing.
-
-    Does not add a second status ledger. Triage uses the actual reason and
-    existing professional/semantic fields, not domain-name defaults.
-    """
+def finding_responsibility_route(
+    item: dict[str, Any], canonical_authority: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    """Explain the current outcome without changing it or its method history."""
     canonical_id = _canonical_id_of_result(item)
-    domain = _domain_of_canonical_id(canonical_id)
     status = str(item.get("status") or "")
-    reason = _finding_reason_text(item) or status or "未给出失败原因"
-    provider_id = _professional_provider_id(item)
-    professional_issue = _professional_issue_of_item(item)
-    conclusion = _professional_original_conclusion_from_item(item)
+    lineage = _as_dict(item.get("canonical_lineage")) or {}
+    revision = lineage.get("revision_digest") or lineage.get("canonical_revision_digest") or item.get("rule_revision_digest")
+    authority_rows = (canonical_authority or {}).get("rules") or []
+    matches = [row for row in authority_rows if isinstance(row, dict)
+               and row.get("canonical_id") == canonical_id and row.get("revision_digest") == revision]
+    authority = matches[0] if len(matches) == 1 else {}
+
+    # Root evidence may describe another method. Only the method responsible for
+    # this final status decides its attribution; unfinished siblings remain visible.
+    methods = [row for row in item.get("check_method_subresults") or [] if isinstance(row, dict)]
+    decisive = []
+    for row in methods:
+        if row.get("status") != status:
+            continue
+        try:
+            decisive.append(_resolved_original_subresult(item, row, canonical_id, revision))
+        except WorkflowError as exc:
+            if exc.code != "STAGE_REFERENCE_REJECTED":
+                raise
+            # An unbound reference cannot supply the parent's reason.
+            decisive.append(row)
+    semantic = _as_dict(item.get("semantic_review"))
+    current = dict(item)
+    if decisive:
+        for field in ("reason_code", "reason", "summary", "rationale", "evidence", "professional_consumption", "semantic_review"):
+            current.pop(field, None)
+        current["check_method_subresults"] = decisive
+    if semantic is not None and semantic.get("status") == status:
+        current["semantic_review"] = semantic
+    elif semantic is not None:
+        current.pop("semantic_review", None)
+    current["effect"] = authority.get("effect")
+    current["adoption_mode"] = authority.get("adoption_mode")
+    completed_professional = [row for row in decisive if conformance_human_route._professional_issue_type(
+        row, method_parent=current,
+    ) == "professional_findings"]
+    reason = _finding_reason_text(current) or status or "未给出失败原因"
+    provider_id = _professional_provider_id(current)
+    professional_issue = _professional_issue_of_item(current)
+    if completed_professional:
+        professional_issue = "professional_findings"
+    conclusion = _professional_original_conclusion_from_item(current)
     object_id = _finding_object_locator(
-        canonical_id or str(item.get("rule_id") or ""),
-        conclusion,
+        canonical_id or str(item.get("rule_id") or ""), conclusion, completed_professional,
     )
-    provider_identities = _professional_provider_identities(item, provider_id)
-    audit_executor_contract = any(
-        marker in reason
-        for marker in (
-            "executor_method_subresults_invalid",
-            "SEMANTIC_REVIEW_PRODUCER_UNTRUSTED",
+    if provider_id is None and conclusion is not None and conclusion == _professional_original_conclusion_from_item(item):
+        provider_id = _professional_provider_id(item)
+    provider_identities = _professional_provider_identities(current, provider_id)
+    codes = {current.get("reason_code"), (_as_dict(current.get("evidence")) or {}).get("reason_code"),
+             (semantic or {}).get("reason_code") if (semantic or {}).get("status") == status else None}
+    for row in decisive:
+        row_codes = {row.get("reason_code"), (_as_dict(row.get("evidence")) or {}).get("reason_code")}
+        evidence = _as_dict(row.get("evidence")) or {}
+        premise = _as_dict(evidence.get("mechanical_object_premise")) or {}
+        registry_build = _as_dict(evidence.get("registry_build")) or {}
+        registry_result = _as_dict(registry_build.get("original_result")) or {}
+        completed_registry_boundary = (
+            canonical_id == "SFA-METHOD-009" and bool(authority)
+            and row.get("canonical_id") == canonical_id
+            and row.get("check_method") == "static_scan"
+            and row.get("status") in {"PASS", "FAIL"}
+            and row.get("observation_source") == "registry_public_api_domain_intersection"
+            and premise.get("canonical_id") == canonical_id
+            and premise.get("rule_revision_digest") == revision
+            and premise.get("check_method") == "static_scan"
+            and premise.get("review_purpose") == "mechanical_object_premise"
+            and premise.get("status") == "REVIEW_REQUIRED"
+            and premise.get("reason_code") == "MECHANICAL_OBJECTS_PRESENT"
+            and premise.get("missing_evidence_roles") == []
+            and bool(evidence.get("evidence_refs"))
+            and evidence["evidence_refs"] == premise.get("evidence_refs") == evidence.get("object_refs")
+            and registry_build.get("status") == "PASS"
+            and registry_result.get("ok") is True
+            and isinstance(registry_result.get("index"), dict)
+            and evidence.get("not_a_professional_scan") is True
+            and isinstance(evidence.get("active_internal_matches"), list)
+            and bool(evidence["active_internal_matches"]) == (row["status"] == "FAIL")
+            and evidence.get("reason") == (
+                "internal_identity_in_current_public_index" if row["status"] == "FAIL"
+                else "internal_identities_absent_from_current_public_index"
+            )
+            and not conformance_human_route._is_audit_internal_missing(item)
         )
+        if row in completed_professional or completed_registry_boundary:
+            row_codes.discard("MECHANICAL_OBJECTS_PRESENT")
+        codes.update(row_codes)
+    audit_executor_contract = (
+        conformance_human_route._is_audit_internal_missing(current)
+        or current.get("issue_type") in {"audit_executor_contract_failure", "execution_or_context_contract_failure"}
+        or bool(codes & {"EXECUTOR_SIDE_CONTRACT_EVIDENCE_NOT_BOUND", "MECHANICAL_OBJECTS_PRESENT", "SEMANTIC_REVIEW_PRODUCER_UNTRUSTED"})
     )
-    if _confirmed_recommendation_without_mandatory_obligation(item, reason):
-        party = OWNER_BOUNDARY["foundation_harness"]
+    if _has_mandatory_secret_or_structural_failure(current, reason) and not professional_issue:
+        party = "product"
+        classification = "product"
+        minimal_fix = f"对象 {object_id}：已确认目标违反强制要求，由目标工程修复已指出的问题后复验。"
+        revalidation = _REVALIDATION_PRODUCT
+    elif status == "NOT_RUN" and "NOT_SELECTED_BY_EXECUTION_PROFILE" in codes:
+        party = "pending_triage"
+        classification = "pending_triage"
+        minimal_fix = f"对象 {object_id}：本次未选择该范围，保留未执行状态；是否扩大审计范围由用户选择，不要求目标整改。"
+        revalidation = _REVALIDATION_AUDIT
+    elif audit_executor_contract:
+        party = OWNER_BOUNDARY["audit"]
+        classification = "audit_maintenance"
+        minimal_fix = f"对象 {object_id}：Audit 尚未完成本方法的判断、执行或材料绑定，由 Audit 处理；不要求目标补造证明。"
+        revalidation = _REVALIDATION_AUDIT
+    elif (
+        not any(row.get("check_method") == "schema_validation" for row in completed_professional)
+        and _confirmed_recommendation_without_mandatory_obligation(current, reason)
+    ):
+        party = "product"
         classification = "confirmed_recommendation"
-        minimal_fix = (
-            f"对象 {object_id}：当前证据已确认是推荐项且无强制义务，"
-            "不作为产品缺陷整改；按 Foundation 公开初始化或存量接入入口核对适用结构。"
-        )
-        revalidation = _REVALIDATION_FOUNDATION
+        minimal_fix = f"对象 {object_id}：这是推荐改进，不作为强制产品缺陷整改；由目标工程按本条建议决定是否改进。"
+        revalidation = _REVALIDATION_PRODUCT
     elif _is_consumer_configuration_issue(reason):
         party = "product"
         classification = "consumer_configuration"
-        minimal_fix = (
-            f"对象 {object_id}：消费者参数或接线由目标工程按专业建议修复，"
-            "不是上游产品缺陷。"
-        )
+        minimal_fix = f"对象 {object_id}：消费者参数或接线由目标工程按专业建议修复，不是上游产品缺陷。"
         revalidation = _REVALIDATION_PRODUCT
     elif professional_issue == "professional_findings":
         if _provider_capability_gap_proven(conclusion, provider_identities):
@@ -575,6 +749,17 @@ def finding_responsibility_route(item: dict[str, Any]) -> dict[str, str]:
                 "由目标工程按专业建议修复后复验，再审计。"
             )
             revalidation = _REVALIDATION_PRODUCT
+            if completed_professional:
+                entries = []
+                for row in completed_professional:
+                    evidence = row["evidence"]
+                    entry = (_as_dict(evidence.get("professional_consumption")) or {}).get("entry_ref")
+                    api = evidence.get("public_entry")
+                    for value in (entry, api):
+                        if isinstance(value, str) and value and value not in entries:
+                            entries.append(value)
+                if entries:
+                    revalidation = " / ".join(entries) + " then " + _REVALIDATION_AUDIT
         else:
             party = "pending_triage"
             classification = "pending_triage"
@@ -584,87 +769,88 @@ def finding_responsibility_route(item: dict[str, Any]) -> dict[str, str]:
                 "不能据此断定提供方能力缺口。"
             )
             revalidation = _REVALIDATION_EVIDENCE
-    elif _is_missing_applicable_proof(item, reason):
-        classification = "missing_evidence"
+
+    elif _is_missing_applicable_proof(current, reason):
         if professional_issue in {"missing_entry", "missing_proof", "reader_unavailable"} and provider_id:
             party = provider_id
-            minimal_fix = (
-                f"对象 {object_id}：缺适用证明。补现有检查结论，"
-                "缺证不等于产品实现失败。"
-            )
-            revalidation = _REVALIDATION_EVIDENCE
-        elif domain in _FOUNDATION_DOMAINS and not _is_consumer_configuration_issue(reason):
+            classification = "missing_evidence"
+            minimal_fix = f"对象 {object_id}：由 {provider_id} 按已有公开入口处理缺少的专业结论；缺证不等于产品实现失败。"
+        else:
             party = "pending_triage"
             classification = "pending_triage"
-            minimal_fix = (
-                f"对象 {object_id}：信息不足，待分诊。"
-                "不能凭域名断定上游产品缺陷；先核对是消费者接线还是提供方缺口，再补现有检查结论。"
-            )
-            revalidation = _REVALIDATION_EVIDENCE
-        elif domain in _AUDIT_MAINTENANCE_DOMAINS or audit_executor_contract:
-            party = OWNER_BOUNDARY["audit"]
-            minimal_fix = (
-                f"对象 {object_id}：缺适用证明。补现有检查结论；"
-                "若属规则或证据识别错误，交 skill-family-audit 维护任务。"
-            )
-            revalidation = _REVALIDATION_EVIDENCE
-        else:
-            party = "product"
-            minimal_fix = (
-                f"对象 {object_id}：缺适用证明。补现有检查结论，"
-                "缺证不等于产品实现失败。"
-            )
-            revalidation = _REVALIDATION_EVIDENCE
-    elif domain in _AUDIT_MAINTENANCE_DOMAINS or audit_executor_contract:
-        party = OWNER_BOUNDARY["audit"]
-        classification = "audit_maintenance"
-        minimal_fix = (
-            f"对象 {object_id}：规则或证据识别错误交 skill-family-audit 维护任务，"
-            "不在一次消费者审计中临时改标准。"
-        )
-        revalidation = _REVALIDATION_AUDIT
-    elif domain in _RELEASE_DOMAINS:
-        party = OWNER_BOUNDARY["release"]
-        classification = "release"
-        minimal_fix = (
-            f"对象 {object_id}：发布配置及载荷归 release-skill；"
-            "按 release-assess 或 release-config 处理后复验，再审计。"
-        )
-        revalidation = _REVALIDATION_RELEASE
+            minimal_fix = f"对象 {object_id}：尚缺本条判断所需的材料或适用性事实，保留待分诊；缺证不等于产品实现失败，先核清具体缺口与责任。"
+        revalidation = _REVALIDATION_EVIDENCE
     elif professional_issue and provider_id:
         party = provider_id
         classification = "professional_consumption"
-        minimal_fix = (
-            f"对象 {object_id}：由 {provider_id} 按其公开入口处理现有专业结论后复验，再审计。"
-        )
-        revalidation = (
-            f"{provider_id} public check or access entry then "
-            "skill-family-audit:conformance-audit"
-        )
-    elif domain in _FOUNDATION_DOMAINS:
+        minimal_fix = f"对象 {object_id}：由 {provider_id} 按其公开入口处理现有专业结论后复验，再审计。"
+        revalidation = f"{provider_id} public check or access entry then skill-family-audit:conformance-audit"
+    elif status == "FAIL" and authority.get("effect") == "experimental":
         party = "pending_triage"
         classification = "pending_triage"
-        minimal_fix = (
-            f"对象 {object_id}：信息不足，待分诊。"
-            "不能凭 FOUNDATION 域名断定上游产品缺陷。"
-        )
+        minimal_fix = f"对象 {object_id}：已记录 experimental（实验性）规则下的差异，是否处理按目标已承诺的采用范围决定，不作为强制产品缺陷整改。"
         revalidation = _REVALIDATION_EVIDENCE
+    elif status == "FAIL" and authority.get("effect") == "mandatory":
+        party = OWNER_BOUNDARY["release"] if _domain_of_canonical_id(canonical_id) in _RELEASE_DOMAINS else "product"
+        classification = "release" if party == OWNER_BOUNDARY["release"] else "product"
+        minimal_fix = (f"对象 {object_id}：发布配置及载荷归 release-skill，按已有发布诊断入口修复后复验。"
+                       if classification == "release" else f"对象 {object_id}：已确认目标不符合本条要求，由目标工程修复已指出的问题后复验。")
+        revalidation = _REVALIDATION_RELEASE if classification == "release" else _REVALIDATION_PRODUCT
     else:
-        party = "product"
-        classification = "product"
-        minimal_fix = (
-            f"对象 {object_id}：领域问题归产品。"
-            "按规则整改目标工程后重新运行符合性审计；本制品不修改目标。"
-        )
-        revalidation = _REVALIDATION_PRODUCT
+        party = "pending_triage"
+        classification = "pending_triage"
+        minimal_fix = f"对象 {object_id}：适用性、责任或原规则效力尚未核清，保留待核；不凭域名或理由关键词要求目标整改。"
+        revalidation = _REVALIDATION_EVIDENCE
+    semantic_complete = (
+        semantic is not None
+        and semantic.get("canonical_id") == canonical_id
+        and semantic.get("rule_revision_digest") == revision
+        and semantic.get("check_method") == "semantic_review"
+        and semantic.get("review_purpose") == "semantic_conclusion"
+        and semantic.get("missing_evidence_roles") == []
+        and _method_determination_complete(semantic)
+    )
+    unfinished = [row for row in methods if row.get("status") not in {"PASS", "FAIL", "NOT_APPLICABLE"}
+                  and row.get("status") != status
+                  and not (semantic_complete and row.get("check_method") == "semantic_review"
+                           and row.get("status") == "NOT_RUN"
+                           and row.get("observation_source") == "method_not_executed_by_mechanical_executor"
+                           and row.get("evidence") == {"kind": "method_not_executed", "reason": "non_mechanical_method"})]
+    if unfinished:
+        details = "；".join(f"{row.get('check_method', 'unknown')}：{_finding_reason_text(row)}" for row in unfinished)
+        reason += f" / 另有未完成方法：{details}"
+        minimal_fix += "另有方法尚未完成，按其原理由单独承接，不以本项修复替代。"
     return {
-        "object": object_id,
-        "reason": reason,
-        "responsible_party": party,
-        "minimal_fix": minimal_fix,
-        "revalidation_entry": revalidation,
-        "classification": classification,
+        "object": object_id, "reason": reason, "responsible_party": party,
+        "minimal_fix": minimal_fix, "revalidation_entry": revalidation, "classification": classification,
     }
+
+
+def _remediation_items(
+    rule_results: list[dict[str, Any]], target_type: str,
+    canonical_authority: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Derive current remediation from the current canonical rule outcomes."""
+    items = []
+    for item in rule_results:
+        if item["status"] in {"PASS", "NOT_APPLICABLE"}:
+            continue
+        route = finding_responsibility_route(item, canonical_authority)
+        items.append({
+            "finding_id": f"finding-{len(items) + 1}",
+            "rule_id": item["rule_id"],
+            "rule_revision_digest": item["rule_revision_digest"],
+            "status": item["status"],
+            "object": route["object"],
+            "reason": route["reason"],
+            "responsible_party": route["responsible_party"],
+            "minimal_fix": route["minimal_fix"],
+            "revalidation_entry": route["revalidation_entry"],
+            "applicability_scope": target_type,
+            "suggested_action": route["minimal_fix"],
+            "patch_status": "unapplied",
+        })
+    return items
 
 
 def _reset_run_fact_cache() -> None:
@@ -1605,12 +1791,164 @@ def _remember_method_status(
         found[key] = (status, {**current[1], **payload})
 
 
-def _index_method_statuses(domain: dict[str, Any]) -> dict[tuple[str, str, str], tuple[str, dict[str, Any]]]:
+def _resolved_original_subresult(
+    parent: dict[str, Any], sub: dict[str, Any], canonical_id: str, revision: str,
+    *, original_executor_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Resolve only a dispatcher reference to its original bound payload."""
+    reference = sub.get("evidence")
+    resolved = dict(sub)
+    if isinstance(reference, dict) and reference.get("kind") in {
+        "executor_aggregate_evidence_reference", "executor_error_reference",
+    }:
+        if (reference.get("field") != "evidence"
+                or parent.get("canonical_lineage") != {"canonical_id": canonical_id, "revision_digest": revision}
+                or sub not in (parent.get("check_method_subresults") or [])
+                or not isinstance(parent.get("evidence"), dict)
+                or (reference["kind"] == "executor_error_reference"
+                    and reference.get("code") != parent["evidence"].get("code"))):
+            raise _stage_error("STAGE_REFERENCE_REJECTED", "original aggregate evidence reference is not bound")
+        resolved["evidence"] = parent["evidence"]
+    if original_executor_result is not None:
+        resolved["evidence"] = {**resolved.get("evidence", {}),
+                                "original_executor_result": original_executor_result}
+        declaration_refs = resolved["evidence"].get("declaration_refs")
+        if (isinstance(declaration_refs, list) and declaration_refs
+                and all(ref in original_executor_result["verified_evidence_refs"] for ref in declaration_refs)):
+            resolved["evidence"]["evidence_refs"] = declaration_refs
+    return resolved
+
+
+def _effective_replaces_unresolved(
+    effective: dict[str, Any], original: dict[str, Any], identity: tuple[str, str, str],
+    *, professional: dict[str, Any] | None = None,
+    professional_inputs: dict[str, Any] | None = None,
+    evidence_set: list[dict[str, Any]] | None = None, target: Path | None = None,
+    required_premise: dict[str, Any] | None = None,
+    security_observation: dict[str, Any] | None = None,
+) -> bool:
+    """Accept an actual replacement; reject a claimed but conflicting source."""
+    evidence = effective.get("evidence")
+    premise = evidence.get("mechanical_object_premise") if isinstance(evidence, dict) else None
+    executed = evidence.get("original_executor_result") if isinstance(evidence, dict) else None
+    if _method_determination_complete(original):
+        return False
+    if premise is None and executed is None and required_premise is None:
+        return False
+
+    def source_matches(expected: dict[str, Any], annotations: tuple[str, ...] = ()) -> bool:
+        actual_evidence = {key: value for key, value in evidence.items() if key not in annotations}
+        expected_evidence = {key: value for key, value in expected["evidence"].items() if key not in annotations}
+        if identity[0] == "SFA-PLAT-005" and identity[2] == "static_scan" and annotations:
+            # Rebuilding from a method identity omits descriptive rule text.
+            # Apply the existing display-field comparison to the two known
+            # components while retaining every actual source and check field.
+            for view in (actual_evidence, expected_evidence):
+                components = view.get("projection_components")
+                if not isinstance(components, dict):
+                    continue
+                view["projection_components"] = dict(components)
+                for name in ("direction", "references"):
+                    component = components.get(name)
+                    if isinstance(component, dict) and isinstance(component.get("evidence"), dict):
+                        view["projection_components"][name] = {
+                            **component,
+                            "evidence": {key: value for key, value in component["evidence"].items()
+                                         if key not in {"object", "required_capability"}},
+                        }
+        return (all(effective.get(field) == expected.get(field)
+                    for field in ("status", "reason_code", "observation_source"))
+                and actual_evidence == expected_evidence)
+
+    def source_conflict() -> WorkflowError:
+        message = ("method status does not match the original task result"
+                   if effective.get("status") != original.get("status")
+                   else "method observation source does not match the original task result")
+        return _stage_error("STAGE_REFERENCE_REJECTED", message)
+
+    if _context_measurement_recorded(identity[0], identity[2], original) and premise is None:
+        raise source_conflict()
+
+    if premise is None and executed is None and required_premise is not None:
+        # The original v3 request still requires this method's object premise
+        # when a result removes its claim. A completed ledger status alone is
+        # not an alternative source. Reuse the producer's actual source rules.
+        if (identity[2] == "static_scan" and identity[0] in _BOUNDED_SECURITY_RULE_IDS
+                and security_observation is not None):
+            expected = _security_ledger_observation(security_observation, identity[0])
+            if _method_determination_complete(expected) and source_matches(expected):
+                return True
+        expected = _retained_professional_observation(
+            {"canonical_id": identity[0]}, identity[2], required_premise,
+            required_premise["evidence_refs"], professional, evidence_set or [], target, professional_inputs=professional_inputs, security_observation=security_observation,
+        )
+        if (expected is not None and _method_determination_complete(expected, required_premise["evidence_refs"])
+                and source_matches(expected, ("object", "required_capability", "mechanical_object_premise"))):
+            return True
+        raise source_conflict()
+
+    if executed is not None:
+        if not isinstance(executed, dict):
+            raise source_conflict()
+        payload = executed.get("result_payload")
+        if (not isinstance(payload, dict)
+                or payload.get("canonical_lineage") != {"canonical_id": identity[0], "revision_digest": identity[1]}
+                or executed.get("result_digest") != foundation_document_digest(payload)
+                or not isinstance(executed.get("foundation_task_digest"), str)
+                or not _STAGE_HEX64.fullmatch(executed["foundation_task_digest"])
+                or not executed.get("verified_evidence_refs")):
+            raise source_conflict()
+        matching = [row for row in payload.get("check_method_subresults", [])
+                    if row.get("check_method") == identity[2]]
+        if len(matching) != 1:
+            raise source_conflict()
+        expected = _resolved_original_subresult(payload, matching[0], identity[0], identity[1],
+                                               original_executor_result=executed)
+        if source_matches(expected):
+            return True
+        # A completed actual executor result has priority over any model premise.
+        if _method_determination_complete(expected, executed["verified_evidence_refs"]):
+            raise source_conflict()
+    if isinstance(premise, dict):
+        if not (
+            premise.get("review_purpose") == "mechanical_object_premise"
+            and bool(premise.get("evidence_refs")) and bool(premise.get("rationale"))
+            and (premise.get("canonical_id"), premise.get("rule_revision_digest"), premise.get("check_method")) == identity
+            and semantic_review.MECHANICAL_PREMISE_CODES.get(identity[2], {}).get(premise.get("reason_code")) == premise.get("status")
+        ):
+            raise source_conflict()
+        if _context_measurement_recorded(identity[0], identity[2], original):
+            if source_matches(original, ("mechanical_object_premise", "original_executor_result")):
+                return True
+            raise source_conflict()
+        rule = {"canonical_id": identity[0]}
+        refs = premise["evidence_refs"]
+        expected = _retained_gap_observation(rule, identity[2], premise, refs)
+        if premise["status"] == "REVIEW_REQUIRED":
+            expected = _retained_professional_observation(
+                rule, identity[2], premise, refs, professional, evidence_set or [], target, professional_inputs=professional_inputs, security_observation=security_observation,
+            ) or expected
+        if source_matches(expected, ("object", "required_capability", "original_executor_result")):
+            return True
+    # Same status is not permission to retain a different completion reason,
+    # provider label or executor source. Only no replacement returns False.
+    raise source_conflict()
+
+
+
+def _index_method_statuses(
+    domain: dict[str, Any], *, professional: dict[str, Any] | None = None,
+    professional_inputs: dict[str, Any] | None = None,
+    evidence_set: list[dict[str, Any]] | None = None, target: Path | None = None,
+    mechanical_reviews: dict[tuple[str, str, str], dict[str, Any]] | None = None,
+) -> dict[tuple[str, str, str], tuple[str, dict[str, Any]]]:
     """Read method statuses the producer actually stored. Do not invent one."""
     body = domain.get("conformance_result")
     if not isinstance(body, dict):
         raise _stage_error("STAGE_REFERENCE_REJECTED", "stage domain schema is invalid")
     found: dict[tuple[str, str, str], tuple[str, dict[str, Any]]] = {}
+    security = next((row.get("observation") for row in domain.get("evidence_list", [])
+        if row.get("kind") == "skill-family-audit.bounded-material-security-observation"), None)
     assurance = body.get("method_assurance")
     if isinstance(assurance, dict):
         for record in assurance.get("records") or []:
@@ -1639,23 +1977,44 @@ def _index_method_statuses(domain: dict[str, Any]) -> dict[tuple[str, str, str],
                     # the finalized method ledger owns nonmechanical observations.
                     if sub.get("check_method") not in MECHANICAL_CHECK_METHODS:
                         continue
-                    observation = sub
-                    reference = sub.get("evidence")
                     parent = item.get("result_payload")
-                    lineage = parent.get("canonical_lineage") if isinstance(parent, dict) else None
-                    if (isinstance(reference, dict)
-                            and reference.get("kind") in {
-                                "executor_aggregate_evidence_reference", "executor_error_reference"}
-                            and reference.get("field") == "evidence"
-                            and isinstance(parent, dict)
-                            and lineage == {"canonical_id": item.get("canonical_id"),
-                                            "revision_digest": item.get("revision_digest")}
-                            and sub in (parent.get("check_method_subresults") or [])
-                            and isinstance(parent.get("evidence"), dict)
-                            and (reference.get("kind") != "executor_error_reference"
-                                 or reference.get("code") == parent["evidence"].get("code"))):
-                        observation = {**sub, "evidence": parent["evidence"],
-                                       "result_digest": item.get("result_digest")}
+                    key = (item.get("canonical_id"), item.get("revision_digest"), sub.get("check_method"))
+                    prior = found.get(key, (None, {}))[1]
+                    prior_evidence = prior.get("evidence")
+                    reference = sub.get("evidence")
+                    unresolved_reference = (
+                        isinstance(reference, dict)
+                        and reference.get("kind") in {"executor_aggregate_evidence_reference", "executor_error_reference"}
+                        and not _method_determination_complete(sub)
+                        and not (isinstance(prior_evidence, dict) and any(
+                            field in prior_evidence for field in ("mechanical_object_premise", "original_executor_result")
+                        ))
+                    )
+                    observation = dict(sub)
+                    bound_digest = (
+                        isinstance(item.get("result_digest"), str)
+                        and _STAGE_HEX64.fullmatch(item["result_digest"])
+                        and item["result_digest"] == prior.get("result_digest")
+                    )
+                    prior_reference = isinstance(prior_evidence, dict) and prior_evidence.get("kind") in {
+                        "executor_aggregate_evidence_reference", "executor_error_reference",
+                    }
+                    if not unresolved_reference or not prior_reference or bound_digest:
+                        try:
+                            observation = _resolved_original_subresult(
+                                parent if isinstance(parent, dict) else {}, sub,
+                                item.get("canonical_id"), item.get("revision_digest"),
+                            )
+                        except WorkflowError as exc:
+                            if not unresolved_reference or exc.code != "STAGE_REFERENCE_REJECTED":
+                                raise
+                            # Keep an unbound, unperformed original reference as
+                            # evidence; it cannot establish a completed method.
+                    observation["result_digest"] = item.get("result_digest")
+                    if key in found and _effective_replaces_unresolved(found[key][1], observation, key,
+                            professional=professional, professional_inputs=professional_inputs, evidence_set=evidence_set, target=target,
+                            required_premise=(mechanical_reviews or {}).get(key), security_observation=security):
+                        continue
                     _remember_method_status(
                         found,
                         item.get("canonical_id"),
@@ -1664,6 +2023,9 @@ def _index_method_statuses(domain: dict[str, Any]) -> dict[tuple[str, str, str],
                         sub.get("status"),
                         observation,
                     )
+                    # No replacement: restore the actual raw source, including
+                    # equal-status observations that arrived in the ledger first.
+                    found[key] = (sub["status"], observation)
     for container in (body.get("rule_results"), domain.get("rule_findings")):
         if not isinstance(container, list):
             continue
@@ -1696,6 +2058,11 @@ def _index_method_statuses(domain: dict[str, Any]) -> dict[tuple[str, str, str],
                 if (sub.get("check_method") not in MECHANICAL_CHECK_METHODS
                         and (canonical_id, revision, sub.get("check_method")) in found):
                     continue
+                key = (canonical_id, revision, sub.get("check_method"))
+                if key in found and _effective_replaces_unresolved(found[key][1], sub, key,
+                        professional=professional, professional_inputs=professional_inputs, evidence_set=evidence_set, target=target,
+                        required_premise=(mechanical_reviews or {}).get(key), security_observation=security):
+                    continue
                 _remember_method_status(
                     found,
                     canonical_id,
@@ -1708,6 +2075,18 @@ def _index_method_statuses(domain: dict[str, Any]) -> dict[tuple[str, str, str],
                      and sub.get("status") == "EVIDENCE_MISSING"
                      and item.get("missing_evidence_roles") else sub),
                 )
+    for identity, (_, observation) in found.items():
+        if identity[2] in MECHANICAL_CHECK_METHODS:
+            review = (mechanical_reviews or {}).get(identity)
+            original = {}
+            if review is not None:
+                original = _matching_original_mechanical(
+                    (assurance or {}).get("trusted_observation") or {}, *identity,
+                    review["evidence_refs"],
+                ) or {}
+            _effective_replaces_unresolved(observation, original, identity,
+                professional=professional, professional_inputs=professional_inputs, evidence_set=evidence_set, target=target,
+                required_premise=review, security_observation=security)
     return found
 
 
@@ -1760,11 +2139,22 @@ def _contributions_from_producer(
     parameters: dict[str, Any],
     domain: dict[str, Any],
     frozen_rules: dict[tuple[str, str, str, str], dict[str, Any]],
+    *,
+    mechanical_reviews: dict[tuple[str, str, str], dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     rules = parameters.get("stage_rules")
     if not isinstance(rules, list):
         raise _stage_error("STAGE_REFERENCE_REJECTED", "original task stage_rules are missing")
-    observed = _index_method_statuses(domain)
+    professional = (_consume_professional_inputs(parameters["professional_consumption"])
+                    if parameters.get("professional_consumption") is not None else None)
+    evidence_set = (_semantic_evidence_view(parameters) if parameters.get("evidence_set")
+                    else [])
+    target_path = parameters.get("target_project_path") or (
+        evidence_set[0]["path"] if evidence_set else None
+    )
+    observed = _index_method_statuses(domain, professional=professional, professional_inputs=parameters.get("professional_consumption"),
+        evidence_set=evidence_set, target=Path(target_path) if target_path else None,
+        mechanical_reviews=mechanical_reviews)
     contributions: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str, str]] = set()
     for rule in rules:
@@ -1808,6 +2198,16 @@ def _contributions_from_producer(
     return contributions
 
 
+def _professional_source_evidence_id(
+    proof: dict[str, Any], source_ref: str, entry: dict[str, Any],
+) -> str:
+    """Identify a direct original source citation within the existing view."""
+    return "professional-source:" + foundation_document_digest({
+        "proof_digest": foundation_document_digest(proof), "source_ref": source_ref,
+        "path": str(Path(entry["path"]).resolve()), "sha256": entry["sha256"],
+    })
+
+
 def _semantic_evidence_view(parameters: dict[str, Any]) -> list[dict[str, Any]]:
     """Derive stage-local citations without changing the original Task inputs.
 
@@ -1842,6 +2242,59 @@ def _semantic_evidence_view(parameters: dict[str, Any]) -> list[dict[str, Any]]:
         identifiers.add(evidence_id)
         evidence.append({"evidence_id": evidence_id, "kind": "receipt",
                          "path": str(Path(root) / relative), "sha256": receipt["sha256"]})
+        # Only recognized direct JSON outputs of this selected provider's
+        # review, inside the caller's original proof root. No directory walk,
+        # indirect reference or command from a proof grants another read.
+        target = parameters.get("target_project_path") or parameters["evidence_set"][0]["path"]
+        if (item.get("provider_id") != "foundation"
+                or document.get("subject", {}).get("ref") != target):
+            continue
+        providers = checker.load_professional_provider_rows()
+        family = next((row.get("familyId") for row in providers if row.get("id") == "foundation"), None)
+        if not family or document.get("provider", {}).get("id") != family:
+            continue
+        details = document.get("details")
+        review = details.get("review") if isinstance(details, dict) else None
+        checks = review.get("checks") if isinstance(review, dict) else None
+        peer_source_refs = {ref for check in checks
+                       if isinstance(check, dict) and check.get("id") == "native_role_separation"
+                       and isinstance(check.get("sourceRefs"), list)
+                       for ref in check["sourceRefs"] if isinstance(ref, str)} if isinstance(checks, list) else set()
+        source_refs = {ref for check in checks if isinstance(check, dict)
+                       and isinstance(check.get("sourceRefs"), list)
+                       for ref in check["sourceRefs"] if isinstance(ref, str)} if isinstance(checks, list) else set()
+        for source_ref in sorted(source_refs):
+            source = Path(source_ref)
+            if source.is_absolute():
+                try:
+                    source = source.relative_to(Path(root))
+                except ValueError:
+                    continue
+            try:
+                source_receipt = foundation_read_file_strict(Path(root), str(source))
+                payload = strict_read_json(source_receipt, "PROFESSIONAL_PROOF_FAILED", "professional source")
+            except (WorkflowError, ValueError, OSError):
+                continue
+            peer_output = isinstance(payload, dict) and source_ref in peer_source_refs and (
+                payload.get("kind") == "skill-family.adapter-peer-verification-result"
+                or (isinstance(payload.get("request"), dict)
+                    and payload["request"].get("kind") == "skill-family.adapter-peer-verification-request"
+                    and set(payload) == {"request", "peerRoots"})
+            )
+            fixed_output = (isinstance(payload, dict)
+                and payload.get("kind") == "skill-family.professional-conclusion"
+                and (_as_dict(payload.get("provider")) or {}).get("id") == family
+                and payload["provider"].get("entry") == "runStaticReferenceCheck")
+            if not (peer_output or fixed_output):
+                continue
+            entry = {"kind": "receipt", "path": str(Path(root) / source), "sha256": source_receipt["sha256"]}
+            if any(Path(row["path"]).resolve() == Path(entry["path"]).resolve()
+                   and row["sha256"] == entry["sha256"] for row in evidence):
+                continue
+            entry["evidence_id"] = _professional_source_evidence_id(document, source_ref, entry)
+            if entry["evidence_id"] not in identifiers:
+                evidence.append(entry)
+                identifiers.add(entry["evidence_id"])
     return evidence
 
 
@@ -1854,6 +2307,7 @@ def _context_lists(
     parameters: dict[str, Any],
     domain: dict[str, Any],
     verified_evidence_refs: list[dict[str, str]] | None = None,
+    mechanical_reviews: dict[tuple[str, str, str], dict[str, Any]] | None = None,
 ) -> tuple[list[Any], list[Any] | None]:
     """Reaccept the original parent and child files using stage-local semantics."""
     document = _load_stage_json(root, stage["context_plan_ref"], "context_plan_ref")
@@ -1875,6 +2329,7 @@ def _context_lists(
                 descriptors=request["rules"],
                 evidence_set=semantic_evidence,
                 digest_document=foundation_document_digest,
+                _schema_version=request.get("schema_version"),
             )
             if rebuilt != request:
                 raise ValueError("original parent review request binding differs")
@@ -1904,7 +2359,9 @@ def _context_lists(
                     if identity in seen or expected.get(identity) != rule or key not in permitted:
                         raise ValueError("context rule or evidence differs from original parent")
                     seen.add(identity)
-                    identities.append(dict(zip(_RULE_IDENTITY, key)))
+                    identities.append({**dict(zip(_RULE_IDENTITY, key)),
+                        **({"review_purpose": rule["review_purpose"]}
+                           if request.get("schema_version") == "3.0.0" else {})})
                 if control.get("context_rule_set_digest") != foundation_document_digest(identities):
                     raise ValueError("context rule set digest differs")
             blocked = set(document.get("blocked_rule_ids") or [])
@@ -1930,19 +2387,56 @@ def _context_lists(
         )
         if binding != domain["conformance_result"]["semantic_review_binding"]:
             raise ValueError("context results differ from the original consumed semantic result")
+        finalized_mechanical_reviews = {
+            identity: review for identity, review in observed.items()
+            if review.get("review_purpose") == "mechanical_object_premise"
+        }
         if verified_evidence_refs is not None:
             for canonical_id, revision, method in observed:
-                if method == "semantic_review":
-                    verified_evidence_refs.extend(_verified_static_evidence_refs(
+                verified_evidence_refs.extend(_verified_static_evidence_refs(
                         observed, binding, request, task_digest, canonical_id, revision,
+                        check_method=method,
                     ))
-        statuses = _index_method_statuses(domain)
+        professional = (_consume_professional_inputs(parameters["professional_consumption"])
+                        if parameters.get("professional_consumption") is not None else None)
+        target_path = parameters.get("target_project_path") or parameters["evidence_set"][0]["path"]
+        statuses = _index_method_statuses(domain, professional=professional, professional_inputs=parameters.get("professional_consumption"),
+            evidence_set=semantic_evidence, target=Path(target_path),
+            mechanical_reviews=finalized_mechanical_reviews)
+        for identity, (_, observation) in statuses.items():
+            evidence = observation.get("evidence", {})
+            executed = evidence.get("original_executor_result") if isinstance(evidence, dict) else None
+            if executed is None:
+                continue
+            allowed_refs = [ref for (cid, revision, method) in observed if (cid, revision) == identity[:2]
+                            for ref in _verified_static_evidence_refs(observed, binding, request, task_digest,
+                                cid, revision, check_method=method)]
+            payload = executed.get("result_payload")
+            if (not isinstance(payload, dict)
+                    or payload.get("canonical_lineage") != {"canonical_id": identity[0], "revision_digest": identity[1]}
+                    or executed.get("result_digest") != foundation_document_digest(payload)
+                    or executed.get("foundation_task_digest") != task_digest
+                    or not executed.get("verified_evidence_refs")
+                    or any(ref not in allowed_refs for ref in executed.get("verified_evidence_refs", []))):
+                raise ValueError("original executor result is not bound to its task's finalized citations")
         for identity, review in observed.items():
             original = statuses.get(identity)
-            if original is not None and original[0] != review["status"]:
+            if (review.get("review_purpose") != "mechanical_object_premise"
+                    and original is not None and original[0] != review["status"]):
                 raise ValueError("context status differs from the original method observation")
+            if review.get("review_purpose") == "mechanical_object_premise":
+                if original is None:
+                    raise ValueError("method object premise has no original method observation")
+                evidence = original[1].get("evidence", {})
+                retained = evidence.get("mechanical_object_premise") if isinstance(evidence, dict) else None
+                if retained is not None and retained != review:
+                    raise ValueError("method object premise differs from its original context")
+                if retained is None and not _method_determination_complete(original[1], verified_evidence_refs):
+                    raise ValueError("unresolved method did not retain its original object premise")
     except (KeyError, TypeError, ValueError, WorkflowError, semantic_review.SemanticReviewError) as exc:
         raise _stage_error("STAGE_CONTEXT_REJECTED", str(exc)) from exc
+    if mechanical_reviews is not None:
+        mechanical_reviews.update(finalized_mechanical_reviews)
     return contexts, result_contexts
 
 
@@ -2083,9 +2577,10 @@ def _derive_stage_facts(
         raise _stage_error("STAGE_REFERENCE_REJECTED", "original domain target_digest differs from audit_input")
     semantic = _semantic_binding_from_domain(domain, task_digest)
     verified_evidence_refs: list[dict[str, str]] = []
+    mechanical_reviews: dict[tuple[str, str, str], dict[str, Any]] = {}
     contexts, result_contexts = _context_lists(stage, root, semantic_result=semantic,
         task_digest=task_digest, parameters=parameters, domain=domain,
-        verified_evidence_refs=verified_evidence_refs)
+        verified_evidence_refs=verified_evidence_refs, mechanical_reviews=mechanical_reviews)
     # A production full round freezes the canonical authority. Recompute its
     # census from that authority and this original Task's evidence, rather
     # than trusting group counters copied out of the original domain.
@@ -2109,6 +2604,7 @@ def _derive_stage_facts(
             raise _stage_error("STAGE_REFERENCE_REJECTED", "original semantic preflight differs from its bound evidence and rules")
     contributions = _contributions_from_producer(
         parameters, domain, _frozen_rule_index(frozen),
+        mechanical_reviews=mechanical_reviews,
     )
     derived = {
         **identity,
@@ -3995,9 +4491,28 @@ def _professional_observation_blocks_completion(item: dict[str, Any]) -> bool:
     Same-version partial, wrong-target, and unfinished scans still block.
     """
     policy_accepted = _policy_accepted_higher_version(item)
+    evidence = _as_dict(item.get("evidence")) or {}
+    conclusion = _as_dict(evidence.get("conclusion")) or {}
+    declaration_scope = (
+        item.get("canonical_id") == "SFA-ARTMETHOD-001"
+        and item.get("check_method") == "schema_validation"
+        and item.get("observation_source") == "retained_professional_consumption"
+        and evidence.get("public_entry") == "runFixedSchemaUseCheck"
+        and evidence.get("reason") == "original_professional_mechanical_result"
+        and evidence.get("consumed_components") == ["declaration"]
+        and evidence.get("original_report") == conclusion
+        and isinstance(evidence.get("original_checks"), list)
+        and bool(evidence.get("original_checks"))
+        and evidence.get("professional_issue") in (None, "professional_findings")
+    )
     for blob in _observation_blobs(item):
         if not policy_accepted:
             for key in ("professional_issue", "completion", "code", "reader_conclusion"):
+                # The producer already bound this complete declaration scope.
+                # Keep its original parent partial when an optional use failed.
+                if (declaration_scope and key == "completion" and blob is conclusion.get("outcome")
+                        and blob.get(key) == "partial"):
+                    continue
                 if _marker_blocks_completion(blob.get(key)):
                     return True
         elif _marker_blocks_completion(blob.get("professional_issue")) and (
@@ -4070,6 +4585,13 @@ def _semantic_na_citation_complete(item: dict[str, Any], verified_evidence_refs:
     if item.get("status") != "NOT_APPLICABLE":
         return False
     review = _nested_semantic_review(item)
+    lineage = item.get("canonical_lineage")
+    if isinstance(review, dict) and isinstance(lineage, dict) and (
+        review.get("status") != "NOT_APPLICABLE"
+        or review.get("canonical_id") != lineage.get("canonical_id")
+        or review.get("rule_revision_digest") != lineage.get("revision_digest")
+    ):
+        return False
     evidence = item.get("evidence")
     refs = item.get("evidence_refs")
     if not isinstance(refs, list) and isinstance(evidence, list):
@@ -4124,6 +4646,7 @@ def _method_determination_complete(item: dict[str, Any], verified_evidence_refs:
             item.get("check_method") in rule_method_assurance.NON_MECHANICAL_CHECK_METHODS
             or isinstance(item.get("evidence"), list)
             or isinstance(item.get("evidence_refs"), list)
+            or _nested_semantic_review(item) is not None
         ):
             return _semantic_na_citation_complete(item, verified_evidence_refs)
         return rule_method_assurance.mechanical_na_is_evidenced(item, verified_evidence_refs)
@@ -4137,6 +4660,7 @@ def _method_determination_complete(item: dict[str, Any], verified_evidence_refs:
 def _canonical_executable_coverage(
     frozen: dict[str, Any], grouped: dict[str, list[dict[str, Any]]],
     verified_evidence_refs: list[dict[str, str]] | None = None,
+    executable_canonical_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     identities: list[str] = []
     methods_by_id: dict[str, list[str]] = {}
@@ -4146,6 +4670,8 @@ def _canonical_executable_coverage(
         canonical_id = rule.get("canonical_id")
         method = rule.get("check_method")
         if not isinstance(canonical_id, str) or not isinstance(method, str):
+            continue
+        if executable_canonical_ids is not None and canonical_id not in executable_canonical_ids:
             continue
         if canonical_id not in methods_by_id:
             identities.append(canonical_id)
@@ -4208,7 +4734,7 @@ def _copy_explanation(value: Any) -> Any:
 def _projected_rule_row(
     canonical_id: str, items: list[dict[str, Any]], status: str
 ) -> dict[str, Any]:
-    """One public rule row. Method identities stay on effective contributions."""
+    """Keep accepted method identities and their current public parent link."""
     revision = items[0]["revision_digest"]
     if any(item.get("revision_digest") != revision for item in items):
         raise WorkflowError(
@@ -4222,6 +4748,10 @@ def _projected_rule_row(
     row: dict[str, Any] = {
         "rule_id": canonical_id,
         "rule_revision_digest": revision,
+        "canonical_lineage": {
+            "canonical_id": canonical_id,
+            "revision_digest": revision,
+        },
         "status": status,
     }
     for field in ("reason_code", "rationale", "semantic_review"):
@@ -4229,16 +4759,30 @@ def _projected_rule_row(
             row[field] = _copy_explanation(source[field])
     if semantic is not None and isinstance(semantic.get("semantic_review"), dict):
         row["semantic_review"] = _copy_explanation(semantic["semantic_review"])
-    if status not in _TERMINAL_METHOD_STATUSES and "evidence" in source:
+    if (status == "FAIL" or status not in _TERMINAL_METHOD_STATUSES) and "evidence" in source:
         row["evidence"] = _copy_explanation(source["evidence"])
-    if any(item.get("status") not in _TERMINAL_METHOD_STATUSES for item in items):
+    if any(item.get("status") == "FAIL" or item.get("status") not in _TERMINAL_METHOD_STATUSES for item in items):
         row["check_method_subresults"] = [
-            {key: _copy_explanation(item[key]) for key in (
-                "check_method", "status", "reason_code", "rationale", "evidence",
-                "missing_evidence_roles", "semantic_review", "task_digest", "audit_phase",
-            ) if key in item}
+            {
+                "baseline_rule_id": canonical_id,
+                **{key: _copy_explanation(item[key]) for key in (
+                    "canonical_id", "revision_digest", "binding_id", "observation_source",
+                    "check_method", "status", "reason_code", "rationale", "evidence",
+                    "missing_evidence_roles", "semantic_review", "task_digest", "audit_phase",
+                ) if key in item},
+            }
             for item in items
         ]
+    if (status == "FAIL" and conformance_human_route._professional_issue_type(
+            source, method_parent=row) == "professional_findings"):
+        # The performed finding supplies the failure reason. Its earlier
+        # object premise remains in the original method evidence.
+        outcome = (source["evidence"].get("original_report") or {}).get("outcome") or {}
+        for field, original_field in (("reason_code", "code"), ("rationale", "summary")):
+            if original_field in outcome:
+                row[field] = _copy_explanation(outcome[original_field])
+            elif outcome:
+                row.pop(field, None)
     mechanical_roles = None
     for item in items:
         roles = item.get("missing_evidence_roles")
@@ -4391,8 +4935,20 @@ def project_staged_conformance_result(
     consumption = _project_professional_consumption(combined)
     if consumption is not None:
         domain["professional_consumption"] = consumption
+    canonical_receipt = _read_frozen_canonical_authority(frozen)
+    remediation_authority = (strict_read_json(canonical_receipt, "STAGE_REFERENCE_REJECTED", "frozen canonical rules")
+                             if canonical_receipt is not None else None)
+    executable_canonical_ids = None
+    if remediation_authority is not None:
+        applicability = canonical_rule_applicability(
+            load_json(TRUST_POLICY), frozen["target_type"], frozen.get("platform", "all"),
+            remediation_authority, canonical_receipt["sha256"],
+        )
+        executable_canonical_ids = {
+            row["canonical_id"] for row in applicability["rules"] if row["executable"]
+        }
     domain["canonical_executable_coverage"] = _canonical_executable_coverage(
-        frozen, grouped, verified_evidence_refs
+        frozen, grouped, verified_evidence_refs, executable_canonical_ids
     )
     for field in _TERMINAL_RESULT_FIELDS:
         if field in domain:
@@ -4411,7 +4967,7 @@ def project_staged_conformance_result(
         "conformance_result": domain,
         "rule_findings": _list_from_stages(stages, "rule_findings"),
         "evidence_list": _list_from_stages(stages, "evidence_list"),
-        "remediation_plan": _list_from_stages(stages, "remediation_plan"),
+        "remediation_plan": _remediation_items(rule_results, domain["target_type"], remediation_authority),
     }
 
 
@@ -4419,15 +4975,22 @@ def combine_final_stage(args: argparse.Namespace) -> dict[str, Any]:
     """Combine original stage results. This branch does not re-run semantic review."""
     raw = getattr(args, "staged_round", None)
     if not isinstance(raw, str) or not raw:
-        raise WorkflowError("STAGE_REFERENCE_REJECTED", "final requires the original stage round")
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "final requires the original stage round",
+                            failure_stage=BEFORE_RULE_SELECTION)
     path = Path(raw)
     if path.is_symlink() or not path.is_file():
-        raise WorkflowError("STAGE_REFERENCE_REJECTED", "staged round must be a real file")
-    document = load_json(path)
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "staged round must be a real file",
+                            failure_stage=BEFORE_RULE_SELECTION)
+    try:
+        document = load_json(path)
+    except (WorkflowError, OSError, ValueError) as exc:
+        exc.failure_stage = BEFORE_RULE_SELECTION
+        raise
     frozen = document.get("audit_input")
     stages = document.get("stages")
     if not isinstance(frozen, dict) or not isinstance(stages, list):
-        raise WorkflowError("STAGE_REFERENCE_REJECTED", "staged round is incomplete")
+        raise WorkflowError("STAGE_REFERENCE_REJECTED", "staged round is incomplete",
+                            failure_stage=BEFORE_RULE_SELECTION)
     combined = combine_staged_round(
         frozen,
         stages,
@@ -5013,6 +5576,15 @@ def _semantic_review_candidate_descriptors(
             set(plan["deterministic_rule_ids"])
             | (set(plan.get("retained_trial_rule_ids", [])) - grouped_ids)
         )
+        # L-only selected rules that left the group registry still need a
+        # full-plan semantic context; targeted exact IDs already cover them.
+        ungrouped_selected |= {
+            descriptor["canonical_id"]
+            for descriptor in descriptors
+            if descriptor["canonical_id"] in selected
+            and descriptor["canonical_id"] not in grouped_ids
+            and descriptor.get("check_method") == "semantic_review"
+        }
     else:
         ungrouped_selected = set(plan.get("requested_canonical_rule_ids", []))
     candidates: list[dict[str, Any]] = []
@@ -5055,6 +5627,74 @@ def _semantic_review_candidate_descriptors(
         candidates,
         key=lambda row: (row["canonical_id"], row["check_method"]),
     )
+
+
+def _mechanical_premise_descriptors(
+    plan: dict[str, Any], canonical_rules: list[dict[str, Any]],
+    evidence_set: list[dict[str, Any]], results: list[dict[str, Any]],
+    security_observation: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Request object facts only for unresolved, already-declared methods."""
+    if plan["execution_profile"] not in {"full", "targeted"}:
+        return []
+    selected = set(plan["selected_rule_ids"])
+    bindings = semantic_review.load_bindings(canonical_rules)
+    ledger, _ = _ledger_method_items(canonical_rules, bindings, _governed_route_rows())
+    by_id = {row["canonical_id"]: row for row in canonical_rules}
+    by_baseline = {row.get("canonical_lineage", {}).get("canonical_id"): row for row in results}
+    kinds = sorted({row["kind"] for row in evidence_set})
+    descriptors = []
+    for item in ledger:
+        cid, revision, method = item["canonical_id"], item["revision_digest"], item["check_method"]
+        if cid not in selected or method not in MECHANICAL_CHECK_METHODS:
+            continue
+        allowed = plan.get("stage_check_methods")
+        if isinstance(allowed, dict) and method not in allowed.get((cid, revision), ()):
+            continue
+        canonical = by_id[cid]
+        if canonical["lifecycle_status"] not in {"ACTIVE_MECHANICAL", "ACTIVE_SEMANTIC"}:
+            continue
+        original = by_baseline.get(cid)
+        observations = original.get("check_method_subresults", []) if isinstance(original, dict) else []
+        observation = next((row for row in observations if row.get("check_method") == method), None)
+        if method == "static_scan" and cid in _BOUNDED_SECURITY_RULE_IDS and security_observation is not None:
+            observation = _security_ledger_observation(security_observation, cid)
+        if observation is not None:
+            observation = _resolved_original_subresult(original, observation, cid, revision)
+            if _method_determination_complete(observation):
+                continue
+        descriptor = {
+            "canonical_id": cid, "canonical_revision_digest": revision,
+            "check_method": method, "binding_id": item["binding_id"],
+            "review_purpose": "mechanical_object_premise",
+            "required_evidence_roles": {"object_scope_contract": kinds},
+            **{key: canonical[key] for key in (
+                "name", "obligation", "lifecycle_status", "project_scope", "applicability",
+                "platform_scope", "adoption_mode", "adjudication_note", "evidence_requirements", "exception_policy",
+            )},
+        }
+        if method == "static_scan" and cid in {"SFA-CONTEXT-033", "SFA-PLAT-005"}:
+            descriptor["required_evidence_roles"].update(
+                {"fixed_reference_result": ["receipt"]} if cid == "SFA-CONTEXT-033" else {
+                    "fixed_projection_reference_result": ["receipt"],
+                    "source_generated_direction_result": ["receipt"],
+                })
+        if method == "digest_verification" and cid == "SFA-PLAT-005":
+            descriptor["required_evidence_roles"]["drift_check_record"] = ["log", "receipt"]
+        if "professional_dependencies" in item:
+            descriptor["professional_dependencies"] = item["professional_dependencies"]
+        descriptor["evidence_requirements"] = [*descriptor["evidence_requirements"],
+            "DESIGN-025 §13: review_purpose=mechanical_object_premise reviews only this existing method's "
+            "object and required inputs. Read the original bound materials. Do not infer non-adoption from a "
+            "missing file. Name the required material, authorized checked locations and exact missing content "
+            "for checked input absence. Cite object_scope_contract using bound four-field references. "
+            "Object presence only permits consumption of actual matching professional output; it never "
+            "executes the method or grants PASS/FAIL. Unknown, unperformed or provider gaps remain incomplete. "
+            "Use exactly this method's reason_code/status pair: "
+            + json.dumps(semantic_review.MECHANICAL_PREMISE_CODES[method], sort_keys=True)]
+        descriptor["evidence_refs"] = _descriptor_evidence_refs(descriptor, evidence_set)
+        descriptors.append(descriptor)
+    return sorted(descriptors, key=semantic_review.review_identity)
 
 
 def _selected_nonmechanical_obligations(
@@ -5251,12 +5891,13 @@ def _bounded_security_observation(
 _BOUNDED_SECURITY_RULE_IDS = (
     "SFA-DATASEC-002",
     "SFA-PERM-007",
+    "SFA-SECRET-001",
     "SFA-SECRET-002",
 )
 
 
 def _bounded_security_rule_consumptions(observation: dict[str, Any]) -> list[dict[str, Any]]:
-    """Cite one bounded scan under three rule identities.
+    """Cite one bounded scan under four rule identities.
 
     The scanner status is not a business PASS. Truncation, an unavailable
     root, or a redaction capability gap leaves each identity incomplete.
@@ -5317,6 +5958,104 @@ def _security_ledger_observation(
     }
 
 
+def _present_object_terminal(base: dict[str, Any], **evidence_updates: Any) -> dict[str, Any]:
+    """Cited objects exist; record 缺证 instead of leaving the method unexecuted."""
+    evidence = base.setdefault("evidence", {})
+    if isinstance(evidence, dict):
+        evidence.update(evidence_updates)
+        evidence.pop("kind", None)
+    base["status"] = "EVIDENCE_MISSING"
+    return base
+
+
+def _error_material_security_observation(
+    rule: dict[str, Any], review: dict[str, Any], refs: list[dict[str, str]],
+    evidence_set: list[dict[str, Any]], target: Path | None,
+    observation: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Consume the existing bounded scan for ERROR002's own complete selection."""
+    base = _retained_gap_observation(rule, "static_scan", review, refs)
+    ev = base["evidence"]
+    revision = review.get("rule_revision_digest")
+    ev.update(canonical_id="SFA-ERROR-002", rule_revision_digest=revision,
+              object_refs=refs, business_pass=False, proof_eligible=False,
+              reason="bounded_error_material_observation_incomplete")
+
+    def incomplete() -> dict[str, Any]:
+        if observation is None:
+            return base
+        ev.pop("kind", None)
+        ev.pop("gap", None)
+        base.update(status="EVIDENCE_MISSING", observation_source="bounded_error_material_security",
+                    reason_code="BOUNDED_MATERIAL_SECURITY_OBSERVATION", proof_eligible=False)
+        return base
+
+    if (target is None or not refs or not isinstance(observation, dict)
+            or not isinstance(revision, str) or not _STAGE_HEX64.fullmatch(revision)
+            or rule.get("revision_digest", revision) != revision
+            or not isinstance(observation.get("unavailable"), list)
+            or not isinstance(observation.get("findings"), list)
+            or not isinstance(observation.get("truncated"), bool)):
+        return incomplete()
+    root = (target if target.is_dir() else target.parent).resolve()
+    selected: dict[str, str] = {}
+    selected_roots: list[Path] = []
+    try:
+        for ref in refs:
+            entries = [entry for entry in evidence_set
+                       if entry.get("evidence_id") == ref["evidence_id"]
+                       and entry.get("sha256") == ref["sha256"]]
+            if len(entries) != 1:
+                return incomplete()
+            entry = entries[0]
+            path = Path(entry["path"])
+            path.relative_to(root)
+            if entry["kind"] == "source_tree":
+                _RUN_TREE_DIGEST_CACHE.pop(path, None)
+            if _evidence_entry_error(entry, "ERROR002 selected material"):
+                return incomplete()
+            selected_roots.append(path)
+            if entry["kind"] == "source_tree":
+                if any(member.is_symlink() for member in path.rglob("*")):
+                    return incomplete()
+                paths = [path / relative for relative in _files_inside_resource_root(path)]
+            else:
+                paths = [path]
+            for member in paths:
+                relative = member.relative_to(root).as_posix()
+                selected[relative] = foundation_file_digest(member)
+    except (KeyError, TypeError, ValueError, OSError, RuntimeError, WorkflowError):
+        return incomplete()
+    rows = observation.get("paths")
+    if not selected or not isinstance(rows, list):
+        return incomplete()
+    scanned = [row for row in rows if isinstance(row, dict) and row.get("path") in selected]
+    unavailable = [row for row in observation.get("unavailable", [])
+                   if isinstance(row, dict) and isinstance(row.get("path"), str)
+                   and any((root / row["path"]).is_relative_to(path)
+                           if path.is_dir() else root / row["path"] == path
+                           for path in selected_roots)]
+    ev.update(paths=scanned, selected_paths=sorted(selected), unavailable=unavailable,
+              findings=[row for row in observation.get("findings", [])
+                        if isinstance(row, dict) and (_as_dict(row.get("location")) or {}).get("path") in selected],
+              scanner_status=observation.get("status"), truncated=observation.get("truncated") is True,
+              redaction_capability_gap=observation.get("redaction_capability_gap"))
+    complete = (observation.get("status") == "PASS"
+                and not unavailable and not ev["truncated"] and not ev["redaction_capability_gap"]
+                and observation.get("scope") == "enumerated-audit-text-materials-only"
+                and len(scanned) == len(selected)
+                and {row["path"]: row.get("content_sha256") for row in scanned} == selected)
+    ev["complete"] = complete
+    if complete:
+        base.update(status="PASS", observation_source="bounded_error_material_security",
+                    reason_code="BOUNDED_MATERIAL_SECURITY_OBSERVATION", proof_eligible=False)
+        ev.pop("kind", None)
+        ev.pop("gap", None)
+        ev["reason"] = "bounded_error_material_observation_complete"
+        return base
+    return incomplete()
+
+
 def _retained_gap_observation(
     rule: dict[str, Any], method: str,
     review: dict[str, Any] | None = None,
@@ -5345,6 +6084,8 @@ def _retained_gap_observation(
         "evidence_refs": refs,
         "copied_from_semantic_pass": False,
     }
+    if review.get("review_purpose") == "mechanical_object_premise":
+        evidence["mechanical_object_premise"] = review
     if not (absent or missing):
         evidence["kind"] = "method_not_executed"
         evidence["gap"] = "No finalized object determination or matching original professional output is available."
@@ -5356,9 +6097,475 @@ def _retained_gap_observation(
     }
 
 
+def _registry_internal_boundary_observation(
+    rule: dict[str, Any], method: str, review: dict[str, Any],
+    refs: list[dict[str, str]], cited: list[dict[str, Any]],
+    documents: list[tuple[dict[str, Any], dict[str, Any]]], target: Path | None,
+    *, input_read_gaps: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Check only the declared internal identities against a current full v1 index."""
+    base = _retained_gap_observation(rule, method, review, refs)
+    ev = base["evidence"]
+    ev.update({"reason": "registry_boundary_inputs_unresolved",
+               "scope": "bound source manifest and complete current v1 catalog/project inputs",
+               "object_refs": refs})
+    if input_read_gaps:
+        base["status"] = "EVIDENCE_MISSING"
+        ev.update({"reason": "registry_input_unreadable", "input_read_gaps": input_read_gaps})
+        return base
+    if target is None or not any(
+        row.get("kind") == "source_tree"
+        and target.resolve().is_relative_to(Path(row["path"]).resolve()) for row in cited
+    ):
+        return base
+    unique = {(str(Path(entry["path"]).resolve()), entry["sha256"]): (entry, doc)
+              for entry, doc in documents}
+    values = list(unique.values())
+    manifests = [(entry, doc) for entry, doc in values
+                 if isinstance(doc.get("skills"), list)
+                 and isinstance(doc.get("familyId"), str) and doc["familyId"]
+                 and isinstance(doc.get("sourceRoot"), str)]
+    host_manifest = False
+    if not manifests:
+        # Reuse the product's existing host-manifest directory contract. This
+        # is a transient identity projection, never a new target registry.
+        declared_roots = dict(_host_manifest_declared_skills_dirs(target))
+        for entry, doc in values:
+            try:
+                relative = Path(entry["path"]).resolve().relative_to(target.resolve()).as_posix()
+                source = declared_roots.get(relative)
+                if source is None or not isinstance(doc.get("name"), str) or not doc["name"]:
+                    continue
+                rows = []
+                for name in _files_inside_resource_root(target / source):
+                    if Path(name).name != "SKILL.md":
+                        continue
+                    receipt = foundation_read_file_strict(target, f"{source}/{name}")
+                    metadata, error = checker._parse_frontmatter(receipt["content"])
+                    if error or not isinstance(metadata, dict) or not isinstance(metadata.get("name"), str):
+                        return base
+                    rows.append({"logicalName": metadata["name"], "physicalName": metadata["name"], "source": name})
+                manifests.append((entry, {"familyId": doc["name"], "sourceRoot": source, "skills": rows}))
+                host_manifest = True
+            except (ValueError, OSError, RuntimeError, WorkflowError):
+                return base
+    indexes = [(entry, doc) for entry, doc in values
+               if {"inputs", "entries", "disabledEntries"} <= set(doc)]
+    if len(manifests) != 1 or len(indexes) > 1:
+        return base
+    manifest_entry, manifest = manifests[0]
+    index_entry, current_index = indexes[0] if indexes else (None, None)
+    catalog_documents = [(entry, doc) for entry, doc in values
+                         if "catalog" in doc]
+    projects = [(entry, doc) for entry, doc in values
+                if entry != manifest_entry
+                and (entry, doc) not in catalog_documents + indexes
+                and (set(doc) & {"entries", "overrides", "disabled"}
+                     or set(doc) == {"schemaVersion"})]
+    if not catalog_documents or len(projects) > 1:
+        return base
+    recognized = [manifest_entry, index_entry, *[entry for entry, _ in catalog_documents + projects]]
+    unclassified = [entry for entry, _ in values if entry not in recognized]
+    if unclassified:
+        base["status"] = "EVIDENCE_MISSING"
+        ev.update({"reason": "registry_input_scope_unresolved", "unclassified_input_refs": unclassified})
+        return base
+    try:
+        Path(manifest_entry["path"]).resolve().relative_to(target.resolve())
+        source = Path(manifest["sourceRoot"])
+        source_root = (target / source).resolve(strict=True)
+        source_root.relative_to(target.resolve())
+        if not source_root.is_dir():
+            return base
+        declared_paths = []
+        internal = []
+        for row in manifest["skills"]:
+            if not isinstance(row, dict) or any(
+                not isinstance(row.get(key), str) or not row[key]
+                for key in ("logicalName", "physicalName", "source")
+            ):
+                return base
+            relative = (source / row["source"]).as_posix()
+            receipt = foundation_read_file_strict(target, relative)
+            metadata, error = checker._parse_frontmatter(receipt["content"])
+            if error or not isinstance(metadata, dict):
+                return base
+            if metadata.get("name") not in {row["logicalName"], row["physicalName"]}:
+                return base
+            classification = metadata.get("internal")
+            if host_manifest and classification is None:
+                classification = False
+            if not isinstance(classification, bool):
+                return base
+            declared_paths.append((target / relative).resolve().relative_to(source_root).as_posix())
+            if classification is True:
+                if host_manifest and Path(relative).parent.name != row["physicalName"]:
+                    return base
+                internal.append({"ref": row["logicalName"], "plugin": manifest["familyId"],
+                                 "skill": row["physicalName"], "source": relative,
+                                 "source_sha256": receipt["sha256"]})
+        actual_paths = {name for name in _files_inside_resource_root(source_root)
+                        if Path(name).name == "SKILL.md"}
+        if len(declared_paths) != len(set(declared_paths)) or set(declared_paths) != actual_paths:
+            return base
+        # This adopted-object branch needs an actual classified identity. An
+        # empty recognized subset cannot prove that other internal resources
+        # or namespaces are absent; the object premise owns non-adoption.
+        if not internal:
+            return base
+    except (KeyError, TypeError, ValueError, OSError, RuntimeError, WorkflowError):
+        return base
+    from executors import m7_registry_b2
+    request = {"catalogs": [doc for _, doc in catalog_documents]}
+    if projects:
+        request["project"] = projects[0][1]
+    # The trusted runtime, adapter and tarball belong to Audit. Never discover
+    # an SDK from the untrusted target or import any of its code.
+    built = m7_registry_b2._validate_with_released_registry(
+        {"target": AUDIT_PACKAGE_ROOT}, None, effective_index_input=request,
+    )
+    ev.update({"registry_build": built,
+               "input_refs": [entry for entry, _ in catalog_documents + projects],
+               "current_index_ref": index_entry, "internal_source_manifest": manifest_entry,
+               "internal_identities": internal,
+               "not_a_professional_scan": True})
+    original = built.get("original_result")
+    if built.get("status") != "PASS" or not isinstance(original, dict):
+        ev["reason"] = "registry_current_index_unavailable"
+        base["status"] = "EVIDENCE_MISSING"
+        return base
+    index = original.get("index")
+    if current_index is not None and index != current_index:
+        ev["reason"] = "registry_current_index_scope_or_content_mismatch"
+        base["status"] = "EVIDENCE_MISSING"
+        return base
+    def matches(entry):
+        provider = entry.get("provider", {})
+        return [row for row in internal if entry.get("ref") == row["ref"]
+                or (provider.get("scope") == "plugin"
+                    and provider.get("plugin") == row["plugin"]
+                    and provider.get("skill") == row["skill"])]
+    active = [{"entry": entry, "internal": matches(entry)}
+              for entry in index["entries"] if matches(entry)]
+    disabled = [{"entry": entry, "internal": matches(entry)}
+                for entry in index["disabledEntries"] if matches(entry)]
+    ev.pop("kind", None)
+    ev.pop("gap", None)
+    ev.update({"reason": "internal_identity_in_current_public_index" if active
+               else "internal_identities_absent_from_current_public_index",
+               "active_internal_matches": active, "disabled_internal_matches": disabled,
+               "disabled_use_boundary": "retained for the separate technical-visibility semantic judgment",
+               "limitation": "Only the bound current catalog/project set and explicitly classified source Skills; help, recommendations and technical use remain separate semantic obligations."})
+    base["status"] = "FAIL" if active else "PASS"
+    base["observation_source"] = "registry_public_api_domain_intersection"
+    return base
+
+def _release_record_structure_observation(
+    rule: dict[str, Any], method: str, review: dict[str, Any], refs: list[dict[str, str]],
+    professional: dict[str, Any] | None, evidence_set: list[dict[str, Any]],
+    cited: list[dict[str, Any]], documents: list[tuple[dict[str, Any], dict[str, Any]]],
+    target: Path | None, professional_inputs: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Consume the published 0.10 record validator's original selected scope."""
+    base = _retained_gap_observation(rule, method, review, refs)
+    ev = base["evidence"]
+    ev.update(provider_id="release", public_entry="verify-records/read-proof",
+              reason="professional_object_scope_missing")
+    items = [item for item in (professional or {}).get("items", [])
+             if item.get("provider_id") == "release"]
+    if len(items) != 1 or target is None:
+        return base
+    item = items[0]
+    conclusion = _as_dict(item.get("conclusion")) or {}
+    ev["professional_consumption"] = item
+    if (conclusion.get("provider") != {
+            "id": "release-skill", "version": "0.10.0", "entry": "verify-records"}
+            or item.get("version_relation") not in {"same", "higher"}):
+        return base
+    originals = []
+    for source in (professional_inputs or {}).get("items", []):
+        if source.get("provider_id") != "release":
+            continue
+        root, relative, reader = source.get("proof_root"), source.get("proof_path"), source.get("reader_result")
+        if not root or not relative or not isinstance(reader, dict):
+            continue
+        proof_path = (Path(root) / relative).resolve()
+        bound = [entry for entry in evidence_set if entry.get("kind") == "receipt"
+                 and Path(entry["path"]).resolve() == proof_path]
+        if (len({(str(Path(e["path"]).resolve()), e["sha256"]) for e in bound}) != 1
+                or reader.get("status") not in {"pass", "not_pass"}
+                or not checker._professional_objects_align(conclusion, reader.get("conclusion"))
+                or not checker._reader_provider_matches(conclusion, reader)):
+            continue
+        try:
+            original = strict_read_json(foundation_read_file_strict(Path(root), relative, bound[0]["sha256"]),
+                "PROFESSIONAL_PROOF_FAILED", "release record output")
+        except (RuntimeError, WorkflowError, ValueError, OSError):
+            continue
+        if original == conclusion:
+            originals.append((reader, proof_path))
+    if len(originals) != 1:
+        ev["reason"] = "professional_original_output_missing"
+        return base
+    details = _as_dict(conclusion.get("details")) or {}
+    inputs, digests = _as_dict(details.get("inputs")) or {}, _as_dict(details.get("digests")) or {}
+    unit, version = details.get("unitId"), details.get("targetVersion")
+    outcome = _as_dict(conclusion.get("outcome")) or {}
+    checked = (_as_dict(conclusion.get("scope")) or {}).get("checked", [])
+    findings = details.get("findings")
+    if (not isinstance(unit, str) or not unit or not isinstance(version, str) or not version
+            or conclusion.get("subject", {}).get("ref") != f"{unit}@{version}"
+            or outcome.get("completion") != "complete"
+            or set(checked) != {"explicit-plan", "explicit-approval", "explicit-target-run", "explicit-source-runs"}
+            or not isinstance(findings, list)):
+        ev["reason"] = "professional_scope_incomplete"
+        return base
+    # These are the public record roles, not a copy of their Schema or lineage
+    # validator. The original provider owns all record validation.
+    try:
+        source_runs, source_digests = inputs["sourceRuns"], digests["sourceRuns"]
+        if len(source_runs) != 2 or len(source_digests) != 2:
+            raise ValueError("the selected historical chain needs its two explicit source records")
+        records = [(role, inputs[key], digests[key]) for role, key in
+                   [("plan", "plan"), ("approval", "approval"), ("targetRun", "targetRun")]]
+        records += [(f"sourceRun[{i}]", source_runs[i], source_digests[i]) for i in range(2)]
+        bound_records = {}
+        for role, source, digest in records:
+            name, sha = source["source"], digest["bytesSha256"]
+            if source["role"] != role or not isinstance(name, str) or Path(name).name != name:
+                raise ValueError("the original record role or source is ambiguous")
+            candidates = {(str(Path(entry["path"]).resolve()), entry["sha256"]): entry
+                          for entry in evidence_set if entry.get("kind") != "source_tree"
+                          and Path(entry["path"]).name == name
+                          and Path(entry["path"]).resolve().is_relative_to(target.resolve())}
+            if len(candidates) != 1:
+                raise ValueError("each explicit original source needs one Task file")
+            entry = next(iter(candidates.values()))
+            if entry["sha256"] != sha:
+                raise ValueError("the Task record differs from the original provider input")
+            path = Path(entry["path"]).resolve()
+            document = strict_read_json(foundation_read_file_strict(path.parent, path.name, sha),
+                "PROFESSIONAL_PROOF_FAILED", "release record input")
+            if not isinstance(document, dict):
+                raise ValueError("the explicit record has no object identity to bind")
+            bound_records[role] = (path, document)
+        if len({path for path, _ in bound_records.values()}) != 5:
+            raise ValueError("the five explicit record roles must have distinct sources")
+        plan, approval = bound_records["plan"][1], bound_records["approval"][1]
+        if (sum(row.get("id") == unit and row.get("targetVersion") == version
+                for row in plan.get("units", []) if isinstance(row, dict)) != 1
+                or (_as_dict(approval.get("unitVersions")) or {}).get(unit) != version
+                or any(bound_records[role][1].get("command") != command for role, command in
+                       [("targetRun", "verify"), ("sourceRun[0]", "publish"), ("sourceRun[1]", "reconcile")])):
+            raise ValueError("the original record identity or command is outside this Task chain")
+        cited_paths = {Path(entry["path"]).resolve() for entry in cited}
+        selected = {role for role, (path, _) in bound_records.items() if path in cited_paths}
+        if not selected:
+            raise ValueError("the method does not cite a checked record object")
+        schemas = {"plan": "release-plan", "approval": "approval-record",
+                   "targetRun": "release-run", "sourceRun[0]": "release-run", "sourceRun[1]": "release-run"}
+        schema_entries = []
+        for name in {schemas[role] for role in selected}:
+            ident = f"https://release-skill.dev/schemas/{name}/v1"
+            matching = [entry for entry, document in documents if document.get("$id") == ident]
+            adopted = [entry for entry in matching if Path(entry["path"]).resolve().is_relative_to(target.resolve())]
+            authority = [entry for entry in matching if not Path(entry["path"]).resolve().is_relative_to(target.resolve())]
+            # The finalized premise identifies the cited external file as the
+            # exact published provider resource. Compare bytes, not its label;
+            # no new authority declaration or provider fingerprint is created.
+            if (len({str(Path(entry["path"]).resolve()) for entry in adopted}) != 1
+                    or len({str(Path(entry["path"]).resolve()) for entry in authority}) != 1
+                    or len({entry["sha256"] for entry in matching}) != 1):
+                raise ValueError("the adopted Schema is not bound to its cited published original")
+            schema_entries.extend(matching)
+        allowed = {path for path, _ in bound_records.values()} | {Path(e["path"]).resolve() for e in schema_entries}
+        allowed.add(originals[0][1])
+        if cited_paths - allowed:
+            raise ValueError("an explicitly cited method object is outside the checked record scope")
+    except (KeyError, TypeError, RuntimeError, WorkflowError, ValueError, OSError) as exc:
+        ev["source_binding_error"] = str(exc)
+        return base
+    ev.update(original_report=conclusion, selected_record_roles=sorted(selected))
+    code = outcome.get("code")
+    schema_failure = any(isinstance(row, dict) and row.get("code") == "INPUT_DAMAGED"
+        and row.get("role") in selected and isinstance(row.get("message"), str)
+        and row["message"].startswith({"plan": "release plan", "approval": "approval record"}.get(
+            row["role"], "release run") + " schema validation failed:") for row in findings)
+    if code == "CONSISTENT" and details.get("status") == code and not findings and originals[0][0]["status"] == "pass":
+        status = "PASS"
+    elif code == "CONTRADICTED" and details.get("status") == code and schema_failure and originals[0][0]["status"] == "not_pass":
+        status = "FAIL"
+    else:
+        ev["reason"] = "professional_scope_incomplete"
+        return base
+    ev.update(reason="original_professional_mechanical_result",
+              scope_limitation="Only the cited 0.10 plan/approval/publish-reconcile-verify record structures; no composition eligibility, execution or publication acceptance.")
+    base.update(status=status, observation_source="retained_professional_consumption")
+    return base
+
+
+def _fixed_schema_use_observation(
+    base: dict[str, Any], conclusion: dict[str, Any], cited: list[dict[str, Any]],
+    evidence_set: list[dict[str, Any]], target: Path, original_paths: set[Path],
+    canonical_id: str,
+) -> dict[str, Any]:
+    """Bind the published selected declaration/use observations to this method."""
+    evidence = base["evidence"]
+    details = _as_dict(conclusion.get("details")) or {}
+    bindings = details.get("bindings")
+    checked = (_as_dict(conclusion.get("scope")) or {}).get("checked")
+    if not isinstance(bindings, list) or not isinstance(checked, list):
+        evidence.update(reason="professional_scope_incomplete", professional_issue="professional_incomplete")
+        return base
+    components = ["declaration"] if canonical_id == "SFA-ARTMETHOD-001" else ["declaration", "implementation"]
+    statuses, selected, covered_paths = [], [], set()
+    adjacent_paths, declaration_paths = set(), set()
+    if (canonical_id != "SFA-ARTMETHOD-001"
+            and (_as_dict(conclusion.get("outcome")) or {}).get("completion") != "complete"):
+        statuses.append("insufficient")
+    for binding in bindings:
+        if not isinstance(binding, dict):
+            statuses.append("insufficient")
+            continue
+        selection = _as_dict(binding.get("selection")) or {}
+        declaration_ref = (_as_dict(selection.get("declaration")) or {}).get("ref")
+        implementation_ref = (_as_dict(selection.get("implementation")) or {}).get("ref")
+        if not any(isinstance(ref, str) and any(
+                (target / ref).resolve().is_relative_to(Path(entry["path"]).resolve())
+                if entry.get("kind") == "source_tree" else
+                (target / ref).resolve() == Path(entry["path"]).resolve() for entry in cited)
+                for ref in (declaration_ref, implementation_ref)):
+            continue
+        selected.append(binding)
+        if canonical_id == "SFA-ARTMETHOD-001":
+            if isinstance(implementation_ref, str):
+                adjacent_paths.add((target / implementation_ref).resolve())
+            for component, paths in (("declaration", declaration_paths), ("implementation", adjacent_paths)):
+                resources = (_as_dict(binding.get(component)) or {}).get("resources")
+                for receipt in resources if isinstance(resources, list) else []:
+                    if isinstance(receipt, dict) and isinstance(receipt.get("ref"), str):
+                        paths.add((target / receipt["ref"]).resolve())
+        try:
+            index = binding.get("index")
+            if not isinstance(index, int) or isinstance(index, bool) or index < 1:
+                raise ValueError("fixed Schema binding identity is missing")
+            for component in components:
+                observation = binding.get(component)
+                if not isinstance(observation, dict):
+                    raise ValueError("selected fixed Schema observation is missing")
+                resources = observation.get("resources")
+                closure = _as_dict(observation.get("closure")) or {}
+                observed = _as_dict(observation.get("observed")) or {}
+                declaration_observed = _as_dict((_as_dict(binding.get("declaration")) or {}).get("observed")) or {}
+                schema_ref = declaration_observed.get("schemaPath")
+                expected_roles = {"declaration": declaration_ref, "schema": schema_ref}
+                if component == "implementation":
+                    expected_roles.update({"implementation": implementation_ref,
+                        "actual-schema": (_as_dict(observed.get("actualSchema")) or {}).get("ref")})
+                if (not isinstance(resources, list) or len(resources) != len(expected_roles)
+                        or not all(isinstance(receipt, dict) for receipt in resources)
+                        or {receipt.get("role"): receipt.get("ref") for receipt in resources} != expected_roles
+                        or any(not isinstance(ref, str) or not ref for ref in expected_roles.values())
+                        or not isinstance(closure.get("resources"), list) or not closure.get("digest")):
+                    raise ValueError("fixed Schema resource roles or closure are incomplete")
+                for receipt in resources:
+                    path = (target / receipt["ref"]).resolve()
+                    if (not path.is_relative_to(target.resolve()) or not any(
+                            path.is_relative_to(Path(entry["path"]).resolve()) if entry.get("kind") == "source_tree"
+                            else path == Path(entry["path"]).resolve() and entry["sha256"] == receipt.get("sha256")
+                            for entry in evidence_set)
+                            or not any(isinstance(resource, dict) and resource.get("path") == receipt["ref"]
+                                       and resource.get("sha256") == receipt.get("sha256")
+                                       for resource in closure["resources"])):
+                        raise ValueError("fixed Schema source is outside the bound Task or original closure")
+                    foundation_read_file_strict(target, receipt["ref"], receipt["sha256"])
+                    covered_paths.add(path)
+                names = (["declaration-identity", "declaration-version"] if component == "declaration"
+                         else ["implementation-schema", "implementation-data", "implementation-before-business"])
+                comparisons = observation.get("comparisons")
+                if not isinstance(comparisons, list) or len(comparisons) != len(names):
+                    raise ValueError("fixed Schema comparisons are incomplete")
+                for comparison, name in zip(comparisons, names):
+                    scope = f"binding:{index}:{name}"
+                    if (not isinstance(comparison, dict) or comparison.get("scope") != scope
+                            or comparison.get("status") not in {"checked", "findings", "insufficient"}
+                            or comparison["status"] != "insufficient" and checked.count(scope) != 1):
+                        raise ValueError("fixed Schema comparison is outside its performed scope")
+                    statuses.append(comparison["status"])
+        except (KeyError, TypeError, RuntimeError, WorkflowError, ValueError, OSError) as exc:
+            evidence.setdefault("source_binding_errors", []).append(str(exc))
+            statuses.append("insufficient")
+    evidence["original_checks"] = selected
+    if not selected:
+        evidence["reason"] = "professional_object_scope_missing"
+        return base
+    missing = {Path(entry["path"]).resolve() for entry in cited
+               if entry.get("kind") != "source_tree"} - covered_paths - original_paths
+    if canonical_id == "SFA-ARTMETHOD-001":
+        missing -= adjacent_paths - declaration_paths
+    if missing:
+        evidence["missing_object_paths"] = sorted(str(path) for path in missing)
+        statuses.append("insufficient")
+    if not statuses or "insufficient" in statuses:
+        evidence.update(reason="professional_scope_incomplete", professional_issue="professional_incomplete")
+        if "findings" not in statuses:
+            return base
+    base.update(status="FAIL" if "findings" in statuses else "PASS",
+                observation_source="retained_professional_consumption")
+    evidence.pop("kind", None)
+    evidence.pop("gap", None)
+    evidence.update(reason="original_professional_mechanical_result", consumed_components=components,
+        scope_limitation="Only the selected fixed Schema declaration and requested supported use chain; applicability, compatibility policy and selection completeness remain with the current rule review.")
+    return base
+
+
+def _common_proof_schema_observation(
+    rule: dict[str, Any], method: str, review: dict[str, Any], refs: list[dict[str, str]],
+    cited: list[dict[str, Any]], original_documents: list[tuple[dict[str, Any], dict[str, Any]]],
+    professional: dict[str, Any] | None, professional_inputs: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Consume the public reader's existing form observation for each bound proof."""
+    base = _retained_gap_observation(rule, method, review, refs)
+    evidence = base["evidence"]
+    evidence.update(reason="professional_original_output_missing", public_entry="readProfessionalProof")
+    objects = cited
+    if not objects:
+        return base
+    checks = []
+    for entry in objects:
+        path = Path(entry["path"]).resolve()
+        documents = [document for original, document in original_documents if original == entry]
+        sources = [source for source in (professional_inputs or {}).get("items", [])
+                   if source.get("provider_id") == "foundation"
+                   and source.get("proof_root") and source.get("proof_path")
+                   and (Path(source["proof_root"]) / source["proof_path"]).resolve() == path]
+        if len(documents) != 1 or len(sources) != 1:
+            return base
+        original, source = documents[0], sources[0]
+        reader = source.get("reader_result")
+        if (not isinstance(reader, dict) or reader.get("status") not in {"pass", "not_pass"}
+                or not checker._reader_provider_matches(original, reader)
+                or not checker._professional_objects_align(original, reader.get("conclusion"))
+                or not any(item.get("provider_id") == "foundation"
+                           and checker._professional_objects_align(original, item.get("conclusion"))
+                           for item in (professional or {}).get("items", []))):
+            return base
+        checks.append({"input_ref": entry, "provider": reader["provider"],
+                       "reader_status": reader["status"], "public_entry": "readProfessionalProof"})
+    base.update(status="PASS", observation_source="retained_professional_consumption")
+    evidence.pop("kind", None)
+    evidence.pop("gap", None)
+    evidence.update(reason="original_professional_mechanical_result", original_checks=checks,
+        scope_limitation="Only the public reader's structural acceptance of these exact common proof files; domain findings, completion and version acceptance keep their original meanings.")
+    return base
+
+
 def _retained_professional_observation(
     rule: dict[str, Any], method: str, review: dict[str, Any], refs: list[dict[str, str]],
     professional: dict[str, Any] | None, evidence_set: list[dict[str, Any]], target: Path | None,
+    *, professional_inputs: dict[str, Any] | None = None,
+    _plat005_component: str | None = None,
+    security_observation: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Consume original public provider outputs for the reviewed object only."""
     if not refs or review.get("reason_code") not in {
@@ -5367,6 +6574,106 @@ def _retained_professional_observation(
     }:
         return None
     cid = rule["canonical_id"]
+    if cid == "SFA-ERROR-002" and method == "static_scan":
+        return _error_material_security_observation(
+            rule, review, refs, evidence_set, target, security_observation,
+        )
+    if cid == "SFA-PLAT-005" and method == "static_scan" and _plat005_component is None:
+        # This rule requires both original observations of the same mapping.
+        # Keep the existing professional readers and the two method consumers;
+        # a provider's first result cannot stand in for its other check.
+        observations = {}
+        for component, entry in (("direction", "runSourceGeneratedCheck"),
+                                 ("references", "runStaticReferenceCheck")):
+            selected = [item for item in (professional or {}).get("items", [])
+                        if item.get("provider_id") == "foundation"
+                        and (_as_dict((_as_dict(item.get("conclusion")) or {}).get("provider")) or {}).get("entry") == entry]
+            role = ("source_generated_direction_result" if component == "direction"
+                    else "fixed_projection_reference_result")
+            role_refs = [ref for ref in refs if ref["role"] == role]
+            if role_refs:
+                bound_paths = {Path(item["path"]).resolve() for item in evidence_set
+                               if any(ref["evidence_id"] == item.get("evidence_id")
+                                      and ref["sha256"] == item.get("sha256") for ref in role_refs)}
+                originals = [source for source in (professional_inputs or {}).get("items", [])
+                             if source.get("provider_id") == "foundation"
+                             and source.get("proof_root") and source.get("proof_path")
+                             and (Path(source["proof_root"]) / source["proof_path"]).resolve() in bound_paths]
+                selected = [item for item in selected if any(checker._professional_objects_align(
+                    item.get("conclusion"), (_as_dict(source.get("reader_result")) or {}).get("conclusion"))
+                    for source in originals)]
+            if len(selected) != 1:
+                observation = _retained_gap_observation(rule, method, review, refs)
+                observation["status"] = "EVIDENCE_MISSING" if not selected else "NOT_RUN"
+                observation["evidence"].update(reason="professional_proof_missing" if not selected
+                    else "professional_original_output_ambiguous", public_entry=entry)
+            else:
+                original_inputs = [source for source in (professional_inputs or {}).get("items", [])
+                                   if source.get("provider_id") == "foundation"
+                                   and checker._professional_objects_align(selected[0].get("conclusion"),
+                                       (_as_dict(source.get("reader_result")) or {}).get("conclusion"))]
+                observation = _retained_professional_observation(rule, method, review, refs,
+                    {"items": selected}, evidence_set, target,
+                    professional_inputs={"items": original_inputs}, _plat005_component=component)
+            observations[component] = observation
+        base = _retained_gap_observation(rule, method, review, refs)
+        statuses = [row["status"] for row in observations.values()]
+        status = ("FAIL" if "FAIL" in statuses else "EVIDENCE_MISSING" if "EVIDENCE_MISSING" in statuses
+                  else "PASS" if all(value == "PASS" for value in statuses) else "NOT_RUN")
+        direction_details = _as_dict((_as_dict(observations["direction"]["evidence"].get("original_report")) or {}).get("details")) or {}
+        fixed_details = _as_dict((_as_dict(observations["references"]["evidence"].get("original_report")) or {}).get("details")) or {}
+        direction = _as_dict(direction_details.get("declaration"))
+        fixed = fixed_details.get("references")
+        same_mapping = bool(direction and isinstance(fixed, list) and any(
+            receipt.get("ref") == direction.get("ref") and receipt.get("sha256") == direction.get("sha256")
+            for row in fixed if isinstance(row, dict)
+            for receipt in (row.get("source"), row.get("target")) if isinstance(receipt, dict)))
+        if status == "PASS" and not same_mapping:
+            status = "NOT_RUN"
+        base.update(status=status, observation_source="retained_professional_consumption")
+        base["evidence"].update(reason="original_professional_mechanical_result" if status in {"PASS", "FAIL"}
+            else "professional_scope_incomplete", projection_components=observations,
+            scope_limitation="Only the complete bound root-direction and fixed-reference observations of the same declared mapping; business derivation remains semantic review.")
+        if status == "FAIL" and (not same_mapping or any(not _method_determination_complete(row, refs)
+                                                        for row in observations.values())):
+            base["evidence"]["professional_issue"] = "professional_incomplete"
+        checked_missing = next((row["evidence"] for row in observations.values()
+                                if row["status"] == "EVIDENCE_MISSING"
+                                and row["evidence"].get("reason") == "checked_required_input_missing"), None)
+        if status in {"PASS", "FAIL"} or status == "EVIDENCE_MISSING" and checked_missing:
+            base["evidence"].pop("kind", None)
+            base["evidence"].pop("gap", None)
+        if status == "EVIDENCE_MISSING" and checked_missing:
+            base["reason_code"] = "STATIC_INPUTS_MISSING"
+            base["evidence"].update(reason="checked_required_input_missing",
+                rationale=checked_missing["rationale"])
+        return base
+    fixed_reference_method = (cid in {"SFA-WORKER-004", "SFA-WORKER-010", "SFA-CONTEXT-033",
+                                     "SFA-PROGRAM-002", "SFA-PROGRAM-006", "SFA-RUNTIMEPKG-006",
+                                     "SFA-SOURCE-014", "SFA-TASK-018"}
+        or cid == "SFA-PLAT-005" and _plat005_component == "references") and method == "static_scan"
+    source_direction_method = (cid == "SFA-ARTIFACT-030"
+        or cid == "SFA-PLAT-005" and _plat005_component == "direction") and method == "static_scan"
+    static_contract_entry = ({"SFA-COMPOSE-012": "runBranchFieldCheck",
+                              "SFA-METHOD-003": "runPublicSurfaceBindingCheck"}.get(cid)
+                             if method == "static_scan" else None)
+    native_projection_method = ((cid == "SFA-ARTIFACT-027" and method in {"static_scan", "digest_verification"}
+        or cid in {"SFA-ARTIFACT-029", "SFA-SOURCE-007", "SFA-SOURCE-008"} and method == "digest_verification")
+        and any(item.get("provider_id") == "foundation"
+            and (_as_dict((_as_dict(item.get("conclusion")) or {}).get("provider")) or {}).get("entry")
+                == "runNativeProjectionCheck" for item in (professional or {}).get("items", [])))
+    if native_projection_method:
+        static_contract_entry = "runNativeProjectionCheck"
+    fixed_schema_use_method = (cid in {"SFA-ARTMETHOD-001", "SFA-ARTMETHOD-005"}
+        and method == "schema_validation" and any(item.get("provider_id") == "foundation"
+            and (_as_dict((_as_dict(item.get("conclusion")) or {}).get("provider")) or {}).get("entry")
+                == "runFixedSchemaUseCheck" for item in (professional or {}).get("items", [])))
+    if fixed_schema_use_method:
+        static_contract_entry = "runFixedSchemaUseCheck"
+    peer_source_scope = (review.get("review_purpose") == "mechanical_object_premise"
+        and method == "digest_verification" and cid in {"SFA-SOURCE-001", "SFA-SOURCE-002"})
+    peer_byte_scope = (review.get("review_purpose") == "mechanical_object_premise"
+        and method == "digest_verification" and cid == "SFA-MIGRATE-016")
     if (review["reason_code"] == "BYTE_BASELINE_OUTSIDE_MANAGED_FILES"
             and not (method == "digest_verification"
                      or cid == "SFA-ARTIFACT-025" and method == "static_scan")):
@@ -5375,19 +6682,72 @@ def _retained_professional_observation(
         return None
     cited_ids = {ref["evidence_id"] for ref in refs}
     cited = [entry for entry in evidence_set if entry.get("evidence_id") in cited_ids]
+    registry_boundary = cid == "SFA-METHOD-009" and method == "static_scan"
     original_documents = []
+    input_read_gaps = []
     for entry in cited:
         path = Path(entry["path"])
+        if registry_boundary and entry.get("kind") == "source_tree":
+            continue
         if not path.is_file() or path.is_symlink():
+            if registry_boundary:
+                input_read_gaps.append({"input_ref": entry, "reason": "not_regular_file"})
             continue
         try:
-            document = strict_read_json(foundation_read_file_strict(
-                path.parent, path.name, entry["sha256"],
-            ), "MECHANICAL_OBJECT_INPUT_INVALID", "reviewed mechanical object")
+            receipt = foundation_read_file_strict(path.parent, path.name, entry["sha256"])
         except (WorkflowError, ValueError, OSError):
+            if registry_boundary:
+                input_read_gaps.append({"input_ref": entry, "reason": "strict_read_failed"})
+            continue
+        try:
+            document = (json.loads(receipt["content"]) if registry_boundary else
+                        strict_read_json(receipt, "MECHANICAL_OBJECT_INPUT_INVALID", "reviewed mechanical object"))
+        except (WorkflowError, ValueError, OSError):
+            if registry_boundary:
+                input_read_gaps.append({"input_ref": entry, "reason": "json_decode_failed"})
             continue
         if isinstance(document, dict):
             original_documents.append((entry, document))
+        elif registry_boundary:
+            input_read_gaps.append({"input_ref": entry, "reason": "non_object_json"})
+    if cid == "SFA-TIER1-007" and method == "schema_validation":
+        return _common_proof_schema_observation(
+            rule, method, review, refs, cited, original_documents, professional, professional_inputs,
+        )
+    if registry_boundary:
+        registry_selected = any(
+            "catalog" in document or document.get("registryAdopted") is True
+            or {"inputs", "entries", "disabledEntries"} <= set(document)
+            or ("schemaVersion" in document and "familyId" not in document
+                and (bool(set(document) & {"entries", "overrides", "disabled"})
+                     or set(document) == {"schemaVersion"}))
+            for _, document in original_documents
+        )
+        if not registry_selected and not any(
+            gap["reason"] in {"not_regular_file", "strict_read_failed"}
+            for gap in input_read_gaps
+        ):
+            base = _retained_gap_observation(rule, method, review, refs)
+            base["evidence"].update(
+                reason="audit_mechanical_object_unresolved",
+                gap=("当前公共清单与职责、帮助正文可正常读取，但未声明为Registry目录或项目输入，不属于Registry专用输入。"
+                     "Audit现有的静态检查尚未覆盖这组选中的材料，因此本项检查仍未完成。"
+                     "不能据此判定为通过或不适用，也无需要求目标新增Registry。"),
+            )
+            return base
+        return _registry_internal_boundary_observation(
+            rule, method, review, refs, cited, original_documents, target,
+            input_read_gaps=input_read_gaps,
+        )
+    if (cid in {"SFA-COMPOSE-002", "SFA-COMPOSE-004"} and method == "schema_validation"
+            and any(document.get("$id") in {
+                "https://release-skill.dev/schemas/release-plan/v1",
+                "https://release-skill.dev/schemas/approval-record/v1",
+                "https://release-skill.dev/schemas/release-run/v1",
+            } for _, document in original_documents)
+            and any(item.get("provider_id") == "release" for item in (professional or {}).get("items", []))):
+        return _release_record_structure_observation(rule, method, review, refs, professional,
+            evidence_set, cited, original_documents, target, professional_inputs)
     # These public document discriminants select a consumer scope only. The
     # provider still performs every structural check, including invalid objects.
     registry_documents = []
@@ -5399,17 +6759,58 @@ def _retained_professional_observation(
             "v2-run-lock", "v2-migration-plan",
         }:
             registry_documents.append((entry, "v2"))
+    native_entry_scope = (cid == "SFA-METHOD-012" and method == "static_scan"
+        and not registry_documents and any(
+            {"familyId", "platformId", "logicalMappings"} <= set(document)
+            for _, document in original_documents))
+    public_identity_scope = (cid == "SFA-METHOD-012" and method == "static_scan"
+        and not registry_documents and any(
+            item.get("provider_id") == "foundation" and (
+                (_as_dict((_as_dict(item.get("conclusion")) or {}).get("provider")) or {}).get("entry")
+                    in {"runPublicSurfaceBindingCheck", "runNativeEntryBindingCheck"}
+                or isinstance((_as_dict((_as_dict(item.get("conclusion")) or {}).get("details")) or {}).get("bindings"), list))
+            for item in (professional or {}).get("items", []))) or native_entry_scope
+    if public_identity_scope:
+        static_contract_entry = ("runNativeEntryBindingCheck" if native_entry_scope
+                                 else "runPublicSurfaceBindingCheck")
+    fixed_shared_worker_scope = (cid == "SFA-WORKER-011" and method == "static_scan"
+        and not registry_documents)
+    if fixed_shared_worker_scope:
+        fixed_reference_method = True
+    byte_shared_worker_scope = (cid == "SFA-WORKER-011" and method == "digest_verification"
+        and not registry_documents)
     # COMPOSE-002's finalized method-object premise owns this routing. A
     # composer_authority citation is context, not a machine-contract object.
     compose_object_ids = {ref["evidence_id"] for ref in refs
-                          if ref["role"] in {"method_contract_attributes", "method_registry_entry"}}
+                          if ref["role"] in {"method_contract_attributes", "method_registry_entry"}
+                          or (review.get("review_purpose") == "mechanical_object_premise"
+                              and ref["role"] == "object_scope_contract")}
     compose_registry_object = (cid == "SFA-COMPOSE-002"
         and review["reason_code"] == "MECHANICAL_OBJECTS_PRESENT"
         and any(entry["evidence_id"] in compose_object_ids for entry, _ in registry_documents))
+    native_graph_documents = [(entry, document) for entry, document in original_documents
+        if document.get("schemaVersion") == "1.0" and isinstance(document.get("nodes"), list)
+        and isinstance(document.get("edges"), list) and isinstance(document.get("graph"), dict)
+        and target is not None and document.get("root") == str(target.resolve())]
+    def graph_path_cited(relative):
+        if target is None or not isinstance(relative, str):
+            return False
+        path = (target / relative).resolve()
+        return path.is_relative_to(target.resolve()) and any(
+            path.is_relative_to(Path(entry["path"]).resolve()) if entry.get("kind") == "source_tree"
+            else path == Path(entry["path"]).resolve() for entry in cited)
+    capability_graph_scope = (cid in {"SFA-ARTIFACT-018", "SFA-ARTIFACT-020"} and method == "static_scan"
+        and any(any(isinstance(node, dict) and node.get("type") == "capability"
+                    and graph_path_cited(node.get("path")) for node in document["nodes"])
+                or any(isinstance(edge, dict) and isinstance(edge.get("to"), str)
+                    and edge["to"].startswith("capability:") and graph_path_cited(edge.get("sourcePath"))
+                    for edge in document["edges"]) for _, document in native_graph_documents))
     provider = "foundation"
     required: set[str] = set()
-    if cid in {"SFA-ARTIFACT-008", "SFA-ARTIFACT-021", "SFA-ARTIFACT-023", "SFA-ARTIFACT-026",
-               "SFA-ARTIFACT-033", "SFA-DEPEND-011", "SFA-METHOD-010", "SFA-METHOD-012", "SFA-WORKER-011"} or compose_registry_object:
+    if (cid in {"SFA-ARTIFACT-008", "SFA-ARTIFACT-021", "SFA-ARTIFACT-023", "SFA-ARTIFACT-026",
+                "SFA-ARTIFACT-033", "SFA-DEPEND-011", "SFA-METHOD-010", "SFA-METHOD-012", "SFA-WORKER-011"}
+            and not (public_identity_scope or fixed_shared_worker_scope or byte_shared_worker_scope)) or compose_registry_object or (
+                cid == "SFA-REGISTRY-005" and method == "schema_validation" and registry_documents):
         provider = "registry"
         if method == "schema_validation":
             required = {"schema"}
@@ -5425,22 +6826,22 @@ def _retained_professional_observation(
             required = {"merge", "provider"}
         else:
             required = {"merge", "freshness"}
-    elif cid in {"SFA-ARTIFACT-022", "SFA-PRODUCT-001"}:
+    elif cid in {"SFA-ARTIFACT-022", "SFA-PRODUCT-001"} or capability_graph_scope:
         provider = "artifact"
         required = {"validate"}
     if provider != "foundation" and review.get("reason_code") in {
         "BYTE_BASELINE_OUTSIDE_MANAGED_FILES", "SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS",
     }:
         return None
-    # Foundation's public mechanical report only covers the two formal
-    # structures and managed byte drift. Other reviewed objects are a real
-    # capability gap; a semantic engineering review is not that report.
+    # Legacy runChecks reports cover two formal structures and managed byte
+    # drift. The selected fixed-reference entry is consumed separately below;
+    # a semantic engineering review is not either mechanical output.
     outside_public_scope = provider == "foundation" and (
-        review.get("reason_code") == "BYTE_BASELINE_OUTSIDE_MANAGED_FILES"
+        review.get("reason_code") == "BYTE_BASELINE_OUTSIDE_MANAGED_FILES" and not (peer_byte_scope or native_projection_method)
         or method == "schema_validation" and review.get("reason_code") == "SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS"
         or method == "static_scan" and cid in {
-            "SFA-COMPOSE-012", "SFA-COMPOSE-016", "SFA-DEPEND-003", "SFA-DEPEND-005",
-            "SFA-DEPEND-006", "SFA-DEPEND-008", "SFA-WORKER-004", "SFA-WORKER-010", "SFA-METHOD-003",
+            "SFA-COMPOSE-016", "SFA-DEPEND-003", "SFA-DEPEND-005",
+            "SFA-DEPEND-006", "SFA-DEPEND-008",
         }
     )
     public_scope_gap = {
@@ -5450,25 +6851,138 @@ def _retained_professional_observation(
     }
     items = (professional or {}).get("items", [])
     item = next((item for item in items if item.get("provider_id") == provider), None)
+    original_selection_issue = None
+    expected_entry = None
+    if provider == "foundation":
+        expected_entry = static_contract_entry
+        if fixed_reference_method:
+            expected_entry = "runStaticReferenceCheck"
+        elif source_direction_method:
+            expected_entry = "runSourceGeneratedCheck"
+        candidates = []
+        if peer_source_scope or peer_byte_scope:
+            if peer_byte_scope:
+                candidates = [row for row in items if row.get("provider_id") == provider
+                    and (_as_dict((_as_dict(row.get("conclusion")) or {}).get("provider")) or {}).get("entry")
+                        == "runPeerAdapterCheck"]
+            if not candidates:
+                for row in items:
+                    details = _as_dict((_as_dict(row.get("conclusion")) or {}).get("details")) or {}
+                    checks = (_as_dict(details.get("review")) or {}).get("checks")
+                    if (row.get("provider_id") == provider and isinstance(checks, list)
+                            and any(isinstance(check, dict) and check.get("id") == "native_role_separation"
+                                    for check in checks)):
+                        candidates.append(row)
+        else:
+            if expected_entry is None and method in {"schema_validation", "digest_verification"}:
+                expected_entry = "runSelectedArtifactCheck"
+            if expected_entry:
+                expected_entries = ({"runPublicSurfaceBindingCheck", "runNativeEntryBindingCheck"}
+                                    if public_identity_scope else
+                                    {"runPublicSurfaceBindingCheck", "runSkillSurfaceBindingCheck"}
+                                    if cid == "SFA-METHOD-003" else {expected_entry})
+                candidates = [row for row in items if row.get("provider_id") == provider
+                              and (_as_dict((_as_dict(row.get("conclusion")) or {}).get("provider")) or {}).get("entry") in expected_entries]
+        role_refs = [ref for ref in refs if cid == "SFA-CONTEXT-033" and method == "static_scan"
+                     and ref["role"] == "fixed_reference_result"]
+        if fixed_shared_worker_scope:
+            original_paths = {(Path(source["proof_root"]) / source["proof_path"]).resolve()
+                              for source in (professional_inputs or {}).get("items", [])
+                              if source.get("provider_id") == provider
+                              and source.get("proof_root") and source.get("proof_path")}
+            original_ids = {row["evidence_id"] for row in evidence_set
+                            if Path(row["path"]).resolve() in original_paths}
+            role_refs = [ref for ref in refs if ref["role"] == "object_scope_contract"
+                         and ref["evidence_id"] in original_ids]
+        if role_refs:
+            bound_paths = {Path(row["path"]).resolve() for row in evidence_set
+                           if any(ref["evidence_id"] == row.get("evidence_id")
+                                  and ref["sha256"] == row.get("sha256") for ref in role_refs)}
+            originals = [source for source in (professional_inputs or {}).get("items", [])
+                         if source.get("provider_id") == provider
+                         and source.get("proof_root") and source.get("proof_path")
+                         and (Path(source["proof_root"]) / source["proof_path"]).resolve() in bound_paths]
+            candidates = [row for row in candidates if any(checker._professional_objects_align(
+                row.get("conclusion"), (_as_dict(source.get("reader_result")) or {}).get("conclusion"))
+                for source in originals)]
+        elif candidates and target is not None:
+            same_target = []
+            for row in candidates:
+                subject = (_as_dict((_as_dict(row.get("conclusion")) or {}).get("subject")) or {}).get("ref")
+                if isinstance(subject, str) and subject.startswith("file:"):
+                    from urllib.parse import unquote, urlparse
+                    subject = unquote(urlparse(subject).path)
+                if isinstance(subject, str) and Path(subject).is_absolute() and Path(subject).resolve() == target.resolve():
+                    same_target.append(row)
+            if not same_target:
+                original_selection_issue = "professional_target_mismatch"
+            candidates = same_target
+        if len(candidates) == 1:
+            item = candidates[0]
+            if public_identity_scope or cid == "SFA-METHOD-003":
+                static_contract_entry = item["conclusion"]["provider"]["entry"]
+        elif len(candidates) > 1:
+            original_selection_issue = "professional_original_output_ambiguous"
+        elif role_refs or native_entry_scope or fixed_shared_worker_scope or byte_shared_worker_scope or peer_byte_scope or (cid == "SFA-TASK-019" and expected_entry == "runSelectedArtifactCheck"
+                           and not original_selection_issue):
+            item = None
     base = _retained_gap_observation(rule, method, review, refs)
     ev = base["evidence"]
     ev.update({"provider_id": provider, "object_refs": refs})
-    if cid == "SFA-COMPOSE-002" and provider == "foundation" and not outside_public_scope:
+    if original_selection_issue:
+        ev.update(reason=original_selection_issue)
+        if isinstance(item, dict):
+            ev.update(professional_mode=item.get("mode"), version_relation=item.get("version_relation"))
+        return base
+    selected_artifact_method = (provider == "foundation" and isinstance(item, dict)
+        and (_as_dict((_as_dict(item.get("conclusion")) or {}).get("provider")) or {}).get("entry") == "runSelectedArtifactCheck")
+    if selected_artifact_method and cid in {"SFA-ARTMETHOD-001", "SFA-ARTMETHOD-005"}:
+        # Instance validation alone does not resolve an adopted artifact type,
+        # its contract version or the domain's compatibility selection.
+        ev.update(reason="provider_capability_missing", provider_capability_missing=True,
+                  public_entry="runSelectedArtifactCheck",
+                  gap="Selected schema validation does not perform the required artifact contract type/version resolution or compatibility selection.")
+        return base
+    if cid == "SFA-COMPOSE-002" and provider == "foundation" and not outside_public_scope and not selected_artifact_method:
         if not any(document.get("kind") in {
             "skill-family.project-manifest", "skill-family.managed-file-lock",
         } for entry, document in original_documents if entry["evidence_id"] in compose_object_ids):
             ev.pop("provider_id")
-            ev.update({"reason": "mechanical_object_scope_unresolved",
-                       "gap": "The bound object is not identified as a Registry or Foundation contract; no provider or incapability is inferred."})
-            return base
+            return _present_object_terminal(
+                base, reason="mechanical_object_scope_unresolved",
+                gap="The bound object is not identified as a Registry or Foundation contract; no provider or incapability is inferred.",
+            )
     if item is None:
-        if outside_public_scope:
-            ev.update(public_scope_gap)
+        if fixed_shared_worker_scope or byte_shared_worker_scope:
+            ev.update(reason="professional_proof_missing", public_entry=expected_entry,
+                      not_this_scan=True)
             return base
+        if static_contract_entry or (cid == "SFA-TASK-019" and expected_entry == "runSelectedArtifactCheck"):
+            base["status"] = "EVIDENCE_MISSING"
+            ev.update({"reason": "professional_proof_missing", "public_entry": static_contract_entry or expected_entry})
+            return base
+        if source_direction_method:
+            base["status"] = "EVIDENCE_MISSING"
+            ev.update({"reason": "professional_proof_missing",
+                       "public_entry": "foundation-engineering-check/runSourceGeneratedCheck"})
+            return base
+        if peer_source_scope or peer_byte_scope:
+            return _present_object_terminal(
+                base, reason="professional_proof_missing",
+                public_entry="verifyPeerAdapterDirectories", not_this_scan=True,
+            )
+        if outside_public_scope:
+            return _present_object_terminal(base, **public_scope_gap)
         base["status"] = "EVIDENCE_MISSING"
+        if provider == "registry" and not registry_documents:
+            ev.pop("provider_id")
+            ev.update({"reason": "mechanical_object_scope_unresolved",
+                       "gap": "The finalized citations do not identify an adopted Registry object; an ordinary entry or workflow mapping does not require Registry registration or proof."})
+            return base
         ev.update({"reason": "professional_proof_missing", "public_entry":
             "diagnoseRegistry professional-scan/read-proof" if provider == "registry" else
-            "check-professional/read-proof" if provider == "artifact" else "foundation-engineering-check/runChecks"})
+            "check-professional/read-proof" if provider == "artifact" else
+            "foundation-engineering-check/runStaticReferenceCheck" if fixed_reference_method else "foundation-engineering-check/runChecks"})
         return base
     conclusion = item.get("conclusion")
     conclusion = conclusion if isinstance(conclusion, dict) else {}
@@ -5485,13 +6999,1154 @@ def _retained_professional_observation(
     if not objects and not target_matches:
         ev.update({"reason": "professional_wrong_target", "professional_issue": "professional_wrong_target"})
         return base
-    if item.get("status") == "pass" and item.get("version_relation") == "higher" and item.get("mode") == "version_policy":
+    if static_contract_entry:
+        # Consume the public selected observations, never parse target code or
+        # recompute declarations. Higher-version policy alone is not a scan.
+        ev.update({"public_entry": static_contract_entry, "original_report": conclusion})
+        if ((_as_dict(conclusion.get("provider")) or {}).get("entry") != static_contract_entry
+                or (_as_dict(conclusion.get("provider")) or {}).get("id") != "skill-family-engineering-kit"):
+            ev["reason"] = "professional_object_scope_missing"
+            return base
+        originals = []
+        original_paths = set()
+        for source in (professional_inputs or {}).get("items", []):
+            if source.get("provider_id") != "foundation":
+                continue
+            root, relative, reader = source.get("proof_root"), source.get("proof_path"), source.get("reader_result")
+            if not root or not relative or not isinstance(reader, dict):
+                continue
+            path = (Path(root) / relative).resolve()
+            bound = [entry for entry in evidence_set if entry.get("kind") == "receipt"
+                     and Path(entry["path"]).resolve() == path]
+            if (len({(str(Path(entry["path"]).resolve()), entry["sha256"]) for entry in bound}) != 1
+                    or reader.get("status") not in {"pass", "not_pass"}
+                    or not checker._professional_objects_align(conclusion, reader.get("conclusion"))
+                    or not checker._reader_provider_matches(conclusion, reader)):
+                continue
+            try:
+                original = strict_read_json(foundation_read_file_strict(Path(root), relative, bound[0]["sha256"]),
+                    "PROFESSIONAL_PROOF_FAILED", "selected static-contract output")
+            except (RuntimeError, WorkflowError, ValueError, OSError):
+                continue
+            if original == conclusion:
+                originals.append(reader)
+                original_paths.add(path)
+        if (len(originals) != 1 or not target_matches
+                or item.get("status") not in {"pass", "not_pass"}
+                or item.get("version_relation") not in {"same", "higher"}):
+            ev["reason"] = "professional_original_output_missing"
+            return base
+        if fixed_schema_use_method:
+            return _fixed_schema_use_observation(base, conclusion, cited, evidence_set, target, original_paths, cid)
+        details = _as_dict(conclusion.get("details")) or {}
+        branch_fields = static_contract_entry == "runBranchFieldCheck"
+        native_binding = static_contract_entry == "runNativeEntryBindingCheck"
+        skill_surface_binding = static_contract_entry == "runSkillSurfaceBindingCheck"
+        native_projection = static_contract_entry == "runNativeProjectionCheck"
+        rows = details.get("branches" if branch_fields else "bindings")
+        closure = _as_dict(details.get("closure")) or {}
+        checked = (_as_dict(conclusion.get("scope")) or {}).get("checked")
+        if (not isinstance(rows, list) or not isinstance(checked, list)
+                or not isinstance(closure.get("resources"), list) or not closure.get("digest")
+                or (_as_dict(conclusion.get("outcome")) or {}).get("completion") not in {"complete", "partial"}):
+            ev.update({"reason": "professional_scope_incomplete", "professional_issue": "professional_incomplete"})
+            return base
+        statuses, selected, covered_paths = [], [], set()
+        for row in rows:
+            if not isinstance(row, dict):
+                statuses.append("insufficient")
+                continue
+            if branch_fields:
+                primary_refs = [row.get("sourceRef")]
+            elif native_binding or native_projection:
+                primary_refs = [row.get("commonManifestRef"), row.get("platformManifestRef")]
+            elif skill_surface_binding:
+                primary_refs = [(_as_dict(row.get(group)) or {}).get("ref")
+                                for group in ("naturalSkill", "parameterDeclaration", "commonMethod")]
+            else:
+                primary_refs = [(_as_dict(row.get(group)) or {}).get("ref") for group in ("skill", "route", "method")]
+            if not any(isinstance(ref, str) and any(
+                    (target / ref).resolve().is_relative_to(Path(entry["path"]).resolve())
+                    if entry.get("kind") == "source_tree" else
+                    (target / ref).resolve() == Path(entry["path"]).resolve() for entry in cited)
+                    for ref in primary_refs):
+                continue
+            selected.append(row)
+            try:
+                receipts = ([row.get("source"), row.get("schema")] if branch_fields else row.get("resources"))
+                if native_binding or native_projection:
+                    selected_resources = row.get("selectedResources") if native_projection else []
+                    if not isinstance(selected_resources, list):
+                        raise ValueError("native projection resource selection is incomplete")
+                    resource_count = 7 + 2 * len(selected_resources) if native_projection else 5
+                    if (not isinstance(receipts, list) or len(receipts) != resource_count
+                            or not all(isinstance(receipt, dict) for receipt in receipts)):
+                        raise ValueError("native binding resource receipts are incomplete")
+                    native_roles = {receipt.get("role"): receipt.get("ref") for receipt in receipts}
+                    expected_native_roles = {"platform-manifest", "common-manifest", "declared-source", "platform-skill", "common-skill"}
+                    if native_projection:
+                        expected_native_roles.update({"common-skill-bytes", "platform-skill-bytes"})
+                        for position, resource in enumerate(selected_resources, 1):
+                            if not isinstance(resource, dict):
+                                raise ValueError("native projection resource pair is incomplete")
+                            for side in ("common", "platform"):
+                                role = f"resource:{position}:{side}"
+                                expected_native_roles.add(role)
+                                if native_roles.get(role) != resource.get(f"{side}Ref"):
+                                    raise ValueError("native projection resource role differs from its selection")
+                        if (native_roles.get("common-skill-bytes") != native_roles.get("common-skill")
+                                or native_roles.get("platform-skill-bytes") != native_roles.get("platform-skill")):
+                            raise ValueError("native projection Skill byte roles differ from its identity sources")
+                    if (set(native_roles) != expected_native_roles
+                            or native_roles["common-manifest"] != row.get("commonManifestRef")
+                            or native_roles["platform-manifest"] != row.get("platformManifestRef")):
+                        raise ValueError("native binding resource roles differ from its original selection")
+                    expected_refs = list(native_roles.values())
+                elif skill_surface_binding:
+                    expected_roles = {group: (_as_dict(row.get(group)) or {}).get("ref")
+                                      for group in ("naturalSkill", "parameterDeclaration", "commonMethod")}
+                    expected_roles.update({"implementation-reference": expected_roles["naturalSkill"],
+                                           "protocol-reference": expected_roles["commonMethod"]})
+                    if (not isinstance(receipts, list) or len(receipts) != len(expected_roles)
+                            or not all(isinstance(receipt, dict) for receipt in receipts)
+                            or {receipt.get("role"): receipt.get("ref") for receipt in receipts} != expected_roles):
+                        raise ValueError("Skill surface resource roles differ from its original selection")
+                    expected_refs = list(expected_roles.values())
+                else:
+                    expected_refs = ([row.get("sourceRef"), row.get("schemaRef")] if branch_fields else
+                        [(_as_dict(row.get(group)) or {}).get("ref") for group in ("skill", "route", "method")]
+                        + list((_as_dict(row.get("schemas")) or {}).values()))
+                if (not isinstance(receipts, list) or not all(isinstance(receipt, dict) for receipt in receipts)
+                        or len(receipts) != len(expected_refs)
+                        or sorted(receipt.get("ref", "") for receipt in receipts) != sorted(expected_refs)):
+                    raise ValueError("selected source receipts do not match the original selection")
+                if branch_fields:
+                    if [receipt.get("ref") for receipt in receipts] != expected_refs:
+                        raise ValueError("branch source and Schema receipt identities differ")
+                elif not (native_binding or native_projection or skill_surface_binding):
+                    expected_roles = dict(zip(["skill", "route", "method"], expected_refs[:3]))
+                    expected_roles.update(row["schemas"])
+                    if (len({receipt.get("role") for receipt in receipts}) != len(receipts)
+                            or {receipt.get("role"): receipt.get("ref") for receipt in receipts} != expected_roles):
+                        raise ValueError("binding resource roles differ from the original selection")
+                if isinstance(details.get("selection"), dict):
+                    receipts = [*receipts, details["selection"]]
+                for receipt in receipts:
+                    path = (target / receipt["ref"]).resolve()
+                    if not path.is_relative_to(target.resolve()) or not any(
+                            path.is_relative_to(Path(entry["path"]).resolve()) if entry.get("kind") == "source_tree"
+                            else path == Path(entry["path"]).resolve() and entry["sha256"] == receipt.get("sha256")
+                            for entry in evidence_set):
+                        raise ValueError("selected source is outside the Task inputs")
+                    if not any(isinstance(resource, dict) and resource.get("path") == receipt["ref"]
+                               and resource.get("sha256") == receipt.get("sha256") for resource in closure["resources"]):
+                        raise ValueError("selected source differs from its original closure")
+                    foundation_read_file_strict(target, receipt["ref"], receipt["sha256"])
+                    covered_paths.add(path)
+                comparisons = row.get("comparisons")
+                comparison_count = (5 + len(selected_resources) if native_projection else
+                                    4 if native_binding or skill_surface_binding else 6)
+                if (not isinstance(comparisons, list) or not comparisons
+                        or not branch_fields and len(comparisons) != comparison_count):
+                    raise ValueError("selected comparisons are incomplete")
+                if skill_surface_binding:
+                    comparison_scopes = [f"binding:{row.get('index')}:{name}" for name in (
+                        "method-identity", "parameter-declaration", "implementation-reference", "protocol-reference")]
+                elif native_projection:
+                    comparison_scopes = [f"binding:{row.get('index')}:native-identity:{position}" for position in range(1, 5)]
+                    comparison_scopes.append(f"binding:{row.get('index')}:skill-content")
+                    comparison_scopes.extend(f"binding:{row.get('index')}:resource:{position}:bytes"
+                                             for position in range(1, len(selected_resources) + 1))
+                for index, comparison in enumerate(comparisons, 1):
+                    status = comparison.get("status") if isinstance(comparison, dict) else None
+                    if status not in {"checked", "findings", "insufficient"}:
+                        raise ValueError("selected comparison has no public observation")
+                    identity = f"{'branch' if branch_fields else 'binding'}-{row.get('index')}-comparison-{index}"
+                    if skill_surface_binding or native_projection:
+                        identity = comparison_scopes[index - 1]
+                        if comparison.get("scope") != identity:
+                            raise ValueError("selected comparison identity differs from its original selection")
+                    if status != "insufficient" and checked.count(identity) != 1:
+                        raise ValueError("selected comparison is outside the performed scope")
+                # The public six-comparison contract puts Skill/route identity
+                # first. METHOD-012 consumes those two observations while still
+                # checking every original resource, closure and performed row.
+                # Native bindings consume all four of their identity comparisons.
+                method_comparisons = comparisons[:2] if public_identity_scope and not native_binding else comparisons
+                if native_projection:
+                    method_comparisons = comparisons[:4] if method == "static_scan" else comparisons[4:]
+                statuses.extend(comparison["status"] for comparison in method_comparisons)
+            except (KeyError, TypeError, RuntimeError, WorkflowError, ValueError, OSError) as exc:
+                ev.setdefault("source_binding_errors", []).append(str(exc))
+                statuses.append("insufficient")
+        ev["original_checks"] = selected
+        if not selected:
+            ev["reason"] = "professional_object_scope_missing"
+            return base
+        missing = {Path(entry["path"]).resolve() for entry in cited if entry.get("kind") != "source_tree"} - covered_paths - original_paths
+        if missing:
+            ev["missing_object_paths"] = sorted(str(path) for path in missing)
+            statuses.append("insufficient")
+        if not statuses or "insufficient" in statuses:
+            ev.update({"reason": "professional_scope_incomplete", "professional_issue": "professional_incomplete"})
+            if "findings" not in statuses:
+                return base
+        base.update(status="FAIL" if "findings" in statuses else "PASS",
+                    observation_source="retained_professional_consumption")
+        ev.pop("kind", None)
+        ev.pop("gap", None)
+        ev.update({"reason": "original_professional_mechanical_result",
+                   "scope_limitation": "Only the cited selected static declarations; selection completeness and domain semantics remain with the current rule review."})
+        if native_binding:
+            ev["scope_limitation"] = (
+                "本次原生路径消费所选对象的全部四组身份比较，并绑定五类来源角色的当前摘要与闭包，不同角色可指向同一文件。"
+                "该观察仅覆盖已引用静态声明的机械比对结果，选集完整性与领域语义仍由当前规则审阅判断。")
+        elif public_identity_scope:
+            ev["scope_limitation"] = (
+                "Only original public comparisons 1 and 2 establish entry-to-Method identity. "
+                "All six observations and the complete original resource closure are retained; "
+                "protocol URI comparisons 3 through 6 do not contribute to this method.")
+        return base
+    if capability_graph_scope:
+        # Consume the complete declared capability-reference selection, not
+        # business ownership/acceptance or every unrelated Graph check.
+        ev.update(public_entry="check-professional/read-proof + buildVersionIndex/traceVersion")
+        if (conclusion.get("provider") != {
+                "id": "artifact-graph", "version": "1.1.0", "entry": "check-professional"}
+                or item.get("version_relation") not in {"same", "higher"}):
+            return base
+        originals = []
+        for source in (professional_inputs or {}).get("items", []):
+            if source.get("provider_id") != "artifact":
+                continue
+            root, relative, reader = source.get("proof_root"), source.get("proof_path"), source.get("reader_result")
+            if not root or not relative or not isinstance(reader, dict):
+                continue
+            bound = [entry for entry in evidence_set if entry.get("kind") == "receipt"
+                     and Path(entry["path"]).resolve() == (Path(root) / relative).resolve()]
+            if (len({(str(Path(e["path"]).resolve()), e["sha256"]) for e in bound}) != 1
+                    or reader.get("status") not in {"pass", "not_pass"}
+                    or not checker._professional_objects_align(conclusion, reader.get("conclusion"))
+                    or not checker._reader_provider_matches(conclusion, reader)):
+                continue
+            try:
+                original = strict_read_json(foundation_read_file_strict(Path(root), relative, bound[0]["sha256"]),
+                    "PROFESSIONAL_PROOF_FAILED", "Graph professional output")
+            except (RuntimeError, WorkflowError, ValueError, OSError):
+                continue
+            if original == conclusion:
+                originals.append((reader, (Path(root) / relative).resolve()))
+        if len(originals) != 1:
+            ev["reason"] = "professional_original_output_missing"
+            return base
+        details = _as_dict(conclusion.get("details")) or {}
+        outcome = _as_dict(conclusion.get("outcome")) or {}
+        checks = details.get("checks", [])
+        if (outcome.get("completion") != "complete" or outcome.get("code") not in {"GRAPH_CLEAR", "GRAPH_FINDINGS"}
+                or not {"validate", "version-lock-audit"} <= set(conclusion.get("scope", {}).get("checked", []))
+                or not all(any(isinstance(row, dict) and row.get("name") == name
+                    and row.get("status") == "completed" for row in checks) for name in ["validate", "version-lock-audit"])):
+            ev["reason"] = "professional_scope_incomplete"
+            return base
+        try:
+            indexes = {(str(Path(entry["path"]).resolve()), entry["sha256"]): (entry, document)
+                       for entry, document in native_graph_documents if entry.get("kind") == "receipt"}
+            if len(indexes) != 1:
+                raise ValueError("one original native Graph index is required")
+            index_entry, index = next(iter(indexes.values()))
+            nodes = {node["uid"]: node for node in index["nodes"]}
+            if (len(nodes) != len(index["nodes"])
+                    or index["graph"].get("nodes") != len(nodes)
+                    or index["graph"].get("edges") != len(index["edges"])):
+                raise ValueError("native Graph identities are ambiguous")
+            trees = [entry for entry in evidence_set if entry.get("kind") == "source_tree"
+                     and target.resolve().is_relative_to(Path(entry["path"]).resolve())]
+            if not trees:
+                raise ValueError("the complete native view needs this Task's frozen source tree")
+            if not all(isinstance(edge, dict) and all(isinstance(edge.get(key), str)
+                       for key in ["from", "to", "kind", "sourcePath"]) for edge in index["edges"]):
+                raise ValueError("native Graph reference fields are incomplete")
+            selected = [node for node in nodes.values() if node.get("type") == "capability"]
+            # UID types and edges come from Graph. Never resolve capabilityRef
+            # values or rebuild references from target JSON in this consumer.
+            edges = [edge for edge in index["edges"] if edge["to"].startswith("capability:")]
+            if not edges:
+                raise ValueError("the declared reference selection is empty")
+            required_ids = {node["uid"] for node in selected} | {edge["from"] for edge in edges}
+            if any(uid not in nodes or not graph_path_cited(nodes[uid]["path"]) for uid in required_ids):
+                raise ValueError("the finalized selection omits a capability or declared reference source")
+            # The original full native view must still describe this Task's
+            # frozen bytes. Root-tree validation belongs to the existing stage;
+            # this branch only compares original native file receipts.
+            for node in nodes.values():
+                path = (target / node["path"]).resolve()
+                bound = [entry for entry in evidence_set if entry.get("kind") != "source_tree"
+                         and Path(entry["path"]).resolve() == path]
+                if bound and (len({entry["sha256"] for entry in bound}) != 1
+                              or "sha256:" + bound[0]["sha256"] != node["contentHash"]):
+                    raise ValueError("the native node differs from this Task's original file")
+                if not isinstance(node.get("contentHash"), str) or not node["contentHash"].startswith("sha256:"):
+                    raise ValueError("the native file receipt is missing")
+                foundation_read_file_strict(target, node["path"], node["contentHash"][len("sha256:"):])
+            issues = details.get("issues")
+            validate = [row for row in checks if isinstance(row, dict) and row.get("name") == "validate"]
+            if not isinstance(issues, list) or len(validate) != 1:
+                raise ValueError("the original structural check is ambiguous")
+            structural = [row for row in issues if isinstance(row, dict) and "code" in row]
+            # In the published 1.1.0 composition validate has coded issues,
+            # lock issues have status, and coverage has no issue rows.
+            if validate[0].get("issueCount") != len(structural):
+                raise ValueError("the original structural issue scope is incomplete")
+            def edge_identity(edge):
+                return tuple(edge.get(key) for key in ["from", "to", "kind", "source", "sourcePath", "sourceLine"])
+            edge_ids = [edge_identity(edge) for edge in edges]
+            all_edge_ids = [edge_identity(edge) for edge in index["edges"]]
+            for edge in edges:
+                if (edge.get("fromHash") != nodes[edge["from"]]["contentHash"]
+                        or edge.get("sourcePath") != nodes[edge["from"]]["path"]):
+                    raise ValueError("the native reference differs from its original source")
+                destination = nodes.get(edge["to"])
+                if destination is not None:
+                    if destination.get("type") != "capability" or edge.get("toHash") != destination["contentHash"]:
+                        raise ValueError("the native reference differs from its original target")
+                elif (edge.get("toHash") is not None or not any(
+                        row.get("code") == "DANGLING_REFERENCE" and isinstance(row.get("edge"), dict)
+                        and edge_identity(row["edge"]) == edge_identity(edge) for row in structural)):
+                    # A missing target is consumable only as Graph's own
+                    # matching finding. Absence alone is never a local FAIL.
+                    raise ValueError("the missing target has no matching original Graph finding")
+            lock_paths = set()
+            trace_entries = []
+            for node in selected:
+                traces = {(str(Path(entry["path"]).resolve()), entry["sha256"]): (entry, document)
+                          for entry, document in original_documents if entry.get("kind") == "receipt"
+                          and document.get("root") == str(target.resolve())
+                          and (_as_dict(document.get("target")) or {}).get("uid") == node["uid"]}
+                if len(traces) != 1:
+                    raise ValueError("the selected capability needs its original native trace")
+                entry, trace = next(iter(traces.values()))
+                if (trace.get("target", {}).get("node") != node
+                        or trace.get("lockPath") != "artifacts/traceability-version-lock.json"
+                        or trace.get("currentEdges") != [edge for edge in index["edges"]
+                            if edge["from"] == node["uid"] or edge["to"] == node["uid"]]):
+                    raise ValueError("native index and trace differ for the selected object")
+                lock_paths.add(trace["lockPath"])
+                trace_entries.append(entry)
+            for relative in {"artifact-graph.config.yaml", *lock_paths}:
+                bound = [entry for entry in evidence_set if entry.get("kind") != "source_tree"
+                         and Path(entry["path"]).resolve() == (target / relative).resolve()]
+                if not graph_path_cited(relative) or len({entry["sha256"] for entry in bound}) != 1:
+                    raise ValueError("the original Graph configuration and lock must be Task inputs")
+                foundation_read_file_strict(target, relative, bound[0]["sha256"])
+            native_paths = {(target / node["path"]).resolve() for node in nodes.values()}
+            support_paths = {Path(index_entry["path"]).resolve(), originals[0][1],
+                             *(Path(entry["path"]).resolve() for entry in trace_entries),
+                             (target / "artifact-graph.config.yaml").resolve(),
+                             *((target / path).resolve() for path in lock_paths)}
+            support_paths.update(Path(entry["path"]).resolve() for entry, document in original_documents
+                                 if document == originals[0][0])
+            if any(entry.get("kind") != "source_tree"
+                   and Path(entry["path"]).resolve() not in native_paths | support_paths for entry in cited):
+                raise ValueError("a cited mechanical object is outside the native selection")
+        except (KeyError, TypeError, RuntimeError, WorkflowError, ValueError, OSError) as exc:
+            ev.update(reason="professional_object_scope_missing", source_binding_error=str(exc))
+            return base
+        own_findings, unscoped = [], []
+        for issue in structural:
+            relation = issue.get("edge")
+            if isinstance(relation, dict):
+                if edge_identity(relation) in edge_ids and issue.get("severity") == "error":
+                    own_findings.append(issue)
+                elif (isinstance(relation.get("to"), str) and not relation["to"].startswith("capability:")
+                        and edge_identity(relation) in all_edge_ids):
+                    continue
+                else:
+                    unscoped.append(issue)
+            elif isinstance(issue.get("node"), str) and issue["node"] in nodes and issue["node"] not in required_ids:
+                continue
+            else:
+                # Node-only format findings do not identify which field or
+                # relation failed. Keep them, without inventing a field parser.
+                unscoped.append(issue)
+        ev.update(original_report=conclusion,
+            original_checks=checks, native_index_ref=index_entry, native_trace_refs=trace_entries,
+            selected_native_nodes=selected, selected_native_relations=edges,
+            selected_structural_findings=own_findings, unresolved_structural_findings=unscoped,
+            covered_scope="Only the complete declared capability-reference selection for this frozen target; C and business ownership/acceptance/platform semantics remain separate.")
+        if unscoped:
+            ev.update(reason="professional_scope_incomplete", professional_issue="professional_incomplete")
+            if not own_findings:
+                return base
+        ev.pop("kind", None)
+        ev.pop("gap", None)
+        ev["reason"] = "original_professional_mechanical_result"
+        base.update(status="FAIL" if own_findings else "PASS", observation_source="retained_professional_consumption")
+        return base
+    higher = (item.get("status") == "pass" and item.get("version_relation") == "higher"
+              and item.get("mode") == "version_policy")
+    if source_direction_method:
+        ev.update({"public_entry": "runSourceGeneratedCheck",
+                   "required_checks": ["same_mapping_fixed_root_direction"]})
+        if (_as_dict(conclusion.get("provider")) or {}).get("entry") != "runSourceGeneratedCheck":
+            ev.update({"reason": "professional_object_scope_missing",
+                       "gap": "The supplied proof does not contain the current source/generated direction check."})
+            return base
+        original_readers = []
+        for source in (professional_inputs or {}).get("items", []):
+            if source.get("provider_id") != "foundation":
+                continue
+            root, relative, reader = source.get("proof_root"), source.get("proof_path"), source.get("reader_result")
+            if not root or not relative or not isinstance(reader, dict):
+                continue
+            proof_path = (Path(root) / relative).resolve()
+            bound = [entry for entry in evidence_set if entry.get("kind") == "receipt"
+                     and Path(entry["path"]).resolve() == proof_path]
+            identities = {(str(Path(entry["path"]).resolve()), entry["sha256"]) for entry in bound}
+            if (len(identities) != 1 or reader.get("status") not in {"pass", "not_pass"}
+                    or not checker._professional_objects_align(conclusion, reader.get("conclusion"))
+                    or not checker._reader_provider_matches(conclusion, reader)):
+                continue
+            try:
+                original = strict_read_json(foundation_read_file_strict(
+                    Path(root), relative, bound[0]["sha256"]),
+                    "PROFESSIONAL_PROOF_FAILED", "source/generated output")
+            except (RuntimeError, WorkflowError, ValueError, OSError):
+                continue
+            if original == conclusion:
+                original_readers.append(reader)
+        if (len(original_readers) != 1 or not target_matches
+                or item.get("status") not in {"pass", "not_pass"}
+                or item.get("version_relation") not in {"same", "higher"}):
+            ev["reason"] = "professional_original_output_missing"
+            return base
+        ev["original_report"] = conclusion
+        details = _as_dict(conclusion.get("details")) or {}
+        declaration = _as_dict(details.get("declaration")) or {}
+        closure = _as_dict(details.get("closure")) or {}
+        mappings = details.get("mappings")
+        checked = (_as_dict(conclusion.get("scope")) or {}).get("checked", [])
+        try:
+            relative, digest = declaration["ref"], declaration["sha256"]
+            declaration_path = (target / relative).resolve()
+            if not any((entry.get("kind") == "source_tree"
+                        and declaration_path.is_relative_to(Path(entry["path"]).resolve()))
+                       or (entry.get("kind") != "source_tree"
+                           and Path(entry["path"]).resolve() == declaration_path
+                           and entry["sha256"] == digest) for entry in cited):
+                raise ValueError("declaration is outside the cited method object")
+            if not closure.get("digest") or not any(
+                    row.get("path") == relative and row.get("sha256") == digest
+                    for row in closure.get("resources", []) if isinstance(row, dict)):
+                raise ValueError("declaration differs from its original provider closure")
+            foundation_read_file_strict(target, relative, digest)
+        except (KeyError, TypeError, RuntimeError, WorkflowError, ValueError, OSError) as exc:
+            ev.update({"reason": "professional_object_scope_missing", "source_binding_error": str(exc)})
+            return base
+        if ((_as_dict(details.get("declarationCheck")) or {}).get("status") != "pass"
+                or not isinstance(mappings, list) or not mappings
+                or not all(isinstance(row, dict) and row.get("status") in {"pass", "findings", "insufficient"}
+                           for row in mappings)
+                or any(f"mapping:{row.get('index')}:direction" not in checked
+                       for row in mappings if row.get("status") in {"pass", "findings"})):
+            ev.update({"reason": "professional_scope_incomplete", "professional_issue": "professional_incomplete"})
+            return base
+        outcome = _as_dict(conclusion.get("outcome")) or {}
+        if any(row["status"] == "findings" for row in mappings):
+            status = "FAIL"
+        elif outcome.get("completion") == "complete" and all(row["status"] == "pass" for row in mappings):
+            status = "PASS"
+        else:
+            ev.update({"reason": "professional_scope_incomplete", "professional_issue": "professional_incomplete"})
+            return base
+        ev.pop("kind", None)
+        ev.pop("gap", None)
+        ev.update({"reason": "original_professional_mechanical_result",
+                   "scope_limitation": "Only the original same-mapping fixed root identity comparison; authority semantics and generation effects remain separate."})
+        base.update(status=status, observation_source="retained_professional_consumption")
+        return base
+    if peer_source_scope or peer_byte_scope:
+        # Scope comes from the original current-purpose method, not from a
+        # result's optional claim. Removing a peer record cannot fall through
+        # to the generic higher-version mechanical PASS below.
+        ev.update({"public_entry": "verifyPeerAdapterDirectories",
+                   "required_checks": ["native_role_separation"]})
+        details = conclusion.get("details")
+        review_detail = details.get("review") if isinstance(details, dict) else None
+        checks = review_detail.get("checks") if isinstance(review_detail, dict) else None
+        rows = [row for row in checks
+                if isinstance(row, dict) and row.get("id") == "native_role_separation"] if isinstance(checks, list) else []
+        ev["original_checks"] = rows
+        if higher:
+            ev.update({"policy_acceptance": True, "not_this_scan": True})
+        source_refs = [ref for row in rows if isinstance(row.get("sourceRefs"), list)
+                       for ref in row["sourceRefs"] if isinstance(ref, str)]
+        # Resolve relative refs only through the original authorized proof
+        # input. A base citation keeps its identity when it is the same bytes.
+        source_paths = set()
+        for original_input in (professional_inputs or {}).get("items", []):
+            if original_input.get("provider_id") != "foundation":
+                continue
+            root, path = original_input.get("proof_root"), original_input.get("proof_path")
+            if not root or not path:
+                continue
+            try:
+                if checker._read_professional_proof_document(root, path) != conclusion:
+                    continue
+                for ref in source_refs:
+                    relative = Path(ref)
+                    if relative.is_absolute():
+                        try:
+                            relative = relative.relative_to(Path(root))
+                        except ValueError:
+                            continue
+                    receipt = foundation_read_file_strict(Path(root), str(relative))
+                    source_paths.add((str((Path(root) / relative).resolve()), receipt["sha256"]))
+            except (RuntimeError, WorkflowError, ValueError, OSError):
+                continue
+        peer_documents = list(original_documents)
+        if peer_byte_scope:
+            # This premise cites the declared copy object. The original peer
+            # records are already bound to this Task's stage view by the same
+            # proof sourceRefs; they need not masquerade as premise citations.
+            for entry in evidence_set:
+                identity = (str(Path(entry["path"]).resolve()), entry["sha256"])
+                if identity not in source_paths:
+                    continue
+                try:
+                    document = strict_read_json(foundation_read_file_strict(
+                        Path(entry["path"]).parent, Path(entry["path"]).name, entry["sha256"],
+                    ), "MECHANICAL_OBJECT_INPUT_INVALID", "original peer record")
+                except (WorkflowError, ValueError, OSError):
+                    continue
+                if isinstance(document, dict):
+                    peer_documents.append((entry, document))
+        bound_documents = []
+        seen_originals = set()
+        for entry, document in peer_documents:
+            identity = (str(Path(entry["path"]).resolve()), entry["sha256"])
+            if identity in source_paths:
+                if identity not in seen_originals:
+                    seen_originals.add(identity)
+                    bound_documents.append((entry, document))
+        inputs = [document for _, document in bound_documents
+                  if set(document) == {"request", "peerRoots"}
+                  and isinstance(document.get("request"), dict)
+                  and document["request"].get("kind") == "skill-family.adapter-peer-verification-request"]
+        outputs = [document for _, document in bound_documents
+                   if document.get("kind") == "skill-family.adapter-peer-verification-result"]
+        peer_reports = [row for row in items if (peer_source_scope or peer_byte_scope and len(outputs) != 1)
+                        and row.get("provider_id") == "foundation"
+                        and (_as_dict((_as_dict(row.get("conclusion")) or {}).get("provider")) or {}).get("entry")
+                            == "runPeerAdapterCheck"]
+        if peer_reports:
+            # Kit0.36 owns the peer mechanism and its completion decision.
+            # Bind its separate original to this method's already reviewed
+            # complete selection; do not reimplement observations or pairs.
+            ev["public_entry"] = "runPeerAdapterCheck"
+            if not inputs and peer_byte_scope:
+                inputs = [(_as_dict(row.get("conclusion")).get("details") or {}).get("selection")
+                          for row in peer_reports]
+                inputs = [call for call in inputs if isinstance(call, dict)
+                          and set(call) == {"request", "peerRoots"}
+                          and isinstance(call.get("request"), dict)
+                          and call["request"].get("kind") == "skill-family.adapter-peer-verification-request"]
+            if len(inputs) != 1 or not target_matches:
+                ev["reason"] = "professional_original_output_missing"
+                return base
+            call = inputs[0]
+            peer_reports = [row for row in peer_reports
+                            if (_as_dict((_as_dict(row.get("conclusion")) or {}).get("subject")) or {}).get("ref") == str(target.resolve())
+                            and (_as_dict((_as_dict(row.get("conclusion")) or {}).get("details")) or {}).get("selection") == call]
+            if len(peer_reports) != 1:
+                ev["reason"] = "professional_original_output_missing"
+                return base
+            peer_item = peer_reports[0]
+            report = peer_item["conclusion"]
+            if peer_item.get("version_relation") not in {"same", "higher"}:
+                ev["reason"] = "professional_object_scope_missing"
+                return base
+            request, roots = call["request"], call["peerRoots"]
+            peers = request.get("peers")
+            if (not isinstance(peers, list) or not peers or not isinstance(roots, dict)
+                    or any(not isinstance(peer, dict) or not isinstance(peer.get("peerId"), str)
+                           or not peer["peerId"] for peer in peers)
+                    or len({peer.get("peerId") for peer in peers}) != len(peers)
+                    or set(roots) != {peer.get("peerId") for peer in peers}):
+                ev["reason"] = "professional_object_scope_missing"
+                return base
+            for peer in peers:
+                category = _as_dict(peer.get("pathCategory")) or {}
+                relative, root = category.get("relPath"), roots.get(peer.get("peerId"))
+                if (not isinstance(relative, str) or Path(relative).is_absolute()
+                        or not isinstance(root, str) or not Path(root).is_absolute()
+                        or category.get("scope") != "project" or category.get("anchor") != "project-root"
+                        or not (target / relative).resolve().is_relative_to(target.resolve())
+                        or Path(root).resolve() != (target / relative).resolve()):
+                    ev["reason"] = "professional_object_scope_missing"
+                    return base
+            readers = []
+            peer_original_paths = set()
+            for source in (professional_inputs or {}).get("items", []):
+                proof_root, proof_path = source.get("proof_root"), source.get("proof_path")
+                reader = source.get("reader_result")
+                if (source.get("provider_id") != "foundation" or not proof_root or not proof_path
+                        or not isinstance(reader, dict) or reader.get("status") not in {"pass", "not_pass"}
+                        or not checker._professional_objects_align(report, reader.get("conclusion"))
+                        or not checker._reader_provider_matches(report, reader)):
+                    continue
+                path = (Path(proof_root) / proof_path).resolve()
+                bound = [entry for entry in evidence_set if entry.get("kind") == "receipt"
+                         and Path(entry["path"]).resolve() == path]
+                if len({(str(Path(entry["path"]).resolve()), entry["sha256"])
+                        for entry in bound}) != 1:
+                    continue
+                try:
+                    actual = strict_read_json(foundation_read_file_strict(Path(proof_root), proof_path, bound[0]["sha256"]),
+                                              "PROFESSIONAL_PROOF_FAILED", "peer check original")
+                except (RuntimeError, WorkflowError, ValueError, OSError):
+                    continue
+                if actual == report:
+                    readers.append(reader)
+                    peer_original_paths.add(path)
+            if len(readers) != 1:
+                ev["reason"] = "professional_original_output_missing"
+                return base
+            if peer_byte_scope:
+                ev.update(original_report=report, peer_professional_consumption=peer_item,
+                          required_checks=["runPeerAdapterCheck"])
+                # Bind the declared byte objects to the provider's original
+                # before/after file receipts. Kit owns peer comparison and drift.
+                try:
+                    observations = report["details"]["observations"]
+                    if (not isinstance(observations, list) or len(observations) != len(roots)
+                            or {row["peerId"] for row in observations} != set(roots)):
+                        raise ValueError("the original peer observations do not cover the declared roots")
+                    observed = {}
+                    for row in observations:
+                        root = Path(roots[row["peerId"]]).resolve()
+                        if Path(row["root"]).resolve() != root:
+                            raise ValueError("the original peer observation root differs from its selection")
+                        snapshots = []
+                        for phase in ("before", "after"):
+                            members = row[phase]["members"]
+                            if not isinstance(members, list) or not all(isinstance(member, dict) for member in members):
+                                raise ValueError("the original peer file receipts are missing")
+                            snapshots.append({((root / member["path"]).resolve(), member["sha256"])
+                                for member in members if member.get("type") == "file"})
+                        observed.update({path: digest for path, digest in snapshots[0] & snapshots[1]})
+                    selected = {}
+                    for entry in cited:
+                        path = Path(entry["path"]).resolve()
+                        if path in peer_original_paths:
+                            continue
+                        if entry.get("kind") == "source_tree":
+                            # A cited byte directory selects its current complete
+                            # file closure, never the intersection with an old proof.
+                            # An ancestor container does not identify which of its
+                            # unrelated resources are synchronized byte objects.
+                            if not any(path.is_relative_to(Path(root).resolve()) for root in roots.values()):
+                                raise ValueError("the cited container does not identify a declared peer byte directory")
+                            closure = foundation_resource_closure(path, _files_inside_resource_root(path))
+                            members = closure.get("resources")
+                            if not isinstance(members, list) or not members:
+                                raise ValueError("the declared byte directory has no complete file closure")
+                            for member in members:
+                                file = (path / member["path"]).resolve()
+                                digest = member.get("sha256")
+                                if (member.get("exists") is not True or not digest
+                                        or observed.get(file) != digest):
+                                    raise ValueError("a declared directory member is outside the original peer file scope")
+                                selected[file] = digest
+                        elif observed.get(path) == entry["sha256"]:
+                            selected[path] = entry["sha256"]
+                        else:
+                            raise ValueError("a declared byte object is outside the original peer file scope")
+                    if not selected:
+                        raise ValueError("the declared byte selection has no performed peer file receipts")
+                    for path, digest in selected.items():
+                        foundation_read_file_strict(target, str(path.relative_to(target.resolve())), digest)
+                    pairs = report["details"]["pairs"]
+                    checked = report["scope"]["checked"]
+                    if (not isinstance(pairs, list) or len(pairs) != len(roots) - 1
+                            or not isinstance(checked, list)
+                            or len(checked) != len(pairs)
+                            or {row["id"] for row in pairs} != set(checked)
+                            or any(row.get("called") is not True
+                                   or row.get("status") not in {"pass", "findings"} for row in pairs)):
+                        raise ValueError("the declared peer comparisons are not completely performed")
+                    pair_roots = [row.get("peerRoots") for row in pairs]
+                    if (any(not isinstance(pair, dict) or len(pair) != 2
+                            or any(peer not in roots or root != roots[peer] for peer, root in pair.items())
+                            for pair in pair_roots)
+                            or set().union(*(set(pair) for pair in pair_roots)) != set(roots)):
+                        raise ValueError("the original peer pair roots differ from the complete selection")
+                except (KeyError, TypeError, RuntimeError, WorkflowError, ValueError, OSError) as exc:
+                    ev.update(reason="professional_scope_incomplete", professional_issue="professional_incomplete",
+                              source_binding_error=str(exc))
+                    return base
+                outcome = _as_dict(report.get("outcome")) or {}
+                if (outcome.get("completion") != "complete"
+                        or outcome.get("code") not in {"ENGINEERING_CLEAR", "ENGINEERING_FINDINGS"}
+                        or readers[0].get("status") != ("pass" if outcome.get("code") == "ENGINEERING_CLEAR" else "not_pass")):
+                    ev.update(reason="professional_scope_incomplete", professional_issue="professional_incomplete")
+                    return base
+                ev.pop("kind", None)
+                ev.pop("gap", None)
+                ev.update(reason="original_professional_mechanical_result", original_checks=pairs,
+                          scope_limitation="Only the complete declared synchronized byte selection; editing authority and synchronization semantics remain independent.")
+                base.update(status="FAIL" if outcome["code"] == "ENGINEERING_FINDINGS" else "PASS",
+                            observation_source="retained_professional_consumption")
+                return base
+            outcome = _as_dict(report.get("outcome")) or {}
+            complete_scope = (len(rows) == 1 and rows[0].get("status") in {"pass", "findings"}
+                              and "native_role_separation" in conclusion.get("scope", {}).get("checked", [])
+                              and conclusion.get("outcome", {}).get("completion") == "complete")
+            ev.update(original_report=report, peer_professional_consumption=peer_item,
+                      required_checks=["native_role_separation", "runPeerAdapterCheck"])
+            if outcome.get("code") == "ENGINEERING_FINDINGS" and readers[0]["status"] == "not_pass":
+                base["status"] = "FAIL"
+            elif (outcome.get("completion") == "complete" and outcome.get("code") == "ENGINEERING_CLEAR"
+                  and readers[0]["status"] == "pass" and complete_scope and rows[0].get("status") == "pass"):
+                base["status"] = "PASS"
+            else:
+                ev.update(reason="professional_incomplete", professional_issue="professional_incomplete")
+                return base
+            ev.pop("kind", None)
+            ev.pop("gap", None)
+            ev["reason"] = "original_professional_mechanical_result"
+            if outcome.get("completion") != "complete" or not complete_scope:
+                ev["professional_issue"] = "professional_incomplete"
+            base["observation_source"] = "retained_professional_consumption"
+            return base
+        if len(inputs) != 1 or len(outputs) != 1:
+            ev.update({"reason": "professional_original_output_missing",
+                       "gap": "The original current method requires one bound peer API input and original return; version acceptance does not execute the directory comparison."})
+            return base
+        original, call = outputs[0], inputs[0]
+        ev["original_report"] = original
+        request, roots = call["request"], call["peerRoots"]
+        requested = request.get("peers")
+        returned = original.get("peers")
+        matched = (target_matches and isinstance(roots, dict)
+            and request.get("schemaVersion") == original.get("schemaVersion") == 1
+            and request.get("skillFamilyId") == original.get("skillFamilyId")
+            and original.get("status") == "verified" and original.get("decision") == "peer-verification"
+            and isinstance(original.get("commonSourceClosure"), dict)
+            and isinstance(requested, list) and isinstance(returned, list)
+            and len(requested) == len(returned) == len(roots))
+        if matched:
+            matched = all(isinstance(peer, dict) and isinstance(peer.get("peerId"), str)
+                          for peer in [*requested, *returned])
+        if matched:
+            by_id = {peer["peerId"]: peer for peer in returned}
+            matched = (len(by_id) == len(returned)
+                and set(roots) == set(by_id) == {peer.get("peerId") for peer in requested if isinstance(peer, dict)})
+            for peer in requested:
+                if not matched or not isinstance(peer, dict):
+                    matched = False
+                    break
+                actual = by_id[peer["peerId"]]
+                category = peer.get("pathCategory", {})
+                if not isinstance(category, dict):
+                    matched = False
+                    break
+                relative = category.get("relPath")
+                root = roots.get(peer["peerId"])
+                if (not isinstance(relative, str) or not isinstance(root, str)
+                        or not Path(root).is_absolute() or Path(relative).is_absolute()
+                        or category.get("scope") != "project" or category.get("anchor") != "project-root"):
+                    matched = False
+                    break
+                expected_root = (target / relative).resolve()
+                if (not expected_root.is_relative_to(target.resolve())
+                        or Path(root).resolve() != expected_root
+                        or actual.get("hostId") != peer.get("hostId")
+                        or actual.get("pathCategory") != category):
+                    matched = False
+                    break
+                mappings = peer.get("logicalMappings")
+                actual_mappings = actual.get("logicalMappings")
+                if (not isinstance(mappings, list) or not isinstance(actual_mappings, list)
+                        or not all(isinstance(row, dict) for row in [*mappings, *actual_mappings])):
+                    matched = False
+                    break
+                expected_mappings = [{**mapping, "target": relative + "/" + mapping["sourcePath"]}
+                                     for mapping in mappings if isinstance(mapping, dict) and "sourcePath" in mapping]
+                if (len(expected_mappings) != len(mappings)
+                        or sorted(expected_mappings, key=lambda row: row.get("logicalId", ""))
+                        != sorted(actual_mappings, key=lambda row: row.get("logicalId", ""))):
+                    matched = False
+                    break
+        if not matched:
+            ev.update({"reason": "professional_object_scope_missing",
+                       "gap": "The original peer request, roots and returned scope do not match this Task target."})
+            return base
+        scope_review_complete = (len(rows) == 1 and rows[0].get("status") in {"pass", "findings"}
+            and "native_role_separation" in conclusion.get("scope", {}).get("checked", [])
+            and conclusion.get("outcome", {}).get("completion") == "complete")
+        role_complete = scope_review_complete and rows[0].get("status") == "pass"
+        if peer_byte_scope:
+            # Matching request/return subsets do not establish the full copy
+            # scope declared by the target. Reuse the existing completed scope
+            # review; partial local bytes alone must remain unperformed here.
+            if not scope_review_complete:
+                ev.update({"reason": "professional_object_scope_missing",
+                           "gap": "The original peer input and return agree only on their selected scope; the available partial professional review does not establish coverage of every declared synchronized copy and baseline."})
+                return base
+            if (item.get("version_relation") != "same"
+                    or item.get("reader_status") not in {"pass", "not_pass"}
+                    or conclusion.get("outcome", {}).get("completion") not in {"complete", "partial"}):
+                ev.update({"reason": "professional_incomplete", "professional_issue": "professional_incomplete"})
+                return base
+            ev.pop("conclusion", None)
+            ev.update({"reason": "original_professional_mechanical_result",
+                       "required_checks": ["verifyPeerAdapterDirectories"], "original_checks": [original]})
+            base["status"] = "PASS"
+            base["observation_source"] = "retained_professional_consumption"
+            return base
+        if not role_complete or not (higher or (item.get("version_relation") == "same"
+                                               and item.get("reader_status") == "pass")):
+            ev.update({"reason": "professional_scope_incomplete", "professional_issue": "professional_incomplete",
+                       "gap": "Peer bytes and mappings are verified only locally; the original complete common-authority and synchronization review is still required."})
+            return base
         base["status"] = "PASS"
         base["observation_source"] = "retained_professional_consumption"
-        ev.update({"reason": "professional_version_policy", "policy_acceptance": True, "not_this_scan": True})
+        ev.pop("kind", None)
+        ev.pop("gap", None)
+        ev["reason"] = "original_professional_mechanical_result"
         return base
+    fixed_reports = {}
+    if fixed_reference_method:
+        if (_as_dict(conclusion.get("provider")) or {}).get("entry") == "runStaticReferenceCheck":
+            fixed_reports["direct"] = conclusion
+        else:
+            details = _as_dict(conclusion.get("details")) or {}
+            checks = (_as_dict(details.get("review")) or {}).get("checks", [])
+            source_refs = {ref for check in checks if isinstance(check, dict)
+                           and isinstance(check.get("sourceRefs"), list)
+                           for ref in check["sourceRefs"] if isinstance(ref, str)} if isinstance(checks, list) else set()
+            # The existing stage view binds these direct professional sources
+            # to the original Task. A report need not be a premise citation.
+            for original_input in (professional_inputs or {}).get("items", []):
+                if original_input.get("provider_id") != "foundation":
+                    continue
+                proof_root, proof_path = original_input.get("proof_root"), original_input.get("proof_path")
+                if not proof_root or not proof_path:
+                    continue
+                try:
+                    if checker._read_professional_proof_document(proof_root, proof_path) != conclusion:
+                        continue
+                except (RuntimeError, WorkflowError, ValueError, OSError):
+                    continue
+                root = Path(proof_root)
+                for source_ref in source_refs:
+                    relative = Path(source_ref)
+                    if relative.is_absolute():
+                        try:
+                            relative = relative.relative_to(root)
+                        except ValueError:
+                            continue
+                    path = root / relative
+                    entry = next((entry for entry in evidence_set if entry.get("kind") == "receipt"
+                                  and Path(entry["path"]).resolve() == path.resolve()), None)
+                    if entry is None:
+                        continue
+                    try:
+                        document = strict_read_json(foundation_read_file_strict(root, str(relative), entry["sha256"]),
+                            "PROFESSIONAL_PROOF_FAILED", "fixed-reference output")
+                    except (WorkflowError, ValueError, OSError):
+                        continue
+                    if (isinstance(document, dict) and document.get("kind") == "skill-family.professional-conclusion"
+                            and (_as_dict(document.get("provider")) or {}).get("entry") == "runStaticReferenceCheck"
+                            and document["provider"].get("id") == (_as_dict(conclusion.get("provider")) or {}).get("id")):
+                        fixed_reports[(str(path.resolve()), entry["sha256"])] = document
+    if fixed_reports:
+        report = next(iter(fixed_reports.values()))
+        # This public entry returns its own original conclusion. Interpret only
+        # its selected fixed references; Foundation owns discovery-independent
+        # source/line/path checks and the resource-closure algorithm.
+        ev.update({"public_entry": "runStaticReferenceCheck",
+                   "required_checks": ["runStaticReferenceCheck"], "original_report": report})
+        readers = [source.get("reader_result") for source in (professional_inputs or {}).get("items", [])
+                   if source.get("provider_id") == "foundation"
+                   and isinstance(source.get("reader_result"), dict)
+                   and checker._professional_objects_align(conclusion, source["reader_result"].get("conclusion"))
+                   and checker._reader_provider_matches(conclusion, source["reader_result"])]
+        if (len(fixed_reports) != 1 or not target_matches
+                or report.get("subject", {}).get("ref") != str(target.resolve())
+                or item.get("version_relation") not in {"same", "higher"}
+                or len(readers) != 1):
+            ev.update({"reason": "professional_original_output_missing",
+                       "gap": "The selected fixed-reference result needs the matching original provider reader and this Task target."})
+            return base
+        details = report.get("details", {})
+        rows = details.get("references") if isinstance(details, dict) else None
+        covered = report.get("scope", {}).get("checked", [])
+        if (cid in {"SFA-CONTEXT-033", "SFA-PLAT-005"} and isinstance(rows, list)
+                and item.get("status") in {"pass", "not_pass"}
+                and report.get("outcome", {}).get("code") == "ENGINEERING_CHECK_INCOMPLETE"
+                and report.get("outcome", {}).get("completion") in {"partial", "not-performed"}
+                and readers[0].get("status") == "not_pass"):
+            missing = [row for row in rows if isinstance(row, dict)
+                       and row.get("status") == "insufficient" and row.get("target") is None
+                       and (_as_dict(row.get("cause")) or {}).get("code") == "SFC2004"
+                       and (_as_dict(row.get("cause")) or {}).get("kind") == "missing-resource"
+                       and isinstance(row.get("source"), dict)]
+            try:
+                for row in missing:
+                    source = row["source"]
+                    source_path = (target / source["ref"]).resolve()
+                    if not any((entry.get("kind") == "source_tree"
+                                and source_path.is_relative_to(Path(entry["path"]).resolve()))
+                               or (entry.get("kind") != "source_tree"
+                                   and source_path == Path(entry["path"]).resolve()) for entry in cited):
+                        raise ValueError("missing-target observation has no bound actual source")
+                    foundation_read_file_strict(target, source["ref"], source["sha256"])
+            except (KeyError, TypeError, WorkflowError, ValueError, OSError) as exc:
+                ev.update(reason="professional_object_scope_missing", source_binding_error=str(exc))
+                return base
+            if missing:
+                ev.pop("kind", None)
+                ev.pop("gap", None)
+                ev.update(reason="checked_required_input_missing", original_checks=rows,
+                          required_missing_references=missing,
+                          rationale="The original public check read the bound actual reference source and reported its required target missing; other incomplete observations remain in the original result.")
+                base.update(status="EVIDENCE_MISSING", reason_code="STATIC_INPUTS_MISSING",
+                            observation_source="retained_professional_consumption")
+                return base
+        if (not isinstance(rows, list) or not rows
+                or not all(isinstance(row, dict) and row.get("status") == "checked" for row in rows)
+                or not isinstance(details.get("closure"), dict)
+                or set(covered) != {"reference:" + str(row.get("index")) for row in rows}
+                or len(covered) != len(rows)
+                or report.get("outcome", {}).get("completion") != "complete"
+                or report.get("outcome", {}).get("code") != "ENGINEERING_CLEAR"
+                or item.get("status") != "pass"
+                or readers[0].get("status") != "pass"):
+            ev.update({"reason": "professional_scope_incomplete", "professional_issue": "professional_incomplete"})
+            return base
+        # Bind the provider's observed bytes to the already-cited Task object.
+        # Do not resolve literals or reproduce the provider's path/line checker.
+        try:
+            for row in rows:
+                source = row.get("source")
+                destination = row.get("target")
+                if not all(isinstance(value, dict) and isinstance(value.get("ref"), str)
+                           and isinstance(value.get("sha256"), str) for value in (source, destination)):
+                    raise ValueError("fixed-reference source/target receipts are missing")
+                source_path = (target / source["ref"]).resolve()
+                if not any((entry.get("kind") == "source_tree" and source_path.is_relative_to(Path(entry["path"]).resolve()))
+                           or (entry.get("kind") != "source_tree" and source_path == Path(entry["path"]).resolve())
+                           for entry in cited):
+                    raise ValueError("fixed-reference source is outside the cited method object")
+                for receipt in (source, destination):
+                    foundation_read_file_strict(target, receipt["ref"], receipt["sha256"])
+        except (WorkflowError, ValueError, OSError) as exc:
+            ev.update({"reason": "professional_object_scope_missing", "source_binding_error": str(exc)})
+            return base
+        # Match the explicit method objects to the provider's receipts. A tree
+        # citation permits selected sources; it does not select every tree file.
+        closure_resources = details["closure"].get("resources")
+        receipts = [row[key] for row in rows for key in ("source", "target")]
+        receipts += closure_resources if isinstance(closure_resources, list) else []
+        covered_objects = {
+            ((target / (receipt.get("ref") or receipt.get("path"))).resolve(), receipt.get("sha256"))
+            for receipt in receipts if isinstance(receipt, dict)
+            and isinstance(receipt.get("ref") or receipt.get("path"), str)
+        }
+        # Professional outputs are transport inputs, including when their
+        # evidence kind is source_file. Exempt only actual reader-bound originals.
+        professional_paths = {
+            Path(entry["path"]).resolve() for entry, document in original_documents
+            if document.get("kind") == "skill-family.professional-conclusion"
+            and any(source.get("proof_root") and source.get("proof_path")
+                and (Path(source["proof_root"]) / source["proof_path"]).resolve() == Path(entry["path"]).resolve()
+                and isinstance(source.get("reader_result"), dict)
+                and checker._professional_objects_align(document, source["reader_result"].get("conclusion"))
+                and checker._reader_provider_matches(document, source["reader_result"])
+                for source in (professional_inputs or {}).get("items", []))
+        }
+        professional_paths.update(Path(key[0]).resolve() for key in fixed_reports if isinstance(key, tuple))
+        if _plat005_component == "references":
+            # The paired direction consumer validates its own original; its
+            # explicitly typed transport is not a fixed-reference object.
+            direction_ids = {ref["evidence_id"] for ref in refs
+                             if ref.get("role") == "source_generated_direction_result"}
+            professional_paths.update(Path(entry["path"]).resolve()
+                for entry, document in original_documents
+                if entry.get("evidence_id") in direction_ids
+                and document.get("kind") == "skill-family.professional-conclusion"
+                and (_as_dict(document.get("provider")) or {}).get("entry") == "runSourceGeneratedCheck")
+        missing_objects = [entry for entry in cited if entry.get("kind") != "source_tree"
+            and Path(entry["path"]).resolve() not in professional_paths
+            and (Path(entry["path"]).resolve(), entry["sha256"]) not in covered_objects]
+        if missing_objects:
+            ev.update(reason="professional_scope_incomplete", professional_issue="professional_incomplete",
+                      missing_object_paths=sorted({entry["path"] for entry in missing_objects}))
+            return base
+        base["status"] = "PASS"
+        base["observation_source"] = "retained_professional_consumption"
+        ev.pop("kind", None)
+        ev.pop("gap", None)
+        ev.update({"reason": "original_professional_mechanical_result", "original_checks": rows})
+        return base
+    if selected_artifact_method:
+        # Interpret the provider's selected C/D observations, not its overall
+        # code or the separately retained higher-version acceptance policy.
+        ev.update({"public_entry": "runSelectedArtifactCheck", "original_report": conclusion})
+        dimension = {"schema_validation": "schema", "digest_verification": "bytes"}.get(method)
+        if dimension is None:
+            ev.update({"reason": "professional_object_scope_missing"})
+            return base
+        selection_key = "schema" if dimension == "schema" else "baseline"
+        originals = []
+        original_paths = set()
+        for source in (professional_inputs or {}).get("items", []):
+            if source.get("provider_id") != "foundation":
+                continue
+            root, relative = source.get("proof_root"), source.get("proof_path")
+            reader = source.get("reader_result")
+            if not root or not relative or not isinstance(reader, dict):
+                continue
+            proof_path = (Path(root) / relative).resolve()
+            bound = [entry for entry in evidence_set
+                     if entry.get("kind") == "receipt" and Path(entry["path"]).resolve() == proof_path]
+            # Distinct citations may retain their own roles while binding the
+            # same original. Uniqueness concerns its resolved path and bytes,
+            # not the number of citation identities in the stage-local view.
+            bound_originals = {(str(Path(entry["path"]).resolve()), entry["sha256"])
+                               for entry in bound}
+            if len(bound_originals) != 1 or reader.get("status") not in {"pass", "not_pass"}:
+                continue
+            if (not checker._professional_objects_align(conclusion, reader.get("conclusion"))
+                    or not checker._reader_provider_matches(conclusion, reader)):
+                continue
+            try:
+                original = strict_read_json(foundation_read_file_strict(
+                    Path(root), relative, bound[0]["sha256"]),
+                    "PROFESSIONAL_PROOF_FAILED", "selected-artifact output")
+            except (RuntimeError, WorkflowError, ValueError, OSError):
+                continue
+            if original == conclusion:
+                originals.append(reader)
+                original_paths.add(proof_path)
+        if (len(originals) != 1 or not target_matches
+                or item.get("status") not in {"pass", "not_pass"}
+                or item.get("version_relation") not in {"same", "higher"}):
+            ev.update({"reason": "professional_original_output_missing"})
+            return base
+        details = _as_dict(conclusion.get("details")) or {}
+        artifacts = details.get("artifacts")
+        closure = _as_dict(details.get("closure")) or {}
+        resources = closure.get("resources")
+        checked = (_as_dict(conclusion.get("scope")) or {}).get("checked")
+        if (not isinstance(artifacts, list) or not isinstance(resources, list) or not isinstance(checked, list)
+                or not closure.get("digest")
+                or (_as_dict(conclusion.get("outcome")) or {}).get("completion") not in {"complete", "partial"}):
+            ev.update({"reason": "professional_scope_incomplete"})
+            return base
+        dimension_rows = [row for row in artifacts if isinstance(row, dict)
+                          and selection_key in (_as_dict(row.get("selection")) or {})]
+        def selected_document_path(row):
+            relative = (_as_dict(row.get("selection")) or {}).get("path")
+            return (target / relative).resolve() if isinstance(relative, str) and relative else None
+        def cited_object(path):
+            return path is not None and any(
+                path.is_relative_to(Path(entry["path"]).resolve()) if entry.get("kind") == "source_tree"
+                else path == Path(entry["path"]).resolve() for entry in cited)
+        selected = [row for row in dimension_rows if cited_object(selected_document_path(row))]
+        ev["original_checks"] = selected
+        if not selected:
+            ev.update({"reason": "professional_object_scope_missing"})
+            return base
+        # A proof may cover several independent methods. Schema support files,
+        # this original proof and objects checked only by the other dimension
+        # are not additional data objects for the current method. Every other
+        # explicitly cited file still needs its own original performed row.
+        dimension_paths = {selected_document_path(row) for row in dimension_rows}
+        schema_paths = {(target / schema["path"]).resolve() for row in artifacts if isinstance(row, dict)
+                        and isinstance(schema := (_as_dict(row.get("selection")) or {}).get("schema"), dict)
+                        and isinstance(schema.get("path"), str)}
+        schema_paths.update((target / source["ref"]).resolve() for row in artifacts if isinstance(row, dict)
+                            and isinstance(source := row.get("schemaSource"), dict)
+                            and isinstance(source.get("ref"), str))
+        other_paths = {selected_document_path(row) for row in artifacts if isinstance(row, dict)
+                       and selection_key not in (_as_dict(row.get("selection")) or {})}
+        required_paths = {Path(entry["path"]).resolve() for entry in cited if entry.get("kind") != "source_tree"}
+        required_paths -= (schema_paths | other_paths) - dimension_paths
+        required_paths -= original_paths
+        missing_paths = required_paths - {selected_document_path(row) for row in selected}
+        statuses = ["insufficient"] if missing_paths else []
+        if missing_paths:
+            ev["missing_object_paths"] = sorted(str(path) for path in missing_paths)
+        for row in selected:
+            try:
+                receipt = row.get("document")
+                selection = row["selection"]
+                observation = (_as_dict(row.get("checks")) or {}).get(dimension)
+                if isinstance(observation, dict) and observation.get("status") == "insufficient":
+                    statuses.append("insufficient")
+                    continue
+                if (not isinstance(receipt, dict) or receipt.get("ref") != selection.get("path")
+                        or not isinstance(observation, dict)
+                        or observation.get("status") not in {"pass", "findings", "insufficient"}):
+                    raise ValueError("selected method observation is incomplete")
+                document_path = (target / receipt["ref"]).resolve()
+                if not any((entry.get("kind") == "source_tree"
+                            and document_path.is_relative_to(Path(entry["path"]).resolve()))
+                           or (entry.get("kind") != "source_tree"
+                               and Path(entry["path"]).resolve() == document_path
+                               and entry["sha256"] == receipt.get("sha256")) for entry in cited):
+                    raise ValueError("selected document is outside the cited method object")
+                receipts = [receipt]
+                if dimension == "schema":
+                    schema = row.get("schemaSource")
+                    schema_selection = _as_dict(selection.get("schema"))
+                    if (not isinstance(schema, dict) or schema_selection is None
+                            or schema.get("ref") != schema_selection.get("path")):
+                        raise ValueError("selected schema receipt is missing")
+                    receipts.append(schema)
+                for source_receipt in receipts:
+                    source_path = (target / source_receipt["ref"]).resolve()
+                    if not any((entry.get("kind") == "source_tree"
+                                and source_path.is_relative_to(Path(entry["path"]).resolve()))
+                               or (Path(entry["path"]).resolve() == source_path
+                                   and entry["sha256"] == source_receipt.get("sha256")) for entry in evidence_set):
+                        raise ValueError("selected source is outside the Task inputs")
+                    if not any(isinstance(resource, dict)
+                               and resource.get("path") == source_receipt["ref"]
+                               and resource.get("sha256") == source_receipt.get("sha256") for resource in resources):
+                        raise ValueError("selected source differs from its provider closure")
+                    foundation_read_file_strict(target, source_receipt["ref"], source_receipt["sha256"])
+                status = observation["status"]
+                if status in {"pass", "findings"} and f"artifact:{row.get('index')}:{dimension}" not in checked:
+                    raise ValueError("selected method is outside the performed provider scope")
+                statuses.append(status)
+            except (KeyError, TypeError, RuntimeError, WorkflowError, ValueError, OSError) as exc:
+                ev.setdefault("source_binding_errors", []).append(str(exc))
+                statuses.append("insufficient")
+        if not statuses or any(status == "insufficient" for status in statuses):
+            ev.update({"reason": "professional_scope_incomplete", "professional_issue": "professional_incomplete"})
+            if "findings" not in statuses:
+                return base
+        base["status"] = "FAIL" if "findings" in statuses else "PASS"
+        base["observation_source"] = "retained_professional_consumption"
+        ev["reason"] = "original_professional_mechanical_result"
+        ev.pop("kind", None)
+        ev.pop("gap", None)
+        return base
+    # Provider-wide higher-version acceptance remains in professional_consumption.
+    # A method still needs the original reader and its actual performed scope.
+    reader_status = item.get("reader_status")
+    if item.get("version_relation") == "higher":
+        readers = [source["reader_result"] for source in (professional_inputs or {}).get("items", [])
+            if source.get("provider_id") == provider and isinstance(source.get("reader_result"), dict)
+            and source["reader_result"].get("status") in {"pass", "not_pass"}
+            and checker._professional_objects_align(conclusion, source["reader_result"].get("conclusion"))
+            and checker._reader_provider_matches(conclusion, source["reader_result"])]
+        reader_status = readers[0]["status"] if len(readers) == 1 else None
     outcome = conclusion.get("outcome", {})
-    if item.get("version_relation") != "same" or outcome.get("completion") not in {"complete", "partial"} or item.get("reader_status") not in {"pass", "not_pass"}:
+    if item.get("version_relation") not in {"same", "higher"} or outcome.get("completion") not in {"complete", "partial"} or reader_status not in {"pass", "not_pass"}:
         ev.update({"reason": "professional_incomplete", "professional_issue": "professional_incomplete"})
         return base
     details = conclusion.get("details", {})
@@ -5536,7 +8191,8 @@ def _retained_professional_observation(
         if not supported:
             if not outside_public_scope:
                 ev.update({"reason": "professional_object_scope_missing",
-                           "gap": "The finalized citations do not identify the precise public contracts/drift object; no provider incapability is inferred."})
+                           "gap": "This method needs an original selected fixed-reference output; a semantic engineering scope is not that output."
+                           if fixed_reference_method else "The finalized citations do not identify the precise public contracts/drift object; no provider incapability is inferred."})
                 return base
             ev.update(public_scope_gap)
             return base
@@ -5570,7 +8226,26 @@ def _retained_professional_observation(
     base["status"] = "FAIL" if failure else "PASS"
     base["observation_source"] = "retained_professional_consumption"
     ev["reason"] = "original_professional_mechanical_result"
+    if complete and outcome.get("completion") == "complete":
+        ev.pop("kind", None)
+        ev.pop("gap", None)
     return base
+
+
+def _context_measurement_recorded(
+    canonical_id: str, method: str, observation: dict[str, Any],
+) -> bool:
+    """Recognize recorded metering while keeping its assessment gap unresolved."""
+    evidence = observation.get("evidence")
+    return (
+        canonical_id == "SFA-CONTEXT-002" and method == "static_scan"
+        and observation.get("status") in {"PASS", "EVIDENCE_MISSING"}
+        and isinstance(evidence, dict)
+        and evidence.get("reason") in {"actual_skill_context_measured", "audit_mechanical_object_unresolved"}
+        and isinstance(evidence.get("measurements"), list) and bool(evidence["measurements"])
+        and isinstance(evidence.get("foundation_source_authority"), dict)
+        and bool(evidence["foundation_source_authority"])
+    )
 
 
 def _matching_original_mechanical(
@@ -5578,6 +8253,7 @@ def _matching_original_mechanical(
     canonical_id: str,
     revision_digest: str,
     method: str,
+    verified_refs: list[dict[str, str]] | None = None,
 ) -> dict[str, Any] | None:
     """Consume an original mechanical output only when identity and method match."""
     for result in trusted_observation.get("rule_results") or []:
@@ -5589,7 +8265,11 @@ def _matching_original_mechanical(
         for sub in result.get("check_method_subresults") or []:
             if not isinstance(sub, dict) or sub.get("check_method") != method:
                 continue
-            evidence = sub.get("evidence") if isinstance(sub.get("evidence"), dict) else {}
+            parent = result.get("result_payload")
+            resolved = _resolved_original_subresult(
+                parent if isinstance(parent, dict) else {}, sub, canonical_id, revision_digest,
+            )
+            evidence = resolved.get("evidence") if isinstance(resolved.get("evidence"), dict) else {}
             if evidence.get("kind") == "method_not_executed":
                 continue
             if evidence.get("reason") in {
@@ -5598,6 +8278,9 @@ def _matching_original_mechanical(
                 continue
             status = sub.get("status")
             if status not in {"PASS", "FAIL", "NOT_APPLICABLE", "EVIDENCE_MISSING"}:
+                continue
+            if not (_method_determination_complete(resolved, verified_refs)
+                    or _context_measurement_recorded(canonical_id, method, resolved)):
                 continue
             return {
                 "status": status,
@@ -5621,6 +8304,7 @@ def _record_retained_mechanical_judgments(
     internal_review_request: dict[str, Any] | None = None,
     foundation_task_digest: str | None = None,
     professional: dict[str, Any] | None = None,
+    professional_inputs: dict[str, Any] | None = None,
     evidence_set: list[dict[str, Any]] | None = None,
     target: Path | None = None,
 ) -> None:
@@ -5635,16 +8319,15 @@ def _record_retained_mechanical_judgments(
         for row in projection.get("rules") or []
         if isinstance(row, dict)
     }
-    observed = 0
-    unavailable = 0
     for record in method_assurance.get("records") or []:
         if selected_rule_ids is not None and record.get("canonical_id") not in selected_rule_ids:
             continue
-        if isinstance(record.get("trusted_observation"), dict):
-            continue
         method = record.get("check_method")
         rule = rules.get(record.get("canonical_id"))
-        if not isinstance(rule, dict) or rule.get("lifecycle_status") != "ACTIVE_SEMANTIC":
+        if not isinstance(rule, dict) or rule.get("lifecycle_status") not in {"ACTIVE_SEMANTIC", "ACTIVE_MECHANICAL"}:
+            continue
+        current = record.get("trusted_observation")
+        if isinstance(current, dict) and method not in MECHANICAL_CHECK_METHODS:
             continue
         if method not in MECHANICAL_CHECK_METHODS:
             review = (internal_semantic_reviews or {}).get(
@@ -5663,42 +8346,75 @@ def _record_retained_mechanical_judgments(
         elif (
             method == "static_scan"
             and record.get("canonical_id") in _BOUNDED_SECURITY_RULE_IDS
+            and (
+                _method_determination_complete(_security_ledger_observation(
+                    security_observation, record["canonical_id"],
+                ))
+                or not _verified_static_evidence_refs(
+                    internal_semantic_reviews, internal_semantic_binding,
+                    internal_review_request, foundation_task_digest,
+                    record["canonical_id"], record["revision_digest"],
+                    check_method=(method if (internal_review_request or {}).get("schema_version") == "3.0.0"
+                                  else "semantic_review"),
+                )
+            )
         ):
+            if isinstance(current, dict) and _method_determination_complete(current):
+                continue
             observation = _security_ledger_observation(
                 security_observation, record["canonical_id"],
             )
         else:
+            current_contract = (internal_review_request or {}).get("schema_version") == "3.0.0"
+            review_method = method if current_contract else "semantic_review"
+            review = (internal_semantic_reviews or {}).get((record["canonical_id"], record["revision_digest"], review_method), {})
+            refs = _verified_static_evidence_refs(
+                internal_semantic_reviews, internal_semantic_binding, internal_review_request,
+                foundation_task_digest, record["canonical_id"], record["revision_digest"],
+                check_method=review_method,
+            )
             original = _matching_original_mechanical(
                 trusted_observation,
                 record["canonical_id"],
                 record["revision_digest"],
                 method,
+                refs,
             )
-            review = (internal_semantic_reviews or {}).get((record["canonical_id"], record["revision_digest"], "semantic_review"), {})
-            refs = _verified_static_evidence_refs(
-                internal_semantic_reviews, internal_semantic_binding, internal_review_request,
-                foundation_task_digest, record["canonical_id"], record["revision_digest"],
-            )
+            if original is not None:
+                # The completed original method always wins, including failures.
+                if isinstance(current, dict) and _method_determination_complete(original, refs):
+                    continue
+                if _context_measurement_recorded(record["canonical_id"], method, original) and review:
+                    original = {**original, "evidence": {
+                        **original["evidence"], "mechanical_object_premise": review,
+                    }}
+            elif isinstance(current, dict):
+                actual = current.get("evidence", {}).get("original_executor_result", {})
+                actual_refs = actual.get("verified_evidence_refs", []) if isinstance(actual, dict) else []
+                if _method_determination_complete(current, [*refs, *actual_refs]):
+                    continue
             judgment = _retained_gap_observation(rule, method, review, refs)
             observation = original or (judgment if judgment["status"] in {"NOT_APPLICABLE", "EVIDENCE_MISSING"} else
-                _retained_professional_observation(rule, method, review, refs, professional, evidence_set or [], target)
+                _retained_professional_observation(rule, method, review, refs, professional, evidence_set or [], target, professional_inputs=professional_inputs, security_observation=security_observation)
                 or judgment)
+            if (isinstance(current, dict) and original is None and not review
+                    and rule.get("lifecycle_status") == "ACTIVE_MECHANICAL"):
+                continue
+        prior_evidence = current.get("evidence") if isinstance(current, dict) else None
+        if isinstance(prior_evidence, dict) and "original_executor_result" in prior_evidence:
+            observation.setdefault("evidence", {})["original_executor_result"] = prior_evidence["original_executor_result"]
         record["trusted_observation"] = {
             key: value for key, value in observation.items() if key != "proof_eligible"
         }
         status = observation.get("status")
         if status in {"EVIDENCE_MISSING", "NOT_RUN"}:
             record["assurance_status"] = f"{status}_NOT_PROVEN"
-            unavailable += 1
         else:
             record["assurance_status"] = "TRUSTED_OBSERVED_NOT_PROVEN"
-            observed += 1
-    method_assurance["trusted_observed"] = (
-        method_assurance.get("trusted_observed", 0) + observed
-    )
-    method_assurance["trusted_unavailable"] = (
-        method_assurance.get("trusted_unavailable", 0) + unavailable
-    )
+    statuses = [row["trusted_observation"].get("status") for row in method_assurance.get("records", [])
+                if isinstance(row.get("trusted_observation"), dict)]
+    method_assurance["trusted_observed"] = sum(status not in {"EVIDENCE_MISSING", "NOT_RUN"} for status in statuses)
+    method_assurance["trusted_unavailable"] = sum(status in {"EVIDENCE_MISSING", "NOT_RUN"} for status in statuses)
 
 
 def _context_document(
@@ -5710,6 +8426,7 @@ def _context_document(
     target_type: str,
     platform: str,
     target_digest: str,
+    mechanical_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     descriptor_by_id: dict[str, list[dict[str, Any]]] = {}
     for row in request["rules"]:
@@ -5737,6 +8454,7 @@ def _context_document(
             "revision_digest": row["canonical_revision_digest"],
             "check_method": row["check_method"],
             "binding_id": row["binding_id"],
+            **({"review_purpose": row["review_purpose"]} if request.get("schema_version") == "3.0.0" else {}),
         }
         for row in rules
     ]
@@ -5753,9 +8471,25 @@ def _context_document(
         }
         for row in rules
     ]
+    context_measurements = [
+        {
+            "canonical_lineage": result["canonical_lineage"],
+            "check_method": "static_scan", "status": result["status"],
+            "evidence": {key: value for key, value in result["evidence"].items()
+                         if key in {"reason", "measurements", "assessment_materials", "assessment_required",
+                                    "hard_threshold", "threshold_violations", "foundation_source_authority"}},
+        }
+        for result in mechanical_results or []
+        if _context_measurement_recorded(
+            result.get("canonical_lineage", {}).get("canonical_id"), "static_scan", result,
+        )
+    ]
+    for row in untrusted_rows:
+        if row["canonical_id"] in {"SFA-CONTEXT-002", "SFA-CONTEXT-003"} and context_measurements:
+            row["mechanical_observations"] = context_measurements
     return {
         "kind": "skill-family-audit.semantic-review-context",
-        "schema_version": "1.0.0",
+        "schema_version": "3.0.0" if request.get("schema_version") == "3.0.0" else "1.0.0",
         "control": {
             "parent_review_request_digest": request["review_request_digest"],
             "foundation_task_digest": request["foundation_task_digest"],
@@ -5772,6 +8506,8 @@ def _context_document(
             "context_rule_set_digest": foundation_document_digest(identity_rows),
             "rules": control_rules,
             "review_semantics": {
+                **({"applies_to_review_purpose": "semantic_conclusion"}
+                   if request.get("schema_version") == "3.0.0" else {}),
                 "authority": "interpret_only_the_frozen_rule_and_evidence",
                 "additional_requirements_forbidden": True,
                 "complete_snapshot_absence": "FAIL",
@@ -5786,6 +8522,7 @@ def _context_document(
             "result_contract": {
                 "kind": "skill-family-audit.semantic-context-result",
                 "required_review_fields": [
+                    *(["review_purpose"] if request.get("schema_version") == "3.0.0" else []),
                     "binding_id",
                     "canonical_id",
                     "check_method",
@@ -5829,6 +8566,7 @@ def _build_semantic_context_plan(
     platform: str,
     target_digest: str,
     profile_spi_root: Path | None = None,
+    mechanical_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build and token-check the model contexts without invoking a model."""
     base: dict[str, Any] = {
@@ -5876,6 +8614,7 @@ def _build_semantic_context_plan(
             target_type=target_type,
             platform=platform,
             target_digest=target_digest,
+            mechanical_results=mechanical_results,
         )
         context_text = foundation_canonical_bytes(document).decode("utf-8")
         estimate = foundation_estimate_tokens(
@@ -5955,7 +8694,7 @@ def _merge_semantic_context_results(
     context_plan: dict[str, Any],
     context_results: Any,
 ) -> tuple[dict[str, Any], dict[str, int]]:
-    """Validate exact child subsets and construct one internalReviewV2 payload."""
+    """Validate exact child subsets and build the parent contract result."""
     if not isinstance(context_results, list):
         raise WorkflowError(
             "SEMANTIC_CONTEXT_RESULT_INVALID", "context results 必须是数组"
@@ -5967,15 +8706,6 @@ def _merge_semantic_context_results(
     child_reviews: list[dict[str, Any]] = []
     parent_rows: list[dict[str, Any]] = []
     child_rows: list[dict[str, Any]] = []
-    for expected in context_plan["contexts"]:
-        for rule in _semantic_context_rules(expected["request"]):
-            parent_rows.append({
-                "canonical_id": rule["canonical_id"],
-                "revision_digest": rule["canonical_revision_digest"],
-                "check_method": rule["check_method"],
-                "binding_id": rule["binding_id"],
-                "evidence_refs": _review_ref_identities(rule["evidence_refs"]),
-            })
     for item in context_results:
         if not isinstance(item, dict) or set(item) != {
             "context_digest", "reviews"
@@ -6021,6 +8751,15 @@ def _merge_semantic_context_results(
                 "context reviews 未精确覆盖冻结的规则子集",
             )
         observed_contexts.add(context_digest)
+        for rule in _semantic_context_rules(expected["request"]):
+            parent_rows.append({
+                "canonical_id": rule["canonical_id"],
+                "revision_digest": rule["canonical_revision_digest"],
+                "check_method": rule["check_method"],
+                "binding_id": rule["binding_id"],
+                "evidence_refs": _review_ref_identities(rule["evidence_refs"]),
+                **({"review_purpose": rule["review_purpose"]} if request.get("schema_version") == "3.0.0" else {}),
+            })
         for review in reviews:
             if not isinstance(review, dict):
                 raise WorkflowError(
@@ -6035,8 +8774,9 @@ def _merge_semantic_context_results(
                 "evidence_refs": _review_ref_identities(
                     review.get("evidence_refs")
                 ),
+                **({"review_purpose": review.get("review_purpose")} if request.get("schema_version") == "3.0.0" else {}),
             })
-    if observed_contexts != set(expected_contexts):
+    if expected_contexts and not observed_contexts:
         raise WorkflowError(
             "SEMANTIC_CONTEXT_RESULT_INVALID",
             "context results 遗漏冻结的语义上下文",
@@ -6060,7 +8800,7 @@ def _merge_semantic_context_results(
         for row in child_reviews
     }
     payload = {
-        "schema_version": "2.0.0",
+        "schema_version": "3.0.0" if request.get("schema_version") == "3.0.0" else "2.0.0",
         "kind": "skill-family-audit.semantic-review-result",
         "producer_method_id": request["producer_method_id"],
         "cognitive_independence": request["cognitive_independence"],
@@ -6775,8 +9515,23 @@ def _canonical_coverage_from_results(
                 )
                 for record in mechanical_ledger
             )
+        # An unresolved executor carrier need not repeat citations already
+        # validated for every final mechanical method of this same lineage.
+        final_mechanical_na = (
+            result.get("status") == "NOT_APPLICABLE"
+            and isinstance(method_subresults, list) and bool(method_subresults)
+            and all(
+                isinstance(item, dict)
+                and item.get("check_method") in MECHANICAL_CHECK_METHODS
+                and (binding["canonical_id"], binding["canonical_revision_digest"],
+                     item["check_method"]) in method_records
+                and _coverage_subject(item).get("status") == "NOT_APPLICABLE"
+                for item in method_subresults
+            )
+        )
         if (_method_determination_complete(result, verified_evidence_refs)
                 or (result.get("status") == "EVIDENCE_MISSING" and bool(method_subresults))
+                or final_mechanical_na
                 ) and method_terminal:
             covered.add(
                 (binding["canonical_id"], binding["canonical_revision_digest"])
@@ -6830,15 +9585,22 @@ def _validate_release_closure(root: Path) -> list[str]:
         path = root / relative
         if path.suffix != ".json":
             continue
-        value = load_json(path)
         if path.name.endswith(".schema.json"):
-            if not isinstance(value, dict) or not isinstance(value.get("$id"), str) or not value["$id"]:
+            value = load_json(path)
+            schema_id = value.get("$id") if isinstance(value, dict) else None
+            if isinstance(value, dict) and "$id" not in value:
+                schema_id = path.resolve(strict=True).as_uri()
+            if not isinstance(schema_id, str) or not schema_id:
                 raise WorkflowError(
                     "RELEASE_ARTIFACT_CLOSURE_INVALID",
                     f"Schema 缺少有效 $id: {relative}",
                 )
-            schema_entries.append({"$id": value["$id"], "document": value})
+            schema_entries.append({"$id": schema_id, "document": value})
         else:
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise WorkflowError("INPUT_INVALID", f"{path}: {exc}") from exc
             for reference in _release_file_references(value):
                 if not isinstance(reference, str) or not reference:
                     raise WorkflowError(
@@ -7227,7 +9989,7 @@ def validate_plugin_project_observation(observation: dict[str, Any]) -> None:
         for item in skills or []
         if isinstance(item, dict) and isinstance(item.get("id"), str)
     }
-    mapped_physical_names = set()
+    mapped_logical_ids = set()
     for projection in projections or []:
         if not isinstance(projection, dict):
             continue
@@ -7240,8 +10002,8 @@ def validate_plugin_project_observation(observation: dict[str, Any]) -> None:
                     "PROJECTION_LOGICAL_SKILL_UNMAPPED",
                     "平台投影映射缺少逻辑技能、物理技能名或路径",
                 )
-            mapped_physical_names.add(mapping["physicalName"])
-    unmapped = sorted(mapped_physical_names - observed_ids)
+            mapped_logical_ids.add(mapping["skillId"])
+    unmapped = sorted(mapped_logical_ids - observed_ids)
     if unmapped:
         raise WorkflowError(
             "PROJECTION_LOGICAL_SKILL_UNMAPPED",
@@ -7265,7 +10027,7 @@ def validate_plugin_project_observation(observation: dict[str, Any]) -> None:
 # triage-duplicate-logical-skill-id.md §3；豁免仅当同一逻辑 ID 同时由根
 # skills/ 声明，根声明为准；根无对应声明或宿主 manifest 缺失时维持 fail-closed）。
 _PLATFORM_DISTRIBUTION_ADAPTER_DIRS = frozenset(
-    {"claude", "codex", "workbuddy", "kimi-code"}
+    {"claude", "codex", "workbuddy", "kimi-code", "qoder"}
 )
 
 
@@ -7654,6 +10416,7 @@ def observe_plugin_project(
         if target_type == "project_adoption"
         else (
             "package.json",
+            "manifest.json",
             "plugin-src/manifest.json",
             *host_manifest_relatives,
         )
@@ -7683,14 +10446,21 @@ def observe_plugin_project(
             )
         for generated_root in declared.generated_roots:
             manifest_paths.update(_platform_manifests_under(generated_root))
+    host_identities = {
+        identity_root / relative: _manifest_identity(identity_root / relative, root)
+        for relative in host_manifest_relatives
+        if identity_root / relative in manifest_paths
+    }
+    host_identity = next(
+        (row for row in host_identities.values() if row["pluginId"]), None
+    )
     manifest_identities = [
-        _manifest_identity(
+        host_identities[path] if path in host_identities else _manifest_identity(
             path,
             root,
-            # In project-adoption the project Profile and platform manifest own
-            # the plugin identity.  The installed package.json names the adapter
-            # distribution and may legitimately differ from the family id.
-            package_name_is_plugin_id=not (path == package_path and identity_hint),
+            package_name_is_plugin_id=not (
+                path == package_path and (identity_hint or host_identity)
+            ),
         )
         for path in sorted(manifest_paths)
     ]
@@ -7708,7 +10478,9 @@ def observe_plugin_project(
         "family_source": "plugin",
         "project_adoption": "plugin",
     }[target_type]
-    plugin_id = hint.get("pluginId") or package.get("name")
+    plugin_id = hint.get("pluginId") or (
+        host_identity["pluginId"] if host_identity else package.get("name")
+    )
     version = hint.get("version") or package.get("version")
     if not isinstance(plugin_id, str) or not plugin_id:
         plugin_id = next(
@@ -7791,7 +10563,7 @@ def observe_plugin_project(
                     "PROJECTION_LOGICAL_SKILL_UNMAPPED",
                     f"平台投影映射缺少 Skill 路径: {_relative_path(manifest_path, root)}",
                 )
-            physical_name = raw.get("physicalName")
+            physical_name = raw.get("physicalName", logical_id)
             if not isinstance(physical_name, str) or not physical_name:
                 raise WorkflowError(
                     "PROJECTION_LOGICAL_SKILL_UNMAPPED",
@@ -7803,7 +10575,8 @@ def observe_plugin_project(
             )
             mapped_path = manifest_path.parent / mapping_path
             declared_source_mapping = (
-                source_manifest
+                "physicalName" in raw
+                and source_manifest
                 and manifest.get("platformId") in MANAGED_PLATFORM_TEMPLATE_IDS
                 and manifest.get("projectionStatus") == "projection_complete"
                 and len(raw_mappings) == 1
@@ -7970,12 +10743,12 @@ def observe_plugin_project(
                     path.is_file()
                     and not path.is_symlink()
                     and (path == root or root in path.parents)
-                    and mapping["physicalName"] not in seen_ids
+                    and mapping["skillId"] not in seen_ids
                 ):
                     relative = _relative_path(path, root)
-                    seen_ids[mapping["physicalName"]] = relative
-                    skills.append({"id": mapping["physicalName"], "path": relative})
-    if not skills:
+                    seen_ids[mapping["skillId"]] = relative
+                    skills.append({"id": mapping["skillId"], "path": relative})
+    if not skills and target_type != "project_adoption":
         raise WorkflowError("FAMILY_SOURCE_EMPTY", "受检插件没有可观察逻辑技能")
 
     observation: dict[str, Any] = {
@@ -7988,7 +10761,9 @@ def observe_plugin_project(
     }
     if isinstance(plugin_id, str) and plugin_id:
         manifest_path = (
-            "package.json"
+            host_identity["path"]
+            if host_identity
+            else "package.json"
             if package_path.is_file()
             else manifest_identities[0]["path"] if manifest_identities else None
         )
@@ -8725,7 +11500,6 @@ _PRODUCT_METADATA_MATERIALS = (
     ("plugin-src/skills/skill-family-audit-conformance/scripts/foundation_adoption_verifier.py", "source_file"),
     ("plugin-src/skills/skill-family-audit-conformance/scripts/resolve_spec_release.py", "source_file"),
     ("plugin-src/skills/skill-family-audit-release/scripts/release_audit.py", "source_file"),
-    ("plugin-src/skills/skill-family-audit-release/scripts/release_receipts.py", "source_file"),
     ("spec/policies/registry-protocol-adoption.json", "policy"),
     ("spec/policies/version-release-governance.json", "policy"),
     ("spec/current-artifacts/methods/conformance-audit.json", "manifest"),
@@ -8989,6 +11763,8 @@ def _derived_evidence_set(target: Path) -> list[dict[str, Any]]:
     派生只是诚实描述既有输入（目标字节即证据），不合成任何通过结论。
     """
     kind = "source_tree" if target.is_dir() else "source_file"
+    if kind == "source_tree":
+        _RUN_TREE_DIGEST_CACHE.pop(target, None)
     digest_value = (
         foundation_tree_digest(target)
         if target.is_dir()
@@ -9285,11 +12061,10 @@ def _gmin_static_outcome(
         }
     if rule_id == "gmin:legacy-risk-plan":
         return {
-            "status": "NOT_APPLICABLE",
+            "status": "EVIDENCE_MISSING",
             "evidence": {
-                "reason_code": "CONTRACT_DEPRECATED_D8",
-                "legacy_risk_count": 0,
-                "plan": "plan_not_required",
+                "reason": "audit_mechanical_object_unresolved",
+                "object": "current migration impact, compatibility and authorized plan",
             },
         }
     if rule_id == "gmin:new-family-native-outer":
@@ -9311,23 +12086,14 @@ def _gmin_static_outcome(
             },
         }
     if rule_id == "gmin:family-migration-checklist":
+        # SFA-MIGRATE-021 当前只保留 semantic_review。已撤销的
+        # schema_validation / digest_verification 不得再作为机械子结果。
         return {
-            "status": "NOT_APPLICABLE",
-            "evidence": {"reason_code": "CONTRACT_DEPRECATED_D8", "missing": []},
-            "check_method_subresults": [
-                {
-                    "check_method": "schema_validation",
-                    "status": "NOT_APPLICABLE",
-                    "observation_source": "deprecated_family_migration_contract",
-                    "evidence": {"reason_code": "CONTRACT_DEPRECATED_D8"},
-                },
-                {
-                    "check_method": "digest_verification",
-                    "status": "NOT_APPLICABLE",
-                    "observation_source": "deprecated_family_migration_contract",
-                    "evidence": {"reason_code": "CONTRACT_DEPRECATED_D8"},
-                },
-            ],
+            "status": "EVIDENCE_MISSING",
+            "evidence": {
+                "reason": "audit_mechanical_object_unresolved",
+                "object": "current family migration interfaces, compatibility and exit conditions",
+            },
         }
     if rule_id == "gmin:profile-composition-conflicts":
         required_sections = {
@@ -9430,6 +12196,7 @@ def _verified_static_evidence_refs(
     foundation_task_digest: str | None,
     canonical_id: str,
     revision_digest: str,
+    *, check_method: str = "semantic_review",
 ) -> list[dict[str, str]]:
     """取同一次 Task、同一条已终审规则的证据引用，只留四个定位字段。
 
@@ -9458,14 +12225,19 @@ def _verified_static_evidence_refs(
     ):
         return []
     review = internal_semantic_reviews.get(
-        (canonical_id, revision_digest, "semantic_review")
+        (canonical_id, revision_digest, check_method)
     )
     refs = review.get("evidence_refs") if isinstance(review, dict) else None
     if not isinstance(refs, list):
         return []
     request_rule = next((item for item in internal_review_request.get("rules", [])
-        if semantic_review.review_identity(item) == (canonical_id, revision_digest, "semantic_review")), None)
+        if semantic_review.review_identity(item) == (canonical_id, revision_digest, check_method)), None)
     if request_rule is None or review.get("binding_id") != request_rule.get("binding_id"):
+        return []
+    if internal_review_request.get("schema_version") == "3.0.0" and (
+        review.get("review_purpose") != request_rule.get("review_purpose")
+        or not semantic_review.valid_review_purpose(check_method, review.get("review_purpose"))
+    ):
         return []
     request_evidence = {item.get("evidence_id"): item for item in internal_review_request.get("evidence", [])}
     copied: list[dict[str, str]] = []
@@ -10067,11 +12839,49 @@ def _professional_mechanical_pass_holds_unscheduled_semantic(
     return identity not in scheduled_review_identities
 
 
+def _bound_professional_capability_placeholder(
+    item: dict[str, Any], original: dict[str, Any], identity: tuple[str, str, str],
+    refs: list[dict[str, str]], *, target: Path | None = None,
+) -> bool:
+    """Recognize the original producer's pre-applicability scope contribution."""
+    evidence = _as_dict(original.get("evidence")) or {}
+    consumption = _professional_consumption_record(item)
+    conclusion = _professional_original_conclusion_from_item(item)
+    subject = (conclusion or {}).get("subject", {}).get("ref")
+    if not consumption:
+        if evidence.get("reason") != "professional_proof_missing":
+            return False
+        subject = str(target) if target is not None else None
+    if (original.get("status") != "EVIDENCE_MISSING"
+            or consumption and evidence.get("capability_gap") is not True
+            or (_as_dict(item.get("evidence")) or {}).get("mechanical_half") is not True
+            or not isinstance(subject, str) or not Path(subject).is_absolute()
+            or not any(ref.get("role") == "object_scope_contract" and ref.get("locator") == subject
+                       for ref in refs)):
+        return False
+    # Reuse the producer rather than maintain a parallel list of its reasons,
+    # scopes or proof outcomes. This only reconstructs its consumed observation;
+    # it does not scan a target or read/validate a professional proof again.
+    produced = executors.m1_rule_governance_b2._finish_professional_consumption(
+        {"target": subject}, consumption, mechanical=identity[2], scope_rule=identity[0],
+    )
+    expected = [row for row in produced.get("check_method_subresults", [])
+                if row.get("check_method") == identity[2]]
+    return len(expected) == 1 and expected[0] == original
+
+
 def _participating_route_statuses(
     item: dict[str, Any],
     lineage: dict[str, Any],
     route: dict[str, Any],
     method_records: dict[tuple[str, str, str], dict[str, Any]],
+    *, internal_semantic_reviews: dict[Any, Any] | None = None,
+    internal_semantic_binding: dict[str, Any] | None = None,
+    internal_review_request: dict[str, Any] | None = None,
+    foundation_task_digest: str | None = None,
+    professional: dict[str, Any] | None = None,
+    professional_inputs: dict[str, Any] | None = None,
+    evidence_set: list[dict[str, Any]] | None = None, target: Path | None = None,
 ) -> set[str]:
     """Collect method statuses that participate in the rule conclusion.
 
@@ -10087,7 +12897,77 @@ def _participating_route_statuses(
         for method in route["check_methods"]
     }
     if route.get("required_mechanical_methods"):
-        statuses.add(item["status"])
+        required = set(route["required_mechanical_methods"])
+        original_rows = [row for row in item.get("check_method_subresults") or []
+                         if isinstance(row, dict) and row.get("check_method") in MECHANICAL_CHECK_METHODS]
+        replaced = False
+        explained = (item.get("status") == "EVIDENCE_MISSING"
+                     and {row.get("check_method") for row in original_rows} == required)
+        for method in required if explained else []:
+            identity = (lineage["canonical_id"], lineage["revision_digest"], method)
+            matching = [row for row in original_rows if row.get("check_method") == method]
+            if len(matching) != 1:
+                explained = False
+                break
+            original = _resolved_original_subresult(item, matching[0], identity[0], identity[1])
+            refs = _verified_static_evidence_refs(
+                internal_semantic_reviews, internal_semantic_binding, internal_review_request,
+                foundation_task_digest, identity[0], identity[1], check_method=method,
+            )
+            if original.get("status") in {"PASS", "NOT_APPLICABLE"} and _method_determination_complete(original, refs):
+                continue
+            original_evidence = _as_dict(original.get("evidence")) or {}
+            professional_placeholder = _bound_professional_capability_placeholder(
+                item, original, identity, refs, target=target,
+            )
+            bound_role_placeholder = (
+                identity[0] == "SFA-REPO-005" and method == "static_scan"
+                and original.get("observation_source") == "executor_static_scan_observation"
+                and original_evidence.get("reason") == "bound_role_input_mechanical_evidence_unavailable"
+                and bool(original_evidence.get("evidence_refs"))
+                and original_evidence["evidence_refs"] == _verified_static_evidence_refs(
+                    internal_semantic_reviews, internal_semantic_binding, internal_review_request,
+                    foundation_task_digest, identity[0], identity[1],
+                )
+            )
+            if (original.get("status") != "EVIDENCE_MISSING"
+                    or not (professional_placeholder or bound_role_placeholder) and original_evidence.get("reason") not in {
+                        "audit_mechanical_object_unresolved", "audit_context_object_scope_unresolved",
+                        "mechanical_object_scope_unresolved",
+                    }
+                    or _method_determination_complete(original, refs)):
+                explained = False
+                break
+            record = method_records.get(identity, {})
+            effective = record.get("trusted_observation") or {}
+            professional_completion = (effective.get("status") == "PASS"
+                and effective.get("observation_source") == "retained_professional_consumption")
+            review = (internal_semantic_reviews or {}).get(identity)
+            descriptor = next((row for row in (internal_review_request or {}).get("rules", [])
+                               if semantic_review.review_identity(row) == identity), {})
+            evidence = _as_dict(effective.get("evidence")) or {}
+            source_refs = original_evidence.get("source_refs") or []
+            if (tuple(record.get(field) for field in ("canonical_id", "revision_digest", "check_method")) != identity
+                    or not (effective.get("status") == "NOT_APPLICABLE" or professional_completion) or not refs
+                    or not isinstance(review, dict) or evidence.get("mechanical_object_premise") != review
+                    or evidence.get("evidence_refs") != refs
+                    or evidence.get("object") != descriptor.get("applicability") or not descriptor.get("applicability")
+                    or not (professional_placeholder or bound_role_placeholder) and any(not any(isinstance(source, dict)
+                                   and source.get("evidence_id") == ref["evidence_id"]
+                                   and source.get("sha256") == ref["sha256"]
+                                   and source.get("path") == ref["locator"]
+                                   for source in source_refs) for ref in refs)
+                    or not _method_determination_complete(effective, refs)
+                    or not _effective_replaces_unresolved(effective, original, identity, required_premise=review,
+                        professional=professional, professional_inputs=professional_inputs,
+                        evidence_set=evidence_set, target=target)):
+                explained = False
+                break
+            replaced = True
+        # Only bound absence or an original public mechanical completion can
+        # explain away the placeholder. Raw payloads and real results remain intact.
+        if not (explained and replaced):
+            statuses.add(item["status"])
     return statuses
 
 
@@ -10529,7 +13409,7 @@ def _execute_conformance_workflow(
         return {
             "semantic_review_request": {
                 "kind": "skill-family-audit.semantic-review-request",
-                "schema_version": "1.0.0",
+                "schema_version": "3.0.0",
                 "producer_method_id": semantic_review.METHOD_ID,
                 "cognitive_independence": semantic_review.COGNITIVE_INDEPENDENCE,
                 "rules": [],
@@ -10549,341 +13429,24 @@ def _execute_conformance_workflow(
             "FOUNDATION_TASK_DIGEST_MISSING",
             "完整 conformance 执行必须绑定由 Quickstart 创建并计算的 Foundation Task digest",
         )
-    semantic_evidence = _semantic_evidence_view(parameters)
-    semantic_evidence_digest = _evidence_set_digest(semantic_evidence)
-    semantic_profile_preflight = _semantic_profile_preflight(
-        profile_plan,
-        semantic_group_registry,
-        canonical_applicability,
-        assurance_canonical_projection.get("rules", []),
-        semantic_evidence,
-        foundation_task_digest=foundation_task_digest,
-        evidence_set_digest=semantic_evidence_digest,
-    )
-    semantic_descriptors = _semantic_review_candidate_descriptors(
-        profile_plan,
-        semantic_profile_preflight,
-        all_semantic_descriptors,
-        semantic_evidence,
-        canonical_applicability,
-    )
-    semantic_missing_evidence_roles = (
-        _selected_semantic_missing_evidence_roles(
-            profile_plan,
-            semantic_profile_preflight,
-            all_semantic_descriptors,
-            semantic_evidence,
-            canonical_applicability,
-        )
-    )
-    _record_after_scope(
-        stage,
-        semantic_preflight=semantic_profile_preflight,
-        semantic_rules_skipped_missing_evidence_count=len(
-            semantic_missing_evidence_roles
-        ),
-    )
-    if semantic_descriptors:
-        try:
-            internal_review_request = semantic_review.build_review_request(
-                foundation_task_digest=foundation_task_digest,
-                evidence_set_digest=semantic_evidence_digest,
-                rule_set_digest=rule_set_digest,
-                descriptors=semantic_descriptors,
-                evidence_set=semantic_evidence,
-                digest_document=foundation_document_digest,
-            )
-        except semantic_review.SemanticReviewError as exc:
-            raise WorkflowError(exc.code, str(exc)) from exc
-    scheduled_review_identities = {
-        semantic_review.review_identity(row)
-        for row in (internal_review_request or {}).get("rules", [])
-    }
-    injected_spi_root = getattr(args, "foundation_profile_spi_root", None)
-    if injected_spi_root is not None:
-        injected_spi_root = Path(injected_spi_root)
-    semantic_model_plan = _build_semantic_context_plan(
-        profile_plan,
-        semantic_group_registry,
-        semantic_profile_preflight,
-        internal_review_request,
-        target_type=args.target_type,
-        platform=args.platform,
-        target_digest=semantic_target_digest,
-        profile_spi_root=injected_spi_root,
-    )
-    _write_context_plan(getattr(args, "context_plan_out", None), semantic_model_plan)
-    execution_plan_event = conformance_human_route._build_execution_plan_event(
-        profile_plan,
-        semantic_profile_preflight,
-        semantic_model_plan,
-        semantic_rules_skipped_missing_evidence_count=len(
-            semantic_missing_evidence_roles
-        ),
-        target_digest=semantic_target_digest,
-        selection_reason=getattr(
-            args, "profile_selection_reason", None
-        ) or "domain_default_full",
-        routing_file_digest=assurance_routing_receipt["sha256"],
-        trust_projection_digest=assurance_trust_digest,
-    )
-    print(
-        "SFA_EXECUTION_PLAN "
-        + json.dumps(execution_plan_event, ensure_ascii=False, sort_keys=True),
-        file=sys.stderr,
-        flush=True,
-    )
-    if getattr(args, "semantic_review_preflight", False):
-        return {
-            "semantic_review_request": internal_review_request
-            or {
-                "kind": "skill-family-audit.semantic-review-request",
-                "schema_version": "1.0.0",
-                "producer_method_id": semantic_review.METHOD_ID,
-                "cognitive_independence": semantic_review.COGNITIVE_INDEPENDENCE,
-                "rules": [],
-                "reason_code": "NO_REVIEW_READY_RULES",
-            },
-            "semantic_context_plan": semantic_model_plan,
-        }
+    # Run the existing selected static paths before requesting object premises.
+    # A preflight and its later invocation may repeat this read-only work; no
+    # persistent preview, cache or additional method ledger is introduced.
+    internal_semantic_reviews = {}
+    internal_semantic_binding = None
+    internal_review_request = None
+    foundation_task_digest = getattr(args, "foundation_task_digest", None)
     reviews, external_semantic_reviews = semantic_reviews(
         Path(args.semantic_result) if args.semantic_result else None,
-        rules,
-        semantic_request_digest,
-        target,
-        args.target_type,
+        rules, semantic_request_digest, target, args.target_type,
     )
-    internal_semantic_reviews: dict[tuple[str, str, str], dict[str, Any]] = {}
-    internal_semantic_binding: dict[str, Any] | None = None
-    internal_payload = getattr(args, "internal_semantic_review", None)
-    internal_context_results = getattr(
-        args, "internal_semantic_context_results", None
-    )
-    semantic_context_metrics = {
-        "semantic_model_call_count": 0,
-        "semantic_context_count": 0,
-        "estimated_input_tokens": 0,
-        "semantic_rules_sent_to_model_count": 0,
-    }
-    _record_after_scope(stage, semantic_context_metrics=semantic_context_metrics)
-    if internal_payload is not None and internal_context_results is not None:
-        raise WorkflowError(
-            "SEMANTIC_REVIEW_INPUT_AMBIGUOUS",
-            "单体 internal review 与 context results 不能同时提供",
-        )
-    if internal_context_results is not None:
-        if internal_review_request is None:
-            raise WorkflowError(
-                "SEMANTIC_REVIEW_UNEXPECTED",
-                "当前适用规则没有可接受 context result 的精确 binding",
-            )
-        if semantic_model_plan["blocked_rule_ids"]:
-            raise WorkflowError(
-                "SEMANTIC_CONTEXT_BUDGET_EXCEEDED",
-                "单条规则上下文仍超过预算: "
-                + ", ".join(semantic_model_plan["blocked_rule_ids"]),
-            )
-        internal_payload, semantic_context_metrics = (
-            _merge_semantic_context_results(
-                internal_review_request,
-                semantic_model_plan,
-                internal_context_results,
-            )
-        )
-        _record_after_scope(
-            stage, semantic_context_metrics=semantic_context_metrics
-        )
-    if internal_payload is not None:
-        if internal_review_request is None:
-            raise WorkflowError(
-                "SEMANTIC_REVIEW_UNEXPECTED",
-                "当前适用规则没有可接受内部审阅的精确 binding",
-            )
-        if internal_context_results is None:
-            # Bound v2 payload proves reviews were consumed, not how many
-            # host model calls produced them.  Do not infer call counts
-            # from review or result cardinality.
-            semantic_context_metrics = {
-                "semantic_model_call_count": None,
-                "semantic_context_count": semantic_context_metrics[
-                    "semantic_context_count"
-                ],
-                "estimated_input_tokens": semantic_context_metrics[
-                    "estimated_input_tokens"
-                ],
-                "semantic_rules_sent_to_model_count": None,
-            }
-            _record_after_scope(
-                stage, semantic_context_metrics=semantic_context_metrics
-            )
-        validation_errors = _semantic_schema_errors(internal_payload)
-        if validation_errors:
-            raise WorkflowError(
-                "SEMANTIC_REVIEW_RESULT_INVALID",
-                "; ".join(validation_errors),
-            )
-        try:
-            internal_semantic_reviews, internal_semantic_binding = (
-                semantic_review.finalize_review(
-                    internal_review_request,
-                    internal_payload,
-                    digest_document=foundation_document_digest,
-                )
-            )
-        except semantic_review.SemanticReviewError as exc:
-            raise WorkflowError(exc.code, str(exc)) from exc
-    verified_evidence_refs = [
-        ref for canonical_id, revision, method in internal_semantic_reviews
-        if method == "semantic_review"
-        for ref in _verified_static_evidence_refs(
-            internal_semantic_reviews, internal_semantic_binding, internal_review_request,
-            foundation_task_digest, canonical_id, revision,
-        )
-    ]
-    retained_trial_results: list[dict[str, Any]] = []
-    canonical_by_id = {
-        row["canonical_id"]: row
-        for row in assurance_canonical_projection.get("rules", [])
-        if isinstance(row, dict) and isinstance(row.get("canonical_id"), str)
-    }
-    preflight_by_id = {
-        row["canonical_id"]: row
-        for row in semantic_profile_preflight.get("records", [])
-    }
-    applicability_by_id = {
-        row["canonical_id"]: row
-        for row in canonical_applicability.get("rules", [])
-    }
-    retained_by_id: dict[str, list[dict[str, Any]]] = {}
-    for descriptor in retained_descriptors:
-        retained_by_id.setdefault(descriptor["canonical_id"], []).append(
-            descriptor
-        )
-    for canonical_id, descriptors in sorted(retained_by_id.items()):
-        revision_digest = descriptors[0]["canonical_revision_digest"]
-        methods = selected_nonmechanical_obligations.get(
-            (canonical_id, revision_digest), []
-        )
-        preflight_row = preflight_by_id.get(canonical_id)
-        if preflight_row is None:
-            scope_row = applicability_by_id.get(canonical_id, {})
-            preflight_row = {
-                "applicability_preflight": scope_row.get("scope_disposition", "UNDETERMINED"),
-                "citable_scope_facts": scope_row.get("citable_scope_facts", []),
-            }
-        missing_roles = semantic_missing_evidence_roles.get(canonical_id, [])
-        method_statuses = _nonmechanical_obligation_statuses(
-            canonical_id,
-            revision_digest,
-            methods,
-            internal_semantic_reviews,
-            scheduled_review_identities,
-            missing_roles,
-        )
-        semantic_internal = internal_semantic_reviews.get((
-            canonical_id,
-            revision_digest,
-            "semantic_review",
-        ))
-        # Only this conditional rule's common Loop-adoption premise is in
-        # scope. The host reviews that premise; these checks prove the frozen
-        # identity and adoption-reference binding, not the prose's truth.
-        # An arbitrary method N/A must not hide an unimplemented static method.
-        scope_not_applicable = (
-            canonical_id == "SFA-WIRING-002"
-            and canonical_by_id[canonical_id].get("adoption_mode") == "conditional_adoption"
-            and isinstance(semantic_internal, dict)
-            and semantic_internal.get("status") == "NOT_APPLICABLE"
-            and preflight_row.get("applicability_preflight") != "APPLICABLE"
-            and applicability_by_id.get(canonical_id, {}).get("scope_disposition") != "APPLICABLE"
-            and any(
-                ref["role"] == "loop_adoption_declaration"
-                for ref in _verified_static_evidence_refs(
-                    internal_semantic_reviews, internal_semantic_binding,
-                    internal_review_request, foundation_task_digest,
-                    canonical_id, revision_digest,
-                )
-            )
-        )
-        mechanical_gap_statuses = (
-            {} if scope_not_applicable
-            else _retained_mechanical_gap_statuses(canonical_by_id[canonical_id])
-        )
-        # Applicable or unresolved rules retain every missing mechanical method.
-        method_statuses.update(mechanical_gap_statuses)
-        status = _combine_route_status(set(method_statuses.values()))
-        evidence = (
-            semantic_internal["evidence_refs"]
-            if semantic_internal is not None
-            else _descriptor_evidence_refs(descriptors[0], evidence_set)
-        )
-        worker = (
-            "conformance-skill-semantic-review"
-            if any(
-                identity[0] == canonical_id and identity[1] == revision_digest
-                for identity in internal_semantic_reviews
-            )
-            else "conformance-skill-semantic-trial"
-        )
-        reason_code = (
-            "CANONICAL_SCOPE_NOT_APPLICABLE"
-            if status == "NOT_APPLICABLE"
-            else "REQUIRED_EVIDENCE_ROLE_MISSING"
-            if missing_roles
-            else "RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED"
-            if mechanical_gap_statuses
-            else "SEMANTIC_REVIEW_PENDING"
-        )
-        row = {
-            "reason_code": reason_code,
-            "missing_evidence_roles": missing_roles,
-            "preflight": preflight_row,
-        }
-        if semantic_internal is not None:
-            row["semantic_review"] = semantic_internal
-        retained_trial_results.append({
-            "rule_id": canonical_id,
-            "rule_revision_digest": revision_digest,
-            "canonical_id": canonical_id,
-            "canonical_only": True,
-            "retained_trial": True,
-            "status": status,
-            "evidence": evidence,
-            "worker": worker,
-            **row,
-        })
     if evidence_only:
         results = _evidence_only_results(
-            rules,
-            canonical_lineage,
-            {item["kind"] for item in evidence_set},
+            rules, canonical_lineage, {item["kind"] for item in evidence_set},
         )
-        for result in results:
-            lineage = result.get("canonical_lineage", {})
-            internal = internal_semantic_reviews.get((
-                lineage.get("canonical_id"),
-                lineage.get("revision_digest"),
-                "semantic_review",
-            ))
-            if internal is None or next(
-                rule.get("checkType") for rule in rules
-                if rule["ruleId"] == result["rule_id"]
-            ) != "semantic":
-                continue
-            result.update({
-                "status": internal["status"],
-                "evidence": internal["evidence_refs"],
-                "worker": "conformance-skill-semantic-review",
-                "semantic_review": internal,
-            })
     else:
         scan = checker._scan(target if target.is_dir() else target.parent)
         results = []
-    results.extend(retained_trial_results)
-    results.extend(_full_canonical_only_scope_results(
-        profile_plan, canonical_applicability
-    ))
-    # 证据受限审阅不进入源码扫描循环（results 已由 _evidence_only_results 填充）。
     for rule in rules if not evidence_only else []:
         lineage = canonical_lineage.get(rule["ruleId"], {})
         invoked_methods = profile_plan.get("stage_check_methods", {}).get((
@@ -10892,6 +13455,14 @@ def _execute_conformance_workflow(
         semantic_stage_only = (
             "semantic_review" in invoked_methods
             and not invoked_methods.intersection(MECHANICAL_CHECK_METHODS)
+        )
+        current_method_route = assurance_routes.get((
+            lineage.get("canonical_id"), lineage.get("canonical_revision_digest"),
+        ), {})
+        semantic_route_only = (
+            executors.supports(rule["ruleId"])
+            and current_method_route.get("check_methods") == ["semantic_review"]
+            and current_method_route.get("required_mechanical_methods") == []
         )
         if (
             scope.get("logical_skill_count") == 1
@@ -10906,7 +13477,7 @@ def _execute_conformance_workflow(
                 },
                 "worker": "deterministic-applicability",
             }
-        elif rule.get("checkType") == "semantic" or semantic_stage_only:
+        elif rule.get("checkType") == "semantic" or semantic_stage_only or semantic_route_only:
             lineage = canonical_lineage.get(rule["ruleId"], {})
             internal = internal_semantic_reviews.get((
                 lineage.get("canonical_id"),
@@ -10940,11 +13511,9 @@ def _execute_conformance_workflow(
         elif rule.get("checkType") == "static":
             # GMIN 终态家族显式承接的静态规则：路由表以 executor_baseline_rule_id
             # 声明其执行器载体，未实现的分支一律 GMIN_RULE_UNIMPLEMENTED 失败
-            # 关闭，不存在静默回退。三条 ACTIVE_MECHANICAL 规则
-            # （SFA-HARNESS-002 → gmin:harness-authority-dependencies、
-            # SFA-MIGRATE-001 → gmin:legacy-risk-plan、
-            # SFA-MIGRATE-021 → gmin:family-migration-checklist）即由此承接，
-            # 不登记在 w2b1/w2b2/w2b3 注册表中。
+            # 关闭，不存在静默回退。SFA-HARNESS-002 与 SFA-MIGRATE-001 仍由
+            # gmin 静态载体承接。SFA-MIGRATE-021 当前只保留 semantic_review，
+            # 同一 gmin 载体不得再报已撤销的机械方法。
             if rule["ruleId"].startswith("gmin:"):
                 lineage = canonical_lineage.get(rule["ruleId"])
                 if lineage is None:
@@ -11102,6 +13671,382 @@ def _execute_conformance_workflow(
                 "revision_digest": lineage["canonical_revision_digest"],
             }
         results.append(result)
+    semantic_evidence = _semantic_evidence_view(parameters)
+    semantic_evidence_digest = _evidence_set_digest(semantic_evidence)
+    semantic_profile_preflight = _semantic_profile_preflight(
+        profile_plan,
+        semantic_group_registry,
+        canonical_applicability,
+        assurance_canonical_projection.get("rules", []),
+        semantic_evidence,
+        foundation_task_digest=foundation_task_digest,
+        evidence_set_digest=semantic_evidence_digest,
+    )
+    semantic_descriptors = _semantic_review_candidate_descriptors(
+        profile_plan,
+        semantic_profile_preflight,
+        all_semantic_descriptors,
+        semantic_evidence,
+        canonical_applicability,
+    )
+    security_observation = _bounded_security_observation(target, assurance_canonical_projection)
+    semantic_descriptors.extend(_mechanical_premise_descriptors(
+        profile_plan, assurance_canonical_projection.get("rules", []),
+        semantic_evidence, results, security_observation,
+    ))
+    semantic_descriptors.sort(key=semantic_review.review_identity)
+    semantic_missing_evidence_roles = (
+        _selected_semantic_missing_evidence_roles(
+            profile_plan,
+            semantic_profile_preflight,
+            all_semantic_descriptors,
+            semantic_evidence,
+            canonical_applicability,
+        )
+    )
+    semantic_rules_skipped_missing_evidence_count = len(
+        set(semantic_missing_evidence_roles)
+        - {row["canonical_id"] for row in semantic_descriptors
+           if row["check_method"] == "semantic_review"}
+    )
+    _record_after_scope(
+        stage,
+        semantic_preflight=semantic_profile_preflight,
+        semantic_rules_skipped_missing_evidence_count=(
+            semantic_rules_skipped_missing_evidence_count
+        ),
+    )
+    if semantic_descriptors:
+        try:
+            internal_review_request = semantic_review.build_review_request(
+                foundation_task_digest=foundation_task_digest,
+                evidence_set_digest=semantic_evidence_digest,
+                rule_set_digest=rule_set_digest,
+                descriptors=semantic_descriptors,
+                evidence_set=semantic_evidence,
+                digest_document=foundation_document_digest,
+            )
+        except semantic_review.SemanticReviewError as exc:
+            raise WorkflowError(exc.code, str(exc)) from exc
+    scheduled_review_identities = {
+        semantic_review.review_identity(row)
+        for row in (internal_review_request or {}).get("rules", [])
+    }
+    injected_spi_root = getattr(args, "foundation_profile_spi_root", None)
+    if injected_spi_root is not None:
+        injected_spi_root = Path(injected_spi_root)
+    semantic_model_plan = _build_semantic_context_plan(
+        profile_plan,
+        semantic_group_registry,
+        semantic_profile_preflight,
+        internal_review_request,
+        target_type=args.target_type,
+        platform=args.platform,
+        target_digest=semantic_target_digest,
+        profile_spi_root=injected_spi_root,
+        mechanical_results=results,
+    )
+    _write_context_plan(getattr(args, "context_plan_out", None), semantic_model_plan)
+    execution_plan_event = conformance_human_route._build_execution_plan_event(
+        profile_plan,
+        semantic_profile_preflight,
+        semantic_model_plan,
+        semantic_rules_skipped_missing_evidence_count=(
+            semantic_rules_skipped_missing_evidence_count
+        ),
+        target_digest=semantic_target_digest,
+        selection_reason=getattr(
+            args, "profile_selection_reason", None
+        ) or "domain_default_full",
+        routing_file_digest=assurance_routing_receipt["sha256"],
+        trust_projection_digest=assurance_trust_digest,
+    )
+    print(
+        "SFA_EXECUTION_PLAN "
+        + json.dumps(execution_plan_event, ensure_ascii=False, sort_keys=True),
+        file=sys.stderr,
+        flush=True,
+    )
+    if getattr(args, "semantic_review_preflight", False):
+        return {
+            "semantic_review_request": internal_review_request
+            or {
+                "kind": "skill-family-audit.semantic-review-request",
+                "schema_version": "3.0.0",
+                "producer_method_id": semantic_review.METHOD_ID,
+                "cognitive_independence": semantic_review.COGNITIVE_INDEPENDENCE,
+                "rules": [],
+                "reason_code": "NO_REVIEW_READY_RULES",
+            },
+            "semantic_context_plan": semantic_model_plan,
+        }
+    internal_semantic_reviews: dict[tuple[str, str, str], dict[str, Any]] = {}
+    internal_semantic_binding: dict[str, Any] | None = None
+    internal_payload = getattr(args, "internal_semantic_review", None)
+    internal_context_results = getattr(
+        args, "internal_semantic_context_results", None
+    )
+    semantic_context_metrics = {
+        "semantic_model_call_count": 0,
+        "semantic_context_count": 0,
+        "estimated_input_tokens": 0,
+        "semantic_rules_sent_to_model_count": 0,
+    }
+    _record_after_scope(stage, semantic_context_metrics=semantic_context_metrics)
+    if internal_payload is not None and internal_context_results is not None:
+        raise WorkflowError(
+            "SEMANTIC_REVIEW_INPUT_AMBIGUOUS",
+            "单体 internal review 与 context results 不能同时提供",
+        )
+    if internal_context_results is not None:
+        if internal_review_request is None:
+            raise WorkflowError(
+                "SEMANTIC_REVIEW_UNEXPECTED",
+                "当前适用规则没有可接受 context result 的精确 binding",
+            )
+        if semantic_model_plan["blocked_rule_ids"]:
+            raise WorkflowError(
+                "SEMANTIC_CONTEXT_BUDGET_EXCEEDED",
+                "单条规则上下文仍超过预算: "
+                + ", ".join(semantic_model_plan["blocked_rule_ids"]),
+            )
+        internal_payload, semantic_context_metrics = (
+            _merge_semantic_context_results(
+                internal_review_request,
+                semantic_model_plan,
+                internal_context_results,
+            )
+        )
+        _record_after_scope(
+            stage, semantic_context_metrics=semantic_context_metrics
+        )
+    if internal_payload is not None:
+        if internal_review_request is None:
+            raise WorkflowError(
+                "SEMANTIC_REVIEW_UNEXPECTED",
+                "当前适用规则没有可接受内部审阅的精确 binding",
+            )
+        if internal_context_results is None:
+            # Bound v2 payload proves reviews were consumed, not how many
+            # host model calls produced them.  Do not infer call counts
+            # from review or result cardinality.
+            semantic_context_metrics = {
+                "semantic_model_call_count": None,
+                "semantic_context_count": semantic_context_metrics[
+                    "semantic_context_count"
+                ],
+                "estimated_input_tokens": semantic_context_metrics[
+                    "estimated_input_tokens"
+                ],
+                "semantic_rules_sent_to_model_count": None,
+            }
+            _record_after_scope(
+                stage, semantic_context_metrics=semantic_context_metrics
+            )
+        validation_errors = _semantic_schema_errors(internal_payload)
+        if validation_errors:
+            raise WorkflowError(
+                "SEMANTIC_REVIEW_RESULT_INVALID",
+                "; ".join(validation_errors),
+            )
+        try:
+            internal_semantic_reviews, internal_semantic_binding = (
+                semantic_review.finalize_review(
+                    internal_review_request,
+                    internal_payload,
+                    digest_document=foundation_document_digest,
+                    allow_partial=internal_context_results is not None,
+                )
+            )
+        except semantic_review.SemanticReviewError as exc:
+            raise WorkflowError(exc.code, str(exc)) from exc
+    verified_evidence_refs = [
+        ref for canonical_id, revision, method in internal_semantic_reviews
+        for ref in _verified_static_evidence_refs(
+            internal_semantic_reviews, internal_semantic_binding, internal_review_request,
+            foundation_task_digest, canonical_id, revision,
+            check_method=method,
+        )
+    ]
+    ref_bound_executor_results = {}
+    for item in results:
+        lineage = item.get("canonical_lineage", {})
+        cid, revision = lineage.get("canonical_id"), lineage.get("revision_digest")
+        if cid not in {"SFA-NETSEC-001", "SFA-SOURCE-019", "SFA-REPO-005", "SFA-HARNESS-002"}:
+            continue
+        if not any(row.get("check_method") in MECHANICAL_CHECK_METHODS
+                   and not _method_determination_complete(_resolved_original_subresult(item, row, cid, revision))
+                   for row in item.get("check_method_subresults", [])):
+            continue
+        refs = _verified_static_evidence_refs(internal_semantic_reviews, internal_semantic_binding,
+            internal_review_request, foundation_task_digest, cid, revision)
+        if not refs:
+            continue
+        route = assurance_routes[(cid, revision)]
+        if cid == "SFA-HARNESS-002":
+            review = internal_semantic_reviews.get((cid, revision, "semantic_review"), {})
+            if review.get("status") != "NOT_APPLICABLE":
+                continue
+            outcome = _gmin_method_assured_outcome(item["rule_id"], scope, route,
+                nonframework_declaration_refs=refs, evidence_set=evidence_set)
+        else:
+            outcome = _w2b1_executor_outcome(item["rule_id"], scope, target, args, index, manifest,
+                route, frozen_receipts, evidence_set,
+                {"target_digest": foundation_target_content_digest(target, args.target_type),
+                 "platform": args.platform,
+                 "target_version": scope.get("plugin_project", {}).get("plugin", {}).get("version")},
+                verified_evidence_refs=refs)
+        payload = {"rule_id": item["rule_id"], "rule_revision_digest": item["rule_revision_digest"],
+                   "canonical_lineage": dict(lineage), **outcome}
+        for previous in item.get("check_method_subresults", []):
+            if previous.get("check_method") not in MECHANICAL_CHECK_METHODS:
+                continue
+            resolved = _resolved_original_subresult(item, previous, cid, revision)
+            if _method_determination_complete(resolved, verified_evidence_refs):
+                payload["check_method_subresults"] = [resolved if row.get("check_method") == previous["check_method"] else row
+                    for row in payload.get("check_method_subresults", [])]
+        ref_bound_executor_results[(cid, revision)] = {
+            "result_payload": payload, "result_digest": foundation_document_digest(payload),
+            "foundation_task_digest": foundation_task_digest, "verified_evidence_refs": refs,
+        }
+    retained_trial_results: list[dict[str, Any]] = []
+    canonical_by_id = {
+        row["canonical_id"]: row
+        for row in assurance_canonical_projection.get("rules", [])
+        if isinstance(row, dict) and isinstance(row.get("canonical_id"), str)
+    }
+    preflight_by_id = {
+        row["canonical_id"]: row
+        for row in semantic_profile_preflight.get("records", [])
+    }
+    applicability_by_id = {
+        row["canonical_id"]: row
+        for row in canonical_applicability.get("rules", [])
+    }
+    retained_by_id: dict[str, list[dict[str, Any]]] = {}
+    for descriptor in retained_descriptors:
+        retained_by_id.setdefault(descriptor["canonical_id"], []).append(
+            descriptor
+        )
+    for canonical_id, descriptors in sorted(retained_by_id.items()):
+        revision_digest = descriptors[0]["canonical_revision_digest"]
+        methods = selected_nonmechanical_obligations.get(
+            (canonical_id, revision_digest), []
+        )
+        preflight_row = preflight_by_id.get(canonical_id)
+        if preflight_row is None:
+            scope_row = applicability_by_id.get(canonical_id, {})
+            preflight_row = {
+                "applicability_preflight": scope_row.get("scope_disposition", "UNDETERMINED"),
+                "citable_scope_facts": scope_row.get("citable_scope_facts", []),
+            }
+        missing_roles = semantic_missing_evidence_roles.get(canonical_id, [])
+        method_statuses = _nonmechanical_obligation_statuses(
+            canonical_id,
+            revision_digest,
+            methods,
+            internal_semantic_reviews,
+            scheduled_review_identities,
+            missing_roles,
+        )
+        semantic_internal = internal_semantic_reviews.get((
+            canonical_id,
+            revision_digest,
+            "semantic_review",
+        ))
+        # Only this conditional rule's common Loop-adoption premise is in
+        # scope. The host reviews that premise; these checks prove the frozen
+        # identity and adoption-reference binding, not the prose's truth.
+        # An arbitrary method N/A must not hide an unimplemented static method.
+        scope_not_applicable = (
+            canonical_id == "SFA-WIRING-002"
+            and canonical_by_id[canonical_id].get("adoption_mode") == "conditional_adoption"
+            and isinstance(semantic_internal, dict)
+            and semantic_internal.get("status") == "NOT_APPLICABLE"
+            and preflight_row.get("applicability_preflight") != "APPLICABLE"
+            and applicability_by_id.get(canonical_id, {}).get("scope_disposition") != "APPLICABLE"
+            and any(
+                ref["role"] == "loop_adoption_declaration"
+                for ref in _verified_static_evidence_refs(
+                    internal_semantic_reviews, internal_semantic_binding,
+                    internal_review_request, foundation_task_digest,
+                    canonical_id, revision_digest,
+                )
+            )
+        )
+        mechanical_gap_statuses = (
+            {} if scope_not_applicable
+            else _retained_mechanical_gap_statuses(canonical_by_id[canonical_id])
+        )
+        # Applicable or unresolved rules retain every missing mechanical method.
+        method_statuses.update(mechanical_gap_statuses)
+        status = _combine_route_status(set(method_statuses.values()))
+        evidence = (
+            semantic_internal["evidence_refs"]
+            if semantic_internal is not None
+            else _descriptor_evidence_refs(descriptors[0], evidence_set)
+        )
+        worker = (
+            "conformance-skill-semantic-review"
+            if any(
+                identity[0] == canonical_id and identity[1] == revision_digest
+                for identity in internal_semantic_reviews
+            )
+            else "conformance-skill-semantic-trial"
+        )
+        reason_code = (
+            "CANONICAL_SCOPE_NOT_APPLICABLE"
+            if status == "NOT_APPLICABLE"
+            else "REQUIRED_EVIDENCE_ROLE_MISSING"
+            if missing_roles
+            else "RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED"
+            if mechanical_gap_statuses
+            else "SEMANTIC_REVIEW_PENDING"
+        )
+        row = {
+            "reason_code": reason_code,
+            "missing_evidence_roles": missing_roles,
+            "preflight": preflight_row,
+        }
+        if semantic_internal is not None:
+            row["semantic_review"] = semantic_internal
+        retained_trial_results.append({
+            "rule_id": canonical_id,
+            "rule_revision_digest": revision_digest,
+            "canonical_id": canonical_id,
+            "canonical_only": True,
+            "retained_trial": True,
+            "status": status,
+            "evidence": evidence,
+            "worker": worker,
+            **row,
+        })
+    results.extend(retained_trial_results)
+    results.extend(_full_canonical_only_scope_results(
+        profile_plan, canonical_applicability
+    ))
+    # Original static executor payloads were obtained before freezing the
+    # review request. Keep them intact; only semantic rows get their own review.
+    for result in results:
+        lineage = result.get("canonical_lineage", {})
+        cid = lineage.get("canonical_id")
+        revision = lineage.get("revision_digest")
+        reviewed = internal_semantic_reviews.get((cid, revision, "semantic_review"))
+        original_rule = next((row for row in rules if row["ruleId"] == result["rule_id"]), None)
+        methods = profile_plan.get("stage_check_methods", {}).get((cid, revision), set())
+        semantic_only = "semantic_review" in methods and not methods.intersection(MECHANICAL_CHECK_METHODS)
+        current_method_route = assurance_routes.get((cid, revision), {})
+        semantic_route_only = (
+            original_rule is not None
+            and executors.supports(original_rule["ruleId"])
+            and current_method_route.get("check_methods") == ["semantic_review"]
+            and current_method_route.get("required_mechanical_methods") == []
+        )
+        if reviewed is not None and original_rule is not None and (
+            original_rule.get("checkType") == "semantic" or semantic_only or semantic_route_only
+        ):
+            result.update({"status": reviewed["status"], "evidence": reviewed["evidence_refs"],
+                           "worker": "conformance-skill-semantic-review", "semantic_review": reviewed})
     for result in results:
         lineage = result.get("canonical_lineage") or {}
         missing_roles = semantic_missing_evidence_roles.get(
@@ -11175,6 +14120,7 @@ def _execute_conformance_workflow(
             if (
                 identity[0], identity[1],
             ) in assurance_routes
+            and identity[2] == "semantic_review"
     }
     method_assurance = (
         rule_method_assurance._project_trusted_conformance_observation(
@@ -11188,9 +14134,23 @@ def _execute_conformance_workflow(
             verified_evidence_refs=verified_evidence_refs,
         )
     )
-    security_observation = _bounded_security_observation(
-        target, assurance_canonical_projection,
-    )
+    for record in method_assurance["records"]:
+        executed = ref_bound_executor_results.get((record["canonical_id"], record["revision_digest"]))
+        if executed is None or record["check_method"] not in MECHANICAL_CHECK_METHODS:
+            continue
+        current = record.get("trusted_observation")
+        if isinstance(current, dict) and _method_determination_complete(current, verified_evidence_refs):
+            continue
+        payload = executed["result_payload"]
+        matching = [row for row in payload.get("check_method_subresults", [])
+                    if row.get("check_method") == record["check_method"]]
+        if len(matching) != 1:
+            continue
+        observation = _resolved_original_subresult(payload, matching[0], record["canonical_id"], record["revision_digest"],
+                                                   original_executor_result=executed)
+        record["trusted_observation"] = observation
+        record["assurance_status"] = (f"{observation['status']}_NOT_PROVEN"
+            if observation["status"] in {"EVIDENCE_MISSING", "NOT_RUN"} else "TRUSTED_OBSERVED_NOT_PROVEN")
     _record_retained_mechanical_judgments(
         method_assurance,
         assurance_canonical_projection,
@@ -11201,7 +14161,7 @@ def _execute_conformance_workflow(
         internal_semantic_binding=internal_semantic_binding,
         internal_review_request=internal_review_request,
         foundation_task_digest=foundation_task_digest,
-        professional=professional_consumption, evidence_set=evidence_set, target=target,
+        professional=professional_consumption, professional_inputs=parameters.get("professional_consumption"), evidence_set=semantic_evidence, target=target,
     )
     _record_after_scope(stage, method_assurance=method_assurance)
     method_records = {
@@ -11213,6 +14173,9 @@ def _execute_conformance_workflow(
     combined_results = []
     for item in results:
         lineage = item.get("canonical_lineage", {})
+        executed = ref_bound_executor_results.get((lineage.get("canonical_id"), lineage.get("revision_digest")))
+        if executed is not None:
+            item = {**item, **executed["result_payload"]}
         canonical_identity = (
             lineage.get("canonical_id"), lineage.get("revision_digest")
         )
@@ -11227,7 +14190,14 @@ def _execute_conformance_workflow(
         semantic_route_methods = None
         if route is not None and review_methods:
             statuses = _participating_route_statuses(
-                item, lineage, route, method_records
+                item, lineage, route, method_records,
+                internal_semantic_reviews=internal_semantic_reviews,
+                internal_semantic_binding=internal_semantic_binding,
+                internal_review_request=internal_review_request,
+                foundation_task_digest=getattr(args, "foundation_task_digest", None),
+                professional=professional_consumption,
+                professional_inputs=parameters.get("professional_consumption"),
+                evidence_set=semantic_evidence, target=target,
             )
             if (
                 route.get("required_mechanical_methods")
@@ -11254,6 +14224,11 @@ def _execute_conformance_workflow(
                     held.add(status)
                 held.add(item["status"])
                 statuses = held
+            semantic_route_methods = [
+                {**(method_records.get((*canonical_identity, method), {}).get("trusted_observation")
+                    or {"status": "NOT_RUN"}), "check_method": method}
+                for method in route["check_methods"]
+            ]
         elif selected_methods:
             nonmechanical = _nonmechanical_obligation_statuses(
                 lineage["canonical_id"], lineage["revision_digest"], selected_methods,
@@ -11270,6 +14245,13 @@ def _execute_conformance_workflow(
                 for identity, record in method_records.items()
                 if identity[:2] == canonical_identity and identity[2] in MECHANICAL_CHECK_METHODS
             )
+            statuses = {row["status"] for row in semantic_route_methods}
+        elif route is not None:
+            semantic_route_methods = [
+                {**(method_records.get((*canonical_identity, method), {}).get("trusted_observation")
+                    or {"status": "NOT_RUN"}), "check_method": method}
+                for method in route["check_methods"]
+            ]
             statuses = {row["status"] for row in semantic_route_methods}
         else:
             combined_results.append(_present_professional_finding(item))
@@ -11330,7 +14312,14 @@ def _execute_conformance_workflow(
         observed_methods = _index_method_statuses({
             "conformance_result": {"method_assurance": method_assurance},
             "rule_findings": combined_results,
-        })
+            "evidence_list": [{
+                "kind": "skill-family-audit.bounded-material-security-observation",
+                "observation": security_observation,
+            }],
+        }, professional=professional_consumption, professional_inputs=parameters.get("professional_consumption"),
+            evidence_set=semantic_evidence, target=target,
+            mechanical_reviews={identity: review for identity, review in internal_semantic_reviews.items()
+                if review.get("review_purpose") == "mechanical_object_premise"})
         combined_results = [dict(item) for item in combined_results]
         for item in combined_results:
             lineage = item.get("canonical_lineage", {})
@@ -11362,7 +14351,10 @@ def _execute_conformance_workflow(
                 else:
                     method_status = "EVIDENCE_MISSING"
                     evidence = {"reason_code": "MECHANICAL_METHOD_NOT_EXECUTED"}
-                subresults.append({"check_method": method, "status": method_status, "evidence": evidence})
+                subresult = {"check_method": method, "status": method_status, "evidence": evidence}
+                if observation is not None and "observation_source" in detail:
+                    subresult["observation_source"] = detail["observation_source"]
+                subresults.append(subresult)
             item["check_method_subresults"] = subresults
     results = combined_results + _profile_not_run_results(
         profile_plan,
@@ -11380,25 +14372,6 @@ def _execute_conformance_workflow(
     except ValueError as exc:
         raise WorkflowError("CONFORMANCE_PROFILE_RESULT_INVALID", str(exc)) from exc
     _record_after_scope(stage, canonical_results=canonical_results)
-    failed = [
-        item
-        for item in canonical_results
-        if item["status"] not in {"PASS", "NOT_APPLICABLE"}
-    ]
-    findings = []
-    for finding_index, item in enumerate(failed):
-        route = finding_responsibility_route(item)
-        findings.append({
-            "finding_id": f"finding-{finding_index + 1}",
-            "rule_id": item["rule_id"],
-            "rule_revision_digest": item["rule_revision_digest"],
-            "status": item["status"],
-            "object": route["object"],
-            "reason": route["reason"],
-            "responsible_party": route["responsible_party"],
-            "minimal_fix": route["minimal_fix"],
-            "revalidation_entry": route["revalidation_entry"],
-        })
     remediation = {
         "schema_version": "1.0.0",
         "status": "unapplied",
@@ -11408,15 +14381,7 @@ def _execute_conformance_workflow(
             else foundation_tree_digest(target if target.is_dir() else target.parent)
         ),
         "target_type": args.target_type,
-        "items": [
-            {
-                **finding,
-                "applicability_scope": args.target_type,
-                "suggested_action": finding["minimal_fix"],
-                "patch_status": "unapplied",
-            }
-            for finding in findings
-        ],
+        "items": _remediation_items(canonical_results, args.target_type, assurance_canonical_projection),
     }
     canonical_coverage = _canonical_coverage_from_results(
         canonical_applicability, canonical_lineage, results, method_assurance, verified_evidence_refs
@@ -11531,8 +14496,8 @@ def _execute_conformance_workflow(
     }
     execution_metrics = {
         **semantic_context_metrics,
-        "semantic_rules_skipped_missing_evidence_count": len(
-            semantic_missing_evidence_roles
+        "semantic_rules_skipped_missing_evidence_count": (
+            semantic_rules_skipped_missing_evidence_count
         ),
     }
     domain = {
@@ -11566,6 +14531,13 @@ def _execute_conformance_workflow(
         },
         "baseline_rule_set": {
             "kind": "implementation-baseline",
+            "basic_check_results": [
+                {"rule_id": item["rule_id"], "status": item["status"]}
+                for item in results
+                if item.get("worker") == "deterministic-checker"
+                and not item.get("canonical_lineage")
+                and item.get("status") in {"PASS", "FAIL"}
+            ],
             "canonical_rule_ids": sorted(manifest.get("canonicalRuleIds", [])),
             "executed_rule_count": sum(
                 1
@@ -11736,6 +14708,16 @@ def _present_professional_finding(item: dict[str, Any]) -> dict[str, Any]:
     rows = item.get("check_method_subresults")
     if not isinstance(rows, list):
         return item
+    evidence = _as_dict(item.get("evidence"))
+    if (rows and evidence is not None
+            and evidence.get("reason") in conformance_human_route._AUDIT_OBJECT_PLACEHOLDER_REASONS
+            and all(isinstance(row, dict)
+                    and (_as_dict(row.get("evidence")) or {}).get("public_entry") == "runPeerAdapterCheck"
+                    and conformance_human_route._professional_issue_type(row, method_parent=item)
+                    in {"professional_pass", "professional_findings"} for row in rows)):
+        # The premise remains in the consumed method. The rule view must now
+        # describe the complete professional result, not that earlier gap.
+        item = {**item, "evidence": {**evidence, "reason": "original_professional_mechanical_result"}}
     promoted: list[Any] = []
     changed = False
     for row in rows:
@@ -11753,7 +14735,10 @@ def _present_professional_finding(item: dict[str, Any]) -> dict[str, Any]:
             promoted.append(row)
     if not changed:
         return item
-    return {**item, "status": "REVIEW_REQUIRED", "check_method_subresults": promoted}
+    review = _nested_semantic_review(item)
+    semantic_failed = review is not None and review.get("status") == "FAIL"
+    return {**item, "status": "FAIL" if item.get("status") == "FAIL" and semantic_failed else "REVIEW_REQUIRED",
+            "check_method_subresults": promoted}
 
 
 def _consume_professional_inputs(document: dict[str, Any]) -> dict[str, Any]:
@@ -12025,10 +15010,15 @@ def main() -> int:
         try:
             result = combine_final_stage(args)
         except (WorkflowError, OSError, ValueError) as exc:
-            result = before_rule_selection_result(
-                exc,
-                evidence_set=getattr(exc, "evidence_set", None),
-            )
+            if getattr(exc, "failure_stage", None) == BEFORE_RULE_SELECTION:
+                result = before_rule_selection_result(
+                    exc,
+                    evidence_set=getattr(exc, "evidence_set", None),
+                )
+            elif getattr(exc, "result", None) is not None:
+                result = exc.result
+            else:
+                raise
             print(json.dumps(result, ensure_ascii=False, sort_keys=True))
             return 2
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))

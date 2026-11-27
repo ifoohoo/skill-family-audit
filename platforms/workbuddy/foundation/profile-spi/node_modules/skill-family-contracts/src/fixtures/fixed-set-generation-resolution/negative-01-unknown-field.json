@@ -1,0 +1,26 @@
+{
+  "fixtureId": "fixed-set-generation-resolution.negative.unknown-field",
+  "contract": "fixed-set-generation-resolution",
+  "class": "negative",
+  "description": "A generation resolution rejects an unknown field.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-resolution.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-generation-resolution",
+    "pointer": {
+      "schemaVersion": 1,
+      "kind": "skill-family.fixed-set-generation-pointer",
+      "generation": "gen-1",
+      "closureDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "generationRoot": "gen-1",
+    "rootBinding": {
+      "kind": "trusted-filesystem-root-binding",
+      "digestAlgorithm": "sha256",
+      "basis": "canonical-finalpath-volume-fileid-type-security-v1",
+      "digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "lease": 1
+  }
+}

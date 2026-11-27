@@ -1,3 +1,6 @@
+// @feature FND-FR-018
+// @decision FND-ADR-023
+// @design FND-DES-015
 import { readdirSync, readFileSync } from "node:fs";
 import { isRegisteredErrorCode } from "./errors.mjs";
 import { findSchemaRegistration, findProtocol } from "./registry.mjs";

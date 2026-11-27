@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://spi.profiles.skill-family.example/v2/profile-adoption.json",
   "title": "ProfileAdoptionAndOverridesSections",
-  "description": "SPI v3 forwarding schema for provider descriptor adoption and overrides sections. Shape definitions remain owned by the Contracts profile-adoption-declaration schema.",
+  "description": "SPI v3 转发 Schema：供提供方描述符与项目 Profile 复用 adoption 与 overrides 分节，具体结构定义仍由 Contracts 的 profile-adoption-declaration Schema 唯一持有。",
   "type": "object",
   "$defs": {
     "adoption": {

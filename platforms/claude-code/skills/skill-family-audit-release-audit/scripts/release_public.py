@@ -1,8 +1,8 @@
-"""Compose Audit-owned release findings and evidence in memory.
+"""Compose Audit-owned static release findings and evidence in memory.
 
 Foundation Quickstart owns the operation request/result exchange. This module
-combines the thin upstream-verifier consumption with the release assessment
-rows into one domain result object; it never reimplements release semantics.
+combines static release record checks with release assessment rows into one
+domain result object without invoking any external release CLI subprocess.
 """
 
 from __future__ import annotations
@@ -45,18 +45,11 @@ def _compose_domain_result(
     assessment_result: dict[str, Any] | None = None,
     assessments_path: str | None = None,
 ) -> dict[str, Any]:
-    """Compose the thin upstream-verifier result with release assessments.
-
-    模块私有组合函数：只消费 receipt 审计结果，不构成公共调用入口，
-    不得绕过已封闭的上游消费契约构造 SUCCEEDED。
-    """
+    """Compose static record audit result with release assessments."""
 
     if not isinstance(verifier_audit, dict):
         raise ReleasePublicError(["verifier_audit 必须是领域结果对象"])
-    if (
-        verifier_audit.get("status")
-        not in {"SUCCEEDED", "BLOCKED", "FAILED"}
-    ):
+    if verifier_audit.get("status") not in {"SUCCEEDED", "BLOCKED", "FAILED"}:
         raise ReleasePublicError(["verifier_audit.status 无效"])
     if (assessment_result is None) != (assessments_path is None):
         raise ReleasePublicError(["assessment_result 与 assessments_path 必须同时提供"])
@@ -75,7 +68,6 @@ def _compose_domain_result(
     )
 
     def _blocker(name: str, row: dict[str, Any]) -> str:
-        """阻断行沿用 name:status 前缀，并在既有 reason 上附带缺项指引。"""
         text = f"{name}:{row.get('status')}"
         reason = row.get("reason")
         return f"{text}:{reason}" if isinstance(reason, str) and reason else text
@@ -93,7 +85,7 @@ def _compose_domain_result(
         blocking_reasons.extend(assessment_blockers)
 
     evidence = [
-        {"source": "release-skill", **item}
+        {"source": "static-record", **item}
         for item in verifier_audit.get("evidence", [])
         if isinstance(item, dict)
     ]

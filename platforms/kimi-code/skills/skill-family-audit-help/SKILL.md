@@ -55,8 +55,8 @@ internal: false
 <!-- BEGIN GENERATED PLATFORM SUPPORT -->
 | 平台 | 静态投影 | 消费验证 | 说明 |
 |---|---|---|---|
-| Claude Code | `available` | `manual_unverified` | 安装与调用由消费者按宿主文档人工验证，不阻断候选发布 |
-| Codex | `available` | `manual_unverified` | 安装与调用由消费者按宿主文档人工验证，不阻断候选发布 |
+| Claude Code | `available` | `host_smoke_verified` | 安装与调用由消费者按宿主文档人工验证，不阻断候选发布 |
+| Codex | `available` | `host_smoke_verified` | 安装与调用由消费者按宿主文档人工验证，不阻断候选发布 |
 | Kimi Code | `available` | `manual_unverified` | 只支持人工安装或会话级 --skills-dir；可选会话 smoke 失败记为 manual_unverified，不阻断候选发布 |
 | WorkBuddy | `available` | `manual_unverified` | 安装与调用由消费者按宿主文档人工验证，不阻断候选发布 |
 <!-- END GENERATED PLATFORM SUPPORT -->

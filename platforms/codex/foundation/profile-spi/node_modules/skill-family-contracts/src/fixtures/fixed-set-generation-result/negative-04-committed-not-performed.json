@@ -1,0 +1,20 @@
+{
+  "fixtureId": "fixed-set-generation-result.negative.committed-not-performed",
+  "contract": "fixed-set-generation-result",
+  "class": "negative",
+  "description": "A committed generation result cannot leave verification not-performed.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-result.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-generation-result",
+    "status": "failed",
+    "commitState": "committed",
+    "verification": "not-performed",
+    "durability": "indeterminate",
+    "generationRoot": "/fictional/store/gen-1",
+    "pointer": null,
+    "previous": null,
+    "error": { "kind": "generation-post-verify", "message": "verification was skipped after commit" }
+  }
+}

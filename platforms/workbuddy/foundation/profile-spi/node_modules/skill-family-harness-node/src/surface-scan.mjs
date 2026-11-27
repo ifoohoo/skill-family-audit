@@ -1,3 +1,4 @@
+// @decision FND-ADR-009
 import { findSchemaByObject } from "skill-family-contracts";
 import path from "node:path";
 import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";

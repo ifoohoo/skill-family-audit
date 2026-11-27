@@ -1,3 +1,6 @@
+// @decision FND-ADR-016
+// @decision FND-ADR-002
+// @design FND-DES-001
 /**
  * Capability maturity and historical-candidate migration policy.
  *

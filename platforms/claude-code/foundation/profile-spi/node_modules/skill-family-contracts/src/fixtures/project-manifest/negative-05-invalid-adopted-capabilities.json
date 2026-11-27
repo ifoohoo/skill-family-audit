@@ -1,0 +1,28 @@
+{
+  "fixtureId": "project-manifest.negative.invalid-adopted-capabilities",
+  "contract": "project-manifest",
+  "class": "negative",
+  "description": "项目清单 adoptedCapabilities 仅接受无重复的规范 foundation.* 能力 ID，格式越界或重复成员以 SFC1001 拒绝。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": {
+      "id": "fictional-orchid",
+      "name": "Fictional Orchid"
+    },
+    "contracts": {
+      "version": "1.22.0",
+      "profile": "generic"
+    },
+    "adoptedCapabilities": [
+      "foundation.harness.atomic-write",
+      "INVALID_CAPABILITY_ID"
+    ]
+  }
+}

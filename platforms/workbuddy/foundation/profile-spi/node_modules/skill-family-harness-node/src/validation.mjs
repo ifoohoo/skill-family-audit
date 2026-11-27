@@ -1,3 +1,6 @@
+// @feature FND-FR-007
+// @decision FND-ADR-015
+// @design FND-DES-009
 import {
   ContractsError,
   SUPPORTED_DIALECTS,

@@ -1,0 +1,25 @@
+{
+  "fixtureId": "fixed-set-generation-result.positive.flush-requested",
+  "contract": "fixed-set-generation-result",
+  "class": "positive",
+  "description": "A successful Windows generation publication reports flush-requested durability.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-result.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-generation-result",
+    "status": "succeeded",
+    "commitState": "committed",
+    "verification": "verified",
+    "durability": "flush-requested",
+    "generationRoot": "C:/fictional/store/gen-1",
+    "pointer": {
+      "schemaVersion": 1,
+      "kind": "skill-family.fixed-set-generation-pointer",
+      "generation": "gen-1",
+      "closureDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "previous": null,
+    "error": null
+  }
+}

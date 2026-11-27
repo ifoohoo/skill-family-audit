@@ -1,0 +1,21 @@
+{
+  "fixtureId": "project-manifest.negative.mismatched-internal-dependency-major",
+  "contract": "project-manifest",
+  "class": "negative",
+  "description": "当 major=0 时若 minVersion 落在 1.x 主版本轨道，JSON Schema 拒绝并返回 SFC1001。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/project-manifest.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.project-manifest",
+    "project": { "id": "fictional-orchid", "name": "Fictional Orchid" },
+    "contracts": { "version": "1.22.0", "profile": "public-plugin" },
+    "internalDependencies": {
+      "skill-family-contracts": { "major": 0, "minVersion": "1.0.0" }
+    }
+  }
+}

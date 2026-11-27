@@ -1,0 +1,25 @@
+{
+  "fixtureId": "fixed-set-generation-resolution.positive.resolution",
+  "contract": "fixed-set-generation-resolution",
+  "class": "positive",
+  "description": "One complete pointer read carries the generation segment and a root binding.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-resolution.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-generation-resolution",
+    "pointer": {
+      "schemaVersion": 1,
+      "kind": "skill-family.fixed-set-generation-pointer",
+      "generation": "gen-1",
+      "closureDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "generationRoot": "gen-1",
+    "rootBinding": {
+      "kind": "trusted-filesystem-root-binding",
+      "digestAlgorithm": "sha256",
+      "basis": "canonical-finalpath-volume-fileid-type-security-v1",
+      "digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  }
+}

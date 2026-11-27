@@ -1,3 +1,6 @@
+// @decision FND-ADR-002
+// @decision FND-ADR-014
+// @design FND-DES-001
 /**
  * Private, side-effect-free preflight copier for caller-owned JSON data.
  * Accessors, hidden properties, symbols, unusual prototypes, cycles, sparse

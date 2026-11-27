@@ -1,0 +1,136 @@
+{
+  "title": "Project Overlay",
+  "description": "JSON Schema for a project overlay in the agent-method-registry protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "Must be exactly 1 for the current protocol version"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/projectEntry"
+      }
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Map of existing entry ref to override provider",
+      "patternProperties": {
+        "^.+$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider"],
+          "properties": {
+            "provider": {
+              "$ref": "#/$defs/projectProvider"
+            }
+          }
+        }
+      }
+    },
+    "disabled": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "List of entry refs to disable"
+    }
+  },
+  "$defs": {
+    "projectProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "skill"],
+      "properties": {
+        "scope": {
+          "const": "project"
+        },
+        "skill": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domains", "artifactTypes", "intents"],
+      "properties": {
+        "domains": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "artifactTypes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "intents": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "sideEffects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["read-only", "write-project-artifacts", "external-state-change"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "projectEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "provider", "kind", "summary", "match", "accepts", "produces", "sideEffects"],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "provider": {
+          "$ref": "#/$defs/projectProvider"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["workflow", "operation"]
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "match": {
+          "$ref": "#/$defs/match"
+        },
+        "accepts": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "produces": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "sideEffects": {
+          "$ref": "#/$defs/sideEffects"
+        }
+      }
+    }
+  }
+}

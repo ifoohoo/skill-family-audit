@@ -1,8 +1,16 @@
+// @feature FND-FR-025
+// @feature FND-FR-029
+// @decision FND-ADR-033
+// @design FND-DES-033
+// @design FND-DES-039
 import { constants as FS_CONSTANTS } from "node:fs";
 import { lstat, open } from "node:fs/promises";
+import process from "node:process";
+import path from "node:path";
 import { digestBytes } from "./closure.mjs";
 import { HARNESS_ERROR_KINDS, mechanismError } from "./errors.mjs";
-import { resolveContained } from "./paths.mjs";
+import { readWindowsContainedFile } from "./bound-read.mjs";
+import { canonicalizeWindowsDriveAbsolute, classifyPathInput, resolveContained } from "./paths.mjs";
 
 /**
  * Strict contained read (FG-1).
@@ -50,12 +58,40 @@ function sameIdentity(left, right) {
  *          frozen receipt emitted after the read; `sha256` is the digest of
  *          exactly the bytes returned in `content`.
  */
-export async function readFileStrict(root, relPath, { encoding, expectedSha256 } = {}) {
+export async function readFileStrict(root, relPath, { encoding, expectedSha256, platform = process.platform } = {}) {
   if (encoding !== undefined && encoding !== "utf8") {
     throw new TypeError('readFileStrict: encoding must be "utf8" or undefined');
   }
   if (expectedSha256 !== undefined && (typeof expectedSha256 !== "string" || !SHA256_HEX_PATTERN.test(expectedSha256))) {
     throw new TypeError("readFileStrict: expectedSha256 must be a lowercase sha256 hex digest");
+  }
+  if (platform === "win32") {
+    const classification = classifyPathInput(relPath, "win32");
+    if (!classification.ok) {
+      throw mechanismError(
+        classification.kind,
+        `path rejected before resolution (kind: ${classification.kind})`,
+        { input: typeof relPath === "string" ? relPath : typeof relPath },
+      );
+    }
+    let boundRoot = root;
+    if (process.platform === "win32") {
+      // This convenience API accepts a workspace-relative root. Resolve it
+      // lexically, preserving every real ancestor for the native no-reparse
+      // traversal; realpath must not approve a junction's replacement target.
+      if (typeof root !== "string" || root.length === 0 || root.includes("\0")) {
+        throw mechanismError(HARNESS_ERROR_KINDS.INVALID_ROOT, "workspace root must name a local directory");
+      }
+      const absolute = canonicalizeWindowsDriveAbsolute(root);
+      if (absolute === null && /^(?:[A-Za-z]:|[\\/])/u.test(root)) {
+        throw mechanismError(HARNESS_ERROR_KINDS.INVALID_ROOT, "workspace root is not a supported local drive path");
+      }
+      boundRoot = absolute ?? canonicalizeWindowsDriveAbsolute(path.resolve(root));
+      if (boundRoot === null) {
+        throw mechanismError(HARNESS_ERROR_KINDS.INVALID_ROOT, "workspace root is not a supported local drive path");
+      }
+    }
+    return readWindowsContainedFile(boundRoot, relPath, { encoding, expectedSha256 });
   }
 
   const target = await resolveContained(root, relPath);
@@ -91,6 +127,13 @@ export async function readFileStrict(root, relPath, { encoding, expectedSha256 }
       { input: relPath, actual: before.isDirectory() ? "directory" : "special" },
     );
   }
+  if (before.nlink !== 1) {
+    throw mechanismError(
+      HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY,
+      "strict read refuses a hard-linked target (single link required)",
+      { input: relPath, nlink: before.nlink },
+    );
+  }
 
   const noFollow = FS_CONSTANTS.O_NOFOLLOW ?? 0;
   let handle;
@@ -119,7 +162,7 @@ export async function readFileStrict(root, relPath, { encoding, expectedSha256 }
   }
   try {
     const opened = await handle.stat();
-    if (!sameIdentity(before, opened) || !opened.isFile()) {
+    if (!sameIdentity(before, opened) || !opened.isFile() || opened.nlink !== 1) {
       throw mechanismError(
         HARNESS_ERROR_KINDS.UNSAFE_STATE_ENTRY,
         "strict read target identity changed during inspection",

@@ -185,7 +185,7 @@ print(json.dumps(out, ensure_ascii=False))
 
 没有可定位证明时，不能走高版分支。复用旧证不要求重新选择扫描；`action=none` 不能记为 scanned。缺入口或适用缺证应如实标为未通过，不阻断无关检查。未知提供方按未知输入拒绝；docs 不强制建站。
 
-012/014 使用该次消费结果，原 conclusion 进入符合性结果和固定人类摘要。现有发布收据消费已委托 release-skill 0.9.17 的 `verify-records`，与 release-skill 0.9.23 `read-proof` 专业证明读取分开；不要把它说成 Audit 自写的检查器。FOUNDATION-012/014 的重复专业判断在该消费路径接通后退出。
+012/014 使用该次消费结果，原 conclusion 进入符合性结果和固定人类摘要。Audit 的 `release-audit` 仅做静态评估汇总并单向产出结论（`processExecution=none`），与 release-skill 0.9.23 `read-proof` 专业证明读取保持清晰边界；不要把它说成 Audit 自写的检查器。FOUNDATION-012/014 的重复专业判断在该消费路径接通后退出。
 
 ## 输入
 
@@ -196,7 +196,7 @@ print(json.dumps(out, ensure_ascii=False))
 
 调用 `prepare_conformance_evidence_document` 返回后，先完成下述材料承接，再将证据集合落盘并冻结同一次 Task。宿主承接用户明确提供，或目标明确采用且获准读取的外部权利政策、变更范围原件及适用事件材料。
 
-按已确定的获准根路径和相对路径，调用同一平台现有 Foundation 0.22.0 的 `workflow.foundation_read_file_strict(root, relative)`，读取原文件内容和 `sha256`；在返回的 `document["evidence_set"]` 中追加仅含 `evidence_id`、`kind`、`path`、`sha256` 的既有证据项。`evidence_id` 不重复，`path` 使用规范化的绝对真实路径且不含符号链接，`sha256` 取严格读取的返回值，`kind` 按材料真实用途从现有合同选择。
+按已确定的获准根路径和相对路径，调用同一平台现有 Foundation 0.39.2 的 `workflow.foundation_read_file_strict(root, relative)`，读取原文件内容和 `sha256`；在返回的 `document["evidence_set"]` 中追加仅含 `evidence_id`、`kind`、`path`、`sha256` 的既有证据项。`evidence_id` 不重复，`path` 使用规范化的绝对真实路径且不含符号链接，`sha256` 取严格读取的返回值，`kind` 按材料真实用途从现有合同选择。
 
 不复制影子材料，不修改允许的种类或证据角色。本文前面的准备示例也在返回 `document` 后、写文件前完成此步；用户无需填写这些内部 JSON。
 

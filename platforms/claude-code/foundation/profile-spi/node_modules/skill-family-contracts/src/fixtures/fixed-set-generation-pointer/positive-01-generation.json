@@ -1,0 +1,14 @@
+{
+  "fixtureId": "fixed-set-generation-pointer.positive.generation",
+  "contract": "fixed-set-generation-pointer",
+  "class": "positive",
+  "description": "A generation pointer names one segment and a closure digest, with no absolute root.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-pointer.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-generation-pointer",
+    "generation": "gen-1",
+    "closureDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  }
+}

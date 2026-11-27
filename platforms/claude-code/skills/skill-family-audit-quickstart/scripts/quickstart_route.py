@@ -1058,32 +1058,37 @@ def _foundation_strict_json(
     return value, digest
 
 
-def _load_source_dispositions(
+def _load_canonical_route_projection(
     runner: Path, projection_path: Path
-) -> tuple[list[Any] | None, str | None, str | None]:
-    """Strict-read the 旧编号去向 segment of the public canonical projection.
+) -> tuple[list[Any] | None, str | None, str | None, list[str]]:
+    """Read current runnable IDs and 旧编号去向 from the same public projection.
 
-    Returns ``(rows, reason, digest)``. 缺失、不可读或结构非法时返回
+    Returns ``(rows, reason, digest, current_rule_ids)``. 缺失、不可读或结构非法时返回
     ``rows=None`` 与原因；此时已在当前清单内的编号不受影响，未命中的请求仍按
     既有 ``unresolved_selector`` 失败关闭。本函数只读公开投影，不读私有库存。
     """
     if projection_path.is_symlink() or not projection_path.is_file():
-        return None, "projection_missing", None
+        return None, "projection_missing", None, []
     try:
         projection, digest = _foundation_strict_json(
             runner, projection_path, "HUMAN_ROUTE_DISPOSITIONS"
         )
     except RouteError:
-        return None, "projection_unreadable", None
+        return None, "projection_unreadable", None, []
+    current_rule_ids = sorted({
+        row["canonical_id"] for row in projection.get("rules", [])
+        if isinstance(row, dict) and isinstance(row.get("canonical_id"), str)
+        and row.get("lifecycle_status") in {"ACTIVE_MECHANICAL", "ACTIVE_SEMANTIC"}
+    })
     rows = projection.get("source_dispositions")
     if not isinstance(rows, list) or not rows:
-        return None, "dispositions_absent", digest
-    return rows, None, digest
+        return None, "dispositions_absent", digest, current_rule_ids
+    return rows, None, digest, current_rule_ids
 
 
 def _load_human_route_module(
     runner: Path,
-) -> tuple[Any, dict[str, Any], list[str], dict[str, str], tuple[Any, ...]]:
+) -> tuple[Any, dict[str, Any], list[str], dict[str, str], tuple[Any, ...], list[str]]:
     """Load the conformance-owned route helpers and their managed authorities."""
     host = sys.modules.get("conformance_check")
     host_file = getattr(host, "__file__", None)
@@ -1129,11 +1134,14 @@ def _load_human_route_module(
     })
     if len(deterministic_rule_ids) != len(first_tier_static):
         raise RouteError("HUMAN_ROUTE_ROUTING_INVALID")
+    dispositions, reason, digest, current_rule_ids = _load_canonical_route_projection(
+        runner, refs / "canonical-rule-projection.json"
+    )
     return module, registry, deterministic_rule_ids, {
         "registry_digest": registry_digest,
         "routing_file_digest": routing_file_digest,
         "trust_projection_digest": trust_projection_digest,
-    }, _load_source_dispositions(runner, refs / "canonical-rule-projection.json")
+    }, (dispositions, reason, digest), current_rule_ids
 
 
 def _human_intent(request: str) -> str:
@@ -1173,6 +1181,7 @@ def resolve_conformance_human_route(
         deterministic_rule_ids,
         route_identity,
         dispositions_state,
+        current_rule_ids,
     ) = _load_human_route_module(runner)
     source_dispositions, dispositions_reason, _ = dispositions_state
     profiles = _option_values(method_args, "execution-profile")
@@ -1203,6 +1212,7 @@ def resolve_conformance_human_route(
             deterministic_rule_ids,
             exact_rule_ids or None,
             source_dispositions,
+            current_rule_ids=current_rule_ids,
         )
     except ValueError as exc:
         message = str(exc)

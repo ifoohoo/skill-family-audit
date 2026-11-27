@@ -4568,8 +4568,7 @@ _FOUNDATION_SCOPE_RULES = {
 
 def _professional_issue(item: dict[str, Any], *, scope_rule: str | None = None) -> str:
     if (
-        scope_rule in _FOUNDATION_SCOPE_RULES
-        and item.get("version_relation") == "higher"
+        item.get("version_relation") == "higher"
         and item.get("status") == "pass"
         and item.get("mode") == "version_policy"
     ):
@@ -4613,8 +4612,7 @@ def _professional_pass_verified(
     if not isinstance(baseline, str) or not baseline:
         return False
     if (
-        scope_rule in _FOUNDATION_SCOPE_RULES
-        and item.get("version_relation") == "higher"
+        item.get("version_relation") == "higher"
         and item.get("mode") == "version_policy"
         and isinstance(item.get("proof_version"), str)
         and item.get("proof_version")
@@ -4723,8 +4721,7 @@ def _finish_professional_consumption(
         evidence["gap"] = scope_gap["gap"]
         evidence["professional_issue"] = "provider_capability_missing"
     if (
-        scope_rule in _FOUNDATION_SCOPE_RULES
-        and verified
+        verified
         and item.get("version_relation") == "higher"
         and item.get("mode") == "version_policy"
     ):
@@ -6451,6 +6448,14 @@ def check_governance_001(ctx: dict[str, Any]) -> dict[str, Any]:
     target_root = Path(target)
     scope_decl = _doc(ctx, "gate-scope-declaration")
     declared_objects: list[dict[str, Any]] = []
+    project = ctx.get("scope", {}).get("plugin_project")
+    if isinstance(project, dict):
+        declared_objects.extend(
+            {"kind": "platform_entry_projections", "object": row["manifest"]}
+            for row in project.get("projections", [])
+            if isinstance(row, dict) and isinstance(row.get("manifest"), str)
+            and row["manifest"] and row.get("mappings")
+        )
     if isinstance(scope_decl, dict):
         for key in ("managed_artifacts", "public_payloads", "platform_entry_projections"):
             items = scope_decl.get(key)

@@ -1,3 +1,6 @@
+// @feature FND-FR-007
+// @decision FND-ADR-015
+// @design FND-DES-009
 import { readFileSync } from "node:fs";
 import { ContractsError, isRegisteredErrorCode } from "./errors.mjs";
 import { loadRegistry } from "./registry.mjs";

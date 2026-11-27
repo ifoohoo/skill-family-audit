@@ -1,0 +1,182 @@
+{
+  "fixtureId": "session-trace-bundle.negative.unknown-field",
+  "contract": "session-trace-bundle",
+  "class": "negative",
+  "description": "session-trace-bundle 拒绝未声明的顶层额外字段并返回 SFC1001。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/session-trace-bundle.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": {
+    "valid": false,
+    "errorCode": "SFC1001"
+  },
+  "data": {
+    "bundleId": "stb-fixture-001",
+    "createdAt": "2026-11-26T03:00:00Z",
+    "clock": {
+      "source": "driver_monotonic",
+      "maxSkewMs": 5
+    },
+    "producer": {
+      "driverId": "fictional-driver",
+      "driverVersion": "0.1.0",
+      "captureMode": "live_acp",
+      "executableSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "subject": {
+      "id": "fictional-family",
+      "kind": "skill-family",
+      "version": "0.1.0",
+      "sourceTreeSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "blueprintRef": null
+    },
+    "attempt": {
+      "attemptId": "att-fixture-1",
+      "candidateSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "criteriaCommitmentSha256": null,
+      "allowedWriteSetSha256": null
+    },
+    "rawSources": [
+      {
+        "sourceId": "src-1",
+        "hostId": "deepseek-harness",
+        "adapterId": "dsh-headless",
+        "adapterVersion": "0.2.2-rc.5",
+        "evidenceId": "ev-1",
+        "coverage": {
+          "totalBytes": 256,
+          "readBytes": 256,
+          "totalLines": 4,
+          "keptLines": 4,
+          "complete": true,
+          "droppedRanges": []
+        }
+      }
+    ],
+    "rootSessionId": "s-root",
+    "sessions": [
+      {
+        "sessionId": "s-root",
+        "parentSessionId": null,
+        "role": "coordinator",
+        "roleSource": "launch_spec",
+        "duty": "Fictional coordinator run",
+        "binding": {
+          "blueprintNodeId": "n-1",
+          "bindingSource": "launch_spec"
+        },
+        "observability": {
+          "tier": "T0_live_acp",
+          "fields": {
+            "perTurnUsage": "exact",
+            "toolArgs": "exact",
+            "toolOutput": "exact",
+            "exitCode": "exact",
+            "osProcess": "exact",
+            "writeObservation": "exact",
+            "sandboxEvents": "exact",
+            "exposedTools": "exact"
+          }
+        },
+        "host": {
+          "id": "deepseek-harness",
+          "version": "0.2.2-rc.5",
+          "boundary": "builtin_dsh_sandbox",
+          "sandboxPolicySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "model": {
+          "provider": "fictional",
+          "id": "fictional-model",
+          "version": "1",
+          "family": "fictional",
+          "reasoningEffort": "high",
+          "contextWindowTokens": 128000,
+          "contextWindowSource": "host_reported"
+        },
+        "contextLineage": {
+          "resumed": false,
+          "forkedFromSessionId": null,
+          "instructionsSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "inputArtifacts": []
+        },
+        "osProcess": {
+          "pid": 100,
+          "pgid": 100,
+          "exitCode": 0,
+          "startedAt": "2026-11-26T03:00:00Z",
+          "finishedAt": "2026-11-26T03:00:01Z",
+          "durationMs": 1000
+        },
+        "exposedToolsSource": "launch_spec",
+        "exposedTools": [],
+        "writeScope": {
+          "allowedPatterns": [
+            "src/**"
+          ],
+          "allowedPatternsSource": "launch_spec",
+          "observation": {
+            "method": "fs_snapshot_diff",
+            "baselineTreeSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "finalTreeSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "observedWrites": []
+        },
+        "turns": [],
+        "appliedContextPolicy": {
+          "blueprintPolicyRef": null,
+          "warnRatioBp": 4000,
+          "mitigations": []
+        },
+        "termination": {
+          "reason": "completed",
+          "rawStopReason": null,
+          "watchdogEnvelopeRef": null
+        }
+      }
+    ],
+    "interactions": [],
+    "skillActivations": [],
+    "methodLocks": [],
+    "hitlDecisions": [],
+    "toolCalls": [],
+    "sandboxEvents": [],
+    "claims": [],
+    "evidenceRefs": [
+      {
+        "evidenceId": "ev-1",
+        "role": "transcript_chunk",
+        "relativePath": "traces/s-root.jsonl",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "byteLength": 256,
+        "redaction": {
+          "policyId": "fictional-redact",
+          "policyVersion": "1.0.0"
+        }
+      }
+    ],
+    "schemaVersion": 1,
+    "kind": "skill-family.session-trace-bundle",
+    "seal": {
+      "attemptId": "att-fixture-1",
+      "sealedAt": "2026-11-26T03:00:00Z",
+      "algorithm": "sha256",
+      "digestScope": "bundle_without_seal",
+      "bundleDigestSha256": "7edcf11ec707a87204652380e79a570ede37a12957525400d5a5d758ef34e3ef",
+      "quiescence": {
+        "processGroupQuiescent": true,
+        "orphanScanPassed": true,
+        "bufferFlushCompleted": true,
+        "sideEffectResolution": "none",
+        "evidenceId": null
+      },
+      "externalBinding": {
+        "status": "pending",
+        "kind": null,
+        "recordDigest": null
+      }
+    },
+    "unexpectedExtraField": true
+  }
+}

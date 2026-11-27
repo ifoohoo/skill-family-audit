@@ -1,3 +1,5 @@
+// @decision FND-ADR-007
+// @design FND-DES-001
 import { lstat, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -60,7 +62,9 @@ export function classifyPathInput(input, platform = process.platform) {
     // Native separators are fine on Windows; containment is decided by the
     // lexical + real checks. UNC paths address remote machines and are never
     // containable; rooted paths (`\x`, `/x`, `<drive>:\x`) are absolute.
-    if (WINDOWS_UNC_PATTERN.test(input)) {
+    // `//server/share` is UNC. It also starts with `/`, so this check must
+    // run before the rooted-path rejection or the kind collapses to absolute.
+    if (WINDOWS_UNC_PATTERN.test(input) || input.startsWith("//")) {
       return { ok: false, kind: HARNESS_ERROR_KINDS.UNC_PATH };
     }
     if (input.startsWith("\\") || input.startsWith("/")) {
@@ -76,6 +80,17 @@ export function classifyPathInput(input, platform = process.platform) {
       // directory that this runtime never tracks: ambiguous, therefore
       // rejected.
       return { ok: false, kind: HARNESS_ERROR_KINDS.WINDOWS_DRIVE_PATH };
+    }
+    for (const segment of input.split(/[\\/]/u)) {
+      if (segment.includes(":")) {
+        return { ok: false, kind: HARNESS_ERROR_KINDS.INVALID_PATH };
+      }
+      if (segment !== ".." && (segment === "." || /[. ]$/u.test(segment))) {
+        return { ok: false, kind: HARNESS_ERROR_KINDS.INVALID_PATH };
+      }
+      if (isWindowsDeviceSegment(segment)) {
+        return { ok: false, kind: HARNESS_ERROR_KINDS.INVALID_PATH };
+      }
     }
     return { ok: true };
   }
@@ -98,6 +113,31 @@ export function classifyPathInput(input, platform = process.platform) {
     return { ok: false, kind: HARNESS_ERROR_KINDS.ABSOLUTE_PATH };
   }
   return { ok: true };
+}
+
+/**
+ * One Windows drive-absolute spelling, with normalized separators and an
+ * uppercase drive letter, shared by the schema and the native final path.
+ */
+export function canonicalizeWindowsDriveAbsolute(value) {
+  if (typeof value !== "string" || value.length === 0 || value.includes("\0")) return null;
+  if (value.startsWith("\\\\") || value.startsWith("//")) return null;
+  const slash = value.replaceAll("\\", "/");
+  if (/^[A-Za-z]:\/$/u.test(slash)) return `${slash[0].toUpperCase()}:/`;
+  if (!/^[A-Za-z]:\//u.test(slash) || slash.endsWith("/")) return null;
+  const segments = slash.slice(3).split("/");
+  if (segments.length === 0 || segments.some((segment) => segment.length === 0 || segment === "." || segment === ".." ||
+      segment.endsWith(".") || segment.endsWith(" ") || segment.includes(":") ||
+      /[<>"|?*]/u.test(segment) || isWindowsDeviceSegment(segment))) {
+    return null;
+  }
+  return `${slash[0].toUpperCase()}:/${segments.join("/")}`;
+}
+
+function isWindowsDeviceSegment(segment) {
+  const trimmed = segment.replace(/[. ]+$/u, "");
+  const base = trimmed.split(".", 1)[0];
+  return /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/iu.test(base);
 }
 
 function insideRoot(rootReal, candidate) {

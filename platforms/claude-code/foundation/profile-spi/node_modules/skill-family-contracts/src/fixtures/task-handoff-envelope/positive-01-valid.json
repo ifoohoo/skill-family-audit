@@ -1,0 +1,31 @@
+{
+  "fixtureId": "task-handoff-envelope.positive.valid",
+  "contract": "task-handoff-envelope",
+  "class": "positive",
+  "description": "合法的跨技能族任务范围与上游制品交接信封，声明选定与排除的方法、允许写集与摘要绑定的输入制品。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/task-handoff-envelope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": true },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.task-handoff-envelope",
+    "handoffId": "handoff-20261122-001",
+    "requestSummary": "将经过业务核对的用户故事初稿移交中文表达技能族优化可读性，不改动验收条件。",
+    "requirementRefs": ["US-016", "S-080"],
+    "selectedMethods": ["humanize-rewrite", "shuorenhua"],
+    "excludedMethods": ["release-skill"],
+    "allowedWriteSet": ["docs/stories/**"],
+    "upstreamArtifacts": [
+      {
+        "path": "docs/stories/draft-story.md",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role": "draft"
+      }
+    ],
+    "expectedDownstreamAction": "在不改变角色、行动与验收判据的前提下完成中文去翻译腔编辑并输出候选文件。",
+    "createdAt": "2026-11-22T08:00:00Z"
+  }
+}

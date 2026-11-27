@@ -1,0 +1,24 @@
+{
+  "fixtureId": "internal-dependency-resolution-receipt.negative.unknown-field",
+  "contract": "internal-dependency-resolution-receipt",
+  "class": "negative",
+  "description": "选版收据采用封闭结构，未登记的顶层字段在严格校验下失败并返回 SFC1001。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/internal-dependency-resolution-receipt.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.internal-dependency-resolution-receipt",
+    "projectId": "fictional-orchid",
+    "policy": "fixed-major-min-version-v1",
+    "status": "resolved",
+    "resolvedAt": "2026-11-21T16:00:00Z",
+    "manifestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "resolutions": [],
+    "digest": "adc7d9350775901c0acc9d402c496e7027d92fd6f64af4f3babead503e0b36d1",
+    "floatingRegistryUrl": "https://registry.example.invalid"
+  }
+}

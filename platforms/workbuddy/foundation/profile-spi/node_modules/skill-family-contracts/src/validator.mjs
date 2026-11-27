@@ -1,3 +1,6 @@
+// @feature FND-FR-007
+// @decision FND-ADR-002
+// @design FND-DES-009
 import { readFileSync } from "node:fs";
 import Ajv from "ajv";
 import Ajv2020 from "ajv/dist/2020.js";

@@ -9,6 +9,9 @@
     },
     {
       "$ref": "#/$defs/internalReviewV2"
+    },
+    {
+      "$ref": "#/$defs/internalReviewV3"
     }
   ],
   "$defs": {
@@ -203,6 +206,342 @@
         }
       },
       "additionalProperties": false
+    },
+    "internalReviewV3": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "kind",
+        "producer_method_id",
+        "cognitive_independence",
+        "foundation_task_digest",
+        "review_request_digest",
+        "evidence_set_digest",
+        "reviewed_rule_set_digest",
+        "reviews"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "3.0.0"
+        },
+        "kind": {
+          "const": "skill-family-audit.semantic-review-result"
+        },
+        "producer_method_id": {
+          "const": "skill-family-audit:conformance-audit"
+        },
+        "cognitive_independence": {
+          "const": "not_attested"
+        },
+        "foundation_task_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "review_request_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "evidence_set_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "reviewed_rule_set_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/internalRuleReviewV3"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "internalRuleReviewV3": {
+      "type": "object",
+      "required": [
+        "binding_id",
+        "canonical_id",
+        "check_method",
+        "rule_revision_digest",
+        "status",
+        "reason_code",
+        "rationale",
+        "evidence_refs",
+        "review_purpose"
+      ],
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^SFA-[A-Z0-9]+-[0-9]{3}$"
+        },
+        "check_method": {
+          "enum": [
+            "semantic_review",
+            "static_scan",
+            "schema_validation",
+            "digest_verification"
+          ]
+        },
+        "rule_revision_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "EVIDENCE_MISSING",
+            "NOT_APPLICABLE",
+            "REVIEW_REQUIRED"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          }
+        },
+        "review_purpose": {
+          "enum": [
+            "semantic_conclusion",
+            "mechanical_object_premise"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "semantic_conclusion"
+            },
+            "check_method": {
+              "const": "semantic_review"
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "static_scan"
+            },
+            "status": {
+              "const": "NOT_APPLICABLE"
+            },
+            "reason_code": {
+              "enum": [
+                "STATIC_WIRING_NOT_ADOPTED"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "static_scan"
+            },
+            "status": {
+              "const": "EVIDENCE_MISSING"
+            },
+            "reason_code": {
+              "enum": [
+                "STATIC_INPUTS_MISSING"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "static_scan"
+            },
+            "status": {
+              "const": "REVIEW_REQUIRED"
+            },
+            "reason_code": {
+              "enum": [
+                "MECHANICAL_OBJECTS_PRESENT",
+                "MECHANICAL_OBJECT_SCOPE_UNKNOWN"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "schema_validation"
+            },
+            "status": {
+              "const": "NOT_APPLICABLE"
+            },
+            "reason_code": {
+              "enum": [
+                "MACHINE_SCHEMA_NOT_ADOPTED"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "schema_validation"
+            },
+            "status": {
+              "const": "EVIDENCE_MISSING"
+            },
+            "reason_code": {
+              "enum": [
+                "SCHEMA_INPUTS_MISSING"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "schema_validation"
+            },
+            "status": {
+              "const": "REVIEW_REQUIRED"
+            },
+            "reason_code": {
+              "enum": [
+                "MECHANICAL_OBJECTS_PRESENT",
+                "MECHANICAL_OBJECT_SCOPE_UNKNOWN",
+                "SCHEMA_OUTSIDE_FOUNDATION_CONTRACTS"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "digest_verification"
+            },
+            "status": {
+              "const": "NOT_APPLICABLE"
+            },
+            "reason_code": {
+              "enum": [
+                "BYTE_CORRESPONDENCE_NOT_DECLARED"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "digest_verification"
+            },
+            "status": {
+              "const": "EVIDENCE_MISSING"
+            },
+            "reason_code": {
+              "enum": [
+                "DIGEST_INPUTS_MISSING"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "review_purpose": {
+              "const": "mechanical_object_premise"
+            },
+            "check_method": {
+              "const": "digest_verification"
+            },
+            "status": {
+              "const": "REVIEW_REQUIRED"
+            },
+            "reason_code": {
+              "enum": [
+                "MECHANICAL_OBJECTS_PRESENT",
+                "MECHANICAL_OBJECT_SCOPE_UNKNOWN",
+                "BYTE_BASELINE_OUTSIDE_MANAGED_FILES"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        }
+      ]
     }
   }
 }

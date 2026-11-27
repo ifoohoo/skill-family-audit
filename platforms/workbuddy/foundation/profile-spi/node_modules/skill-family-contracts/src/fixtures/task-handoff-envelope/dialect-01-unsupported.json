@@ -1,0 +1,16 @@
+{
+  "fixtureId": "task-handoff-envelope.dialect-boundary.unsupported",
+  "contract": "task-handoff-envelope",
+  "class": "dialect-boundary",
+  "description": "不受支持的 JSON Schema 方言在校验任务交接信封前即以 SFC1006 拒绝。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/task-handoff-envelope.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.task-handoff-envelope"
+  }
+}

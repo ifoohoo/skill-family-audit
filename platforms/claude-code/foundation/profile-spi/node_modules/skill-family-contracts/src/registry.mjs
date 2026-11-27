@@ -1,3 +1,6 @@
+// @decision FND-ADR-002
+// @decision FND-ADR-007
+// @design FND-DES-001
 import { readFileSync } from "node:fs";
 import { ContractsError } from "./errors.mjs";
 

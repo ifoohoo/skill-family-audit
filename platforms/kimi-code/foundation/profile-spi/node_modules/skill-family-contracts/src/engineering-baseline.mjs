@@ -1,3 +1,6 @@
+// @feature FND-FR-016
+// @decision FND-ADR-025
+// @design FND-DES-020
 import { ContractsError } from "./errors.mjs";
 import { digestDocument } from "./audit-surface.mjs";
 import { preflightJsonData } from "./inert-json.mjs";

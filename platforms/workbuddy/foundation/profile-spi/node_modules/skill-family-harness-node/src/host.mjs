@@ -1,3 +1,7 @@
+// @feature FND-FR-001
+// @feature FND-FR-002
+// @decision FND-ADR-003
+// @design FND-DES-002
 import { constants } from "node:fs";
 import { access, lstat, mkdtemp, readFile, realpath, rename, rm } from "node:fs/promises";
 import path from "node:path";

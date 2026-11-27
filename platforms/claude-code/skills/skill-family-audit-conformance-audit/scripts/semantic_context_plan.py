@@ -208,6 +208,10 @@ def validate_child_result_rows(parent_rows, child_result_rows):
         (row["canonical_id"], row["revision_digest"], row["check_method"]): row
         for row in parent_rows
     }
+    for child in child_result_rows:
+        parent = parent_by_id.get((child["canonical_id"], child["revision_digest"], child["check_method"]))
+        if parent is not None and child.get("review_purpose") != parent.get("review_purpose"):
+            raise ValueError("child review_purpose 与 parent 不一致")
     child_ids = [
         (row["canonical_id"], row["revision_digest"], row["check_method"])
         for row in child_result_rows
@@ -420,8 +424,17 @@ def _validate_result_rows(rows, what):
                 what, ", ".join(sorted(missing_fields))))
         _require_non_empty_string(row["canonical_id"], "canonical_id")
         _require_non_empty_string(row["revision_digest"], "revision_digest")
-        if row["check_method"] not in _NON_MECHANICAL_CHECK_METHODS:
-            raise ValueError("check_method 必须是非机械审阅方法")
+        purpose = row.get("review_purpose")
+        if purpose is None:
+            if row["check_method"] not in _NON_MECHANICAL_CHECK_METHODS:
+                raise ValueError("历史 check_method 必须是非机械审阅方法")
+        elif not (
+            purpose == "semantic_conclusion" and row["check_method"] == "semantic_review"
+            or purpose == "mechanical_object_premise" and row["check_method"] in {
+                "static_scan", "schema_validation", "digest_verification",
+            }
+        ):
+            raise ValueError("review_purpose 与 check_method 不匹配")
         _require_non_empty_string(row["binding_id"], "binding_id")
         _require_string_list(row["evidence_refs"], "evidence_refs")
 

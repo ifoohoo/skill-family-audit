@@ -62,6 +62,11 @@ async function runPublishFixedSet(params, invoke) {
     throw new TypeError("publish-fixed-set requires exactly sourceRoot, targetParent, targetSegment, and manifest");
   }
 
+  if (process.platform === "win32") {
+    const { publishFixedSet } = await import("./runtime/harness/fixed-set-publication.mjs");
+    return publishFixedSet(params);
+  }
+
   let publishFixedSet;
   try {
     const mod = await import("./rename-directory-no-replace/rename-directory-no-replace.mjs");
@@ -107,6 +112,10 @@ async function runCreateFixedSetPublicationManifest(params) {
     throw new TypeError(
       "create-fixed-set-publication-manifest requires exactly sourceRoot, targetParent, and targetSegment",
     );
+  }
+  if (process.platform === "win32") {
+    const { createFixedSetPublicationManifest } = await import("./runtime/harness/fixed-set-publication.mjs");
+    return createFixedSetPublicationManifest(params);
   }
   const { createFixedSetPublicationManifest } = await import(
     "./rename-directory-no-replace/rename-directory-no-replace.mjs"

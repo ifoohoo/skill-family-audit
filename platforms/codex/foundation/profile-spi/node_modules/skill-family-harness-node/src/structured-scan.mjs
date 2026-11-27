@@ -1,3 +1,4 @@
+// @decision FND-ADR-011
 import { findSchemaByObject } from "skill-family-contracts";
 import { mkdtempSync, rmSync, writeFileSync, lstatSync, readlinkSync } from "node:fs";
 import os from "node:os";

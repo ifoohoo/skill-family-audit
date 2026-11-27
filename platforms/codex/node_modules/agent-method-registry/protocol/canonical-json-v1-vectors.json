@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "protocol": "canonical-json-v1",
+  "legal": [
+    {
+      "name": "object-unicode-null",
+      "input": { "b": 1, "a": 2, "unicode": "你好", "nullValue": null },
+      "canonical": "{\"a\":2,\"b\":1,\"nullValue\":null,\"unicode\":\"你好\"}",
+      "digest": "sha256:e9da8640b06cbb0970d8072eff5b57498381aed127343d9f552916ea4564bd9f"
+    },
+    {
+      "name": "ordinary-array-order",
+      "input": { "items": [3, 1, 2] },
+      "canonical": "{\"items\":[3,1,2]}",
+      "digest": "sha256:de21aef9c6d6b65cfe6dc3c9159d9969659d1f5b854c6249d871036c57a26966"
+    },
+    {
+      "name": "set-like-names-remain-ordinary",
+      "input": {
+        "contextTargets": ["c", "a", "b"],
+        "domains": ["web", "api"],
+        "intents": ["build", "deploy"],
+        "artifactTypes": ["feature", "bugfix"]
+      },
+      "canonical": "{\"artifactTypes\":[\"feature\",\"bugfix\"],\"contextTargets\":[\"c\",\"a\",\"b\"],\"domains\":[\"web\",\"api\"],\"intents\":[\"build\",\"deploy\"]}",
+      "digest": "sha256:6cb73e462de926a9249a0d3fd92565d83096e6701383c4f5f33f809a013c2047"
+    },
+    {
+      "name": "canonical-project-facts-targets",
+      "input": {
+        "artifactGraphSummary": {
+          "artifactCount": 2,
+          "edgeCount": 3,
+          "contextTargets": ["ACA12", "ACA18"]
+        }
+      },
+      "canonical": "{\"artifactGraphSummary\":{\"artifactCount\":2,\"contextTargets\":[\"ACA12\",\"ACA18\"],\"edgeCount\":3}}",
+      "digest": "sha256:9e608eb56d99ccf1dc70eb2dba46efc9538f30b3d5481061cce02112692e8055"
+    }
+  ],
+  "orderDifferences": [
+    { "name": "ordinary-array", "left": { "items": [1, 2, 3] }, "right": { "items": [3, 2, 1] } },
+    { "name": "contextTargets-name-is-not-global-set", "left": { "contextTargets": ["a", "b"] }, "right": { "contextTargets": ["b", "a"] } }
+  ],
+  "invalidKinds": [
+    "undefined", "nan", "positive-infinity", "negative-infinity", "bigint", "symbol", "function",
+    "date", "regexp", "map", "set", "promise", "error", "custom-prototype", "circular",
+    "sparse-array", "hidden-field", "symbol-key", "accessor", "proxy"
+  ]
+}

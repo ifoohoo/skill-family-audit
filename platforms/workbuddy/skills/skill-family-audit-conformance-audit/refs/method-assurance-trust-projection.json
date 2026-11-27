@@ -1,20 +1,19 @@
 {
   "kind": "skill-family-audit.method-assurance-trust-projection",
-  "projection_digest": "64abc84bba028f160ab2f33cca053d9b78ebe1501f8ea922998f5a5fb43fd6a0",
+  "projection_digest": "b7c3e885a6f15dde369e9c448fb72901a1a16c1121f7e760beb7330b91b7f1fb",
   "routing": {
     "first_tier_static": [
       {
         "baseline_rule_id": "w2b2:SFA-ARTMETHOD-001",
         "canonical_id": "SFA-ARTMETHOD-001",
         "check_methods": [
-          "digest_verification",
-          "schema_validation"
+          "schema_validation",
+          "semantic_review"
         ],
         "required_mechanical_methods": [
-          "digest_verification",
           "schema_validation"
         ],
-        "revision_digest": "f0591b3cc57b426cc4e0c3a6ed8f0cd923ee04784d0bf60e4c74c1887bfffe0d"
+        "revision_digest": "2b12a4b76fa7a91953528e055f367e6e3faf94d790b0ae90b099f4e3e9816f32"
       },
       {
         "baseline_rule_id": "w2b2:SFA-ARTMETHOD-002",
@@ -45,25 +44,13 @@
         "baseline_rule_id": "w2b2:SFA-ARTMETHOD-005",
         "canonical_id": "SFA-ARTMETHOD-005",
         "check_methods": [
-          "digest_verification",
-          "schema_validation"
+          "schema_validation",
+          "semantic_review"
         ],
         "required_mechanical_methods": [
-          "digest_verification",
           "schema_validation"
         ],
-        "revision_digest": "e9cbed9dc53bfa6a7132ae8c31ee189a9c4f2ce97a8d35d1a7611a66ac5f689d"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-ARTMETHOD-006",
-        "canonical_id": "SFA-ARTMETHOD-006",
-        "check_methods": [
-          "digest_verification"
-        ],
-        "required_mechanical_methods": [
-          "digest_verification"
-        ],
-        "revision_digest": "053c9b03034bcbf4c2e87369d9b162de66ca509e770927c42dd473cfa2856d6a"
+        "revision_digest": "d87f519b7f37c884089df6ce2644b0ccfaf68326bd29537fd5d2591d7a354aec"
       },
       {
         "baseline_rule_id": "w2b2:SFA-ARTMETHOD-010",
@@ -80,34 +67,25 @@
         "baseline_rule_id": "w2b2:SFA-ARTMETHOD-013",
         "canonical_id": "SFA-ARTMETHOD-013",
         "check_methods": [
-          "schema_validation"
+          "schema_validation",
+          "semantic_review"
         ],
         "required_mechanical_methods": [
           "schema_validation"
         ],
-        "revision_digest": "caedb154fd7131d7cf41938bb8dae24bc1292293a75f37bacd18f67331b44e55"
+        "revision_digest": "d550d5f33ffa7c9e73a0331e0a99c7476d4bfde31bed7d82e40b87b6935781a4"
       },
       {
         "baseline_rule_id": "w2b2:SFA-ARTMETHOD-014",
         "canonical_id": "SFA-ARTMETHOD-014",
         "check_methods": [
-          "schema_validation"
+          "schema_validation",
+          "semantic_review"
         ],
         "required_mechanical_methods": [
           "schema_validation"
         ],
-        "revision_digest": "3dd7a18d211a13688f07d158f3fb7fb8f2fd4f9c84413b53c032b2c569037071"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-ARTMETHOD-016",
-        "canonical_id": "SFA-ARTMETHOD-016",
-        "check_methods": [
-          "digest_verification"
-        ],
-        "required_mechanical_methods": [
-          "digest_verification"
-        ],
-        "revision_digest": "be5eddc1b51716aaad55834be6bfe95fc5d53341857a12d2aab9def031d63dfb"
+        "revision_digest": "8d76e0ec0caf2f200de7d83ba516839d8bd8924c00b6746bb20d720b79ca7950"
       },
       {
         "baseline_rule_id": "w2b3:SFA-CONTEXT-001",
@@ -124,12 +102,13 @@
         "baseline_rule_id": "w2b1:SFA-CONTEXT-002",
         "canonical_id": "SFA-CONTEXT-002",
         "check_methods": [
+          "semantic_review",
           "static_scan"
         ],
         "required_mechanical_methods": [
           "static_scan"
         ],
-        "revision_digest": "b5a25ade569b5fdc40510df337b996be507c3f4fb7ef8790052e740964e1ddc3"
+        "revision_digest": "317c9fb269b4673cfda86ca5a236200fc59622b2aecb313eb94d99f0a7d78106"
       },
       {
         "baseline_rule_id": "w2b3:SFA-CONTEXT-033",
@@ -141,7 +120,7 @@
         "required_mechanical_methods": [
           "static_scan"
         ],
-        "revision_digest": "91f002b000e803153aa53bc21f1c18c4322d08944503b70eea883f24c9a60f75"
+        "revision_digest": "964c446fa107c8f3728b4290d15f72ad1ecdd9e75777479bf8fc684744fce3e3"
       },
       {
         "baseline_rule_id": "w2b2:SFA-ENTRY-004",
@@ -170,78 +149,25 @@
         "baseline_rule_id": "w2b2:SFA-ERROR-002",
         "canonical_id": "SFA-ERROR-002",
         "check_methods": [
+          "semantic_review",
           "static_scan"
         ],
         "required_mechanical_methods": [
           "static_scan"
         ],
-        "revision_digest": "442ad3cb50b9b593f331f9d133c86b58c46c327b926c584f6bc2861e237d9aa5"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-ERROR-003",
-        "canonical_id": "SFA-ERROR-003",
-        "check_methods": [
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "static_scan"
-        ],
-        "revision_digest": "8d42e4d452f27f733ed0ce69c23c73a14961a1b144f516b16fcdc856ff8927e3"
+        "revision_digest": "fdfc26d590cb4dbf111feeb78d81285ddc499c11724fdb5975a64265cd709817"
       },
       {
         "baseline_rule_id": "w2b2:SFA-ERROR-004",
         "canonical_id": "SFA-ERROR-004",
         "check_methods": [
+          "semantic_review",
           "static_scan"
         ],
         "required_mechanical_methods": [
           "static_scan"
         ],
-        "revision_digest": "76be7f2d03c1dd86a6d97b13f2a113c9ce6b4cbdb9b1f5140a2116a23365c33b"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-ERROR-007",
-        "canonical_id": "SFA-ERROR-007",
-        "check_methods": [
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "static_scan"
-        ],
-        "revision_digest": "b858e828d3e15d7534795902e91f7213b3b359c76567da6d54fcfda9a263d9ab"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-ERROR-008",
-        "canonical_id": "SFA-ERROR-008",
-        "check_methods": [
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "static_scan"
-        ],
-        "revision_digest": "e5bb1df132487b2f85ae7fb109a95548f5f5e3a870fd9bbdeaeea87a519a5833"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-ERROR-009",
-        "canonical_id": "SFA-ERROR-009",
-        "check_methods": [
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "static_scan"
-        ],
-        "revision_digest": "98e2d9be3c489609489805151cb5d0383ce42abe3d5873a6524f28a6b2c84f99"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-ERROR-010",
-        "canonical_id": "SFA-ERROR-010",
-        "check_methods": [
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "static_scan"
-        ],
-        "revision_digest": "b7de0c9f408d2d487ba266ba381e3e777906f2bd50fa3f9f5268bcbcb9323f84"
+        "revision_digest": "37f9e5e5281c41f34e7725a59cf36d801c3d570e365f8633fd8fb64e0285ba44"
       },
       {
         "baseline_rule_id": "w2b2:SFA-EXTENSION-004",
@@ -266,17 +192,6 @@
           "static_scan"
         ],
         "revision_digest": "5b5e5681c9efe3906d82f37b1434931dc62eea03cf2d38d094e3d586876706a2"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-FOUNDATION-003",
-        "canonical_id": "SFA-FOUNDATION-003",
-        "check_methods": [
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation"
-        ],
-        "revision_digest": "31c0330c9877125a43d2f8d89dd3ddc5d4e8d2c2e9051d186f8efd0d96195472"
       },
       {
         "baseline_rule_id": "w2b2:SFA-FOUNDATION-004",
@@ -420,45 +335,6 @@
         "revision_digest": "c95a05840fa080fd16b8e13f27300f0ef3f8b5bcd64e551654a77ba169ff6bd4"
       },
       {
-        "baseline_rule_id": "w2b2:SFA-GRAPH-012",
-        "canonical_id": "SFA-GRAPH-012",
-        "check_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "revision_digest": "125be41e040c8d8ce940fc04d8b1342d60a94bdcb49dce9fff7d022286a3cfc8"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-GRAPH-013",
-        "canonical_id": "SFA-GRAPH-013",
-        "check_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "revision_digest": "952c9a3d83e2c25adab2b44ebe25865cdc9e42b175de691aafdae14e7ead69df"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-GRAPH-017",
-        "canonical_id": "SFA-GRAPH-017",
-        "check_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "revision_digest": "ca38b1ddcab1818cac3fea48ca233da4f3681a7bc5e667a4757c95cea27a9950"
-      },
-      {
         "baseline_rule_id": "w2b1:SFA-GRAPH-026",
         "canonical_id": "SFA-GRAPH-026",
         "check_methods": [
@@ -522,19 +398,6 @@
         "revision_digest": "b25ea60b8c7ef276de4221ac8e5a777dfd4b745c45a917c3fad0afec82df5c28"
       },
       {
-        "baseline_rule_id": "w2b1:SFA-HARNESS-005",
-        "canonical_id": "SFA-HARNESS-005",
-        "check_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "revision_digest": "23a164787ee78f8dd9ff18b67f12c2cdff7d85128c2e658bf6789b36dd303565"
-      },
-      {
         "baseline_rule_id": "gmin:legacy-risk-plan",
         "canonical_id": "SFA-MIGRATE-001",
         "check_methods": [
@@ -546,19 +409,6 @@
           "static_scan"
         ],
         "revision_digest": "f1450a279fa2e6f191a5c6a14da691f1c894e018646dd197fc641301ec050a99"
-      },
-      {
-        "baseline_rule_id": "gmin:family-migration-checklist",
-        "canonical_id": "SFA-MIGRATE-021",
-        "check_methods": [
-          "digest_verification",
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "digest_verification",
-          "schema_validation"
-        ],
-        "revision_digest": "f3172bd5edec039d08003a7fe5f86d6a73f7a1d7ee5e327a27664b5d8736c236"
       },
       {
         "baseline_rule_id": "w2b2:SFA-NETSEC-001",
@@ -623,13 +473,14 @@
         "canonical_id": "SFA-PLAT-005",
         "check_methods": [
           "digest_verification",
+          "semantic_review",
           "static_scan"
         ],
         "required_mechanical_methods": [
           "digest_verification",
           "static_scan"
         ],
-        "revision_digest": "774cbb40742745e69b309faabe2ca0bcd9fa8561ff203e1e100921b75281b529"
+        "revision_digest": "7628032402a2a1aa24e370324ddb9aa571416c4fd7a8d1b1dc4aa9607952f0e8"
       },
       {
         "baseline_rule_id": "w2b2:SFA-PLAT-013",
@@ -678,30 +529,6 @@
           "static_scan"
         ],
         "revision_digest": "37997b0289e8c0613cc3b1262ab4fb46dc774c25959848e470baad822b0f84d1"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-PLAT-023",
-        "canonical_id": "SFA-PLAT-023",
-        "check_methods": [
-          "digest_verification",
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "digest_verification",
-          "schema_validation"
-        ],
-        "revision_digest": "6f1a192f11db31a9859099b828141db746ad70a8296b22b397d92ddbcdcbdfd0"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-PLAT-028",
-        "canonical_id": "SFA-PLAT-028",
-        "check_methods": [
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation"
-        ],
-        "revision_digest": "ac0083e645ef3cbdff318b58a8a3047be8201b1759ae6cc7594d04de8ad5e80b"
       },
       {
         "baseline_rule_id": "w2b2:SFA-PLAT-032",
@@ -791,12 +618,13 @@
         "baseline_rule_id": "w2b2:SFA-PROGRAM-006",
         "canonical_id": "SFA-PROGRAM-006",
         "check_methods": [
+          "semantic_review",
           "static_scan"
         ],
         "required_mechanical_methods": [
           "static_scan"
         ],
-        "revision_digest": "53f6603cc5e4561d97d861532a259dffaba88a0b316c4c13084ebdd00147a7bb"
+        "revision_digest": "48e759c612fdcc97bfa3e91144f34f3ce6893d070553791c3d0f229bfaf95b3f"
       },
       {
         "baseline_rule_id": "w2b2:SFA-PROGRAM-007",
@@ -821,19 +649,6 @@
           "static_scan"
         ],
         "revision_digest": "5fa77921a89f14db43c8fa2ff2b0b03c5d9d47a4c766ba9c305527c83e883d0e"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-PROGRAM-010",
-        "canonical_id": "SFA-PROGRAM-010",
-        "check_methods": [
-          "digest_verification",
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "digest_verification",
-          "schema_validation"
-        ],
-        "revision_digest": "ad6fed05204cee0a7c4f5b51df67ff733926bf4ce16f0ad0e92b7218ed560547"
       },
       {
         "baseline_rule_id": "w2b2:SFA-PUBLISH-013",
@@ -913,12 +728,13 @@
         "baseline_rule_id": "w2b2:SFA-REGISTRY-005",
         "canonical_id": "SFA-REGISTRY-005",
         "check_methods": [
-          "schema_validation"
+          "schema_validation",
+          "semantic_review"
         ],
         "required_mechanical_methods": [
           "schema_validation"
         ],
-        "revision_digest": "21f9da1b0db22a610e2ca4ef3e617fe0bf1a21da8d78d490eb41c5226c271bfd"
+        "revision_digest": "b825f6c3e71782bf3dbcd55d96a94b377fdc215ff5e8193b0a189f01cbe7524c"
       },
       {
         "baseline_rule_id": "w2b1:SFA-REGISTRY-010",
@@ -996,14 +812,13 @@
         "baseline_rule_id": "w2b2:SFA-RUNTIMEPKG-006",
         "canonical_id": "SFA-RUNTIMEPKG-006",
         "check_methods": [
-          "digest_verification",
+          "semantic_review",
           "static_scan"
         ],
         "required_mechanical_methods": [
-          "digest_verification",
           "static_scan"
         ],
-        "revision_digest": "56428e471413d61e8e2505efcaaadb9664594c75647684b010de347d3023f04c"
+        "revision_digest": "b55c8d111c2276c49fad04949d2c9496f11709111cdef26de42a28477d019d46"
       },
       {
         "baseline_rule_id": "w2b1:SFA-SELFHEAL-001",
@@ -1089,17 +904,6 @@
         "revision_digest": "7bd6239b98276fcdf1d96e02fb3be433e6cfb58dae858fc3245bf4c3ebe4c8fc"
       },
       {
-        "baseline_rule_id": "w2b2:SFA-SOURCE-009",
-        "canonical_id": "SFA-SOURCE-009",
-        "check_methods": [
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation"
-        ],
-        "revision_digest": "2c69c8f9a99a65141e51bbcae92acabbe4c8a4d9c6e20555ddb1e0d5d49d49e4"
-      },
-      {
         "baseline_rule_id": "w2b2:SFA-SOURCE-013",
         "canonical_id": "SFA-SOURCE-013",
         "check_methods": [
@@ -1136,89 +940,6 @@
         "revision_digest": "f292ec044c10f3285a493b60468f9f776e91cc5c41ece902e673bfbaaf691132"
       },
       {
-        "baseline_rule_id": "w2b2:SFA-STATE-003",
-        "canonical_id": "SFA-STATE-003",
-        "check_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "revision_digest": "b3853b5d0cc640b484e1975ed24a022108b4465c40ad550acb19a3a0b76a0182"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-STATE-007",
-        "canonical_id": "SFA-STATE-007",
-        "check_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "revision_digest": "c4701932ec6149c0a31da3a08c1ca3f39c440f9480a52d8ba0e16032a50b1ed4"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-STATE-012",
-        "canonical_id": "SFA-STATE-012",
-        "check_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation",
-          "static_scan"
-        ],
-        "revision_digest": "480d83819c8ca6a07589545e174b89c4116dc642ea26ed42452e2cb9c415d2e6"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-STATE-014",
-        "canonical_id": "SFA-STATE-014",
-        "check_methods": [
-          "static_scan"
-        ],
-        "required_mechanical_methods": [
-          "static_scan"
-        ],
-        "revision_digest": "b0d0d8ebc9ee2c9bc1a615a74e2b7bdf15c52821586ddf312f8070a09b2f5fb2"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-TASK-015",
-        "canonical_id": "SFA-TASK-015",
-        "check_methods": [
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation"
-        ],
-        "revision_digest": "3f88a11781741fe52f03d6bf52ce6f00ef11d6d3f9ee12597380726f189f9668"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-TASK-016",
-        "canonical_id": "SFA-TASK-016",
-        "check_methods": [
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation"
-        ],
-        "revision_digest": "29e119868d42f475e2f55b47d1b0eeebdfd56a18985a038953caab5c220e2f22"
-      },
-      {
-        "baseline_rule_id": "w2b2:SFA-TASK-017",
-        "canonical_id": "SFA-TASK-017",
-        "check_methods": [
-          "schema_validation"
-        ],
-        "required_mechanical_methods": [
-          "schema_validation"
-        ],
-        "revision_digest": "9660e6bc7337692443a503eacf5f7ef9cdaa993d39e6b1f5aa086466ddc1129f"
-      },
-      {
         "baseline_rule_id": "w2b2:SFA-TASK-018",
         "canonical_id": "SFA-TASK-018",
         "check_methods": [
@@ -1236,13 +957,14 @@
         "canonical_id": "SFA-TASK-019",
         "check_methods": [
           "digest_verification",
-          "schema_validation"
+          "schema_validation",
+          "semantic_review"
         ],
         "required_mechanical_methods": [
           "digest_verification",
           "schema_validation"
         ],
-        "revision_digest": "a38f3001afab416f281ceab4665f46acf15de7da4120045a0a9ecf3799d0b0b9"
+        "revision_digest": "4dab06fc409159ff5bcad8def48b69bec0ee1137716459f257d6a529afb26152"
       },
       {
         "baseline_rule_id": "w2b2:SFA-TASK-020",
@@ -1285,12 +1007,13 @@
         "baseline_rule_id": "w2b2:SFA-TEMPLATE-003",
         "canonical_id": "SFA-TEMPLATE-003",
         "check_methods": [
-          "schema_validation"
+          "schema_validation",
+          "semantic_review"
         ],
         "required_mechanical_methods": [
           "schema_validation"
         ],
-        "revision_digest": "d5412dc793a6203708bfcf179b13d960e14f2550ec35e1f01d997f52d3609cd0"
+        "revision_digest": "52f94116c9488faa44bb9934a282873f444bb602cbf5be84d4cc28e37e9132a4"
       },
       {
         "baseline_rule_id": "w2b2:SFA-TEMPLATE-004",
@@ -1332,7 +1055,7 @@
   },
   "schema_version": "1.0.0",
   "source_closure": {
-    "digest": "8af0f8bc74bc3b4dd609bd3118221e7ab2ce993b5e3d0f175c2410f3b974a8fc",
+    "digest": "fb21ff4b392b00dd0ab4588a11a9acc6e5ac2afcacda8ddd60672ac97096835c",
     "digestAlgorithm": "sha256",
     "kind": "skill-family.resource-closure",
     "resources": [
@@ -1340,13 +1063,13 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/refs/canonical-rule-projection.json",
         "role": "input",
-        "sha256": "5e7648834188815b0cb8a92ef6a52f88d4d2f63952981dc51e2f251e54f70ec4"
+        "sha256": "ecabf90e592f862eff3f7363f444a58911c391088d8a506715f5161b0a7ba0ef"
       },
       {
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/refs/first-tier-execution-routing.json",
         "role": "input",
-        "sha256": "fcfa9d9be701866893733d497b9fe76c91d15410575d78559cb7ed0f68f35dfe"
+        "sha256": "6e46fc070112d3d04d6b19c87c736771c80b4401174430a167abaa1ee415d384"
       },
       {
         "exists": true,
@@ -1358,7 +1081,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/conformance_workflow.py",
         "role": "input",
-        "sha256": "d1bcf68fffc7bbc0798593c417e182125960be623af9b7fcb1d45b52db8ed2ca"
+        "sha256": "536805f79e33f946df4076be63265333c22a5bc602646ac03bf90de24c0fe420"
       },
       {
         "exists": true,
@@ -1382,7 +1105,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m1_rule_governance_b2.py",
         "role": "input",
-        "sha256": "57c2d34fe4a63c626a6716a94d4cc2ab24832b7ea35cfd33c55a1e71cfef18bd"
+        "sha256": "c1173dfc580af55b2d83ae9613c3807766275d1162b776eb21a8bc93179100e1"
       },
       {
         "exists": true,
@@ -1400,13 +1123,13 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m2_entry_platform.py",
         "role": "input",
-        "sha256": "cf89dbcd26c1f31e9b1bca8a533d3a1803f2294ce100556e76f5b1d401dc1506"
+        "sha256": "9779b43d25736092f78e8a52a21dbf8c981a2b094a726af712a77f442fe1951c"
       },
       {
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m2_entry_platform_b2.py",
         "role": "input",
-        "sha256": "69112bf60b9af5826000b7e57afe5700a6f3b45f628aac3882b3fe2550e6e07f"
+        "sha256": "8472ccbfc5bd255308eeb5675ce04b7bd2ad1bac7202371250bbecb4c3aa2d06"
       },
       {
         "exists": true,
@@ -1424,7 +1147,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m3_path_program_b2.py",
         "role": "input",
-        "sha256": "22f1a72228d08b126ffa1b79b56a898707f019d2acf0c46c38b0ab232ca80edd"
+        "sha256": "de28db6a7584beb45c3443371e1001214bc5d9f85dfc48087982c2e1112be720"
       },
       {
         "exists": true,
@@ -1448,7 +1171,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m5_context_isolation.py",
         "role": "input",
-        "sha256": "6924a9e175ff8e0e107b7d402cd3682438ec9e4687c60efb2296adc5e8e8fce0"
+        "sha256": "13b0a6a81bae2f7ad71209e172f51d1e397e3e6bb0c20614feadca19b91cd700"
       },
       {
         "exists": true,
@@ -1460,7 +1183,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m5_context_isolation_b3.py",
         "role": "input",
-        "sha256": "faa22c9ba3df9c71372a0859278c4fa30a2992b623246b6fe9543743d79b322d"
+        "sha256": "9d313093f183058e43050812d10d79a8e13dbdf6e860d4b0c56910fda8de38c5"
       },
       {
         "exists": true,
@@ -1472,7 +1195,7 @@
         "exists": true,
         "path": "skills/skill-family-audit-conformance-audit/scripts/executors/m7_registry_b2.py",
         "role": "input",
-        "sha256": "a294a3c5121213452f53f4621107748cde8dd706593e308934b1775eb4e94d0c"
+        "sha256": "c8125662aa746e9d8d91f8979056612708e08e22d2e362e852695f1bf1d2d180"
       },
       {
         "exists": true,

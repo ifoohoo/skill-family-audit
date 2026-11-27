@@ -1,0 +1,16 @@
+{
+  "fixtureId": "consumer-contract-vector.dialect-boundary.unsupported",
+  "contract": "consumer-contract-vector",
+  "class": "dialect-boundary",
+  "description": "不受支持的 JSON Schema 方言在校验消费方契约测试向量前即以 SFC1006 拒绝。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/consumer-contract-vector.json",
+    "dialect": "draft-04",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1006" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.consumer-contract-vector"
+  }
+}

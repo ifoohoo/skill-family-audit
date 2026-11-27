@@ -1,0 +1,26 @@
+{
+  "fixtureId": "task-handoff-envelope.negative.unknown-field",
+  "contract": "task-handoff-envelope",
+  "class": "negative",
+  "description": "任务交接信封采用封闭结构，未登记的额外字段或路径逃逸在严格校验下失败并返回 SFC1001。",
+  "validation": {
+    "schemaId": "https://contracts.skill-family.example/v1/task-handoff-envelope.json",
+    "dialect": "2020-12",
+    "policy": "strict"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.task-handoff-envelope",
+    "handoffId": "handoff-20261122-002",
+    "requestSummary": "非法额外字段示例。",
+    "requirementRefs": ["US-016"],
+    "selectedMethods": ["shuorenhua"],
+    "excludedMethods": [],
+    "allowedWriteSet": ["docs/stories/**"],
+    "upstreamArtifacts": [],
+    "expectedDownstreamAction": "仅测试未声明字段拒绝。",
+    "createdAt": "2026-11-22T08:00:00Z",
+    "unapprovedEscalation": true
+  }
+}

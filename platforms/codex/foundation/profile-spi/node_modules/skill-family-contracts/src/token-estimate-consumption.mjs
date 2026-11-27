@@ -1,3 +1,5 @@
+// @decision FND-ADR-009
+// @design FND-DES-001
 import { ContractsError } from "./errors.mjs";
 
 /**

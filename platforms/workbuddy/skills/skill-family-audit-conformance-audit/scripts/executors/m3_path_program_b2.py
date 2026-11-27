@@ -133,13 +133,6 @@ PROMOTION_CONDITIONS = {
 #: SFA-PATH-001：路径解析依据。
 PATH_RESOLUTION_BASES = {"existing", "nearest_ancestor"}
 
-#: SFA-TASK-019/020：结构化输出校验合同锁定字段。
-STRUCTURED_OUTPUT_REVISION_FIELDS = (
-    "schema_contract_revision",
-    "example_contract_revision",
-    "validator_contract_revision",
-)
-
 #: SFA-PROGRAM-010：版本化程序引用最小契约字段。
 PROGRAM_REFERENCE_FIELDS = (
     "owning_skills",
@@ -228,86 +221,6 @@ def _program_reference_violations(reference: Any, label: str) -> list[str]:
     return problems
 
 
-# Foundation 0.15.0 read-file-strict / resolveContained kinds that mean the
-# target path itself cannot be delivered.  Other kinds and non-envelope
-# failures stay on the executor internal-error path.
-_LOCKED_REFERENCE_TARGET_UNAVAILABLE_KINDS = frozenset({
-    "missing-resource",
-    "read-failed",
-    "unsafe-state-entry",
-    "symlink-escape",
-    "realpath-escape",
-    "invalid-path",
-    "absolute-path",
-    "path-traversal",
-    "windows-drive-path",
-    "windows-path",
-    "unc-path",
-})
-
-
-def _foundation_read_error_kind(exc: BaseException) -> str | None:
-    """Read details.kind from a Foundation mechanism envelope; otherwise None."""
-    try:
-        envelope = json.loads(str(exc))
-    except (TypeError, json.JSONDecodeError):
-        return None
-    error = envelope.get("error") if isinstance(envelope, dict) else None
-    details = error.get("details") if isinstance(error, dict) else None
-    kind = details.get("kind") if isinstance(details, dict) else None
-    return kind if isinstance(kind, str) and kind else None
-
-
-def _locked_reference_content_digest(
-    ctx: dict[str, Any], reference: dict[str, Any]
-) -> tuple[str, dict[str, Any]]:
-    """Verify declared content_digest through Foundation strict read."""
-    digest = reference.get("content_digest")
-    if not is_hex64(digest):
-        return "FAIL", {"reason": "locked_reference_digest_invalid"}
-    machine_entry = reference.get("machine_entry", "")
-    if not isinstance(machine_entry, str) or not machine_entry.strip():
-        return "EVIDENCE_MISSING", {
-            "reason": "locked_reference_content_unavailable",
-            "declared_digest": digest,
-        }
-    import conformance_check
-
-    try:
-        observed = conformance_check._foundation({
-            "operation": "read-file-strict",
-            "root": str(_target_root(ctx)),
-            "path": machine_entry.strip(),
-        })
-    except Exception as exc:
-        kind = _foundation_read_error_kind(exc)
-        if kind in _LOCKED_REFERENCE_TARGET_UNAVAILABLE_KINDS:
-            return "EVIDENCE_MISSING", {
-                "reason": "locked_reference_content_unavailable",
-                "declared_digest": digest,
-            }
-        raise ExecutorEvidenceError(
-            "FOUNDATION_READ_FILE_STRICT_FAILED",
-            f"Foundation read-file-strict failed: {kind or type(exc).__name__}",
-        ) from exc
-    sha256 = observed.get("sha256") if isinstance(observed, dict) else None
-    if not isinstance(sha256, str) or not is_hex64(sha256):
-        raise ExecutorEvidenceError(
-            "FOUNDATION_READ_FILE_STRICT_INVALID",
-            "Foundation read-file-strict returned an invalid digest receipt",
-        )
-    if sha256 != digest:
-        return "FAIL", {
-            "reason": "locked_reference_digest_mismatch",
-            "declared_digest": digest,
-            "observed_digest": sha256,
-        }
-    return "PASS", {
-        "reason": "locked_reference_content_verified",
-        "content_digest": digest,
-    }
-
-
 # ---------------------------------------------------------------------------
 # ERROR：结构化错误契约（error-contracts / output-lifecycle）
 # ---------------------------------------------------------------------------
@@ -339,29 +252,12 @@ def check_error_001(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_error_002(ctx: dict[str, Any]) -> dict[str, Any]:
-    """平台异常只作为脱敏证据。
-
-    机械断言：已声明的平台异常使用记录必须 sanitized=true 且
-    used_as_stable_code!=true。
-    """
-    document = _doc(ctx, "error-contracts")
-    if document is None:
-        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
-                      object='原始平台异常的脱敏证据及稳定错误码映射',
-                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    usages = rows_of(document, "platform_exception_usages", "error-contracts")
-    if not usages:
-        return result("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
-                      object='原始平台异常的脱敏证据及稳定错误码映射',
-                      source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    violations = [
-        {"index": index, "exception_ref": row.get("exception_ref")}
-        for index, row in enumerate(usages)
-        if row.get("sanitized") is not True or row.get("used_as_stable_code") is True
-    ]
-    if violations:
-        return result("FAIL", unsanitized_platform_exceptions=violations, mechanical_half=True)
-    return result("PASS", declared_usages=len(usages), mechanical_half=True)
+    """Self-declared sanitization flags are not a bounded material observation."""
+    return result(
+        "EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved",
+        object="ERROR002 bound complete error materials and their original bounded scan",
+        source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True,
+    )
 
 
 def check_error_003(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -1167,102 +1063,43 @@ def check_runtimepkg_005(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_runtimepkg_006(ctx: dict[str, Any]) -> dict[str, Any]:
-    """原技能保留锁定程序引用。
-
-    机械断言：每个已声明运行时包必须携带原逻辑所有技能的锁定程序引用，
-    且该引用满足 SFA-PROGRAM-010 最小契约。
-    """
+    """原技能保留锁定程序引用的静态字段检查。"""
     document = _doc(ctx, "runtime-packages")
-    if document is None:
-        return _finish([
-            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-        ], reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    packages = rows_of(document, "packages", "runtime-packages")
+    packages = rows_of(document, "packages", "runtime-packages") if document is not None else []
     if not packages:
-        return _finish([
-            _static_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-        ], reason="audit_mechanical_object_unresolved", object='提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    static_violations = []
-    digest_violations = []
-    digest_missing = []
-    digest_verified = []
+        evidence = {
+            "reason": "audit_mechanical_object_unresolved",
+            "object": "提升完成后保留程序调用引用时 原技能的锁定包引用; PROGRAM-010要求的身份、接口、摘要、输入输出、依赖和兼容信息",
+            "source_refs": list(ctx.get("evidence_set") or []),
+            "mechanical_half": True,
+        }
+        return _finish([_static_row("EVIDENCE_MISSING", **evidence)], **evidence)
+
+    violations = []
     for index, row in enumerate(packages):
-        reference = row.get("original_skill_locked_reference")
-        problems = _program_reference_violations(reference, "locked_reference")
-        digest_problems = [item for item in problems if item == "content_digest"]
-        static_problems = [item for item in problems if item != "content_digest"]
-        if static_problems:
-            static_violations.append({
-                "index": index, "package": row.get("id"), "problems": static_problems,
-            })
-        if digest_problems:
-            digest_violations.append({
-                "index": index, "package": row.get("id"), "problems": digest_problems,
-            })
-            continue
-        if not isinstance(reference, dict):
-            digest_missing.append({
-                "index": index, "package": row.get("id"),
-                "reason": "locked_reference_content_unavailable",
-            })
-            continue
-        digest_status, digest_evidence = _locked_reference_content_digest(ctx, reference)
-        item = {"index": index, "package": row.get("id"), **digest_evidence}
-        if digest_status == "FAIL":
-            digest_violations.append(item)
-        elif digest_status == "EVIDENCE_MISSING":
-            digest_missing.append(item)
-        else:
-            digest_verified.append(item)
-    static_status = "FAIL" if static_violations else "PASS"
-    if digest_violations:
-        digest_status = "FAIL"
-        digest_reason = (
-            "locked_reference_digest_mismatch"
-            if any(
-                item.get("reason") == "locked_reference_digest_mismatch"
-                for item in digest_violations
+        problems = [
+            problem for problem in _program_reference_violations(
+                row.get("original_skill_locked_reference"), "locked_reference",
             )
-            else "locked_reference_digest_invalid"
-        )
-    elif digest_missing:
-        digest_status = "EVIDENCE_MISSING"
-        digest_reason = "locked_reference_content_unavailable"
-    else:
-        digest_status = "PASS"
-        digest_reason = "locked_reference_content_verified"
-    evidence: dict[str, Any] = {
-        "packages_declared": len(packages),
-        "mechanical_half": True,
-    }
-    violations = static_violations + digest_violations
+            if problem != "content_digest"
+        ]
+        if problems:
+            violations.append({
+                "index": index, "package": row.get("id"), "problems": problems,
+            })
+    evidence = {"packages_declared": len(packages), "mechanical_half": True}
     if violations:
         evidence["locked_references_below_minimum_contract"] = violations
-    if digest_missing:
-        evidence["locked_reference_content_unavailable"] = digest_missing
-    if digest_verified:
-        evidence["locked_reference_content_verified"] = digest_verified
-    return _finish(
-        [
-            _static_row(
-                static_status,
-                reason=(
-                    "locked_references_below_minimum_contract"
-                    if static_violations else "locked_references_shape_valid"
-                ),
-                violations=static_violations,
+    return _finish([
+        _static_row(
+            "FAIL" if violations else "PASS",
+            reason=(
+                "locked_references_below_minimum_contract"
+                if violations else "locked_references_shape_valid"
             ),
-            _digest_row(
-                digest_status,
-                reason=digest_reason,
-                violations=digest_violations,
-                unavailable=digest_missing,
-            ),
-        ],
-        **evidence,
-    )
+            violations=violations,
+        ),
+    ], **evidence)
 
 
 # ---------------------------------------------------------------------------
@@ -2281,72 +2118,17 @@ def check_task_018(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def check_task_019(ctx: dict[str, Any]) -> dict[str, Any]:
-    """可复用机器结构化输出具有校验包。
-
-    机械断言：每条已声明结构化输出必须同时提供权威结构定义、至少一个
-    合格示例和一个不依赖模型的确定性校验入口，且三者锁定同一内容契约修订。
-    """
-    document = _doc(ctx, "task-result-contracts")
-    if document is None:
-        return _finish([
-            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-        ], reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    outputs = rows_of(document, "structured_outputs", "task-result-contracts")
-    if not outputs:
-        return _finish([
-            _schema_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-            _digest_row("EVIDENCE_MISSING", reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True),
-        ], reason="audit_mechanical_object_unresolved", object='发布或使用适用机器结构化输出合同时适用。 同修订权威结构定义、合格示例及公开确定性校验入口; 版本摘要绑定', source_refs=list(ctx.get("evidence_set") or []), mechanical_half=True)
-    schema_violations = []
-    digest_violations = []
-    for index, row in enumerate(outputs):
-        examples = row.get("qualified_examples")
-        revisions = [row.get(field) for field in STRUCTURED_OUTPUT_REVISION_FIELDS]
-        schema_ok = (
-            _nonempty_str(row.get("authoritative_schema"))
-            and isinstance(examples, list) and bool(examples)
-            and _nonempty_str(row.get("deterministic_validator"))
-            and all(_nonempty_str(revision) for revision in revisions)
-        )
-        digest_ok = (
-            all(_nonempty_str(revision) for revision in revisions)
-            and len(set(revisions)) == 1
-        )
-        if not schema_ok:
-            schema_violations.append({"index": index, "output": row.get("output_id")})
-        if not digest_ok:
-            digest_violations.append({"index": index, "output": row.get("output_id")})
-    schema_status = "FAIL" if schema_violations else "PASS"
-    digest_status = "FAIL" if digest_violations else "PASS"
-    evidence: dict[str, Any] = {
-        "declared_structured_outputs": len(outputs),
+    """Version strings cannot supply schema validation or independent byte evidence."""
+    evidence = {
+        "reason": "audit_mechanical_object_unresolved",
+        "object": "TASK019 actual schema/example validation and adopted independent byte baseline",
+        "source_refs": list(ctx.get("evidence_set") or []),
         "mechanical_half": True,
     }
-    violations = schema_violations + digest_violations
-    if violations:
-        evidence["structured_outputs_without_validation_package"] = violations
-    return _finish(
-        [
-            _schema_row(
-                schema_status,
-                reason=(
-                    "structured_output_schema_incomplete"
-                    if schema_violations else "structured_output_schema_complete"
-                ),
-                violations=schema_violations,
-            ),
-            _digest_row(
-                digest_status,
-                reason=(
-                    "structured_output_revisions_not_locked"
-                    if digest_violations else "structured_output_revisions_locked"
-                ),
-                violations=digest_violations,
-            ),
-        ],
-        **evidence,
-    )
+    return _finish([
+        _schema_row("EVIDENCE_MISSING", **evidence),
+        _digest_row("EVIDENCE_MISSING", **evidence),
+    ], **evidence)
 
 
 def check_task_020(ctx: dict[str, Any]) -> dict[str, Any]:

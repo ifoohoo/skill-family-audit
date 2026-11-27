@@ -1,0 +1,92 @@
+{
+  "title": "Diagnostic Envelope",
+  "description": "JSON Schema for the unified diagnostic envelope output format",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "diagnostics"],
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "description": "Whether the operation succeeded"
+    },
+    "data": {
+      "description": "Optional result data (type depends on command)"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    }
+  },
+  "$defs": {
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "SCHEMA_VERSION_UNSUPPORTED",
+        "INVALID_CATALOG",
+        "INVALID_PROJECT_OVERLAY",
+        "INVALID_EFFECTIVE_INDEX",
+        "INVALID_DIAGNOSTIC_ENVELOPE",
+        "DUPLICATE_CATALOG_ID",
+        "DUPLICATE_DEFAULT_PROVIDER",
+        "DUPLICATE_PROJECT_ENTRY",
+        "UNKNOWN_OVERRIDE_REF",
+        "INVALID_OVERRIDE_TARGET",
+        "INVALID_OVERRIDE_PROVIDER",
+        "UNKNOWN_DISABLED_REF",
+        "PROVIDER_NOT_FOUND",
+        "AMBIGUOUS_PROVIDER",
+        "PROVIDER_UNVERIFIED",
+        "HOST_REQUIRED",
+        "ENTRY_DISABLED",
+        "ENTRY_NOT_FOUND",
+        "NO_QUERY_MATCH",
+        "INVALID_QUERY",
+        "INPUT_READ_FAILED",
+        "OUTPUT_WRITE_FAILED",
+        "STALE_EFFECTIVE_INDEX",
+        "CLI_USAGE_ERROR"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Logical source label: <project>, <catalog:id>, <index>, or <external>"
+        },
+        "pointer": {
+          "type": "string",
+          "description": "JSON Pointer to the field (e.g., /entries/0/provider)"
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message"],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/errorCode"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["error", "warn", "info"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "suggestion": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

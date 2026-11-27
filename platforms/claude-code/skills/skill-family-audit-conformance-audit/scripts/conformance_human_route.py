@@ -285,6 +285,7 @@ def resolve_human_route(
     deterministic_rule_ids,
     canonical_rule_ids=None,
     source_dispositions=None,
+    current_rule_ids=None,
 ):
     """按 journey-contract selection_precedence 解析人类入口的 profile 与语义组。
 
@@ -303,7 +304,8 @@ def resolve_human_route(
     dispositions = _validate_source_dispositions(source_dispositions)
     explanations: list = []
     exact_rule_ids = _normalize_canonical_rule_ids(
-        canonical_rule_ids, groups, deterministic_rule_ids, dispositions, explanations
+        canonical_rule_ids, groups, deterministic_rule_ids, dispositions, explanations,
+        current_rule_ids,
     )
 
     if explicit_profile is not None:
@@ -390,6 +392,15 @@ def _primary_next_action_body(domain_result, journey_facts=None):
     if review_ids:
         return {"primary_action": "complete_or_rebind_pending_review", "rule_ids": review_ids}
     if status == "BLOCKED":
+        if _only_unselected_scope_remains(domain_result):
+            professional_followup = _professional_followup_action(domain_result)
+            if professional_followup is not None:
+                return professional_followup
+            return {
+                "primary_action": "complete_or_rebind_pending_review",
+                "rule_ids": [],
+                "reason": domain_result["canonical_executable_coverage"]["reason_code"],
+            }
         # 无逐规则缺证/待审仍 BLOCKED → 执行/上下文合同错误
         return {
             "primary_action": "complete_or_rebind_pending_review",
@@ -485,6 +496,7 @@ def render_human_summary(domain_result, group_registry, journey_facts=None, *, p
     )
     unreviewed_rule_ids = _unreviewed_rule_ids(domain_result)
     completion_state = _completion_state(domain_result)
+    basic_checks = _basic_check_results(domain_result)
     observed = _validate_journey_facts(journey_facts) or {}
 
     complete_conformance = bool(
@@ -548,6 +560,8 @@ def render_human_summary(domain_result, group_registry, journey_facts=None, *, p
             ),
             "selected_rule_count": coverage.get("selected_count"),
             "attempted_count": coverage.get("attempted_count"),
+            "basic_check_count": len(basic_checks),
+            "basic_check_results": basic_checks,
             "not_run_count": coverage.get("not_run_count"),
             "not_applicable_count": _status_count(domain_result, "NOT_APPLICABLE"),
             "scope_rule_label": "范围内规则",
@@ -669,6 +683,15 @@ def _validate_journey_facts(journey_facts):
     return normalized
 
 
+def _basic_check_results(domain_result):
+    if domain_result.get("failure_stage") == "before_rule_selection":
+        return []
+    baseline = domain_result.get("baseline_rule_set") or {}
+    return [row for row in baseline.get("basic_check_results", [])
+            if isinstance(row, dict) and isinstance(row.get("rule_id"), str)
+            and row.get("status") in {"PASS", "FAIL"}]
+
+
 def _completion_state(domain_result):
     """区分尚未开始、检查未完成、选定范围已处理。"""
     if domain_result.get("failure_stage") == "before_rule_selection":
@@ -678,7 +701,7 @@ def _completion_state(domain_result):
     attempted = coverage.get("attempted_count")
     selected = coverage.get("selected_count")
     if not rules:
-        if attempted in (None, 0):
+        if attempted in (None, 0) and not _basic_check_results(domain_result):
             return _COMPLETION_NOT_STARTED
     if any(row.get("status") == "REVIEW_REQUIRED" for row in rules):
         return _COMPLETION_INCOMPLETE
@@ -690,9 +713,50 @@ def _completion_state(domain_result):
         and attempted < selected
     ):
         return _COMPLETION_INCOMPLETE
-    if not rules:
+    if not rules and not _basic_check_results(domain_result):
         return _COMPLETION_NOT_STARTED
     return _COMPLETION_SCOPE_PROCESSED
+
+
+def _only_unselected_scope_remains(domain_result):
+    """Use the original incomplete coverage to explain a completed stage's scope."""
+    coverage = domain_result.get("coverage") or {}
+    canonical = domain_result.get("canonical_executable_coverage") or {}
+    selected = coverage.get("selected_count")
+    if (
+        domain_result.get("status") != "BLOCKED"
+        or domain_result.get("execution_profile") != "full"
+        or domain_result.get("failure_stage")
+        or domain_result.get("reason_code")
+        or not isinstance(selected, int)
+        or isinstance(selected, bool)
+        or selected <= 0
+        or coverage.get("attempted_count") != selected
+        or coverage.get("coverage_complete") is not False
+        or canonical.get("complete") is not False
+        or canonical.get("reason_code") != "CANONICAL_EXECUTABLE_COVERAGE_INCOMPLETE"
+    ):
+        return False
+    rows = domain_result.get("rule_results") or []
+    for row in rows:
+        evidence = row.get("evidence")
+        if (row.get("status") in {"PASS", "NOT_APPLICABLE"}
+                and isinstance(evidence, dict)
+                and evidence.get("reason") in _AUDIT_OBJECT_PLACEHOLDER_REASONS
+                and not row.get("reason_code")
+                and row.get("check_method_subresults")):
+            # A terminal method can retain the earlier object placeholder on
+            # its parent; current method evidence still determines errors.
+            if any(_is_audit_internal_missing(item) for item in row["check_method_subresults"]):
+                return False
+        elif _is_audit_internal_missing(row):
+            return False
+    not_run = [row for row in rows if row.get("status") == "NOT_RUN"]
+    return bool(not_run) and all(
+        isinstance(row.get("evidence"), dict)
+        and row["evidence"].get("reason_code") == "NOT_SELECTED_BY_EXECUTION_PROFILE"
+        for row in not_run
+    )
 
 
 def _unreviewed_rule_ids(domain_result):
@@ -871,6 +935,7 @@ def _normalize_canonical_rule_ids(
     deterministic_rule_ids,
     source_dispositions=None,
     explanations=None,
+    current_rule_ids=None,
 ):
     if canonical_rule_ids is None:
         return []
@@ -888,6 +953,7 @@ def _normalize_canonical_rule_ids(
             "invalid_canonical_rule_ids: canonical_rule_ids 不得为空"
         )
     registered = set(deterministic_rule_ids or [])
+    registered.update(current_rule_ids or [])
     registered.update(
         rule["canonical_id"]
         for group in group_registry
@@ -1068,14 +1134,16 @@ def _resolve_selectors(
     return resolved_groups
 
 
-_AUDIT_INTERNAL_EVIDENCE_REASONS = {
-    "executor_method_subresults_invalid",
-    "executor_evidence_invalid",
+_AUDIT_OBJECT_PLACEHOLDER_REASONS = {
     "audit_mechanical_object_unresolved",
     "audit_context_object_scope_unresolved",
+    "mechanical_object_scope_unresolved",
+}
+_AUDIT_INTERNAL_EVIDENCE_REASONS = _AUDIT_OBJECT_PLACEHOLDER_REASONS | {
+    "executor_method_subresults_invalid",
+    "executor_evidence_invalid",
     "audit_context_projection_unresolved",
     "audit_context_measurement_unperformed",
-    "mechanical_object_scope_unresolved",
 }
 
 
@@ -1093,15 +1161,99 @@ def _rule_row_by_id(rule_rows, rule_id):
     return {}
 
 
+def _is_consumed_semantic_method(item, parent):
+    review = parent.get("semantic_review")
+    lineage = parent.get("canonical_lineage") or {}
+    if not isinstance(review, dict) or not isinstance(lineage, dict):
+        return False
+    canonical_id = lineage.get("canonical_id") or parent.get("canonical_id") or parent.get("rule_id")
+    revision = lineage.get("revision_digest") or parent.get("rule_revision_digest")
+    return (
+        bool(canonical_id and revision)
+        and item.get("check_method") == "semantic_review"
+        and item.get("observation_source") == "conformance-skill-semantic_review"
+        and item.get("baseline_rule_id") == parent.get("rule_id")
+        and item.get("evidence") == review
+        and item.get("status") == review.get("status")
+        and review.get("status") in {"PASS", "FAIL", "NOT_APPLICABLE", "EVIDENCE_MISSING", "REVIEW_REQUIRED"}
+        and review.get("canonical_id") == canonical_id
+        and review.get("rule_revision_digest") == revision
+        and review.get("check_method") == "semantic_review"
+        and review.get("review_purpose") == "semantic_conclusion"
+    )
+
+
+def _is_consumed_object_judgment(item, parent):
+    lineage = parent.get("canonical_lineage") or {}
+    evidence = item.get("evidence")
+    if not isinstance(lineage, dict) or not isinstance(evidence, dict):
+        return False
+    canonical_id = lineage.get("canonical_id") or parent.get("canonical_id") or parent.get("rule_id")
+    revision = lineage.get("revision_digest") or parent.get("rule_revision_digest")
+    premise = evidence.get("mechanical_object_premise")
+    method = item.get("check_method")
+    bounded_error = (
+        canonical_id == "SFA-ERROR-002" and method == "static_scan"
+        and item.get("status") == "PASS"
+        and item.get("observation_source") == "bounded_error_material_security"
+        and evidence.get("reason") == "bounded_error_material_observation_complete"
+        and evidence.get("canonical_id") == canonical_id
+        and evidence.get("rule_revision_digest") == revision
+        and evidence.get("complete") is True and evidence.get("scanner_status") == "PASS"
+        and evidence.get("unavailable") == [] and evidence.get("truncated") is False
+        and not evidence.get("redaction_capability_gap")
+        and evidence.get("business_pass") is False and evidence.get("proof_eligible") is False
+        and evidence.get("object_refs") == evidence.get("evidence_refs")
+    )
+    determined = (
+        item.get("status") == "NOT_APPLICABLE"
+        and evidence.get("reason") == "mechanical_object_not_adopted"
+        or item.get("status") == "EVIDENCE_MISSING"
+        and evidence.get("reason") == "professional_proof_missing"
+        and isinstance(evidence.get("public_entry"), str)
+        and bool(evidence["public_entry"])
+        or item.get("status") == "NOT_RUN"
+        and item.get("reason_code") == "MECHANICAL_OBJECT_SCOPE_UNKNOWN"
+        and evidence.get("reason") == "mechanical_object_scope_unresolved"
+        and isinstance(premise, dict)
+        and premise.get("status") == "REVIEW_REQUIRED"
+        and premise.get("reason_code") == "MECHANICAL_OBJECT_SCOPE_UNKNOWN"
+        or bounded_error
+    )
+    return (
+        bool(canonical_id and revision) and determined
+        and method in {"schema_validation", "digest_verification", "static_scan"}
+        and item.get("canonical_id") == canonical_id
+        and (item.get("observation_source") == "retained_mechanical_object_judgment" or bounded_error)
+        and isinstance(premise, dict)
+        and premise.get("canonical_id") == canonical_id
+        and premise.get("rule_revision_digest") == revision
+        and premise.get("check_method") == method
+        and premise.get("review_purpose") == "mechanical_object_premise"
+        and premise.get("missing_evidence_roles") == []
+        and bool(evidence.get("evidence_refs"))
+        and evidence["evidence_refs"] == premise.get("evidence_refs")
+    )
+
+
 def _is_audit_internal_missing(row):
     if not isinstance(row, dict):
         return False
     if row.get("reason_code") in {"RETAINED_MECHANICAL_METHOD_UNIMPLEMENTED", "MECHANICAL_METHOD_NOT_EXECUTED"}:
         return True
-    if any(_is_audit_internal_missing(item) for item in row.get("check_method_subresults") or []):
+    methods = [item for item in row.get("check_method_subresults") or [] if isinstance(item, dict)]
+    completed = [item for item in methods if _professional_issue_type(
+        item, method_parent=row,
+    ) in {"professional_pass", "professional_findings"}
+        or _is_consumed_semantic_method(item, row)
+        or _is_consumed_object_judgment(item, row)]
+    if any(_is_audit_internal_missing(item) for item in methods if item not in completed):
         return True
     evidence = row.get("evidence")
     if not isinstance(evidence, dict):
+        return False
+    if (evidence.get("reason") in _AUDIT_OBJECT_PLACEHOLDER_REASONS
+            and methods and len(completed) == len(methods)):
         return False
     return (
         evidence.get("reason") in _AUDIT_INTERNAL_EVIDENCE_REASONS
@@ -1195,20 +1347,53 @@ def _blocking_findings(domain_result):
             if isinstance(row.get("evidence"), dict):
                 finding["evidence"] = row["evidence"]
             review = row.get("semantic_review")
+            current_review = (isinstance(review, dict)
+                and bool(canonical_id and lineage.get("revision_digest"))
+                and review.get("canonical_id") == canonical_id
+                and review.get("rule_revision_digest") == lineage["revision_digest"]
+                and review.get("check_method") == "semantic_review"
+                and review.get("review_purpose") == "semantic_conclusion"
+                and any(isinstance(item, dict) and item.get("check_method") == "semantic_review"
+                        and item.get("status") == review.get("status")
+                        and (set(item) <= {"check_method", "status"}
+                             or _is_consumed_semantic_method(item, row))
+                        for item in row.get("check_method_subresults") or []))
+            failed_method = next((item for item in row.get("check_method_subresults") or []
+                if isinstance(item, dict) and item.get("status") == status == "FAIL"
+                and _professional_issue_type(item, method_parent=row) == "professional_findings"), None)
+            failed_outcome = {}
+            if failed_method is not None and not _is_audit_internal_missing(row):
+                original = (failed_method.get("evidence") or {}).get("original_report") or {}
+                failed_outcome = original.get("outcome") or {}
             for field in ("reason_code", "rationale"):
                 value = row.get(field)
+                if value is None:
+                    value = failed_outcome.get("code" if field == "reason_code" else "summary")
                 if (value is None and isinstance(review, dict)
-                        and review.get("status") == status):
+                        and (review.get("status") == status or (current_review and status != "FAIL"))):
                     value = review.get(field)
                 if value is not None:
                     finding[field] = value
             pending_methods = [
                 item for item in row.get("check_method_subresults") or []
-                if isinstance(item, dict) and item.get("status") in _FINDING_STATUS_ORDER
+                if isinstance(item, dict) and (item.get("status") in _FINDING_STATUS_ORDER
+                                              or item.get("status") == "NOT_RUN")
             ]
             if pending_methods:
                 finding["check_method_subresults"] = pending_methods
-            if _is_audit_internal_missing(row):
+            audit_internal = _is_audit_internal_missing(row)
+            if (not audit_internal and isinstance(row.get("evidence"), dict)
+                    and row["evidence"].get("reason") in _AUDIT_OBJECT_PLACEHOLDER_REASONS):
+                current_failures = [item for item in pending_methods if _professional_issue_type(
+                    item, method_parent=row,
+                ) == "professional_findings" or _is_consumed_semantic_method(item, row)
+                    or _is_consumed_object_judgment(item, row)]
+                if len(current_failures) == 1:
+                    finding["evidence"] = current_failures[0]["evidence"]
+                elif current_failures:
+                    # Each failing method retains its own original evidence.
+                    finding.pop("evidence", None)
+            if audit_internal:
                 finding["issue_type"] = "audit_executor_contract_failure"
                 evidence = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
                 finding["reason"] = evidence.get("reason") or row.get("reason_code")
@@ -1222,7 +1407,8 @@ def _blocking_findings(domain_result):
             f.get("rule_id") or f.get("provider_id") or "",
         )
     )
-    if not findings and domain_result.get("status") == "BLOCKED":
+    if (not findings and domain_result.get("status") == "BLOCKED"
+            and not _only_unselected_scope_remains(domain_result)):
         findings.append({
             "status": "BLOCKED",
             "issue_type": "execution_or_context_contract_failure",
@@ -1232,7 +1418,232 @@ def _blocking_findings(domain_result):
     return findings
 
 
-def _professional_issue_type(item):
+def _professional_issue_type(item, *, method_parent=None):
+    if method_parent is not None:
+        # Interpret an already-consumed method contribution, not its earlier
+        # object premise or the provider-wide version-policy decision.
+        lineage = method_parent.get("canonical_lineage") or {}
+        if not isinstance(lineage, dict):
+            return None
+        canonical_id = lineage.get("canonical_id") or method_parent.get("canonical_id") or method_parent.get("rule_id")
+        revision = lineage.get("revision_digest") or method_parent.get("rule_revision_digest")
+        if lineage and lineage != {"canonical_id": canonical_id, "revision_digest": revision}:
+            return None
+        method = item.get("check_method")
+        evidence = item.get("evidence")
+        if not isinstance(evidence, dict):
+            return None
+        premise = evidence.get("mechanical_object_premise")
+        conclusion = evidence.get("conclusion")
+        if not isinstance(premise, dict) or not isinstance(conclusion, dict):
+            return None
+        provider = conclusion.get("provider") or {}
+        binding_entries = {
+            "SFA-METHOD-003": {"runPublicSurfaceBindingCheck", "runSkillSurfaceBindingCheck"},
+            "SFA-METHOD-012": {"runPublicSurfaceBindingCheck", "runNativeEntryBindingCheck"},
+            "SFA-ARTIFACT-027": {"runNativeProjectionCheck"},
+            "SFA-ARTIFACT-029": {"runNativeProjectionCheck"},
+            "SFA-SOURCE-007": {"runNativeProjectionCheck"},
+            "SFA-SOURCE-008": {"runNativeProjectionCheck"},
+        }
+        binding_method = (isinstance(provider, dict)
+            and provider.get("id") == "skill-family-engineering-kit"
+            and provider.get("entry") in binding_entries.get(canonical_id, set())
+            and (method == "static_scan" and canonical_id in {"SFA-METHOD-003", "SFA-METHOD-012", "SFA-ARTIFACT-027"}
+                 or method == "digest_verification" and canonical_id in {
+                     "SFA-ARTIFACT-027", "SFA-ARTIFACT-029", "SFA-SOURCE-007", "SFA-SOURCE-008"}))
+        fixed_static = (method == "static_scan" and isinstance(provider, dict)
+            and provider.get("id") == "skill-family-engineering-kit"
+            and provider.get("entry") == "runStaticReferenceCheck")
+        declaration_scope = (canonical_id == "SFA-ARTMETHOD-001" and method == "schema_validation"
+            and isinstance(provider, dict) and provider.get("id") == "skill-family-engineering-kit"
+            and provider.get("entry") == "runFixedSchemaUseCheck")
+        if (not canonical_id or not revision
+                or (method not in {"schema_validation", "digest_verification"}
+                    and not binding_method and not fixed_static)
+                or item.get("canonical_id") != canonical_id
+                or item.get("status") not in {"PASS", "FAIL"}
+                or item.get("observation_source") != "retained_professional_consumption"
+                or evidence.get("reason") != "original_professional_mechanical_result"
+                or evidence.get("professional_issue") not in {None, "professional_findings"}
+                or premise.get("canonical_id") != canonical_id
+                or premise.get("rule_revision_digest") != revision
+                or premise.get("check_method") != method
+                or premise.get("review_purpose") != "mechanical_object_premise"
+                or premise.get("missing_evidence_roles") != []
+                or not evidence.get("evidence_refs")
+                or evidence["evidence_refs"] != premise.get("evidence_refs")
+                or not isinstance(provider, dict)
+                or not isinstance(conclusion.get("outcome"), dict)
+                or conclusion["outcome"].get("completion") not in (
+                    {"complete", "partial"} if declaration_scope else {"complete"})):
+            return None
+        if provider.get("id") == "agent-method-registry":
+            consumed = evidence.get("professional_consumption")
+            required = evidence.get("required_checks")
+            original = evidence.get("original_checks")
+            details = conclusion.get("details")
+            checks = details.get("checks") if isinstance(details, dict) else None
+            scope = conclusion.get("scope")
+            checked = scope.get("checked") if isinstance(scope, dict) else None
+            if (method != "schema_validation" or evidence.get("provider_id") != "registry"
+                    or not isinstance(consumed, dict) or consumed.get("provider_id") != "registry"
+                    or consumed.get("conclusion") != conclusion
+                    or not isinstance(required, list) or not required
+                    or not isinstance(original, list) or not original
+                    or not isinstance(checks, list) or not isinstance(checked, list)
+                    or not set(required) <= set(checked)
+                    or original != [row for row in checks if isinstance(row, dict) and row.get("id") in required]
+                    or {row.get("id") for row in original} != set(required)
+                    or any(row.get("status") not in {"pass", "fail"} for row in original)
+                    or (item["status"] == "FAIL") != any(row["status"] == "fail" for row in original)):
+                return None
+            return "professional_findings" if item["status"] == "FAIL" else "professional_pass"
+        if provider.get("id") != "skill-family-engineering-kit":
+            return None
+        if provider.get("entry") == "runFixedSchemaUseCheck":
+            consumed = evidence.get("professional_consumption")
+            original = evidence.get("original_checks")
+            details = conclusion.get("details")
+            scope = conclusion.get("scope")
+            bindings = details.get("bindings") if isinstance(details, dict) else None
+            checked = scope.get("checked") if isinstance(scope, dict) else None
+            components = (["declaration"] if canonical_id == "SFA-ARTMETHOD-001"
+                          else ["declaration", "implementation"])
+            if (canonical_id not in {"SFA-ARTMETHOD-001", "SFA-ARTMETHOD-005"}
+                    or method != "schema_validation" or evidence.get("provider_id") != "foundation"
+                    or evidence.get("public_entry") != provider["entry"]
+                    or evidence.get("original_report") != conclusion
+                    or evidence.get("consumed_components") != components
+                    or not isinstance(consumed, dict) or consumed.get("provider_id") != "foundation"
+                    or consumed.get("conclusion") != conclusion
+                    or not isinstance(original, list) or not original
+                    or not isinstance(bindings, list) or not isinstance(checked, list)):
+                return None
+            statuses = []
+            for binding in original:
+                if not isinstance(binding, dict) or binding not in bindings:
+                    return None
+                for component in components:
+                    observation = binding.get(component)
+                    comparisons = observation.get("comparisons") if isinstance(observation, dict) else None
+                    if not isinstance(comparisons, list) or len(comparisons) != (2 if component == "declaration" else 3):
+                        return None
+                    for comparison in comparisons:
+                        if (not isinstance(comparison, dict) or comparison.get("status") not in {"checked", "findings"}
+                                or not isinstance(comparison.get("scope"), str)
+                                or checked.count(comparison["scope"]) != 1):
+                            return None
+                        statuses.append(comparison["status"])
+            if (item["status"] == "FAIL") != ("findings" in statuses):
+                return None
+            return "professional_findings" if item["status"] == "FAIL" else "professional_pass"
+        if fixed_static:
+            consumed = evidence.get("professional_consumption")
+            original = evidence.get("original_checks")
+            details = conclusion.get("details")
+            references = details.get("references") if isinstance(details, dict) else None
+            scope = conclusion.get("scope")
+            checked = scope.get("checked") if isinstance(scope, dict) else None
+            if (item["status"] != "PASS" or evidence.get("provider_id") != "foundation"
+                    or evidence.get("public_entry") != provider["entry"]
+                    or evidence.get("required_checks") != [provider["entry"]]
+                    or evidence.get("original_report") != conclusion
+                    or not isinstance(consumed, dict) or consumed.get("provider_id") != "foundation"
+                    or consumed.get("conclusion") != conclusion
+                    or conclusion["outcome"].get("code") != "ENGINEERING_CLEAR"
+                    or not isinstance(original, list) or not original or original != references
+                    or any(not isinstance(row, dict) or row.get("status") != "checked"
+                           or not isinstance(row.get("index"), int) or isinstance(row["index"], bool)
+                           or row["index"] < 1 for row in original)
+                    or checked != [f"reference:{row['index']}" for row in original]):
+                return None
+            return "professional_pass"
+        if binding_method:
+            consumed = evidence.get("professional_consumption")
+            original = evidence.get("original_checks")
+            details = conclusion.get("details")
+            bindings = details.get("bindings") if isinstance(details, dict) else None
+            scope = conclusion.get("scope")
+            checked = scope.get("checked") if isinstance(scope, dict) else None
+            if (evidence.get("provider_id") != "foundation"
+                    or evidence.get("public_entry") != provider["entry"]
+                    or evidence.get("original_report") != conclusion
+                    or not isinstance(consumed, dict) or consumed.get("provider_id") != "foundation"
+                    or consumed.get("conclusion") != conclusion
+                    or not isinstance(original, list) or not original
+                    or not isinstance(bindings, list) or not isinstance(checked, list)):
+                return None
+            statuses = []
+            for binding in original:
+                if not isinstance(binding, dict) or binding not in bindings:
+                    return None
+                index = binding.get("index")
+                comparisons = binding.get("comparisons")
+                if (not isinstance(index, int) or index < 1
+                        or not isinstance(comparisons, list) or not comparisons):
+                    return None
+                selected_comparisons = comparisons
+                if canonical_id == "SFA-METHOD-012" and provider["entry"] == "runPublicSurfaceBindingCheck":
+                    selected_comparisons = comparisons[:2]
+                elif provider["entry"] == "runNativeProjectionCheck":
+                    selected_comparisons = comparisons[:4] if method == "static_scan" else comparisons[4:]
+                if not selected_comparisons:
+                    return None
+                for position, comparison in enumerate(comparisons, 1):
+                    status = comparison.get("status") if isinstance(comparison, dict) else None
+                    scope = (comparison.get("scope") if isinstance(comparison, dict)
+                             and provider["entry"] in {"runSkillSurfaceBindingCheck", "runNativeProjectionCheck"}
+                             else f"binding-{index}-comparison-{position}")
+                    if (status not in {"checked", "findings"}
+                            or not isinstance(scope, str) or checked.count(scope) != 1):
+                        return None
+                statuses.extend(comparison["status"] for comparison in selected_comparisons)
+            if (item["status"] == "FAIL") != ("findings" in statuses):
+                return None
+            return "professional_findings" if item["status"] == "FAIL" else "professional_pass"
+        report = evidence.get("original_report")
+        report_provider = report.get("provider") if isinstance(report, dict) else None
+        if isinstance(report_provider, dict) and report_provider.get("entry") == "runPeerAdapterCheck":
+            if canonical_id == "SFA-MIGRATE-016" and method == "digest_verification":
+                pairs = (report.get("details") or {}).get("pairs")
+                if (report != conclusion or evidence.get("public_entry") != "runPeerAdapterCheck"
+                        or evidence.get("required_checks") != ["runPeerAdapterCheck"]
+                        or not isinstance(pairs, list) or not pairs
+                        or evidence.get("original_checks") != pairs
+                        or evidence.get("peer_professional_consumption") != evidence.get("professional_consumption")
+                        or (item["status"] == "FAIL") != (report["outcome"].get("code") == "ENGINEERING_FINDINGS")):
+                    return None
+                return "professional_findings" if item["status"] == "FAIL" else "professional_pass"
+            # The SOURCE contribution keeps the independent role proof beside
+            # the decisive peer original. Neither alone establishes full scope.
+            peer = evidence.get("peer_professional_consumption")
+            scope = conclusion.get("scope")
+            details = conclusion.get("details")
+            review = details.get("review") if isinstance(details, dict) else None
+            checks = review.get("checks") if isinstance(review, dict) else None
+            roles = [row for row in checks if isinstance(row, dict) and row.get("id") == "native_role_separation"] if isinstance(checks, list) else []
+            required = evidence.get("required_checks")
+            outcome = report.get("outcome")
+            if (canonical_id not in {"SFA-SOURCE-001", "SFA-SOURCE-002"} or method != "digest_verification"
+                    or evidence.get("public_entry") != "runPeerAdapterCheck"
+                    or not isinstance(peer, dict) or peer.get("conclusion") != report
+                    or peer.get("provider_id") != "foundation" or peer.get("version_relation") not in {"same", "higher"}
+                    or report_provider.get("id") != "skill-family-engineering-kit"
+                    or report.get("subject") != conclusion.get("subject")
+                    or not isinstance(required, list)
+                    or not all(check in required for check in ["native_role_separation", "runPeerAdapterCheck"])
+                    or not isinstance(scope, dict) or not isinstance(scope.get("checked"), list)
+                    or "native_role_separation" not in scope["checked"]
+                    or len(roles) != 1 or roles[0].get("status") not in {"pass", "findings"}
+                    or (item["status"] == "PASS" and roles[0].get("status") != "pass")
+                    or not isinstance(outcome, dict) or outcome.get("completion") != "complete"
+                    or outcome.get("code") != ("ENGINEERING_FINDINGS" if item["status"] == "FAIL" else "ENGINEERING_CLEAR")):
+                return None
+        elif (provider.get("entry") != "runSelectedArtifactCheck"
+              or not evidence.get("original_checks") or report != conclusion):
+            return None
+        return "professional_findings" if item["status"] == "FAIL" else "professional_pass"
     mode = item.get("mode")
     reader_status = item.get("reader_status")
     if item.get("status") == "pass" and item.get("version_relation") == "higher":
@@ -1322,13 +1733,19 @@ def _professional_summary_items(domain_result, professional_context=None):
     for item in payload["items"]:
         if not isinstance(item, dict):
             continue
+        conclusion = item.get("conclusion") if isinstance(item.get("conclusion"), dict) else None
         originals = [raw for raw in context_items if isinstance(raw, dict)
                      and raw.get("provider_id") == item.get("provider_id")]
+        if len(originals) > 1 or any("reader_result" in raw for raw in originals):
+            # Associate already-provided values only; this is not proof validation.
+            # Keep the single legacy context when no reader identity was supplied.
+            originals = [raw for raw in originals if conclusion
+                         and isinstance(raw.get("reader_result"), dict)
+                         and raw["reader_result"].get("conclusion") == conclusion]
         original = originals[0] if len(originals) == 1 else {}
         selected = original.get("selected") if isinstance(original.get("selected"), bool) else None
         action = original.get("action") if original.get("action") in {"none", "reuse", "scan", "refresh"} else None
         issue = _professional_issue_type(item)
-        conclusion = item.get("conclusion") if isinstance(item.get("conclusion"), dict) else None
         outcome = conclusion.get("outcome") if isinstance(conclusion, dict) else None
         scope = conclusion.get("scope") if isinstance(conclusion, dict) else None
         details = conclusion.get("details", {}) if isinstance(conclusion, dict) else {}

@@ -1,3 +1,6 @@
+// @feature FND-FR-003
+// @decision FND-ADR-009
+// @design FND-DES-003
 import { createHash } from "node:crypto";
 import { lstat, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";

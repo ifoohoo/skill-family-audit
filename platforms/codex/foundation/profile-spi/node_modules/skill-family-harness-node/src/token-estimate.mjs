@@ -1,3 +1,4 @@
+// @decision FND-ADR-009
 /**
  * Deterministic token upper-bound estimation (FND-ADR-009) and the
  * authoritative deterministic token estimator (audit remediation C1).

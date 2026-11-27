@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.skill-family.example/quickstart-profile/v2/result.json",
   "title": "QuickstartResult",
-  "description": "Candidate narrow profile (v2) over the stable terminal operation-result envelope. Every terminal state fixes outputs explicitly: succeeded requires the outputs object, failed and rejected require null outputs plus at least one error whose code is registered in the frozen contracts error registry. succeeded.outputs fixes summary, outputs, evidence, domainResult, and a taskBinding whose evidenceBindings carries exactly one mechanism back-reference per evidence Resource. domainResult is an arbitrary caller-owned JSON value that Foundation never interprets.",
+  "description": "构建在稳定终态 operation-result 信封之上的 Quickstart 候选收窄配置（v2）。每个终态均显式固定 outputs：succeeded 要求提供 outputs 对象，failed 与 rejected 要求 outputs 为 null 且至少包含一条已登记于 Contracts 错误码表的错误记录。succeeded.outputs 固定包含 summary、outputs、evidence、domainResult 与 taskBinding，其中 evidenceBindings 为每份证据资源携带唯一机制回引；domainResult 为调用方自由定义的 JSON 值，Foundation 不解释其业务语义。",
   "allOf": [
     {
       "$ref": "https://contracts.skill-family.example/v1/operation-result.json"

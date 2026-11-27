@@ -1,3 +1,6 @@
+// @decision FND-ADR-002
+// @decision FND-ADR-007
+// @design FND-DES-001
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { errorCodeRegistry } from "./errors.mjs";

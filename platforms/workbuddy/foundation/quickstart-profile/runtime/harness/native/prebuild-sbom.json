@@ -34,6 +34,25 @@
       "binary": "prebuilds/linux-x64-gnu/bound_read.linux-x64-gnu.node",
       "sha256": "ec40dc02bb666ccae585c78f59211951dcc2001bf71c828a59b0d5b821ebfae0",
       "license": "Apache-2.0"
+    },
+    {
+      "platformKey": "win32-x64",
+      "binary": "prebuilds/win32-x64/bound_read.win32-x64.node",
+      "sha256": "aa2b04236652eddd852441920d2c8cf723b9067c36db1b740aa126cee89175b9",
+      "license": "Apache-2.0"
     }
-  ]
+  ],
+  "platformSources": {
+    "win32-x64": {
+      "path": "packages/skill-family-harness-node/src/native/windows_process.c",
+      "sha256": "58272972703876877c7f698dc1a39891c1e2619cc11a44f9afb4a66cdc0822a5"
+    }
+  },
+  "platformBuildRecipes": {
+    "win32-x64": {
+      "path": "packages/skill-family-harness-node/src/native/binding.gyp",
+      "sha256": "77e63e3796b1f54c5d572bb7e29a3819702bdd5041d6c9ccfffe0c3791816480",
+      "commandSha256": "3488fb37b343ec27845363ed3861f6ef1574498bf67cf1a480d4948f42f96599"
+    }
+  }
 }

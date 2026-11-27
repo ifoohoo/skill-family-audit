@@ -1,0 +1,40 @@
+{
+  "fixtureId": "executable-identity-observation/negative-02-windows-posix-interpreter",
+  "class": "negative",
+  "contract": "executable-identity-observation",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/executable-identity-observation.json", "dialect": "2020-12", "policy": "strict" },
+  "data": {
+    "schemaVersion": 2,
+    "kind": "skill-family.executable-identity-observation",
+    "lookup": { "requested": "tool.js", "mode": "absolute-path", "path": "C:/fictional/bin/tool.js", "selectedPath": "C:/fictional/bin/tool.js" },
+    "canonicalEntry": {
+      "path": "C:/fictional/bin/tool.js",
+      "symlinkChain": [],
+      "binding": { "kind": "trusted-filesystem-root-binding", "digestAlgorithm": "sha256", "basis": "canonical-finalpath-volume-fileid-type-security-v1", "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "relPath": "tool.js",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "bytes": 4,
+      "statMode": null,
+      "permissionObservation": { "kind": "windows-security-v1", "attributes": 32, "securityDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+      "entryKind": "interpreter-script"
+    },
+    "interpreter": {
+      "request": "/usr/bin/node",
+      "canonicalEntry": {
+        "path": "C:/fictional/node.exe",
+        "symlinkChain": [],
+        "binding": { "kind": "trusted-filesystem-root-binding", "digestAlgorithm": "sha256", "basis": "canonical-finalpath-volume-fileid-type-security-v1", "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "relPath": "node.exe",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "bytes": 4,
+        "statMode": null,
+        "permissionObservation": { "kind": "windows-security-v1", "attributes": 32, "securityDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+        "entryKind": "native-binary"
+      },
+      "shebangArgs": ["--experimental-vm-modules"]
+    },
+    "launch": { "file": "C:/fictional/node.exe", "argvPrefix": ["C:/fictional/bin/tool.js"] },
+    "observationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "expect": { "valid": false, "errorCode": "SFC1001" }
+}

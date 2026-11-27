@@ -1,0 +1,35 @@
+{
+  "adapterId": "agent-method-registry-v1",
+  "package": "agent-method-registry",
+  "version": "0.2.2",
+  "tarballPath": "frozen/agent-method-registry-0.2.2.tgz",
+  "packageTarballSha256": "76ce9a7f685068c0f91700c2db3bb94b13f82db357287ef28276dc76602b3244",
+  "npmIntegrity": "sha512-uQbsnVLBkm2yeEIHdtHu8NUjgDgheYvNF8wZfvHpCSk7pnmGWW93P31fPmer9IowWmh2f55I5FguxX4czbxrvg==",
+  "stableRuntimeApiWhitelist": [
+    "validateCatalog",
+    "validateProjectOverlay",
+    "buildEffectiveIndex",
+    "queryEffectiveIndex",
+    "resolveEntry",
+    "verifyProvider",
+    "diagnoseRegistry"
+  ],
+  "cliWhitelist": ["validate", "index", "query", "resolve"],
+  "implementationContract": "spec/methods/registry-implementation.json",
+  "receiptContract": "spec/methods/method-resolution-receipt.schema.json",
+  "v2Surface": {
+    "releasedInVersion": "0.2.0",
+    "allowedAsDependency": true,
+    "allowedAsDependencyReason": "0.2.2 经已发布 tarball 逐版本真实字节重查后获本项目精确消费批准，用于 THIRD_PARTY/PROJECT 身份链；该批准不表示从 0.2.0 升级兼容。",
+    "forbiddenDiscriminators": ["migration-plan"],
+    "note": "v2 表面首次随 0.2.0 发布；0.2.2 修复 THIRD_PARTY/PROJECT 身份运行链。逐版本真实字节重查确认两版七函数根 API 与四条 CLI 相同，但六项钉扎 v2 Schema 中 method-query.schema.json 摘要发生变化，因此 0.2.0→0.2.2 按 RPA-007 属不兼容升级；本次 REGISTRY 重裁决批准 0.2.2 作为分别支持的当前精确消费版本。本项目仍保留 v1 发现兼容，禁止 v2 失败后静默降级执行 v1。",
+    "v2SchemaDigests": {
+      "implementation.schema.json": "092ad286093434bafa7b94d49ca30e95d4184015ff53d97bc27f67b1cb756602",
+      "inventory.schema.json": "8392249efdc0a660d5321cc834ef3dbda774f7c0031dc476d1c8bd16c09369c3",
+      "binding.schema.json": "c0ce6192b34ff45cb46d44824b5d5f02bb6f968a6bdd4023b378ce3c186dd288",
+      "projection.schema.json": "7b765598ffaf1a53d92f54d77955769fbeabe71f97a77f96ea9ce9ef5463537c",
+      "method-query.schema.json": "32ef735242c7b522b425495398e7cff3ac819217429a6e60daeddfbd9c44d3fb",
+      "run-lock.schema.json": "e0e8a9a15909cca2d42782ccce4039df09c452d14c722c6aa5b6f477661cf8d5"
+    }
+  }
+}

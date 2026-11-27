@@ -1,4 +1,13 @@
-import { canonicalJson, ContractsError, digestDocument, isRegisteredErrorCode } from "../contracts/index.mjs";
+import {
+  ORCHESTRATION_BLUEPRINT_SCHEMA_ID,
+  SESSION_TRACE_BUNDLE_SCHEMA_ID,
+  canonicalJson,
+  ContractsError,
+  digestDocument,
+  isRegisteredErrorCode,
+  verifyOrchestrationBlueprintStructure,
+  verifySessionTraceBundleInvariants,
+} from "../contracts/index.mjs";
 import {
   QUICKSTART_PROTOCOL,
   findNonJsonValue,
@@ -121,7 +130,9 @@ export async function verifyManagedBundleIdentity({
     throw new TypeError("verifyManagedBundleIdentity: neighboring projection provenance is not valid UTF-8 JSON");
   }
   if (
-    provenance?.schemaVersion !== 1 ||
+    (process.platform === "win32"
+      ? provenance?.schemaVersion !== 2 || provenance?.platform !== "win32"
+      : provenance?.schemaVersion !== 1 || Object.hasOwn(provenance, "platform")) ||
     provenance?.kind !== "skill-family.foundation-projection" ||
     provenance?.payload?.digestAlgorithm !== "sha256" ||
     !Array.isArray(provenance.payload.files) ||
@@ -453,6 +464,10 @@ export async function verifyHarnessSurfaceInventory({ root, inventory, detectors
 const FOUNDATION_MECHANISM_OPERATIONS = Object.freeze([
   "validate-by-schema-id",
   "validate-many-by-schema-id",
+  "validate-session-trace-bundle",
+  "verify-session-trace-bundle-seal",
+  "validate-orchestration-blueprint",
+  "verify-raw-locator-slice",
   "canonical-json",
   "digest-document",
   "resource-closure",
@@ -580,6 +595,94 @@ export async function invokeFoundationMechanism(request, { validateBySchemaId, l
       throw new TypeError("invokeFoundationMechanism: validate-by-schema-id requires the trusted Bundle validator");
     }
     return validateBySchemaId(params.schemaId, params.document);
+  }
+  if (operation === "validate-session-trace-bundle" || operation === "verify-session-trace-bundle-seal") {
+    if (typeof validateBySchemaId !== "function") {
+      throw new TypeError(`invokeFoundationMechanism: ${operation} requires the trusted Bundle validator`);
+    }
+    const structural = validateBySchemaId(SESSION_TRACE_BUNDLE_SCHEMA_ID, params.document);
+    if (!structural.valid) {
+      return { valid: false, errorCode: "SFC1001", errors: structural.errors };
+    }
+    const inv = verifySessionTraceBundleInvariants(params.document);
+    if (!inv.valid) {
+      return { valid: false, errorCode: inv.errorCode ?? "SFC1001", errors: inv.errors };
+    }
+    if (operation === "validate-session-trace-bundle") {
+      return { valid: true, errorCode: null, errors: [] };
+    }
+    const body = structuredClone(params.document);
+    const declaredDigest = body.seal.bundleDigestSha256;
+    delete body.seal;
+    const recomputedDigest = digestDocument(body);
+    if (recomputedDigest !== declaredDigest) {
+      return {
+        valid: false,
+        sealValid: false,
+        errorCode: "SFC1001",
+        declaredBundleDigestSha256: declaredDigest,
+        recomputedBundleDigestSha256: recomputedDigest,
+        errors: [
+          {
+            keyword: "sessionTraceBundleSeal",
+            instancePath: "/seal/bundleDigestSha256",
+            schemaPath: `${SESSION_TRACE_BUNDLE_SCHEMA_ID}#seal`,
+            message: `会话追溯包封存摘要失配：声明 ${declaredDigest}，重算 ${recomputedDigest}`,
+            params: { expected: declaredDigest, actual: recomputedDigest },
+          },
+        ],
+      };
+    }
+    return {
+      valid: true,
+      sealValid: true,
+      errorCode: null,
+      bundleDigestSha256: recomputedDigest,
+      errors: [],
+    };
+  }
+  if (operation === "validate-orchestration-blueprint") {
+    if (typeof validateBySchemaId !== "function") {
+      throw new TypeError("invokeFoundationMechanism: validate-orchestration-blueprint requires the trusted Bundle validator");
+    }
+    const structural = validateBySchemaId(ORCHESTRATION_BLUEPRINT_SCHEMA_ID, params.document);
+    if (!structural.valid) {
+      return { valid: false, errorCode: "SFC1001", errors: structural.errors };
+    }
+    const graphCheck = verifyOrchestrationBlueprintStructure(params.document);
+    if (!graphCheck.valid) {
+      return { valid: false, errorCode: graphCheck.errorCode ?? "SFC1001", errors: graphCheck.errors };
+    }
+    return { valid: true, errorCode: null, errors: [] };
+  }
+  if (operation === "verify-raw-locator-slice") {
+    const { root, path: relPath, byteOffset, byteLength, expectedSliceSha256 } = params;
+    if (
+      typeof root !== "string" || !root ||
+      typeof relPath !== "string" || !relPath ||
+      !Number.isInteger(byteOffset) || byteOffset < 0 ||
+      !Number.isInteger(byteLength) || byteLength < 0 ||
+      typeof expectedSliceSha256 !== "string" || !SHA256_PATTERN.test(expectedSliceSha256)
+    ) {
+      throw new TypeError("invokeFoundationMechanism: verify-raw-locator-slice params are malformed");
+    }
+    const receipt = await readFileStrict(root, relPath);
+    const buf = Buffer.isBuffer(receipt.content) ? receipt.content : Buffer.from(String(receipt.content), "utf8");
+    if (byteOffset + byteLength > buf.length) {
+      return {
+        valid: false,
+        reason: "OUT_OF_RANGE",
+        fileByteLength: buf.length,
+        actualSliceSha256: null,
+      };
+    }
+    const actualSliceSha256 = digestBytes(buf.subarray(byteOffset, byteOffset + byteLength));
+    return {
+      valid: actualSliceSha256 === expectedSliceSha256,
+      reason: actualSliceSha256 === expectedSliceSha256 ? null : "SLICE_DIGEST_MISMATCH",
+      fileByteLength: buf.length,
+      actualSliceSha256,
+    };
   }
   if (operation === "canonical-json") {
     if (Object.keys(params).length !== 1 || !Object.hasOwn(params, "document")) {

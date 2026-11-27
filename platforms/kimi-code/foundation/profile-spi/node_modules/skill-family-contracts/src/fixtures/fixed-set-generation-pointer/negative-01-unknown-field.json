@@ -1,0 +1,15 @@
+{
+  "fixtureId": "fixed-set-generation-pointer.negative.unknown-field",
+  "contract": "fixed-set-generation-pointer",
+  "class": "negative",
+  "description": "An absolute root is not part of the pointer.",
+  "validation": { "schemaId": "https://contracts.skill-family.example/v1/fixed-set-generation-pointer.json", "dialect": "2020-12", "policy": "strict" },
+  "expect": { "valid": false, "errorCode": "SFC1001" },
+  "data": {
+    "schemaVersion": 1,
+    "kind": "skill-family.fixed-set-generation-pointer",
+    "generation": "gen-1",
+    "closureDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "root": "C:/fictional/store"
+  }
+}

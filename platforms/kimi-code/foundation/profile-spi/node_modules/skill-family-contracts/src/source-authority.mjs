@@ -1,3 +1,6 @@
+// @decision FND-ADR-014
+// @decision FND-ADR-002
+// @design FND-DES-001
 import { validateDocument } from "./validator.mjs";
 import { preflightJsonData } from "./inert-json.mjs";
 
