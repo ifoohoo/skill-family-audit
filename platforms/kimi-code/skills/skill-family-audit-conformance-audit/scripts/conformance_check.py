@@ -16,6 +16,7 @@ import argparse
 import atexit
 import base64
 import hashlib
+import io
 import json
 import os
 import re
@@ -23,6 +24,9 @@ import select
 import subprocess
 import sys
 import threading
+import xml.etree.ElementTree as ET
+import zipfile
+import zlib
 from pathlib import Path
 
 import resolve_spec_release as spec_release_resolver
@@ -33,18 +37,49 @@ RULE_FIELDS = {"ruleId", "revisionDigest", "description", "applicability", "chec
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 FAMILY_NAME_RE = re.compile(r"^[a-z][a-z0-9-]+$")
 FRONTMATTER_BOUNDARY = re.compile(r"^---\s*$")
-_MATERIAL_SCAN_MAX_BYTES = 1_048_576
+_MATERIAL_SCAN_MAX_BYTES = 16 * 1024 * 1024
+_MATERIAL_OOXML_MAX_ENTRIES = 512
 _MATERIAL_FINDING_LIMIT = 64
 _MATERIAL_FINDING_TEXT_LIMIT = 160
 _MATERIAL_TEXT_SUFFIXES = frozenset({
-    ".cfg", ".cjs", ".conf", ".css", ".csv", ".htm", ".html", ".ini",
-    ".js", ".json", ".jsonl", ".jsx", ".log", ".md", ".mdx", ".mjs",
-    ".prompt", ".properties", ".py", ".rst", ".sh", ".toml", ".ts",
-    ".tsv", ".tsx", ".txt", ".xml", ".yaml", ".yml",
+    ".bak", ".bpmn", ".c", ".cc", ".cfg", ".cjs", ".conf", ".cpp", ".css",
+    ".csv", ".dot", ".drawio", ".err", ".example", ".gyp", ".h", ".htm",
+    ".html", ".ini", ".java", ".js", ".json", ".jsonl", ".jsx", ".log",
+    ".md", ".mdx", ".mjs", ".mmd", ".patch", ".prompt", ".properties",
+    ".py", ".rst", ".sh", ".sql", ".svg", ".toml", ".ts", ".tsv", ".tsx",
+    ".txt", ".vue", ".xml", ".yaml", ".yml",
 })
 _MATERIAL_TEXT_NAMES = frozenset({
-    "Dockerfile", "LICENSE", "Makefile", "NOTICE", "VERSION",
+    ".editorconfig", ".gitignore", ".gitkeep", ".node-version", ".nojekyll",
+    ".npmrc", ".nvmrc", "Dockerfile", "LICENSE", "Makefile", "NOTICE",
+    "VERSION",
 })
+_MATERIAL_OOXML_SUFFIXES = frozenset({".docx", ".pptx", ".xlsx"})
+_MATERIAL_OOXML_REQUIRED_PREFIX = {
+    ".docx": "word/",
+    ".pptx": "ppt/",
+    ".xlsx": "xl/",
+}
+_MATERIAL_OOXML_TEXT_SUFFIXES = frozenset({".csv", ".rels", ".txt", ".vml", ".xml"})
+_MATERIAL_OOXML_MEDIA_SUFFIXES = frozenset({
+    ".emf", ".gif", ".ico", ".jpeg", ".jpg", ".otf",
+    ".png", ".ttf", ".webp", ".wmf", ".woff", ".woff2",
+})
+_MATERIAL_OOXML_FORBIDDEN_INNER_SUFFIXES = frozenset({
+    ".7z", ".bin", ".bz2", ".class", ".dll", ".docm", ".dylib", ".exe",
+    ".gz", ".jar", ".js", ".msi", ".node", ".ps1", ".py", ".rar", ".sh",
+    ".so", ".tar", ".tgz", ".vbs", ".xlsm", ".xz", ".zip",
+})
+_VERIFIED_MEDIA_OR_FONT_SUFFIXES = frozenset({
+    ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png",
+    ".ttf", ".webp", ".woff", ".woff2",
+})
+_MANAGED_PREBUILD_ARCH_DIRS = frozenset({
+    "darwin-arm64", "darwin-x64", "linux-arm64-gnu", "linux-arm64-musl",
+    "linux-x64-gnu", "linux-x64-musl", "win32-arm64-msvc", "win32-x64",
+    "win32-x64-msvc",
+})
+_ASCII_PRINTABLE_RUN = re.compile(rb"[ -~]{16,}")
 _PLACEHOLDER_PATTERN = re.compile(
     r"(?i)\b(?:dummy|example|placeholder|synthetic|test)[-_ ]?"
     r"(?:secret|token|password|api[-_ ]?key)\b"
@@ -1740,6 +1775,416 @@ def _secret_redaction_material_state(
     return {"status": "unavailable", "reason": "redaction_successor_state_unknown"}
 
 
+def _has_archive_or_exec_magic(payload: bytes) -> bool:
+    if payload.startswith((
+        b"PK\x03\x04",
+        b"PK\x05\x06",
+        b"PK\x07\x08",
+        b"\x1f\x8b",
+        b"BZh",
+        b"\xfd7zXZ\x00",
+        b"7z\xbc\xaf\x27\x1c",
+        b"Rar!\x1a\x07",
+        b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1",
+        b"\x7fELF",
+        b"MZ",
+        b"\xcf\xfa\xed\xfe",
+        b"\xfe\xed\xfa\xcf",
+        b"\xce\xfa\xed\xfe",
+        b"\xfe\xed\xfa\xce",
+        b"\xca\xfe\xba\xbe",
+    )):
+        return True
+    return False
+
+
+def _has_verified_media_or_font_magic(suffix: str, payload: bytes) -> bool:
+    if suffix in {".png", ".jpg", ".jpeg"}:
+        return payload.startswith(b"\x89PNG\r\n\x1a\n") or payload.startswith(b"\xff\xd8\xff")
+    if suffix == ".gif":
+        return payload.startswith((b"GIF87a", b"GIF89a"))
+    if suffix == ".webp":
+        return len(payload) >= 12 and payload[:4] == b"RIFF" and payload[8:12] == b"WEBP"
+    if suffix == ".ico":
+        if len(payload) < 22 or payload[:4] != b"\x00\x00\x01\x00":
+            return False
+        count = int.from_bytes(payload[4:6], "little")
+        return 1 <= count <= 64 and len(payload) >= 6 + 16 * count
+    if suffix == ".woff":
+        return len(payload) >= 44 and payload.startswith(b"wOFF")
+    if suffix == ".woff2":
+        return len(payload) >= 48 and payload.startswith(b"wOF2")
+    if suffix == ".ttf":
+        return len(payload) >= 12 and payload.startswith((b"\x00\x01\x00\x00", b"true"))
+    if suffix == ".otf":
+        return len(payload) >= 12 and payload.startswith(b"OTTO")
+    if suffix == ".emf":
+        return len(payload) >= 44 and payload[:4] == b"\x01\x00\x00\x00" and payload[40:44] == b" EMF"
+    if suffix == ".wmf":
+        return len(payload) >= 22 and payload.startswith((b"\xd7\xcd\xc6\x9a", b"\x01\x00\x09\x00"))
+    return False
+
+
+def _has_native_shared_object_magic(payload: bytes) -> bool:
+    if payload.startswith((
+        b"\xcf\xfa\xed\xfe",
+        b"\xfe\xed\xfa\xcf",
+        b"\xce\xfa\xed\xfe",
+        b"\xfe\xed\xfa\xce",
+        b"\x7fELF",
+    )):
+        return True
+    if payload.startswith(b"\xca\xfe\xba\xbe"):
+        if len(payload) < 28:
+            return False
+        nfat_arch = int.from_bytes(payload[4:8], "big")
+        cputype = int.from_bytes(payload[8:12], "big")
+        return 1 <= nfat_arch <= 8 and cputype in {7, 12, 0x01000007, 0x0100000C}
+    if len(payload) >= 64 and payload[:2] == b"MZ":
+        e_lfanew = int.from_bytes(payload[0x3C:0x40], "little")
+        return 0x40 <= e_lfanew <= len(payload) - 4 and payload[e_lfanew:e_lfanew + 4] == b"PE\x00\x00"
+    return False
+
+
+def _is_managed_native_prebuild_path(relative_path: str) -> bool:
+    parts = [seg for seg in relative_path.replace("\\", "/").split("/") if seg]
+    if len(parts) < 3 or not parts[-1].lower().endswith(".node"):
+        return False
+    for idx, seg in enumerate(parts[:-2]):
+        if seg == "prebuilds" and parts[idx + 1] in _MANAGED_PREBUILD_ARCH_DIRS:
+            return True
+    return False
+
+
+def _extract_ascii_printable_text(payload: bytes) -> str:
+    return "\n".join(seg.decode("ascii") for seg in _ASCII_PRINTABLE_RUN.findall(payload))
+
+
+def _decode_strict_xml_or_text(raw_entry: bytes) -> tuple[str | None, str | None]:
+    if raw_entry.startswith((b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff")):
+        return None, "material_encoding_not_supported"
+    if raw_entry.startswith((b"\xff\xfe", b"\xfe\xff")):
+        try:
+            decoded = raw_entry.decode("utf-16", errors="strict")
+        except UnicodeDecodeError:
+            return None, "material_encoding_not_supported"
+        if "\x00" in decoded:
+            return None, "material_encoding_not_supported"
+        return decoded, None
+    try:
+        decoded = raw_entry.decode("utf-8-sig", errors="strict")
+    except UnicodeDecodeError:
+        return None, "material_encoding_not_supported"
+    if "\x00" in decoded:
+        return None, "material_encoding_not_supported"
+    return decoded, None
+
+
+def _read_bounded_zip_entry(zf: zipfile.ZipFile, info: zipfile.ZipInfo, remaining_budget: int) -> tuple[bytes | None, str | None]:
+    if remaining_budget < 0 or info.file_size > remaining_budget:
+        return None, "material_size_not_supported"
+    buf = bytearray()
+    with zf.open(info, "r") as stream:
+        while True:
+            chunk = stream.read(65536)
+            if not chunk:
+                break
+            buf.extend(chunk)
+            if len(buf) > remaining_budget:
+                return None, "material_size_not_supported"
+    return bytes(buf), None
+
+
+def _validate_ooxml_xml_root(xml_text: str, expected_local_name: str, expected_ns: str | None = None) -> bool:
+    upper = xml_text.upper()
+    if "<!DOCTYPE" in upper or "<!ENTITY" in upper:
+        return False
+    try:
+        root_el = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return False
+    tag = root_el.tag
+    if tag.startswith("{") and "}" in tag:
+        ns, local = tag[1:].split("}", 1)
+    else:
+        ns, local = "", tag
+    if local != expected_local_name:
+        return False
+    if expected_ns is not None and ns != expected_ns:
+        return False
+    return True
+
+
+def _normalize_pdf_name_tokens(region: bytes) -> bytes | None:
+    invalid = False
+
+    def _replace_name(match: re.Match[bytes]) -> bytes:
+        nonlocal invalid
+        body = match.group(1)
+        if b"#" not in body:
+            return match.group(0)
+        out = bytearray(b"/")
+        i = 0
+        n = len(body)
+        while i < n:
+            if body[i:i + 1] == b"#":
+                hex_pair = body[i + 1:i + 3]
+                if len(hex_pair) != 2 or not re.fullmatch(rb"[0-9A-Fa-f]{2}", hex_pair):
+                    invalid = True
+                    return match.group(0)
+                val = int(hex_pair, 16)
+                if val < 0x21 or val > 0x7E or bytes([val]) in b"/<>[]()%":
+                    invalid = True
+                    return match.group(0)
+                out.append(val)
+                i += 3
+            else:
+                out.append(body[i])
+                i += 1
+        return bytes(out)
+
+    normalized = re.sub(rb"/([^\s/<>\[\]()%]+)", _replace_name, region)
+    return None if invalid else normalized
+
+
+def _strip_nested_pdf_dicts(dict_inner: bytes) -> bytes | None:
+    out = bytearray()
+    depth = 0
+    i = 0
+    n = len(dict_inner)
+    while i < n:
+        two = dict_inner[i:i + 2]
+        if two == b"<<":
+            depth += 1
+            i += 2
+        elif two == b">>":
+            if depth == 0:
+                return None
+            depth -= 1
+            i += 2
+        else:
+            if depth == 0:
+                out.append(dict_inner[i])
+            i += 1
+    if depth != 0:
+        return None
+    return bytes(out)
+
+
+def _extract_balanced_pdf_stream_dict(payload: bytes, stream_idx: int) -> bytes | None:
+    ws_trimmed_end = stream_idx
+    while ws_trimmed_end > 0 and payload[ws_trimmed_end - 1:ws_trimmed_end] in {
+        b" ", b"\t", b"\r", b"\n", b"\x0c", b"\x00"
+    }:
+        ws_trimmed_end -= 1
+    if ws_trimmed_end < 4 or payload[ws_trimmed_end - 2:ws_trimmed_end] != b">>":
+        return None
+    close_inner_end = ws_trimmed_end - 2
+    limit = max(0, close_inner_end - 65536)
+    depth = 1
+    i = close_inner_end - 1
+    while i >= limit:
+        if i > limit and payload[i - 1:i + 1] == b">>":
+            depth += 1
+            i -= 2
+            continue
+        if i > limit and payload[i - 1:i + 1] == b"<<":
+            depth -= 1
+            if depth == 0:
+                return payload[i + 1:close_inner_end]
+            i -= 2
+            continue
+        i -= 1
+    return None
+
+
+def _extract_pdf_hex_and_text_tokens(stream_bytes: bytes) -> str:
+    pieces = [_extract_ascii_printable_text(stream_bytes)]
+    for m in re.finditer(rb"<([0-9A-Fa-f\s]{16,})>", stream_bytes):
+        hex_clean = re.sub(rb"\s+", b"", m.group(1))
+        if len(hex_clean) % 2 == 1:
+            hex_clean += b"0"
+        try:
+            raw = bytes.fromhex(hex_clean.decode("ascii"))
+        except ValueError:
+            continue
+        if raw.startswith((b"\xfe\xff", b"\xff\xfe")):
+            try:
+                pieces.append(raw.decode("utf-16", errors="ignore"))
+                continue
+            except Exception:
+                pass
+        pieces.append(_extract_ascii_printable_text(raw))
+    return "\n".join(p for p in pieces if p)
+
+
+def _extract_pdf_text(payload: bytes) -> tuple[str | None, str | None]:
+    if not payload.startswith(b"%PDF-") or b"%%EOF" not in payload[-4096:]:
+        return None, "material_type_not_supported"
+    total_expanded = len(payload)
+    if total_expanded > _MATERIAL_SCAN_MAX_BYTES:
+        return None, "material_size_not_supported"
+    chunks: list[str] = [_extract_pdf_hex_and_text_tokens(payload)]
+    pos = 0
+    while True:
+        idx = payload.find(b"stream", pos)
+        if idx == -1:
+            break
+        before_ok = idx == 0 or payload[idx - 1:idx] in {b" ", b"\t", b"\r", b"\n", b"\x0c", b"\x00", b">"}
+        after_nl = payload[idx + 6:idx + 8] == b"\r\n" or payload[idx + 6:idx + 7] in {b"\n", b"\r"}
+        if not (before_ok and after_nl):
+            pos = idx + 6
+            continue
+        non_stream_slice = _normalize_pdf_name_tokens(payload[pos:idx])
+        if non_stream_slice is None or re.search(rb"/Encrypt\b", non_stream_slice):
+            return None, "material_type_not_supported"
+        end_idx = payload.find(b"endstream", idx + 7)
+        if end_idx == -1:
+            return None, "material_type_not_supported"
+        raw_dict = _extract_balanced_pdf_stream_dict(payload, idx)
+        if raw_dict is None:
+            return None, "material_type_not_supported"
+        norm_dict = _normalize_pdf_name_tokens(raw_dict)
+        if norm_dict is None:
+            return None, "material_type_not_supported"
+        if re.search(rb"/(?:Crypt|DecodeParms|DP)\b", norm_dict):
+            return None, "material_type_not_supported"
+        top_dict = _strip_nested_pdf_dicts(norm_dict)
+        if top_dict is None or re.search(rb"/F\b", top_dict):
+            return None, "material_type_not_supported"
+        filter_key_count = len(re.findall(rb"/Filter\b", top_dict))
+        filters: list[bytes] = []
+        if filter_key_count > 1:
+            return None, "material_type_not_supported"
+        if filter_key_count == 1:
+            fm = re.search(rb"/Filter\s*(?:/([^\s/<>\[\]()%]+)|\[\s*([^\]]*)\])", top_dict)
+            if fm is None:
+                return None, "material_type_not_supported"
+            if fm.group(1) is not None:
+                filters = [fm.group(1)]
+            else:
+                arr_body = fm.group(2).strip()
+                if not arr_body or not re.fullmatch(rb"(?:/[^\s/<>\[\]()%]+\s*)+", arr_body):
+                    return None, "material_type_not_supported"
+                filters = re.findall(rb"/([^\s/<>\[\]()%]+)", arr_body)
+        data_start = idx + (8 if payload[idx + 6:idx + 8] == b"\r\n" else 7)
+        raw_stream = payload[data_start:end_idx]
+        if raw_stream.endswith(b"\r\n"):
+            raw_stream = raw_stream[:-2]
+        elif raw_stream.endswith((b"\n", b"\r")):
+            raw_stream = raw_stream[:-1]
+        if not filters:
+            chunks.append(_extract_pdf_hex_and_text_tokens(raw_stream))
+        elif filters == [b"FlateDecode"]:
+            remaining = _MATERIAL_SCAN_MAX_BYTES - total_expanded
+            if remaining <= 0:
+                return None, "material_size_not_supported"
+            try:
+                decomp = zlib.decompressobj()
+                inflated = decomp.decompress(raw_stream, remaining + 1)
+                if decomp.unconsumed_tail or len(inflated) > remaining:
+                    return None, "material_size_not_supported"
+                inflated += decomp.flush()
+                if len(inflated) > remaining:
+                    return None, "material_size_not_supported"
+            except zlib.error:
+                return None, "material_type_not_supported"
+            total_expanded += len(inflated)
+            chunks.append(_extract_pdf_hex_and_text_tokens(inflated))
+        elif filters == [b"DCTDecode"] and raw_stream.startswith(b"\xff\xd8\xff"):
+            chunks.append(_extract_ascii_printable_text(raw_stream))
+        else:
+            return None, "material_type_not_supported"
+        pos = end_idx + 9
+    tail_non_stream = _normalize_pdf_name_tokens(payload[pos:])
+    if tail_non_stream is None or re.search(rb"/Encrypt\b", tail_non_stream):
+        return None, "material_type_not_supported"
+    return "\n".join(c for c in chunks if c), None
+
+
+def _extract_ooxml_text(payload: bytes, outer_suffix: str) -> tuple[str | None, str | None]:
+    required_prefix = _MATERIAL_OOXML_REQUIRED_PREFIX.get(outer_suffix)
+    if not required_prefix:
+        return None, "material_type_not_supported"
+    try:
+        with zipfile.ZipFile(io.BytesIO(payload)) as zf:
+            infos = zf.infolist()
+            if not infos or len(infos) > _MATERIAL_OOXML_MAX_ENTRIES:
+                return None, "material_type_not_supported"
+            total_uncompressed = 0
+            chunks: list[str] = []
+            content_types_valid = False
+            root_rels_valid = False
+            has_package_part = False
+            for info in infos:
+                if info.is_dir():
+                    continue
+                if info.flag_bits & 0x1:
+                    return None, "material_type_not_supported"
+                unix_mode = (info.external_attr >> 16) & 0o170000
+                if unix_mode == 0o120000:
+                    return None, "material_type_not_supported"
+                inner_name = info.filename.replace("\\", "/")
+                if inner_name.startswith("/") or "//" in inner_name:
+                    return None, "material_type_not_supported"
+                parts = [seg for seg in inner_name.split("/") if seg]
+                if not parts or "." in parts or ".." in parts:
+                    return None, "material_type_not_supported"
+                if inner_name.startswith(required_prefix):
+                    has_package_part = True
+                inner_path = Path(inner_name)
+                inner_suffix = inner_path.suffix.lower()
+                if inner_suffix in _MATERIAL_OOXML_FORBIDDEN_INNER_SUFFIXES or inner_path.name.lower() == "vbaproject.bin":
+                    return None, "material_type_not_supported"
+                remaining = _MATERIAL_SCAN_MAX_BYTES - total_uncompressed
+                raw_entry, read_err = _read_bounded_zip_entry(zf, info, remaining)
+                if read_err is not None or raw_entry is None:
+                    return None, read_err or "material_size_not_supported"
+                total_uncompressed += len(raw_entry)
+                if _has_archive_or_exec_magic(raw_entry):
+                    return None, "material_type_not_supported"
+                if (
+                    inner_suffix in _MATERIAL_OOXML_TEXT_SUFFIXES
+                    or inner_path.name in {"[Content_Types].xml", ".rels"}
+                    or inner_path.name.endswith(".rels")
+                ):
+                    decoded_text, enc_err = _decode_strict_xml_or_text(raw_entry)
+                    if enc_err is not None or decoded_text is None:
+                        return None, enc_err or "material_encoding_not_supported"
+                    if inner_suffix in {".xml", ".rels", ".vml"} or inner_path.name.endswith(".rels") or inner_path.name == "[Content_Types].xml":
+                        upper_entry = decoded_text.upper()
+                        if "<!DOCTYPE" in upper_entry or "<!ENTITY" in upper_entry:
+                            return None, "material_type_not_supported"
+                    if inner_name == "[Content_Types].xml":
+                        if not _validate_ooxml_xml_root(
+                            decoded_text,
+                            "Types",
+                            "http://schemas.openxmlformats.org/package/2006/content-types",
+                        ):
+                            return None, "material_type_not_supported"
+                        content_types_valid = True
+                    elif inner_name == "_rels/.rels":
+                        if not _validate_ooxml_xml_root(
+                            decoded_text,
+                            "Relationships",
+                            "http://schemas.openxmlformats.org/package/2006/relationships",
+                        ):
+                            return None, "material_type_not_supported"
+                        root_rels_valid = True
+                    chunks.append(decoded_text)
+                elif inner_suffix in _MATERIAL_OOXML_MEDIA_SUFFIXES and _has_verified_media_or_font_magic(
+                    inner_suffix, raw_entry
+                ):
+                    chunks.append(_extract_ascii_printable_text(raw_entry))
+                else:
+                    return None, "material_type_not_supported"
+            if not (content_types_valid and root_rels_valid and has_package_part):
+                return None, "material_type_not_supported"
+            return "\n".join(chunks), None
+    except (zipfile.BadZipFile, OSError, RuntimeError, ValueError):
+        return None, "material_type_not_supported"
+
+
 def _bounded_material_observation(
     target: Path,
     relative_paths: list[str],
@@ -1768,9 +2213,18 @@ def _bounded_material_observation(
         if path.is_symlink():
             unavailable.append({"path": relative, "reason": "symlink_not_supported"})
             continue
-        if (
-            path.name not in _MATERIAL_TEXT_NAMES
-            and path.suffix.lower() not in _MATERIAL_TEXT_SUFFIXES
+        suffix = path.suffix.lower()
+        is_text_candidate = path.name in _MATERIAL_TEXT_NAMES or suffix in _MATERIAL_TEXT_SUFFIXES
+        is_ooxml_candidate = suffix in _MATERIAL_OOXML_SUFFIXES
+        is_pdf_candidate = suffix == ".pdf"
+        is_media_or_font_candidate = suffix in _VERIFIED_MEDIA_OR_FONT_SUFFIXES
+        is_prebuild_candidate = _is_managed_native_prebuild_path(relative)
+        if not (
+            is_text_candidate
+            or is_ooxml_candidate
+            or is_pdf_candidate
+            or is_media_or_font_candidate
+            or is_prebuild_candidate
         ):
             unavailable.append({
                 "path": relative,
@@ -1792,15 +2246,50 @@ def _bounded_material_observation(
                 "content_sha256": digest,
             })
             continue
-        try:
-            text = payload.decode("utf-8", errors="strict")
-        except UnicodeDecodeError:
-            unavailable.append({
-                "path": relative,
-                "reason": "material_encoding_not_supported",
-                "content_sha256": digest,
-            })
-            continue
+        if is_ooxml_candidate:
+            extracted_text, ooxml_err = _extract_ooxml_text(payload, suffix)
+            if ooxml_err is not None or extracted_text is None:
+                entry = {"path": relative, "reason": ooxml_err or "material_type_not_supported"}
+                if ooxml_err in {"material_size_not_supported", "material_encoding_not_supported"}:
+                    entry["content_sha256"] = digest
+                unavailable.append(entry)
+                continue
+            text = extracted_text
+        elif is_pdf_candidate:
+            extracted_pdf, pdf_err = _extract_pdf_text(payload)
+            if pdf_err is not None or extracted_pdf is None:
+                entry = {"path": relative, "reason": pdf_err or "material_type_not_supported"}
+                if pdf_err == "material_size_not_supported":
+                    entry["content_sha256"] = digest
+                unavailable.append(entry)
+                continue
+            text = extracted_pdf
+        elif is_media_or_font_candidate:
+            if _has_archive_or_exec_magic(payload) or not _has_verified_media_or_font_magic(suffix, payload):
+                unavailable.append({
+                    "path": relative,
+                    "reason": "material_type_not_supported",
+                })
+                continue
+            text = _extract_ascii_printable_text(payload)
+        elif is_prebuild_candidate:
+            if not _has_native_shared_object_magic(payload):
+                unavailable.append({
+                    "path": relative,
+                    "reason": "material_type_not_supported",
+                })
+                continue
+            text = _extract_ascii_printable_text(payload)
+        else:
+            try:
+                text = payload.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                unavailable.append({
+                    "path": relative,
+                    "reason": "material_encoding_not_supported",
+                    "content_sha256": digest,
+                })
+                continue
         classifications: list[str] = []
         placeholder_matches = list(_PLACEHOLDER_PATTERN.finditer(text))
         sensitive_matches = list(_CREDENTIAL_SHAPED_PATTERN.finditer(text))
@@ -1906,6 +2395,14 @@ def _scan(
                 "__pycache__",
                 ".codex",
                 ".release-skill",
+                ".workbuddy",
+                ".qoder",
+                ".artifact-graph",
+                ".skill-failure-auditor",
+                ".glaf4-dev",
+                ".runs",
+                ".evidence",
+                "_scratch",
             }:
                 continue
             path = Path(root) / dirname
@@ -1917,6 +2414,8 @@ def _scan(
             retained_dirs.append(dirname)
         dirs[:] = retained_dirs
         for filename in files:
+            if filename == ".DS_Store" or filename.endswith((".pyc", ".pyo")):
+                continue
             path = Path(root) / filename
             if path.resolve() in excluded:
                 continue

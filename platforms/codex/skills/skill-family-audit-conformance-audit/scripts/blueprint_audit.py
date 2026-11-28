@@ -109,7 +109,7 @@ def _provider_version() -> str:
                         return ver
                 except (OSError, json.JSONDecodeError):
                     continue
-    return "1.1.67"
+    return "1.1.68"
 
 
 def _norm_glob_pat(pat: str) -> str:
